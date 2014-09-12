@@ -2,10 +2,17 @@ package enc
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
 	"unsafe"
+)
+
+var (
+	// ErrNil is returned when reading
+	// a value encoded as 'nil'
+	ErrNil = errors.New("value encoded as nil")
 )
 
 func ReadMapHeader(r io.Reader) (sz uint32, n int, err error) {
@@ -17,6 +24,9 @@ func ReadMapHeader(r io.Reader) (sz uint32, n int, err error) {
 		return
 	}
 	switch uint8(lead[0]) {
+	case mnil:
+		err = ErrNil
+		return
 	case mmap16:
 		var scratch [2]byte
 		nn, err = io.ReadFull(r, scratch[:])
@@ -61,6 +71,9 @@ func ReadArrayHeader(r io.Reader) (sz uint32, n int, err error) {
 		return
 	}
 	switch lead[0] {
+	case mnil:
+		err = ErrNil
+		return
 	case marray32:
 		var scratch [4]byte
 		nn, err = io.ReadFull(r, scratch[:])
@@ -114,6 +127,10 @@ func ReadFloat64(r io.Reader) (f float64, n int, err error) {
 		return
 	}
 	if bts[0] != mfloat64 {
+		if bts[0] == mnil {
+			err = ErrNil
+			return
+		}
 		err = fmt.Errorf("msgp/enc: unexpected byte %x for Float64; expected %x", bts[0], mfloat64)
 		return
 	}
@@ -130,6 +147,10 @@ func ReadFloat32(r io.Reader) (f float32, n int, err error) {
 		return
 	}
 	if bts[0] != mfloat32 {
+		if bts[0] == mnil {
+			err = ErrNil
+			return
+		}
 		err = fmt.Errorf("msgp/enc: unexpected byte %x for Float64; expected %x", bts[0], mfloat64)
 		return
 	}
@@ -145,6 +166,8 @@ func ReadBool(r io.Reader) (bool, int, error) {
 		return false, n, err
 	}
 	switch out[0] {
+	case mnil:
+		return false, n, ErrNil
 	case mtrue:
 		return true, n, err
 	case mfalse:
@@ -163,6 +186,10 @@ func ReadInt64(r io.Reader) (i int64, n int, err error) {
 		return
 	}
 	switch lead[0] {
+	case mnil:
+		err = ErrNil
+		return
+
 	case mint8:
 		var scratch [1]byte
 		nn, err = io.ReadFull(r, scratch[:])
@@ -245,6 +272,9 @@ func ReadUint64(r io.Reader) (u uint64, n int, err error) {
 	}
 
 	switch lead[0] {
+	case mnil:
+		err = ErrNil
+		return
 	case muint8:
 		nn, err = io.ReadFull(r, lead[:])
 		n += nn
@@ -323,6 +353,9 @@ func ReadBytes(r io.Reader, scratch []byte) (b []byte, n int, err error) {
 
 	var read int // bytes to read
 	switch lead[0] {
+	case mnil:
+		err = ErrNil
+		return
 	case mbin8:
 		read = int(lead[1])
 	case mbin16:
@@ -394,6 +427,10 @@ func ReadStringAsBytes(r io.Reader, scratch []byte) (b []byte, n int, err error)
 	}
 	var read int
 	switch lead[0] {
+	case mnil:
+		err = ErrNil
+		return
+
 	case mstr8:
 		nn, err = io.ReadFull(r, lead[:])
 		n += nn
@@ -450,6 +487,10 @@ func ReadComplex64(r io.Reader) (f complex64, n int, err error) {
 		return
 	}
 	if scratch[0] != mfixext8 {
+		if scratch[0] == mnil {
+			err = ErrNil
+			return
+		}
 		err = fmt.Errorf("unexpected byte %x for complex64", scratch[0])
 		return
 	}
@@ -475,6 +516,10 @@ func ReadComplex128(r io.Reader) (f complex128, n int, err error) {
 		return
 	}
 	if scratch[0] != mfixext16 {
+		if scratch[0] == mnil {
+			err = ErrNil
+			return
+		}
 		err = fmt.Errorf("unexpected byte %x for complex128", scratch[0])
 	}
 	if scratch[1] != Complex128Extension {
