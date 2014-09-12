@@ -1,0 +1,51 @@
+{{define "ElemTempl"}}
+{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}
+{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}
+{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}
+{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{end}}{{end}}
+
+{{define "PtrTempl"}}
+	if {{.Varname}} == nil {
+		nn, err = enc.WriteNil(w)
+		n += nn
+		if err != nil {
+			return
+		}
+	} else {
+		{{template "ElemTempl" .Value}}
+	}
+{{end}}
+
+{{define "BaseTempl"}}
+	nn, err = enc.Write{{ .String}}(w, {{.Varname}})
+	n += nn
+	if err != nil {
+		return
+	}
+{{end}}
+
+{{define "SliceTempl"}}
+	nn, err = enc.WriteArrayHeader(w, uint32(len({{.Varname}})))
+	n += nn
+	if err != nil {
+		return
+	}
+	for i := range {{.Varname}} {
+		{{template "ElemTempl" .Els}}
+	}
+{{end}}
+
+{{define "StructTempl"}}// write struct "{{ .Name}}"
+	nn, err = enc.WriteMapHeader(w, {{len .Fields}})
+	n += nn
+	if err != nil {
+		return
+	}
+	{{range .Fields}}
+	nn, err = enc.WriteString(w, "{{.FieldTag}}")
+	n += nn
+	if err != nil {
+		return
+	}
+	{{template "ElemTempl" .FieldElem}}{{end}}
+{{end}}
