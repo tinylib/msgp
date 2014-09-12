@@ -18,9 +18,9 @@ const (
 // WriteMapHeader writes the header for a map of size 'sz'
 func WriteMapHeader(w io.Writer, sz uint32) (n int, err error) {
 	switch {
-	case sz <= (1<<5)-1:
-		//fixmap is 1000XXXX: 10000000 | 0000XXXX - retreive with &0xf
-		return w.Write([]byte{(mfixmap | byte(sz))})
+	case sz < 16:
+		//fixmap is 1000XXXX: 10000000 | 0000XXXX
+		return w.Write([]byte{(mfixmap | (uint8(sz) & 0x0f))})
 
 	case sz < 1<<16-1:
 		return w.Write([]byte{mmap16, byte(sz >> 8), byte(sz)})

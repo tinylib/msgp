@@ -16,7 +16,7 @@ func ReadMapHeader(r io.Reader) (sz uint32, n int, err error) {
 	if err != nil {
 		return
 	}
-	switch lead[0] {
+	switch uint8(lead[0]) {
 	case mmap16:
 		var scratch [2]byte
 		nn, err = io.ReadFull(r, scratch[:])
@@ -40,12 +40,12 @@ func ReadMapHeader(r io.Reader) (sz uint32, n int, err error) {
 
 	default:
 		// fixmap starts with nibble 1000
-		if lead[0]&0x7f != 0 {
+		if uint8(lead[0])&0xf0 != mfixmap {
 			err = fmt.Errorf("unexpected byte %x for fixmap", lead[0])
 			return
 		}
 		// length in last 4 bits
-		var inner byte = lead[0] & 0x0f
+		var inner uint8 = uint8(lead[0]) & 0x0f
 		sz = uint32(inner)
 		return
 
