@@ -181,21 +181,21 @@ func ReadInt64(r io.Reader) (i int64, n int, err error) {
 		var scratch [4]byte
 		nn, err = io.ReadFull(r, scratch[:])
 		n += nn
-		i = int64(int32(scratch[0]) | (int32(scratch[1]) << 8) | (int32(scratch[2]) << 16) | (int32(scratch[3]) << 24))
+		i = int64(int32(scratch[0]<<24) | (int32(scratch[1]) << 16) | (int32(scratch[2]) << 8) | (int32(scratch[3])))
 		return
 
 	case mint64:
 		var scratch [8]byte
 		nn, err = io.ReadFull(r, scratch[:])
 		n += nn
-		i |= int64(scratch[0])
-		i |= int64(scratch[1]) << 8
-		i |= int64(scratch[2]) << 16
-		i |= int64(scratch[3]) << 24
-		i |= int64(scratch[4]) << 32
-		i |= int64(scratch[5]) << 40
-		i |= int64(scratch[6]) << 48
-		i |= int64(scratch[7]) << 56
+		i |= int64(scratch[0]) << 56
+		i |= int64(scratch[1]) << 48
+		i |= int64(scratch[2]) << 40
+		i |= int64(scratch[3]) << 32
+		i |= int64(scratch[4]) << 24
+		i |= int64(scratch[5]) << 16
+		i |= int64(scratch[6]) << 8
+		i |= int64(scratch[7])
 		return
 
 	default:
@@ -332,7 +332,7 @@ func ReadBytes(r io.Reader, scratch []byte) (b []byte, n int, err error) {
 		if err != nil {
 			return
 		}
-		read = int(uint16(lead[1]) | (uint16(rest[0]) << 8))
+		read = int(uint16(lead[1]<<8) | (uint16(rest[0])))
 	case mbin32:
 		var rest [3]byte
 		nn, err = io.ReadFull(r, rest[:])
@@ -340,7 +340,7 @@ func ReadBytes(r io.Reader, scratch []byte) (b []byte, n int, err error) {
 		if err != nil {
 			return
 		}
-		read = int(uint32(lead[1]) | (uint32(rest[0]) << 8) | (uint32(rest[1]) << 16) | (uint32(rest[2]) << 24))
+		read = int(uint32(lead[1]<<24) | (uint32(rest[0]) << 16) | (uint32(rest[1]) << 8) | (uint32(rest[2])))
 	}
 
 	b, nn, err = readN(r, scratch, read)

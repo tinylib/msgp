@@ -19,6 +19,14 @@ var (
 	tuint64 uint64 = math.MaxUint32 + 100 // cannot be int32
 )
 
+func RandBytes(sz int) []byte {
+	out := make([]byte, sz)
+	for i := range out {
+		out[i] = byte(rand.Int63n(math.MaxInt64) % 256)
+	}
+	return out
+}
+
 func TestWriteMapHeader(t *testing.T) {
 	tests := []struct {
 		Sz       uint32
@@ -130,6 +138,99 @@ func TestWriteFloat64(t *testing.T) {
 
 		if *(*float64)(unsafe.Pointer(&bits)) != flt {
 			t.Errorf("Value %f came out as %f", flt, *(*float64)(unsafe.Pointer(&bits)))
+		}
+	}
+}
+
+func TestWriteFloat32(t *testing.T) {
+	var buf bytes.Buffer
+
+	for i := 0; i < 10000; i++ {
+		buf.Reset()
+		flt := (rand.Float32() - 0.5) * math.MaxFloat32
+		n, err := WriteFloat32(&buf, flt)
+		if err != nil {
+			t.Errorf("Error with %f: %s", flt, err)
+		}
+
+		if n != 5 {
+			t.Errorf("Expected to encode %d bytes; wrote %d", 9, n)
+		}
+
+		bts := buf.Bytes()
+		if len(bts) != n {
+			t.Errorf("Claimed to write %d bytes; actually wrote %d", n, len(bts))
+		}
+
+		if bts[0] != mfloat32 {
+			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
+		}
+
+		bits := binary.BigEndian.Uint32(bts[1:])
+
+		if *(*float32)(unsafe.Pointer(&bits)) != flt {
+			t.Errorf("Value %f came out as %f", flt, *(*float32)(unsafe.Pointer(&bits)))
+		}
+	}
+}
+
+func TestWriteInt64(t *testing.T) {
+	var buf bytes.Buffer
+
+	for i := 0; i < 10000; i++ {
+		buf.Reset()
+
+		num := (rand.Int63n(math.MaxInt64)) - (math.MaxInt64 / 2)
+
+		n, err := WriteInt64(&buf, num)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		bts := buf.Bytes()
+		if n != len(bts) {
+			t.Errorf("Claimed to write %d bytes; actually wrote %d", n, len(bts))
+		}
+	}
+}
+
+func TestWriteUint64(t *testing.T) {
+	var buf bytes.Buffer
+
+	for i := 0; i < 10000; i++ {
+		buf.Reset()
+
+		num := uint64(rand.Int63n(math.MaxInt64))
+
+		n, err := WriteUint64(&buf, num)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		bts := buf.Bytes()
+		if n != len(bts) {
+			t.Errorf("Claimed to write %d bytes; actually wrote %d", n, len(bts))
+		}
+	}
+
+}
+
+func TestWriteBytes(t *testing.T) {
+	var buf bytes.Buffer
+
+	sizes := []int{0, 1, 225, int(tuint32)}
+
+	for _, size := range sizes {
+		buf.Reset()
+		bts := RandBytes(size)
+
+		n, err := WriteBytes(&buf, bts)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if n < size {
+			t.Errorf("Should have written more than %d bytes", size)
 		}
 	}
 }
