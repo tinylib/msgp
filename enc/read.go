@@ -403,7 +403,7 @@ func ReadStringAsBytes(r io.Reader, scratch []byte) (b []byte, n int, err error)
 		if err != nil {
 			return
 		}
-		read = int((uint16(b2)) | (uint16(lead[0]) << 8))
+		read = int((uint16(b2) << 8) | (uint16(lead[0])))
 
 	case mstr32:
 		b1 := lead[1]
@@ -413,7 +413,7 @@ func ReadStringAsBytes(r io.Reader, scratch []byte) (b []byte, n int, err error)
 		if err != nil {
 			return
 		}
-		read = int(uint16(b1) | (uint16(rest[0]) << 8) | (uint16(rest[1]) << 16) | (uint16(rest[2]) << 24))
+		read = int((uint16(b1) << 24) | (uint16(rest[0]) << 16) | (uint16(rest[1]) << 8) | (uint16(rest[2])))
 
 	default:
 		// try fixstr - first bits should be 101
