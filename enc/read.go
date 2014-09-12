@@ -84,7 +84,7 @@ func ReadArrayHeader(r io.Reader) (sz uint32, n int, err error) {
 
 	default:
 		// decode fixarray
-		if (lead[0] & mfixarray) != 0 {
+		if (lead[0] & 0xf0) != mfixarray {
 			err = fmt.Errorf("unexpected byte %x for fixarray", lead[0])
 			return
 		}
