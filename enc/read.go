@@ -273,9 +273,9 @@ func ReadUint64(r io.Reader) (u uint64, n int, err error) {
 		return
 
 	default:
-		// try positive fixnum:
-		if lead[0]&0x7f == 0 {
-			u = uint64(lead[0] & 0x80)
+		// try positive fixnum (first bit is zero)
+		if lead[0]&0x80 == 0 {
+			u = uint64(lead[0] & 0x7f)
 			return
 		}
 		err = fmt.Errorf("unexpected byte %x for Uint", lead[0])

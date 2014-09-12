@@ -170,10 +170,10 @@ func TestReadInt64(t *testing.T) {
 func TestReadUint64(t *testing.T) {
 	var buf bytes.Buffer
 
-	for i := 0; i < 10000; i++ {
-		buf.Reset()
+	ints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), uint64(tuint64)}
 
-		num := uint64(rand.Int63n(math.MaxInt64))
+	for i, num := range ints {
+		buf.Reset()
 
 		n, err := WriteUint64(&buf, num)
 		if err != nil {
@@ -181,10 +181,10 @@ func TestReadUint64(t *testing.T) {
 		}
 		out, nr, err := ReadUint64(&buf)
 		if nr != n {
-			t.Errorf("Wrote %d bytes; read %d", n, nr)
+			t.Errorf("Test case %d: wrote %d bytes; read %d", i, n, nr)
 		}
 		if out != num {
-			t.Errorf("Put %d in and got %d out", num, out)
+			t.Errorf("Test case %d: put %d in and got %d out", i, num, out)
 		}
 	}
 }

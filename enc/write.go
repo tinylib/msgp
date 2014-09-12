@@ -108,20 +108,16 @@ func WriteInt(w io.Writer, i int) (int, error)     { return WriteInt64(w, int64(
 
 // WriteUint writes a uint64
 func WriteUint64(w io.Writer, u uint64) (n int, err error) {
-	var lead []byte
-
 	switch {
-	case u < 256:
-		lead = []byte{byte(u) & 0x7f} // "fixint"
+	case u < (1 << 7):
+		return w.Write([]byte{byte(u) & 0x7f}) // "fixint"
 	case u < math.MaxUint16:
-		lead = []byte{muint16, byte(u >> 8), byte(u)}
+		return w.Write([]byte{muint16, byte(u >> 8), byte(u)})
 	case u < math.MaxUint32:
-		lead = []byte{muint32, byte(u >> 24), byte(u >> 16), byte(u >> 8), byte(u)}
+		return w.Write([]byte{muint32, byte(u >> 24), byte(u >> 16), byte(u >> 8), byte(u)})
 	default:
-		lead = []byte{muint64, byte(u >> 56), byte(u >> 48), byte(u >> 40), byte(u >> 32), byte(u >> 24), byte(u >> 16), byte(u >> 8), byte(u)}
+		return w.Write([]byte{muint64, byte(u >> 56), byte(u >> 48), byte(u >> 40), byte(u >> 32), byte(u >> 24), byte(u >> 16), byte(u >> 8), byte(u)})
 	}
-
-	return w.Write(lead)
 }
 
 // Unsigned Integer Utilities
