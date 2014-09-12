@@ -169,7 +169,6 @@ func WriteBool(w io.Writer, b bool) (n int, err error) {
 
 // WriteString writes the string 's'
 func WriteString(w io.Writer, s string) (n int, err error) {
-	var lead []byte
 	var nn int
 	sz := len(s)
 	if sz > math.MaxUint32 {
@@ -179,18 +178,20 @@ func WriteString(w io.Writer, s string) (n int, err error) {
 
 	switch {
 	case szbits < 32:
-		lead = []byte{(byte(szbits&0x1f) | mfixstr)} // 5-bit size: 101XXXXX
+		nn, err = w.Write([]byte{(byte(uint8(szbits)&0x1f) | mfixstr)}) // 5-bit size: 101XXXXX
 	case szbits < 256:
-		lead = []byte{mstr8, byte(szbits)}
+		nn, err = w.Write([]byte{mstr8, byte(szbits)})
 	case szbits < (1<<16)-1:
-		lead = []byte{mstr16, byte(szbits >> 8), byte(szbits)}
+		nn, err = w.Write([]byte{mstr16, byte(uint16(szbits) >> 8), byte(uint16(szbits))})
 	default:
-		lead = []byte{mstr32, byte(szbits >> 24), byte(szbits >> 16), byte(szbits >> 8), byte(szbits)}
+		nn, err = w.Write([]byte{mstr32, byte(szbits >> 24), byte(szbits >> 16), byte(szbits >> 8), byte(szbits)})
 	}
 
-	nn, err = w.Write(lead)
 	n += nn
 	if err != nil {
+		return
+	}
+	if sz == 0 {
 		return
 	}
 	nn, err = io.WriteString(w, s) // TODO: use unsafe.Pointer?

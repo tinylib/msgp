@@ -385,7 +385,7 @@ func readN(r io.Reader, scratch []byte, c int) (b []byte, n int, err error) {
 
 func ReadStringAsBytes(r io.Reader, scratch []byte) (b []byte, n int, err error) {
 	b = scratch[0:0]
-	var lead [2]byte
+	var lead [1]byte
 	var nn int
 	nn, err = io.ReadFull(r, lead[:])
 	n += nn
@@ -395,34 +395,42 @@ func ReadStringAsBytes(r io.Reader, scratch []byte) (b []byte, n int, err error)
 	var read int
 	switch lead[0] {
 	case mstr8:
-		read = int(uint8(lead[1]))
-	case mstr16:
-		b2 := lead[1]
-		nn, err = io.ReadFull(r, lead[:1])
+		nn, err = io.ReadFull(r, lead[:])
 		n += nn
 		if err != nil {
 			return
 		}
-		read = int((uint16(b2) << 8) | (uint16(lead[0])))
+		read = int(uint8(lead[0]))
+
+	case mstr16:
+		var scratch [2]byte
+		nn, err = io.ReadFull(r, scratch[:])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int((uint16(scratch[0]) << 8) | (uint16(scratch[1])))
 
 	case mstr32:
-		b1 := lead[1]
-		var rest [3]byte
-		nn, err = io.ReadFull(r, rest[:])
+		var scratch [4]byte
+		nn, err = io.ReadFull(r, scratch[:])
 		n += nn
 		if err != nil {
 			return
 		}
-		read = int((uint16(b1) << 24) | (uint16(rest[0]) << 16) | (uint16(rest[1]) << 8) | (uint16(rest[2])))
+		read = int((uint32(scratch[0]) << 24) | (uint32(scratch[1]) << 16) | (uint32(scratch[2]) << 8) | (uint32(scratch[3])))
 
 	default:
 		// try fixstr - first bits should be 101
 		if lead[0]&0xe0 == mfixstr {
-			read = int(lead[0] & 0x1f)
+			read = int(uint8(lead[0]) & 0x1f)
 		} else {
 			err = fmt.Errorf("unexpected byte %x for string", lead[0])
 			return
 		}
+	}
+	if read == 0 {
+		return
 	}
 
 	b, nn, err = readN(r, scratch, read)

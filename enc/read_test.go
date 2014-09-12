@@ -219,3 +219,33 @@ func TestReadBytes(t *testing.T) {
 
 	}
 }
+
+func TestReadStrings(t *testing.T) {
+	var buf bytes.Buffer
+
+	sizes := []int{0, 1, 225, int(tuint32)}
+	for i, size := range sizes {
+		buf.Reset()
+		in := string(RandBytes(size))
+
+		n, err := WriteString(&buf, in)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		out, nr, err := ReadString(&buf)
+		if err != nil {
+			t.Errorf("test case %d: %s", i, err)
+			continue
+		}
+
+		if n != nr {
+			t.Errorf("test case %d: wrote %d bytes; read %d bytes", i, n, nr)
+		}
+
+		if out != in {
+			t.Error("Test case %d: strings not equal.", i)
+		}
+
+	}
+}
