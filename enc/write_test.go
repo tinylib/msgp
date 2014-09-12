@@ -2,8 +2,11 @@ package enc
 
 import (
 	"bytes"
+	"encoding/binary"
 	"math"
+	"math/rand"
 	"testing"
+	"unsafe"
 )
 
 var (
@@ -77,6 +80,56 @@ func TestWriteArrayHeader(t *testing.T) {
 		}
 		if !bytes.Equal(buf.Bytes(), test.Outbytes) {
 			t.Errorf("Expected bytes %x; got %x", test.Outbytes, buf.Bytes())
+		}
+	}
+}
+
+func TestWriteNil(t *testing.T) {
+	var buf bytes.Buffer
+
+	n, err := WriteNil(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if n != 1 {
+		t.Errorf("Expected 1 byte; wrote %d", n)
+	}
+
+	bts := buf.Bytes()
+	if bts[0] != mnil {
+		t.Errorf("Expected %x; wrote %x", mnil, bts[0])
+	}
+}
+
+func TestWriteFloat64(t *testing.T) {
+	var buf bytes.Buffer
+
+	for i := 0; i < 10000; i++ {
+		buf.Reset()
+		flt := (rand.Float64() - 0.5) * math.MaxFloat64
+		n, err := WriteFloat64(&buf, flt)
+		if err != nil {
+			t.Errorf("Error with %f: %s", flt, err)
+		}
+
+		if n != 9 {
+			t.Errorf("Expected to encode %d bytes; wrote %d", 9, n)
+		}
+
+		bts := buf.Bytes()
+		if len(bts) != n {
+			t.Errorf("Claimed to write %d bytes; actually wrote %d", n, len(bts))
+		}
+
+		if bts[0] != mfloat64 {
+			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
+		}
+
+		bits := binary.BigEndian.Uint64(bts[1:])
+
+		if *(*float64)(unsafe.Pointer(&bits)) != flt {
+			t.Errorf("Value %f came out as %f", flt, *(*float64)(unsafe.Pointer(&bits)))
 		}
 	}
 }
