@@ -1,0 +1,67 @@
+{{define "ElemTempl"}}
+{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}
+{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}
+{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}
+{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{end}}{{end}}
+
+{{define "PtrTempl"}}
+	if {{.Varname}} == nil {
+		{{.Varname}} = new({{.TypeName}})
+	}
+	{{template "ElemTempl" .Value}}
+{{end}}
+
+{{define "SliceTempl"}}
+	sz, nn, err = enc.ReadArrayHeader(r)
+	n += nn
+	if err != nil {
+		return
+	}
+	if cap({{.Varname}}) > 0 {
+		if cap({{.Varname}})>= int(sz) {
+			{{.Varname}} = {{.Varname}}[0:int(sz)]
+		} else {
+			extra := make([]{{.TypeName}}, int(sz))
+			{{.Varname}} = append({{.Varname}}[0:cap({{.Varname}})], extra...)
+		}
+	} else {
+		{{.Varname}} = make([]{{.TypeName}}, sz)
+	}
+	for i := range {{.Varname}} {
+		{{template "ElemTempl" .Els}}
+	}
+{{end}}
+
+{{define "StructTempl"}}
+	sz, nn, err = enc.ReadMapHeader(r)
+	n += nn
+	if err != nil {
+		return
+	}
+	var field []byte
+	for i:=uint32(0); i<sz; i++ {
+		field, nn, err = enc.ReadStringAsBytes(r, field)
+		n += nn
+		if err != nil {
+			return
+		}
+		switch enc.UnsafeString(field) {
+		{{range .Fields}}
+		case "{{ .FieldTag}}":
+			{{template "ElemTempl" .FieldElem}}
+		{{end}}
+		}
+	}	
+{{end}}
+
+{{define "BaseTempl"}}
+	{{if eq (.Value) 1}}{{/* is []byte */}}
+	{{.Varname}}, nn, err = enc.ReadBytes(r, {{.Varname}})
+	{{else}}
+	{{.Varname}}, nn, err = enc.Read{{.String}}(r)
+	{{end}}
+	n += nn
+	if err != nil {
+		return
+	}
+{{end}}

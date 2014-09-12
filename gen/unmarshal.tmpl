@@ -1,0 +1,4 @@
+func ({{.Varname}} *{{ .Value.Struct.Name}}) Unmarshal(b []byte) error {
+	_, err = {{.Varname}}.DecodeMsg(bytes.NewReader(b))
+	return err
+}

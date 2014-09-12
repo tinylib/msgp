@@ -1,5 +1,9 @@
 package gen
 
+import (
+	"strings"
+)
+
 // This code defines the template
 // syntax tree. If the input were:
 //
@@ -38,7 +42,7 @@ package gen
 
 // Base is one of the
 // base types
-type Base byte
+type Base int
 
 const (
 	Invalid Base = iota
@@ -79,6 +83,7 @@ type Elem interface {
 	Slice() *Slice
 	Struct() *Struct
 	Base() *BaseElem
+	TypeName() string
 }
 
 type Slice struct {
@@ -86,33 +91,36 @@ type Slice struct {
 	Els     Elem // The type of each element
 }
 
-func (s *Slice) Type() ElemType  { return SliceType }
-func (s *Slice) Ptr() *Ptr       { return nil }
-func (s *Slice) Slice() *Slice   { return s }
-func (s *Slice) Struct() *Struct { return nil }
-func (s *Slice) Base() *BaseElem { return nil }
+func (s *Slice) Type() ElemType   { return SliceType }
+func (s *Slice) Ptr() *Ptr        { return nil }
+func (s *Slice) Slice() *Slice    { return s }
+func (s *Slice) Struct() *Struct  { return nil }
+func (s *Slice) Base() *BaseElem  { return nil }
+func (s *Slice) TypeName() string { return s.Els.TypeName() }
 
 type Ptr struct {
 	Varname string
 	Value   Elem
 }
 
-func (s *Ptr) Type() ElemType  { return PtrType }
-func (s *Ptr) Ptr() *Ptr       { return s }
-func (s *Ptr) Slice() *Slice   { return nil }
-func (s *Ptr) Struct() *Struct { return nil }
-func (s *Ptr) Base() *BaseElem { return nil }
+func (s *Ptr) Type() ElemType   { return PtrType }
+func (s *Ptr) Ptr() *Ptr        { return s }
+func (s *Ptr) Slice() *Slice    { return nil }
+func (s *Ptr) Struct() *Struct  { return nil }
+func (s *Ptr) Base() *BaseElem  { return nil }
+func (s *Ptr) TypeName() string { return s.Value.TypeName() }
 
 type Struct struct {
 	Name   string
 	Fields []StructField
 }
 
-func (s *Struct) Type() ElemType  { return StructType }
-func (s *Struct) Ptr() *Ptr       { return nil }
-func (s *Struct) Slice() *Slice   { return nil }
-func (s *Struct) Struct() *Struct { return s }
-func (s *Struct) Base() *BaseElem { return nil }
+func (s *Struct) Type() ElemType   { return StructType }
+func (s *Struct) Ptr() *Ptr        { return nil }
+func (s *Struct) Slice() *Slice    { return nil }
+func (s *Struct) Struct() *Struct  { return s }
+func (s *Struct) Base() *BaseElem  { return nil }
+func (s *Struct) TypeName() string { return s.Name }
 
 type StructField struct {
 	FieldTag  string
@@ -124,12 +132,13 @@ type BaseElem struct {
 	Value   Base
 }
 
-func (s *BaseElem) Type() ElemType  { return BaseType }
-func (s *BaseElem) Ptr() *Ptr       { return nil }
-func (s *BaseElem) Slice() *Slice   { return nil }
-func (s *BaseElem) Struct() *Struct { return nil }
-func (s *BaseElem) Base() *BaseElem { return s }
-func (s *BaseElem) String() string  { return s.Value.String() }
+func (s *BaseElem) Type() ElemType   { return BaseType }
+func (s *BaseElem) Ptr() *Ptr        { return nil }
+func (s *BaseElem) Slice() *Slice    { return nil }
+func (s *BaseElem) Struct() *Struct  { return nil }
+func (s *BaseElem) Base() *BaseElem  { return s }
+func (s *BaseElem) String() string   { return s.Value.String() }
+func (s *BaseElem) TypeName() string { return strings.ToLower(s.String()) }
 
 func (k Base) String() string {
 	switch k {

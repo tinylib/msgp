@@ -1,0 +1,5 @@
+func ({{ .Varname}} *{{ .Value.Struct.Name}}) Marshal() ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := {{.Varname}}.EncodeMsg(&buf)
+	return buf.Bytes(), err
+}

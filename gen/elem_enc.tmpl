@@ -35,7 +35,7 @@
 	}
 {{end}}
 
-{{define "StructTempl"}}// write struct "{{ .Name}}"
+{{define "StructTempl"}}
 	nn, err = enc.WriteMapHeader(w, {{len .Fields}})
 	n += nn
 	if err != nil {

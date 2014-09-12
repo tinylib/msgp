@@ -1,0 +1,8 @@
+func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeMsg(r io.Reader) (n int, err error) {
+	var sz uint32
+	var nn int
+	_ = sz
+
+	{{template "PtrTempl" .}}
+	return
+}
