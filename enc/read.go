@@ -174,7 +174,7 @@ func ReadInt64(r io.Reader) (i int64, n int, err error) {
 		var scratch [2]byte
 		nn, err = io.ReadFull(r, scratch[:])
 		n += nn
-		i = int64(int16(scratch[0]) | (int16(scratch[1]) << 8))
+		i = int64((int16(scratch[0]) << 8) | (int16(scratch[1])))
 		return
 
 	case mint32:
