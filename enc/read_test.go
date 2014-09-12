@@ -148,10 +148,10 @@ func TestReadFloat32(t *testing.T) {
 func TestReadInt64(t *testing.T) {
 	var buf bytes.Buffer
 
-	for i := 0; i < 100000; i++ {
-		buf.Reset()
+	ints := []int64{-100000, -5000, -5, 0, 8, 240, int64(tuint16), int64(tuint32), int64(tuint64)}
 
-		num := rand.Int63n(math.MaxInt64) - (math.MaxInt64 / 2)
+	for i, num := range ints {
+		buf.Reset()
 
 		n, err := WriteInt64(&buf, num)
 		if err != nil {
@@ -159,10 +159,10 @@ func TestReadInt64(t *testing.T) {
 		}
 		out, nr, err := ReadInt64(&buf)
 		if nr != n {
-			t.Errorf("Wrote %d bytes; read %d", n, nr)
+			t.Errorf("Test case %d: wrote %d bytes; read %d", i, n, nr)
 		}
 		if out != num {
-			t.Errorf("Put %d in and got %d out", num, out)
+			t.Errorf("Test case %d: put %d in and got %d out", i, num, out)
 		}
 	}
 }
@@ -220,7 +220,7 @@ func TestReadBytes(t *testing.T) {
 	}
 }
 
-func TestReadStrings(t *testing.T) {
+func TestReadString(t *testing.T) {
 	var buf bytes.Buffer
 
 	sizes := []int{0, 1, 225, int(tuint32)}
@@ -245,6 +245,58 @@ func TestReadStrings(t *testing.T) {
 
 		if out != in {
 			t.Error("Test case %d: strings not equal.", i)
+		}
+
+	}
+}
+
+func TestReadComplex64(t *testing.T) {
+	var buf bytes.Buffer
+
+	for i := 0; i < 100; i++ {
+		buf.Reset()
+		f := complex(rand.Float32()*math.MaxFloat32, rand.Float32()*math.MaxFloat32)
+
+		n, _ := WriteComplex64(&buf, f)
+
+		out, nr, err := ReadComplex64(&buf)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+
+		if nr != n {
+			t.Errorf("Wrote %d bytes; read %d bytes", n, nr)
+		}
+
+		if out != f {
+			t.Errorf("Wrote %f; read %f", f, out)
+		}
+
+	}
+}
+
+func TestReadComplex128(t *testing.T) {
+	var buf bytes.Buffer
+
+	for i := 0; i < 100; i++ {
+		buf.Reset()
+		f := complex(rand.Float64()*math.MaxFloat64, rand.Float64()*math.MaxFloat64)
+
+		n, _ := WriteComplex128(&buf, f)
+
+		out, nr, err := ReadComplex128(&buf)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+
+		if nr != n {
+			t.Errorf("Wrote %d bytes; read %d bytes", n, nr)
+		}
+
+		if out != f {
+			t.Errorf("Wrote %f; read %f", f, out)
 		}
 
 	}

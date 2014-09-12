@@ -181,7 +181,7 @@ func ReadInt64(r io.Reader) (i int64, n int, err error) {
 		var scratch [4]byte
 		nn, err = io.ReadFull(r, scratch[:])
 		n += nn
-		i = int64(int32(scratch[0]<<24) | (int32(scratch[1]) << 16) | (int32(scratch[2]) << 8) | (int32(scratch[3])))
+		i = int64((int32(scratch[0]) << 24) | (int32(scratch[1]) << 16) | (int32(scratch[2]) << 8) | (int32(scratch[3])))
 		return
 
 	case mint64:
@@ -200,12 +200,12 @@ func ReadInt64(r io.Reader) (i int64, n int, err error) {
 
 	default:
 		// try to decode positive fixnum
-		if lead[0]&0x7f == 0 {
-			i = int64(lead[0] & 0x80)
+		if lead[0]&0x80 == 0 {
+			i = int64(int8(lead[0] & 0x7f))
 			return
 		}
 		// try to decode negative fixnum
-		if lead[0]&0xe0 == 0 {
+		if lead[0]&mnfixint == mnfixint {
 			i = int64(int8(lead[0]))
 			return
 		}

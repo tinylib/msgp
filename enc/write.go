@@ -85,13 +85,13 @@ func WriteInt64(w io.Writer, i int64) (n int, err error) {
 	} else {
 		switch {
 		case i > -32:
-			lead = []byte{byte(i)}
+			lead = []byte{byte(int8(i))}
 		case i > math.MinInt8:
-			lead = []byte{mint8, byte(i)}
+			lead = []byte{mint8, byte(int8(i))}
 		case i > math.MinInt16:
-			lead = []byte{mint16, byte(i >> 8), byte(i)}
+			lead = []byte{mint16, byte(int16(i) >> 8), byte(int16(i))}
 		case i > math.MinInt32:
-			lead = []byte{mint32, byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i)}
+			lead = []byte{mint32, byte(int32(i) >> 24), byte(int32(i) >> 16), byte(int32(i) >> 8), byte(int32(i))}
 		default:
 			lead = []byte{mint64, byte(i >> 56), byte(i >> 48), byte(i >> 40), byte(i >> 32), byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i)}
 		}
