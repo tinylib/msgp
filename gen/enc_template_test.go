@@ -3,7 +3,6 @@ package gen
 import (
 	"bufio"
 	"os"
-	"strings"
 	"testing"
 	"text/template"
 )
@@ -55,14 +54,9 @@ func TestEncTemplate(t *testing.T) {
 		},
 	}
 
-	out, err := os.Open("_test-gen.go")
+	out, err := os.Create("_test-gen-enc.go")
 	if err != nil {
-		if strings.Contains(err.Error(), "no such file") {
-			out, err = os.Create("test-gen.go")
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
+		t.Fatal(err)
 	}
 	defer out.Close()
 

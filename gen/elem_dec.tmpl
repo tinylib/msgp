@@ -39,7 +39,7 @@
 		return
 	}
 	var field []byte
-	for i:=uint32(0); i<sz; i++ {
+	for xplz:=uint32(0); xplz<sz; xplz++ {
 		field, nn, err = enc.ReadStringAsBytes(r, field)
 		n += nn
 		if err != nil {
