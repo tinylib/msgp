@@ -48,9 +48,10 @@ func TestWriteMapHeader(t *testing.T) {
 	var buf bytes.Buffer
 	var err error
 	var n int
+	wr := MsgWriter{w: &buf}
 	for _, test := range tests {
 		buf.Reset()
-		n, err = WriteMapHeader(&buf, test.Sz)
+		n, err = wr.WriteMapHeader(test.Sz)
 		if err != nil {
 			t.Error(err)
 		}
@@ -77,9 +78,10 @@ func TestWriteArrayHeader(t *testing.T) {
 	var buf bytes.Buffer
 	var err error
 	var n int
+	wr := MsgWriter{w: &buf}
 	for _, test := range tests {
 		buf.Reset()
-		n, err = WriteArrayHeader(&buf, test.Sz)
+		n, err = wr.WriteArrayHeader(test.Sz)
 		if err != nil {
 			t.Error(err)
 		}
@@ -94,8 +96,9 @@ func TestWriteArrayHeader(t *testing.T) {
 
 func TestWriteNil(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
 
-	n, err := WriteNil(&buf)
+	n, err := wr.WriteNil()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,11 +115,12 @@ func TestWriteNil(t *testing.T) {
 
 func TestWriteFloat64(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
 		flt := (rand.Float64() - 0.5) * math.MaxFloat64
-		n, err := WriteFloat64(&buf, flt)
+		n, err := wr.WriteFloat64(flt)
 		if err != nil {
 			t.Errorf("Error with %f: %s", flt, err)
 		}
@@ -144,11 +148,12 @@ func TestWriteFloat64(t *testing.T) {
 
 func TestWriteFloat32(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
 		flt := (rand.Float32() - 0.5) * math.MaxFloat32
-		n, err := WriteFloat32(&buf, flt)
+		n, err := wr.WriteFloat32(flt)
 		if err != nil {
 			t.Errorf("Error with %f: %s", flt, err)
 		}
@@ -176,13 +181,14 @@ func TestWriteFloat32(t *testing.T) {
 
 func TestWriteInt64(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
 
 		num := (rand.Int63n(math.MaxInt64)) - (math.MaxInt64 / 2)
 
-		n, err := WriteInt64(&buf, num)
+		n, err := wr.WriteInt64(num)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -196,13 +202,14 @@ func TestWriteInt64(t *testing.T) {
 
 func TestWriteUint64(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
 
 		num := uint64(rand.Int63n(math.MaxInt64))
 
-		n, err := WriteUint64(&buf, num)
+		n, err := wr.WriteUint64(num)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -217,14 +224,14 @@ func TestWriteUint64(t *testing.T) {
 
 func TestWriteBytes(t *testing.T) {
 	var buf bytes.Buffer
-
+	wr := MsgWriter{w: &buf}
 	sizes := []int{0, 1, 225, int(tuint32)}
 
 	for _, size := range sizes {
 		buf.Reset()
 		bts := RandBytes(size)
 
-		n, err := WriteBytes(&buf, bts)
+		n, err := wr.WriteBytes(bts)
 		if err != nil {
 			t.Fatal(err)
 		}

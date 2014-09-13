@@ -15,6 +15,53 @@ var (
 	ErrNil = errors.New("value encoded as nil")
 )
 
+type MsgReader struct {
+	r       io.Reader
+	leader  [18]byte
+	scratch []byte
+}
+
+func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
+	var nn int
+	nn, err = io.ReadFull(m.r, m.leader[:1])
+	n += nn
+	if err != nil {
+		return
+	}
+	switch uint8(m.leader[0]) {
+	case mnil:
+		err = ErrNil
+		return
+	case mmap16:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		if err != nil {
+			return
+		}
+		usz := binary.BigEndian.Uint16(m.leader[:])
+		sz = uint32(usz)
+		return
+	case mmap32:
+		nn, err = io.ReadFull(m.r, m.leader[:4])
+		n += nn
+		if err != nil {
+			return
+		}
+		sz = binary.BigEndian.Uint32(m.leader[:])
+		return
+	default:
+		// fixmap starts with nibble 1000
+		if uint8(m.leader[0])&0xf0 != mfixmap {
+			err = fmt.Errorf("unexpected byte %x for fixmap", m.leader[0])
+			return
+		}
+		// length in last 4 bits
+		var inner uint8 = uint8(m.leader[0]) & 0x0f
+		sz = uint32(inner)
+		return
+	}
+}
+
 func ReadMapHeader(r io.Reader) (sz uint32, n int, err error) {
 	var lead [1]byte
 	var nn int
@@ -59,6 +106,50 @@ func ReadMapHeader(r io.Reader) (sz uint32, n int, err error) {
 		sz = uint32(inner)
 		return
 
+	}
+}
+
+func (m *MsgReader) ReadArrayHeader() (sz uint32, n int, err error) {
+	var nn int
+	nn, err = io.ReadFull(m.r, m.leader[:1])
+	n += nn
+	if err != nil {
+		return
+	}
+
+	switch uint8(m.leader[0]) {
+	case mnil:
+		err = ErrNil
+		return
+
+	case marray16:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		if err != nil {
+			return
+		}
+		usz := binary.BigEndian.Uint16(m.leader[:])
+		sz = uint32(usz)
+		return
+
+	case marray32:
+		nn, err = io.ReadFull(m.r, m.leader[:4])
+		n += nn
+		if err != nil {
+			return
+		}
+		sz = binary.BigEndian.Uint32(m.leader[:])
+		return
+
+	default:
+		// decode fixarray
+		if (m.leader[0] & 0xf0) != mfixarray {
+			err = fmt.Errorf("unexpected byte %x for fixarray", m.leader[0])
+			return
+		}
+		var inner byte = m.leader[0] & 0x0f
+		sz = uint32(inner)
+		return
 	}
 }
 
@@ -107,6 +198,17 @@ func ReadArrayHeader(r io.Reader) (sz uint32, n int, err error) {
 	}
 }
 
+func (m *MsgReader) ReadNil() (n int, err error) {
+	n, err = io.ReadFull(m.r, m.leader[:1])
+	if err != nil {
+		return
+	}
+	if m.leader[0] != mnil {
+		err = fmt.Errorf("unexpected byte %x for Nil", m.leader[0])
+	}
+	return
+}
+
 func ReadNil(r io.Reader) (n int, err error) {
 	var lead [1]byte
 	n, err = io.ReadFull(r, lead[:])
@@ -116,6 +218,24 @@ func ReadNil(r io.Reader) (n int, err error) {
 	if lead[0] != mnil {
 		err = fmt.Errorf("unexpected byte %x for Nil", lead[0])
 	}
+	return
+}
+
+func (m *MsgReader) ReadFloat64() (f float64, n int, err error) {
+	n, err = io.ReadFull(m.r, m.leader[:9])
+	if err != nil {
+		return
+	}
+	if m.leader[0] != mfloat64 {
+		if m.leader[0] == mnil {
+			err = ErrNil
+			return
+		}
+		err = fmt.Errorf("msgp/enc: unexpected byte %x for Float64; expected %x", m.leader[0], mfloat64)
+		return
+	}
+	bits := binary.BigEndian.Uint64(m.leader[1:])
+	f = *(*float64)(unsafe.Pointer(&bits))
 	return
 }
 
@@ -139,6 +259,24 @@ func ReadFloat64(r io.Reader) (f float64, n int, err error) {
 	return
 }
 
+func (m *MsgReader) ReadFloat32() (f float32, n int, err error) {
+	n, err = io.ReadFull(m.r, m.leader[:5])
+	if err != nil {
+		return
+	}
+	if m.leader[0] != mfloat32 {
+		if m.leader[0] == mnil {
+			err = ErrNil
+			return
+		}
+		err = fmt.Errorf("msgp/enc: unexpected byte %x for Float32; expected %x", m.leader[0], mfloat64)
+		return
+	}
+	bits := binary.BigEndian.Uint32(m.leader[1:])
+	f = *(*float32)(unsafe.Pointer(&bits))
+	return
+}
+
 // ReadFloat32 read a float32 out of 'r'
 func ReadFloat32(r io.Reader) (f float32, n int, err error) {
 	var bts [5]byte
@@ -159,6 +297,25 @@ func ReadFloat32(r io.Reader) (f float32, n int, err error) {
 	return
 }
 
+func (m *MsgReader) ReadBool() (bool, int, error) {
+	var n int
+	var err error
+	n, err = io.ReadFull(m.r, m.leader[:1])
+	if err != nil {
+		return false, n, err
+	}
+	switch m.leader[0] {
+	case mnil:
+		return false, n, ErrNil
+	case mtrue:
+		return true, n, nil
+	case mfalse:
+		return false, n, nil
+	default:
+		return false, n, fmt.Errorf("unexpected byte %x for bool", m.leader[0])
+	}
+}
+
 func ReadBool(r io.Reader) (bool, int, error) {
 	var out [1]byte
 	n, err := io.ReadFull(r, out[:])
@@ -174,6 +331,65 @@ func ReadBool(r io.Reader) (bool, int, error) {
 		return false, n, err
 	default:
 		return false, n, fmt.Errorf("Unexpected byte %x for bool", out[0])
+	}
+}
+
+func (m *MsgReader) ReadInt64() (i int64, n int, err error) {
+	var nn int
+	nn, err = io.ReadFull(m.r, m.leader[:1])
+	n += nn
+	if err != nil {
+		return
+	}
+	switch m.leader[0] {
+	case mnil:
+		err = ErrNil
+		return
+
+	case mint8:
+		nn, err = io.ReadFull(m.r, m.leader[:1])
+		n += nn
+		i = int64(int8(m.leader[0]))
+		return
+
+	case mint16:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		i = int64((int16(m.leader[0]) << 8) | int16(m.leader[1]))
+		return
+
+	case mint32:
+		nn, err = io.ReadFull(m.r, m.leader[:4])
+		n += nn
+		i = int64((int32(m.leader[0]) << 24) | (int32(m.leader[1]) << 16) | (int32(m.leader[2]) << 8) | (int32(m.leader[3])))
+		return
+
+	case mint64:
+		nn, err = io.ReadFull(m.r, m.leader[:8])
+		n += nn
+		i |= int64(m.leader[0]) << 56
+		i |= int64(m.leader[1]) << 48
+		i |= int64(m.leader[2]) << 40
+		i |= int64(m.leader[3]) << 32
+		i |= int64(m.leader[4]) << 24
+		i |= int64(m.leader[5]) << 16
+		i |= int64(m.leader[6]) << 8
+		i |= int64(m.leader[7])
+		return
+
+	default:
+		// try to decode positive fixnum
+		if m.leader[0]&0x80 == 0 {
+			i = int64(int8(m.leader[0] & 0x7f))
+			return
+		}
+		// try to decode negative fixnum
+		if m.leader[0]&mnfixint == mnfixint {
+			i = int64(int8(m.leader[0]))
+			return
+		}
+		err = fmt.Errorf("unknown leading byte %x for int", m.leader[0])
+		return
 	}
 }
 
@@ -262,6 +478,56 @@ func ReadInt32(r io.Reader) (int32, int, error) {
 	return int32(i), n, err
 }
 
+func (m *MsgReader) ReadUint64() (u uint64, n int, err error) {
+	var nn int
+	nn, err = io.ReadFull(m.r, m.leader[:1])
+	n += nn
+	if err != nil {
+		return
+	}
+	switch m.leader[0] {
+	case mnil:
+		err = ErrNil
+		return
+
+	case muint8:
+		nn, err = io.ReadFull(m.r, m.leader[:1])
+		n += nn
+		u = uint64(m.leader[0])
+		return
+
+	case muint16:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		usz := binary.BigEndian.Uint16(m.leader[:])
+		u = uint64(usz)
+		return
+
+	case muint32:
+		nn, err = io.ReadFull(m.r, m.leader[:4])
+		n += nn
+		usz := binary.BigEndian.Uint32(m.leader[:])
+		u = uint64(usz)
+		return
+
+	case muint64:
+		nn, err = io.ReadFull(m.r, m.leader[:8])
+		n += nn
+		u = binary.BigEndian.Uint64(m.leader[:])
+		return
+
+	default:
+		// try positive fixnum (first bit is zero)
+		if m.leader[0]&0x80 == 0 {
+			u = uint64(m.leader[0] & 0x7f)
+			return
+		}
+		err = fmt.Errorf("unexpected byte %x for Uint", m.leader[0])
+		return
+
+	}
+}
+
 func ReadUint64(r io.Reader) (u uint64, n int, err error) {
 	var lead [1]byte
 	var nn int
@@ -338,6 +604,48 @@ func ReadUint32(r io.Reader) (uint32, int, error) {
 	return uint32(u), n, err
 }
 
+func (m *MsgReader) ReadBytes(scratch []byte) (b []byte, n int, err error) {
+	var nn int
+	nn, err = io.ReadFull(m.r, m.leader[:1])
+	n += nn
+	if err != nil {
+		return
+	}
+
+	var read int
+	switch m.leader[0] {
+	case mnil:
+		return
+	case mbin8:
+		nn, err = io.ReadFull(m.r, m.leader[:1])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(m.leader[0])
+	case mbin16:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint16(m.leader[:]))
+	case mbin32:
+		nn, err = io.ReadFull(m.r, m.leader[:4])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint32(m.leader[:]))
+	default:
+		err = fmt.Errorf("bad byte %x for []byte", m.leader[0])
+		return
+	}
+	b, nn, err = readN(m.r, scratch, read)
+	n += nn
+	return
+}
+
 // ReadBytes reads bytes from 'r', optionally using 'scratch'
 // as a buffer to overwrite.
 func ReadBytes(r io.Reader, scratch []byte) (b []byte, n int, err error) {
@@ -387,6 +695,10 @@ func readN(r io.Reader, scratch []byte, c int) (b []byte, n int, err error) {
 		n, err = io.ReadFull(r, b)
 		return
 	}
+	if cap(scratch) <= c {
+		n, err = io.ReadFull(r, scratch[0:c])
+		return
+	}
 
 	if c == 0 {
 		return scratch[0:0], 0, nil
@@ -416,6 +728,56 @@ func readN(r io.Reader, scratch []byte, c int) (b []byte, n int, err error) {
 	return
 }
 
+func (m *MsgReader) ReadStringAsBytes(scratch []byte) (b []byte, n int, err error) {
+	var nn int
+	nn, err = io.ReadFull(m.r, m.leader[:1])
+	n += nn
+	if err != nil {
+		return
+	}
+	var read int
+	switch m.leader[0] {
+	case mnil:
+		return
+	case mstr8:
+		nn, err = io.ReadFull(m.r, m.leader[:1])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(m.leader[0])
+	case mstr16:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint16(m.leader[:]))
+	case mstr32:
+		nn, err = io.ReadFull(m.r, m.leader[:4])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint32(m.leader[:]))
+	default:
+		// try fixstr - first bits should be 101
+		if m.leader[0]&0xe0 == mfixstr {
+			read = int(uint8(m.leader[0]) & 0x1f)
+		} else {
+			err = fmt.Errorf("unexpected byte %x for string", m.leader[0])
+			return
+		}
+	}
+	if read == 0 {
+		return
+	}
+
+	b, nn, err = readN(m.r, scratch, read)
+	n += nn
+	return
+}
+
 func ReadStringAsBytes(r io.Reader, scratch []byte) (b []byte, n int, err error) {
 	b = scratch[0:0]
 	var lead [1]byte
@@ -428,7 +790,6 @@ func ReadStringAsBytes(r io.Reader, scratch []byte) (b []byte, n int, err error)
 	var read int
 	switch lead[0] {
 	case mnil:
-		err = ErrNil
 		return
 
 	case mstr8:
@@ -475,9 +836,35 @@ func ReadStringAsBytes(r io.Reader, scratch []byte) (b []byte, n int, err error)
 	return
 }
 
+func (m *MsgReader) ReadString() (string, int, error) {
+	bts, n, err := ReadStringAsBytes(m.r, m.scratch)
+	return string(bts), n, err
+}
+
 func ReadString(r io.Reader) (string, int, error) {
 	bts, n, err := ReadStringAsBytes(r, nil)
 	return string(bts), n, err
+}
+
+func (m *MsgReader) ReadComplex64() (f complex64, n int, err error) {
+	n, err = io.ReadFull(m.r, m.leader[:10])
+	if err != nil {
+		return
+	}
+	if m.leader[0] != mfixext8 {
+		if m.leader[0] == mnil {
+			err = ErrNil
+			return
+		}
+		err = fmt.Errorf("unexpected byte %x for complex64", m.leader[0])
+	}
+	if m.leader[1] != Complex64Extension {
+		err = fmt.Errorf("unexpected byte %x for complex64 extension", m.leader[1])
+	}
+	rlb := binary.BigEndian.Uint32(m.leader[2:])
+	imb := binary.BigEndian.Uint32(m.leader[6:])
+	f = complex(*(*float32)(unsafe.Pointer(&rlb)), *(*float32)(unsafe.Pointer(&imb)))
+	return
 }
 
 func ReadComplex64(r io.Reader) (f complex64, n int, err error) {
@@ -506,6 +893,29 @@ func ReadComplex64(r io.Reader) (f complex64, n int, err error) {
 	var rl float32 = *(*float32)(unsafe.Pointer(&rlbits))
 	var im float32 = *(*float32)(unsafe.Pointer(&imbits))
 	f = complex(rl, im)
+	return
+}
+
+func (m *MsgReader) ReadComplex128() (f complex128, n int, err error) {
+	n, err = io.ReadFull(m.r, m.leader[:18])
+	if err != nil {
+		return
+	}
+	if m.leader[0] != mfixext16 {
+		if m.leader[0] == mnil {
+			err = ErrNil
+			return
+		}
+		err = fmt.Errorf("unexpected byte %x for complex128", m.leader[0])
+		return
+	}
+	if m.leader[1] != Complex128Extension {
+		err = fmt.Errorf("unexpected byte %x for complex128 extension", m.leader[1])
+		return
+	}
+	rlb := binary.BigEndian.Uint64(m.leader[2:])
+	imb := binary.BigEndian.Uint64(m.leader[10:])
+	f = complex(*(*float64)(unsafe.Pointer(&rlb)), *(*float64)(unsafe.Pointer(&imb)))
 	return
 }
 

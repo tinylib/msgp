@@ -22,13 +22,15 @@ func TestReadMapHeader(t *testing.T) {
 	var nr int
 	var sz uint32
 	var err error
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 	for i, test := range tests {
 		buf.Reset()
-		n, err = WriteMapHeader(&buf, test.Sz)
+		n, err = wr.WriteMapHeader(test.Sz)
 		if err != nil {
 			t.Fatal(err)
 		}
-		sz, nr, err = ReadMapHeader(&buf)
+		sz, nr, err = rd.ReadMapHeader()
 		if err != nil {
 			t.Errorf("Test case %d: got error %s", i, err)
 		}
@@ -56,13 +58,15 @@ func TestReadArrayHeader(t *testing.T) {
 	var nr int
 	var sz uint32
 	var err error
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 	for i, test := range tests {
 		buf.Reset()
-		n, err = WriteArrayHeader(&buf, test.Sz)
+		n, err = wr.WriteArrayHeader(test.Sz)
 		if err != nil {
 			t.Fatal(err)
 		}
-		sz, nr, err = ReadArrayHeader(&buf)
+		sz, nr, err = rd.ReadArrayHeader()
 		if err != nil {
 			t.Errorf("Test case %d: got error %s", i, err)
 		}
@@ -77,12 +81,14 @@ func TestReadArrayHeader(t *testing.T) {
 
 func TestReadNil(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 
-	n, err := WriteNil(&buf)
+	n, err := wr.WriteNil()
 	if err != nil {
 		t.Fatal(err)
 	}
-	nr, err := ReadNil(&buf)
+	nr, err := rd.ReadNil()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,16 +99,18 @@ func TestReadNil(t *testing.T) {
 
 func TestReadFloat64(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
 
 		flt := (rand.Float64() - 0.5) * math.MaxFloat64
-		n, err := WriteFloat64(&buf, flt)
+		n, err := wr.WriteFloat64(flt)
 		if err != nil {
 			t.Fatal(err)
 		}
-		out, nr, err := ReadFloat64(&buf)
+		out, nr, err := rd.ReadFloat64()
 		if err != nil {
 			t.Errorf("Error reading %f: %s", flt, err)
 			continue
@@ -120,16 +128,18 @@ func TestReadFloat64(t *testing.T) {
 
 func TestReadFloat32(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
 
 		flt := (rand.Float32() - 0.5) * math.MaxFloat32
-		n, err := WriteFloat32(&buf, flt)
+		n, err := wr.WriteFloat32(flt)
 		if err != nil {
 			t.Fatal(err)
 		}
-		out, nr, err := ReadFloat32(&buf)
+		out, nr, err := rd.ReadFloat32()
 		if err != nil {
 			t.Errorf("Error reading %f: %s", flt, err)
 			continue
@@ -147,17 +157,19 @@ func TestReadFloat32(t *testing.T) {
 
 func TestReadInt64(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 
 	ints := []int64{-100000, -5000, -5, 0, 8, 240, int64(tuint16), int64(tuint32), int64(tuint64)}
 
 	for i, num := range ints {
 		buf.Reset()
 
-		n, err := WriteInt64(&buf, num)
+		n, err := wr.WriteInt64(num)
 		if err != nil {
 			t.Fatal(err)
 		}
-		out, nr, err := ReadInt64(&buf)
+		out, nr, err := rd.ReadInt64()
 		if nr != n {
 			t.Errorf("Test case %d: wrote %d bytes; read %d", i, n, nr)
 		}
@@ -169,17 +181,19 @@ func TestReadInt64(t *testing.T) {
 
 func TestReadUint64(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 
 	ints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), uint64(tuint64)}
 
 	for i, num := range ints {
 		buf.Reset()
 
-		n, err := WriteUint64(&buf, num)
+		n, err := wr.WriteUint64(num)
 		if err != nil {
 			t.Fatal(err)
 		}
-		out, nr, err := ReadUint64(&buf)
+		out, nr, err := rd.ReadUint64()
 		if nr != n {
 			t.Errorf("Test case %d: wrote %d bytes; read %d", i, n, nr)
 		}
@@ -191,6 +205,8 @@ func TestReadUint64(t *testing.T) {
 
 func TestReadBytes(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 
 	sizes := []int{0, 1, 225, int(tuint32)}
 	var scratch []byte
@@ -198,12 +214,12 @@ func TestReadBytes(t *testing.T) {
 		buf.Reset()
 		bts := RandBytes(size)
 
-		n, err := WriteBytes(&buf, bts)
+		n, err := wr.WriteBytes(bts)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		out, nr, err := ReadBytes(&buf, scratch)
+		out, nr, err := rd.ReadBytes(scratch)
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 			continue
@@ -222,21 +238,22 @@ func TestReadBytes(t *testing.T) {
 
 func TestReadString(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 
 	sizes := []int{0, 1, 225, int(tuint32)}
 	for i, size := range sizes {
 		buf.Reset()
 		in := string(RandBytes(size))
 
-		n, err := WriteString(&buf, in)
+		n, err := wr.WriteString(in)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		out, nr, err := ReadString(&buf)
+		out, nr, err := rd.ReadString()
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
-			continue
 		}
 
 		if n != nr {
@@ -244,7 +261,7 @@ func TestReadString(t *testing.T) {
 		}
 
 		if out != in {
-			t.Error("Test case %d: strings not equal.", i)
+			t.Errorf("Test case %d: strings not equal.", i)
 		}
 
 	}
@@ -252,14 +269,16 @@ func TestReadString(t *testing.T) {
 
 func TestReadComplex64(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 
 	for i := 0; i < 100; i++ {
 		buf.Reset()
 		f := complex(rand.Float32()*math.MaxFloat32, rand.Float32()*math.MaxFloat32)
 
-		n, _ := WriteComplex64(&buf, f)
+		n, _ := wr.WriteComplex64(f)
 
-		out, nr, err := ReadComplex64(&buf)
+		out, nr, err := rd.ReadComplex64()
 		if err != nil {
 			t.Error(err)
 			continue
@@ -278,14 +297,16 @@ func TestReadComplex64(t *testing.T) {
 
 func TestReadComplex128(t *testing.T) {
 	var buf bytes.Buffer
+	wr := MsgWriter{w: &buf}
+	rd := MsgReader{r: &buf}
 
 	for i := 0; i < 100; i++ {
 		buf.Reset()
 		f := complex(rand.Float64()*math.MaxFloat64, rand.Float64()*math.MaxFloat64)
 
-		n, _ := WriteComplex128(&buf, f)
+		n, _ := wr.WriteComplex128(f)
 
-		out, nr, err := ReadComplex128(&buf)
+		out, nr, err := rd.ReadComplex128()
 		if err != nil {
 			t.Error(err)
 			continue
