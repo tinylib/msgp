@@ -1,8 +1,4 @@
-{{define "ElemTempl"}}
-{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}
-{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}
-{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}
-{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{end}}{{end}}
+{{define "ElemTempl"}}{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{end}}{{end}}
 
 {{define "PtrTempl"}}
 	if {{.Varname}} == nil {
@@ -13,16 +9,14 @@
 		}
 	} else {
 		{{template "ElemTempl" .Value}}
-	}
-{{end}}
+	}{{end}}
 
 {{define "BaseTempl"}}
 	nn, err = en.Write{{ .String}}({{.Varname}})
 	n += nn
 	if err != nil {
 		return
-	}
-{{end}}
+	}{{end}}
 
 {{define "SliceTempl"}}
 	nn, err = en.WriteArrayHeader(uint32(len({{.Varname}})))
@@ -32,8 +26,7 @@
 	}
 	for i := range {{.Varname}} {
 		{{template "ElemTempl" .Els}}
-	}
-{{end}}
+	}{{end}}
 
 {{define "StructTempl"}}
 	nn, err = en.WriteMapHeader(uint32({{len .Fields}}))
@@ -47,5 +40,4 @@
 	if err != nil {
 		return
 	}
-	{{template "ElemTempl" .FieldElem}}{{end}}
-{{end}}
+	{{template "ElemTempl" .FieldElem}}{{end}}{{end}}

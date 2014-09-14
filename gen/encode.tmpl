@@ -4,6 +4,6 @@ func ({{.Varname}} *{{.Value.Struct.Name}}) EncodeMsg(w io.Writer) (n int, err e
 	_ = nn
 	_ = en
 
-	{{template "StructTempl" .Value.Struct}}
+	{{template "PtrTempl" .}}
 	return
 }
