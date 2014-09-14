@@ -44,6 +44,10 @@ func NewReader(r io.Reader) *MsgReader {
 	return popReader(r)
 }
 
+type MsgDecoder interface {
+	DecodeMsg(r io.Reader) (int, error)
+}
+
 type MsgReader struct {
 	r       *bufio.Reader
 	leader  [18]byte
@@ -841,6 +845,44 @@ func (m *MsgReader) ReadComplex128() (f complex128, n int, err error) {
 	rlb := binary.BigEndian.Uint64(m.leader[2:])
 	imb := binary.BigEndian.Uint64(m.leader[10:])
 	f = complex(*(*float64)(unsafe.Pointer(&rlb)), *(*float64)(unsafe.Pointer(&imb)))
+	return
+}
+
+func (m *MsgReader) ReadMapStrStr(mp map[string]string) (n int, err error) {
+	var nn int
+	var sz uint32
+	sz, nn, err = m.ReadMapHeader()
+	n += nn
+	if err == ErrNil || sz == 0 {
+		err = nil
+		mp = nil
+		return
+	}
+	if err != nil {
+		return
+	}
+	if mp != nil {
+		for key, _ := range mp {
+			delete(mp, key)
+		}
+	} else {
+		mp = make(map[string]string)
+	}
+	for i := uint32(0); i < sz; i++ {
+		var key string
+		var val string
+		key, nn, err = m.ReadString()
+		n += nn
+		if err != nil {
+			return
+		}
+		val, nn, err = m.ReadString()
+		n += nn
+		if err != nil {
+			return
+		}
+		mp[key] = val
+	}
 	return
 }
 

@@ -2,8 +2,10 @@ package enc
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"math"
+	"reflect"
 	"unsafe"
 )
 
@@ -14,6 +16,21 @@ func abs(i int64) int64 {
 	return i
 }
 
+var (
+	mapStrStr  reflect.Type
+	mapStrIntf reflect.Type
+	btsType    reflect.Type
+)
+
+func init() {
+	var mss map[string]string
+	mapStrStr = reflect.TypeOf(mss)
+	var msi map[string]interface{}
+	mapStrIntf = reflect.TypeOf(msi)
+	var bts []byte
+	btsType = reflect.TypeOf(bts)
+}
+
 const (
 	// Complex64 numbers are encoded as extension #3
 	Complex64Extension = 3
@@ -21,6 +38,10 @@ const (
 	// Complex128 numbers are encoded as extension #4
 	Complex128Extension = 4
 )
+
+type MsgEncoder interface {
+	EncodeMsg(io.Writer) (int, error)
+}
 
 type MsgWriter struct {
 	w       io.Writer
@@ -265,3 +286,185 @@ func (mw *MsgWriter) WriteComplex128(f complex128) (n int, err error) {
 //func WriteExtension(w io.Writer, typ byte, bts []byte) (n int, err error) {/
 //
 //}
+
+func (mw *MsgWriter) WriteMapStrStr(mp map[string]string) (n int, err error) {
+	var nn int
+	nn, err = mw.WriteMapHeader(uint32(len(mp)))
+	n += nn
+	if err != nil {
+		return
+	}
+
+	for key, val := range mp {
+		nn, err = mw.WriteString(key)
+		n += nn
+		if err != nil {
+			return
+		}
+		nn, err = mw.WriteString(val)
+		n += nn
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (mw *MsgWriter) WriteMapStrIntf(mp map[string]interface{}) (n int, err error) {
+	var nn int
+	nn, err = mw.WriteMapHeader(uint32(len(mp)))
+	n += nn
+	if err != nil {
+		return
+	}
+
+	for key, val := range mp {
+		nn, err = mw.WriteString(key)
+		n += nn
+		if err != nil {
+			return
+		}
+		nn, err = mw.Encode(val)
+		n += nn
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (mw *MsgWriter) Encode(v interface{}) (n int, err error) {
+	if enc, ok := v.(MsgEncoder); ok {
+		return enc.EncodeMsg(mw.w)
+	}
+	return mw.writeVal(reflect.ValueOf(v))
+}
+
+func (mw *MsgWriter) writeMap(v reflect.Value) (n int, err error) {
+	tp := v.Type()
+	if tp.AssignableTo(mapStrStr) || tp.ConvertibleTo(mapStrStr) {
+		return mw.WriteMapStrStr(v.Interface().(map[string]string))
+	} else if tp.AssignableTo(mapStrIntf) || tp.ConvertibleTo(mapStrIntf) {
+		var nn int
+		sz := uint32(v.Len())
+		nn, err = mw.WriteMapHeader(sz)
+		n += nn
+		if err != nil {
+			return
+		}
+		keys := v.MapKeys()
+		for _, key := range keys {
+			nn, err = mw.WriteString(key.String())
+			n += nn
+			if err != nil {
+				return
+			}
+			nn, err = mw.writeVal(v.MapIndex(key))
+			n += nn
+			if err != nil {
+				return
+			}
+		}
+		return
+	} else {
+		return 0, fmt.Errorf("type %s not supported", tp)
+	}
+}
+
+func (mw *MsgWriter) writeSlice(v reflect.Value) (n int, err error) {
+	var nn int
+	if v.Type().AssignableTo(btsType) {
+		nn, err = mw.WriteBytes(v.Bytes())
+		n += nn
+		if err != nil {
+			return
+		}
+	}
+	sz := uint32(v.Len())
+	nn, err = mw.WriteArrayHeader(sz)
+	n += nn
+	if err != nil {
+		return
+	}
+	for i := uint32(0); i < sz; i++ {
+		nn, err = mw.writeVal(v.Index(int(i)))
+		n += nn
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (mw *MsgWriter) writeStruct(v reflect.Value) (n int, err error) {
+	if enc, ok := v.Interface().(MsgEncoder); ok {
+		return enc.EncodeMsg(mw.w)
+	}
+
+	sz := uint32(v.NumField())
+	var nn int
+	nn, err = mw.WriteArrayHeader(sz)
+	n += nn
+	if err != nil {
+		return
+	}
+	for i := uint32(0); i < sz; i++ {
+		k := v.Field(int(i)).Interface().(*reflect.StructField)
+		var name string
+		msg := k.Tag.Get("msg")
+		if msg != "" {
+			name = msg
+		} else {
+			name = k.Name
+		}
+		nn, err = mw.WriteString(name)
+		n += nn
+		if err != nil {
+			return
+		}
+		// TODO
+	}
+	return
+}
+
+func (mw *MsgWriter) writeVal(v reflect.Value) (n int, err error) {
+	// shortcut for nil values
+	if v.IsNil() {
+		return mw.WriteNil()
+	}
+	var nn int
+	switch v.Kind() {
+	case reflect.Bool:
+		nn, err = mw.WriteBool(v.Bool())
+
+	case reflect.Float32, reflect.Float64:
+		nn, err = mw.WriteFloat64(v.Float())
+
+	case reflect.Complex64, reflect.Complex128:
+		nn, err = mw.WriteComplex128(v.Complex())
+
+	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
+		nn, err = mw.WriteInt64(v.Int())
+
+	case reflect.Interface, reflect.Ptr:
+		nn, err = mw.writeVal(v.Elem())
+
+	case reflect.Map:
+		nn, err = mw.writeMap(v)
+
+	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
+		nn, err = mw.WriteUint64(v.Uint())
+
+	case reflect.String:
+		nn, err = mw.WriteString(v.String())
+
+	case reflect.Slice, reflect.Array:
+		nn, err = mw.writeSlice(v)
+
+	case reflect.Struct:
+		nn, err = mw.writeStruct(v)
+
+	}
+	n += nn
+	return
+}
