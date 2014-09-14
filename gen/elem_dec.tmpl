@@ -1,18 +1,20 @@
-{{define "ElemTempl"}}
-{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}
-{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}
-{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}
-{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{end}}{{end}}
+{{/* Gross switch */}}{{define "ElemTempl"}}{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{end}}{{end}}
 
 {{define "PtrTempl"}}
-	if {{.Varname}} == nil {
-		{{.Varname}} = new({{.TypeName}})
+	if dc.IsNil() {
+		nn, err = dc.ReadNil()
+		n += nn
+		if err != nil {
+			return
+		}
+		{{.Varname}} = nil
+	} else {
+		{{template "ElemTempl" .Value}}	
 	}
-	{{template "ElemTempl" .Value}}
 {{end}}
 
 {{define "SliceTempl"}}
-	sz, nn, err = enc.ReadArrayHeader(r)
+	sz, nn, err = dc.ReadArrayHeader()
 	n += nn
 	if err != nil {
 		return
@@ -33,14 +35,14 @@
 {{end}}
 
 {{define "StructTempl"}}
-	sz, nn, err = enc.ReadMapHeader(r)
+	sz, nn, err = dc.ReadMapHeader()
 	n += nn
 	if err != nil {
 		return
 	}
 	var field []byte
 	for xplz:=uint32(0); xplz<sz; xplz++ {
-		field, nn, err = enc.ReadStringAsBytes(r, field)
+		field, nn, err = dc.ReadStringAsBytes(field)
 		n += nn
 		if err != nil {
 			return
@@ -56,9 +58,9 @@
 
 {{define "BaseTempl"}}
 	{{if eq (.Value) 1}}{{/* is []byte */}}
-	{{.Varname}}, nn, err = enc.ReadBytes(r, {{.Varname}})
+	{{.Varname}}, nn, err = dc.ReadBytes({{.Varname}})
 	{{else}}
-	{{.Varname}}, nn, err = enc.Read{{.String}}(r)
+	{{.Varname}}, nn, err = dc.Read{{.String}}()
 	{{end}}
 	n += nn
 	if err != nil {

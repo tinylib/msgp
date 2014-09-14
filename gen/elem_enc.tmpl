@@ -6,7 +6,7 @@
 
 {{define "PtrTempl"}}
 	if {{.Varname}} == nil {
-		nn, err = enc.WriteNil(w)
+		nn, err = en.WriteNil()
 		n += nn
 		if err != nil {
 			return
@@ -17,7 +17,7 @@
 {{end}}
 
 {{define "BaseTempl"}}
-	nn, err = enc.Write{{ .String}}(w, {{.Varname}})
+	nn, err = en.Write{{ .String}}({{.Varname}})
 	n += nn
 	if err != nil {
 		return
@@ -25,7 +25,7 @@
 {{end}}
 
 {{define "SliceTempl"}}
-	nn, err = enc.WriteArrayHeader(w, uint32(len({{.Varname}})))
+	nn, err = en.WriteArrayHeader(uint32(len({{.Varname}})))
 	n += nn
 	if err != nil {
 		return
@@ -36,13 +36,13 @@
 {{end}}
 
 {{define "StructTempl"}}
-	nn, err = enc.WriteMapHeader(w, {{len .Fields}})
+	nn, err = en.WriteMapHeader(uint32({{len .Fields}}))
 	n += nn
 	if err != nil {
 		return
 	}
 	{{range .Fields}}
-	nn, err = enc.WriteString(w, "{{.FieldTag}}")
+	nn, err = en.WriteString("{{.FieldTag}}")
 	n += nn
 	if err != nil {
 		return

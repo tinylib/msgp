@@ -27,6 +27,12 @@ type MsgWriter struct {
 	scratch [24]byte
 }
 
+func NewEncoder(w io.Writer) *MsgWriter {
+	return &MsgWriter{
+		w: w,
+	}
+}
+
 func (mw *MsgWriter) WriteMapHeader(sz uint32) (n int, err error) {
 	switch {
 	case sz < 16:
