@@ -261,44 +261,42 @@ func rwArray(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 }
 
 func rwFloat(dst *bufio.Writer, src *MsgReader, k kind) (n int, err error) {
-	var bts []byte
 	if k == kfloat64 {
 		var f float64
 		f, _, err = src.ReadFloat64()
 		if err != nil {
 			return
 		}
-		bts = strconv.AppendFloat(src.scratch[0:0], f, 'f', -1, 64)
+		src.scratch = strconv.AppendFloat(src.scratch[0:0], f, 'f', -1, 64)
 	} else {
 		var f float32
 		f, _, err = src.ReadFloat32()
 		if err != nil {
 			return
 		}
-		bts = strconv.AppendFloat(src.scratch[0:0], float64(f), 'f', -1, 32)
+		src.scratch = strconv.AppendFloat(src.scratch[0:0], float64(f), 'f', -1, 32)
 	}
 
-	return dst.Write(bts)
+	return dst.Write(src.scratch)
 }
 
 func rwInt(dst *bufio.Writer, src *MsgReader, k kind) (n int, err error) {
-	var bts []byte
 	if k == kint {
 		var i int64
 		i, _, err = src.ReadInt64()
 		if err != nil {
 			return
 		}
-		bts = strconv.AppendInt(src.leader[0:0], i, 10)
+		src.scratch = strconv.AppendInt(src.scratch[0:0], i, 10)
 	} else {
 		var u uint64
 		u, _, err = src.ReadUint64()
 		if err != nil {
 			return
 		}
-		bts = strconv.AppendUint(src.leader[0:0], u, 10)
+		src.scratch = strconv.AppendUint(src.scratch[0:0], u, 10)
 	}
-	return dst.Write(bts)
+	return dst.Write(src.scratch)
 }
 
 func rwExtension(dst *bufio.Writer, src *MsgReader) (n int, err error) {
@@ -323,8 +321,8 @@ func rwExtension(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 		return
 	}
 
-	tb := strconv.AppendInt(src.leader[:], int64(e.Type), 10)
-	nn, err = dst.Write(tb)
+	src.scratch = strconv.AppendInt(src.scratch[0:0], int64(e.Type), 10)
+	nn, err = dst.Write(src.scratch)
 	n += nn
 	if err != nil {
 		return
@@ -352,12 +350,12 @@ func rwExtension(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 }
 
 func rwString(dst *bufio.Writer, src *MsgReader) (n int, err error) {
-	var s string
-	s, _, err = src.ReadString()
+	var s []byte
+	s, _, err = src.ReadStringAsBytes(src.scratch)
 	if err != nil {
 		return
 	}
-	src.scratch = strconv.AppendQuote(src.scratch[0:0], s)
+	src.scratch = strconv.AppendQuote(src.scratch[0:0], UnsafeString(s))
 	return dst.Write(src.scratch)
 }
 

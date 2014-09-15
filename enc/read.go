@@ -53,7 +53,7 @@ type MsgReader struct {
 	r       *bufio.Reader
 	under   io.Reader
 	leader  [18]byte
-	scratch []byte
+	scratch []byte // recycled []byte for temporary storage
 }
 
 func (m *MsgReader) IsNil() bool {
@@ -771,8 +771,10 @@ func (m *MsgReader) ReadStringAsBytes(scratch []byte) (b []byte, n int, err erro
 }
 
 func (m *MsgReader) ReadString() (string, int, error) {
-	bts, n, err := m.ReadStringAsBytes(m.scratch)
-	return string(bts), n, err
+	var n int
+	var err error
+	m.scratch, n, err = m.ReadStringAsBytes(m.scratch)
+	return string(m.scratch), n, err
 }
 
 func (m *MsgReader) ReadComplex64() (f complex64, n int, err error) {
