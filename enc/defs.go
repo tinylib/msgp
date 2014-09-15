@@ -2,24 +2,90 @@ package enc
 
 import ()
 
+const last4 = 0x0f
+const first4 = 0xf0
+const last5 = 0x1f
+const first3 = 0xe0
+const last7 = 0x7f
+
+func isfixint(b byte) bool {
+	return b>>7 == 0
+}
+
+func isnfixint(b byte) bool {
+	return b&first3 == mnfixint
+}
+
+func isfixmap(b byte) bool {
+	return b&first4 == mfixmap
+}
+
+func isfixarray(b byte) bool {
+	return b&first4 == mfixarray
+}
+
+func isfixstr(b byte) bool {
+	return b&first3 == mfixstr
+}
+
+func wfixint(u uint8) byte {
+	return u & last7
+}
+
+func rfixint(b byte) uint8 {
+	return b
+}
+
+func wnfixint(i int8) byte {
+	return byte(i) | mnfixint
+}
+
+func rnfixint(b byte) int8 {
+	return int8(b)
+}
+
+func rfixmap(b byte) uint8 {
+	return b & last4
+}
+
+func wfixmap(u uint8) byte {
+	return mfixmap | (u & last4)
+}
+
+func rfixstr(b byte) uint8 {
+	return b & last5
+}
+
+func wfixstr(u uint8) byte {
+	return (u & last5) | mfixstr
+}
+
+func rfixarray(b byte) uint8 {
+	return (b & last4)
+}
+
+func wfixarray(u uint8) byte {
+	return (u & last4) | mfixarray
+}
+
 // These are all the byte
 // prefixes defined by the
 // msgpack standard
 const (
-	mfixint    uint8 = 0x00
-	mfixintMAX uint8 = 0x7f
+	// 0XXXXXXX
+	mfixint uint8 = 0x00
 
-	mnfixint    uint8 = 0xe0
-	mnfixintMAX uint8 = 0xff
+	// 111XXXXX
+	mnfixint uint8 = 0xe0
 
-	mfixmap    uint8 = 0x80
-	mfixmapMAX uint8 = 0x8f
+	// 1000XXXX
+	mfixmap uint8 = 0x80
 
-	mfixarray    uint8 = 0x90
-	mfixarrayMAX uint8 = 0x9f
+	// 1001XXXX
+	mfixarray uint8 = 0x90
 
-	mfixstr    uint8 = 0xa0
-	mfixstrMAX uint8 = 0xbf
+	// 101XXXXX
+	mfixstr uint8 = 0xa0
 
 	mnil      uint8 = 0xc0
 	mfalse    uint8 = 0xc2

@@ -57,8 +57,8 @@ type MsgReader struct {
 }
 
 func (m *MsgReader) IsNil() bool {
-	v, _ := m.r.Peek(1)
-	return v[0] == mnil
+	k, _ := m.nextKind()
+	return byte(k) == mnil
 }
 
 func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
@@ -90,14 +90,11 @@ func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
 		sz = binary.BigEndian.Uint32(m.leader[:])
 		return
 	default:
-		// fixmap starts with nibble 1000
-		if uint8(lead)&0xf0 != mfixmap {
-			err = fmt.Errorf("unexpected byte %x for fixmap", m.leader[0])
+		if isfixmap(lead) {
+			sz = uint32(rfixmap(lead))
 			return
 		}
-		// length in last 4 bits
-		var inner uint8 = uint8(lead) & 0x0f
-		sz = uint32(inner)
+		err = fmt.Errorf("unexpected byte 0x%x for map", lead)
 		return
 	}
 }
@@ -134,13 +131,11 @@ func (m *MsgReader) ReadArrayHeader() (sz uint32, n int, err error) {
 		return
 
 	default:
-		// decode fixarray
-		if (lead & 0xf0) != mfixarray {
-			err = fmt.Errorf("unexpected byte %x for fixarray", m.leader[0])
+		if isfixarray(lead) {
+			sz = uint32(rfixarray(lead))
 			return
 		}
-		var inner byte = lead & 0x0f
-		sz = uint32(inner)
+		err = fmt.Errorf("unexpected byte 0x%x for array", lead)
 		return
 	}
 }
@@ -268,7 +263,7 @@ func (m *MsgReader) ReadInt64() (i int64, n int, err error) {
 			i = int64(int8(lead))
 			return
 		}
-		err = fmt.Errorf("unknown leading byte %x for int", lead)
+		err = fmt.Errorf("unknown leading byte 0x%x for int", lead)
 		return
 	}
 }
@@ -711,43 +706,17 @@ func (m *MsgReader) ReadBytes(scratch []byte) (b []byte, n int, err error) {
 	return
 }
 
+// opportunistic readfull
 func readN(r io.Reader, scratch []byte, c int) (b []byte, n int, err error) {
-	if scratch == nil || cap(scratch) == 0 {
+	if scratch == nil || cap(scratch) == 0 || c > cap(scratch) {
 		b = make([]byte, c)
 		n, err = io.ReadFull(r, b)
 		return
-	}
-	if cap(scratch) <= c {
+	} else {
 		n, err = io.ReadFull(r, scratch[0:c])
+		b = scratch[0:c]
 		return
 	}
-
-	if c == 0 {
-		return scratch[0:0], 0, nil
-	}
-
-	b = scratch[0:0]
-	var stack [512]byte
-	if c < len(stack) {
-		n, err = io.ReadAtLeast(r, stack[:], c)
-		b = append(b, stack[:n]...)
-		return
-	}
-
-	var nn int
-	for n < c {
-		if (c - n) < len(stack) {
-			nn, err = r.Read(stack[:(c - n)])
-		} else {
-			nn, err = r.Read(stack[:])
-		}
-		n += nn
-		b = append(b, stack[:n]...)
-		if err != nil {
-			return
-		}
-	}
-	return
 }
 
 func (m *MsgReader) ReadStringAsBytes(scratch []byte) (b []byte, n int, err error) {
@@ -785,8 +754,8 @@ func (m *MsgReader) ReadStringAsBytes(scratch []byte) (b []byte, n int, err erro
 		read = int(binary.BigEndian.Uint32(m.leader[:]))
 	default:
 		// try fixstr - first bits should be 101
-		if lead&0xe0 == mfixstr {
-			read = int(uint8(lead) & 0x1f)
+		if isfixstr(lead) {
+			read = int(rfixstr(lead))
 		} else {
 			err = fmt.Errorf("unexpected byte %x for string", lead)
 			return
@@ -1023,7 +992,12 @@ func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error)
 }
 
 func (m *MsgReader) readInterface(i interface{}) (n int, err error) {
-	switch m.nextKind() {
+	var k kind
+	k, err = m.nextKind()
+	if err != nil {
+		return
+	}
+	switch k {
 	case kint:
 		i, n, err = m.ReadInt64()
 		return

@@ -57,8 +57,7 @@ func NewEncoder(w io.Writer) *MsgWriter {
 func (mw *MsgWriter) WriteMapHeader(sz uint32) (n int, err error) {
 	switch {
 	case sz < 16:
-		//fixmap is 1000XXXX: 10000000 | 0000XXXX
-		mw.scratch[0] = (mfixmap | (uint8(sz) & 0x0f))
+		mw.scratch[0] = wfixmap(uint8(sz))
 		return mw.w.Write(mw.scratch[:1])
 
 	case sz < 1<<16-1:
@@ -77,7 +76,7 @@ func (mw *MsgWriter) WriteMapHeader(sz uint32) (n int, err error) {
 func (mw *MsgWriter) WriteArrayHeader(sz uint32) (n int, err error) {
 	switch {
 	case sz < 16:
-		mw.scratch[0] = mfixarray | byte(sz)
+		mw.scratch[0] = wfixarray(uint8(sz))
 		return mw.w.Write(mw.scratch[:1])
 	case sz < math.MaxUint16:
 		mw.scratch[0] = marray16
@@ -238,7 +237,7 @@ func (mw *MsgWriter) WriteString(s string) (n int, err error) {
 	sz := uint32(l)
 	switch {
 	case sz < 32:
-		mw.scratch[0] = byte((uint8(sz) & 0x1f) | mfixstr)
+		mw.scratch[0] = wfixstr(uint8(sz))
 		nn, err = mw.w.Write(mw.scratch[:1])
 	case sz < 256:
 		mw.scratch[0] = mstr8

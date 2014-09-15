@@ -24,68 +24,74 @@ const (
 	knull
 )
 
-// CopyToJson reads MessagePack-encoded elements from 'src' and
-// writes them as json to 'dst'.
+// CopyToJson reads a single MsgPack-encoded message from 'src' and
+// writes it as JSON to 'dst'. It returns the number of bytes written,
+// and any errors encountered in the process.
 func CopyToJSON(dst io.Writer, src io.Reader) (n int, err error) {
-	w := bufio.NewWriter(dst)
+	w := bufio.NewWriterSize(dst, 16)
 	r := NewReader(src)
-
-	switch r.nextKind() {
+	var k kind
+	k, err = r.nextKind()
+	if err != nil {
+		return
+	}
+	switch k {
 	case kmap:
-		return rwArray(w, r)
+		n, err = rwMap(w, r)
 	case karray:
-		return rwMap(w, r)
+		n, err = rwArray(w, r)
 	default:
 		return 0, errors.New("enc: 'src' must represent a map or array")
 	}
+	if err != nil {
+		return
+	}
+	err = w.Flush()
+	return
 }
 
-func (m *MsgReader) nextKind() kind {
+func (m *MsgReader) nextKind() (kind, error) {
 	var lead []byte
-	lead, _ = m.r.Peek(1)
-	if len(lead) == 0 {
-		return invalid
+	var err error
+	lead, err = m.r.Peek(1)
+	if err != nil {
+		return invalid, err
 	}
 	switch lead[0] {
 	case mmap16, mmap32:
-		return kmap
+		return kmap, nil
 	case marray16, marray32:
-		return karray
+		return karray, nil
 	case mfloat32:
-		return kfloat32
+		return kfloat32, nil
 	case mfloat64:
-		return kfloat64
+		return kfloat64, nil
 	case mint8, mint16, mint32, mint64:
-		return kint
+		return kint, nil
 	case muint8, muint16, muint32, muint64:
-		return kuint
+		return kuint, nil
 	case mfixext1, mfixext2, mfixext4, mfixext8, mfixext16, mext8, mext16, mext32:
-		return kextension
+		return kextension, nil
 	case mstr8, mstr16, mstr32:
-		return kstring
+		return kstring, nil
 	case mbin8, mbin16, mbin32:
-		return kbytes
+		return kbytes, nil
 	case mnil:
-		return knull
+		return knull, nil
 	default:
-
-		if lead[0]&mfixint == mfixint {
-			return kint
+		if isfixmap(lead[0]) {
+			return kmap, nil
 		}
-		if lead[0]&mfixstr == mfixstr {
-			return kstring
+		if isfixint(lead[0]) || isnfixint(lead[0]) {
+			return kint, nil
 		}
-		if lead[0]&mnfixint == mnfixint {
-			return kint
+		if isfixstr(lead[0]) {
+			return kstring, nil
 		}
-		if lead[0]&mfixarray == mfixarray {
-			return karray
+		if isfixarray(lead[0]) {
+			return karray, nil
 		}
-		if lead[0]&mfixmap == mfixmap {
-			return kmap
-		}
-
-		return invalid
+		return invalid, nil
 	}
 }
 
@@ -102,7 +108,6 @@ func rwMap(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 		return dst.WriteString("{}")
 	}
 
-	var scratch []byte
 	err = dst.WriteByte('{')
 	if err != nil {
 		return
@@ -110,6 +115,7 @@ func rwMap(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 	n += 1
 	var s string
 	var nn int
+	var bts []byte
 	for i := uint32(0); i < sz; i++ {
 		if comma {
 			err = dst.WriteByte(',')
@@ -119,17 +125,33 @@ func rwMap(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 			n += 1
 		}
 
-		s, _, err = src.ReadString()
-		scratch = strconv.AppendQuote(scratch[0:0], s)
+		var k kind
+		k, err = src.nextKind()
+		if err != nil {
+			return
+		}
+		if k != kstring {
+			return n, errors.New("map keys must be strings")
+		}
 
-		scratch = append(scratch, ':')
-		nn, err = dst.Write(scratch)
+		s, _, err = src.ReadString()
+		if err != nil {
+			return
+		}
+		bts = strconv.AppendQuote(bts[0:0], s)
+
+		bts = append(bts, ':')
+		nn, err = dst.Write(bts)
 		n += nn
 		if err != nil {
 			return
 		}
 
-		switch src.nextKind() {
+		k, err = src.nextKind()
+		if err != nil {
+			return
+		}
+		switch k {
 		case knull:
 			nn, err = dst.WriteString("null")
 		case kint:
@@ -190,8 +212,12 @@ func rwArray(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 			}
 			n += 1
 		}
-
-		switch src.nextKind() {
+		var k kind
+		k, err = src.nextKind()
+		if err != nil {
+			return
+		}
+		switch k {
 		case knull:
 			nn, err = dst.WriteString("null")
 		case kint:
@@ -236,20 +262,20 @@ func rwArray(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 
 func rwFloat(dst *bufio.Writer, src *MsgReader, k kind) (n int, err error) {
 	var bts []byte
-	if k == kfloat32 {
+	if k == kfloat64 {
 		var f float64
 		f, _, err = src.ReadFloat64()
 		if err != nil {
 			return
 		}
-		bts = strconv.AppendFloat(src.leader[0:0], f, 'f', -1, 64)
+		bts = strconv.AppendFloat(src.scratch[0:0], f, 'f', -1, 64)
 	} else {
 		var f float32
 		f, _, err = src.ReadFloat32()
 		if err != nil {
 			return
 		}
-		bts = strconv.AppendFloat(src.leader[0:0], float64(f), 'f', -1, 32)
+		bts = strconv.AppendFloat(src.scratch[0:0], float64(f), 'f', -1, 32)
 	}
 
 	return dst.Write(bts)
@@ -331,7 +357,7 @@ func rwString(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	src.scratch = strconv.AppendQuote(src.scratch, s)
+	src.scratch = strconv.AppendQuote(src.scratch[0:0], s)
 	return dst.Write(src.scratch)
 }
 
@@ -342,7 +368,7 @@ func rwBytes(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 		return
 	}
 	n += 1
-	src.scratch, _, err = src.ReadBytes(src.scratch)
+	src.scratch, _, err = src.ReadBytes(src.scratch[0:0])
 	if err != nil {
 		return
 	}

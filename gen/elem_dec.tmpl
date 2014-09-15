@@ -49,8 +49,7 @@
 		}
 		switch enc.UnsafeString(field) {
 		{{range .Fields}}
-		case "{{ .FieldTag}}":
-			{{template "ElemTempl" .FieldElem}}
+		case "{{ .FieldTag}}":{{template "ElemTempl" .FieldElem}}
 		{{end}}
 		}
 	}	
@@ -59,6 +58,8 @@
 {{define "BaseTempl"}}
 	{{if eq (.Value) 1}}{{/* is []byte */}}
 	{{.Varname}}, nn, err = dc.ReadBytes({{.Varname}})
+	{{else if .IsMap }}{{/* is map[string]string or map[string]interface{} */}}
+	nn, err = dc.Read{{.String}}({{.Varname}})
 	{{else}}
 	{{.Varname}}, nn, err = dc.Read{{.String}}()
 	{{end}}

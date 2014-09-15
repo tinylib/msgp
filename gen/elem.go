@@ -44,6 +44,9 @@ import (
 // base types
 type Base int
 
+// this is effectively the
+// list of currently available
+// ReadXxxx / WriteXxxx methods.
 const (
 	Invalid Base = iota
 	Bytes
@@ -64,6 +67,9 @@ const (
 	Int32
 	Int64
 	Bool
+	MapStrStr  // map[string]string
+	MapStrIntf // map[string]interface{}
+	Intf       // interface{} - must be one of the base types, or a struct
 )
 
 type ElemType int
@@ -139,6 +145,7 @@ func (s *BaseElem) Struct() *Struct  { return nil }
 func (s *BaseElem) Base() *BaseElem  { return s }
 func (s *BaseElem) String() string   { return s.Value.String() }
 func (s *BaseElem) TypeName() string { return strings.ToLower(s.String()) }
+func (s *BaseElem) IsMap() bool      { return (s.Value == MapStrStr || s.Value == MapStrIntf) }
 
 func (k Base) String() string {
 	switch k {
@@ -178,6 +185,12 @@ func (k Base) String() string {
 		return "Int64"
 	case Bool:
 		return "Bool"
+	case MapStrStr:
+		return "MapStrStr"
+	case MapStrIntf:
+		return "MapStrIntf"
+	case Intf:
+		return "Intf"
 	default:
 		return "INVALID"
 	}
