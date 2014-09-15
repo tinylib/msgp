@@ -29,6 +29,7 @@ func init() {
 func popReader(r io.Reader) *MsgReader {
 	p := readerPool.Get().(*MsgReader)
 	p.r.Reset(r)
+	p.under = r
 	return p
 }
 
@@ -50,6 +51,7 @@ type MsgDecoder interface {
 
 type MsgReader struct {
 	r       *bufio.Reader
+	under   io.Reader
 	leader  [18]byte
 	scratch []byte
 }
@@ -884,6 +886,227 @@ func (m *MsgReader) ReadMapStrStr(mp map[string]string) (n int, err error) {
 		mp[key] = val
 	}
 	return
+}
+
+type Extension struct {
+	Type byte
+	Data []byte
+}
+
+func (m *MsgReader) ReadExtension(e *Extension) (n int, err error) {
+	var lead byte
+	var nn int
+	lead, err = m.r.ReadByte()
+	if err != nil {
+		return
+	}
+	n += 1
+	var read int
+	switch lead {
+	case mfixext1:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		if err != nil {
+			return
+		}
+		e.Type = m.leader[0]
+		e.Data = append(e.Data[0:0], m.leader[1])
+		return
+
+	case mfixext2:
+		nn, err = io.ReadFull(m.r, m.leader[:3])
+		n += nn
+		if err != nil {
+			return
+		}
+		e.Type = m.leader[0]
+		e.Data = append(e.Data[0:0], m.leader[1:3]...)
+		return
+
+	case mfixext4:
+		nn, err = io.ReadFull(m.r, m.leader[:5])
+		n += nn
+		if err != nil {
+			return
+		}
+		e.Type = m.leader[0]
+		e.Data = append(e.Data[0:0], m.leader[1:5]...)
+		return
+
+	case mfixext8:
+		nn, err = io.ReadFull(m.r, m.leader[:9])
+		n += nn
+		if err != nil {
+			return
+		}
+		e.Type = m.leader[0]
+		e.Data = append(e.Data[0:0], m.leader[1:9]...)
+		return
+
+	case mfixext16:
+		nn, err = io.ReadFull(m.r, m.leader[:17])
+		n += nn
+		if err != nil {
+			return
+		}
+		e.Type = m.leader[0]
+		e.Data = append(e.Data[0:0], m.leader[1:17]...)
+		return
+
+	case mext8:
+		lead, err = m.r.ReadByte()
+		if err != nil {
+			return
+		}
+		n += 1
+		read = int(uint8(lead))
+
+	case mext16:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint32(m.leader[:]))
+
+	case mext32:
+		nn, err = io.ReadFull(m.r, m.leader[:4])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint32(m.leader[:]))
+
+	}
+
+	e.Data, nn, err = readN(m.r, e.Data, read)
+	n += nn
+	return
+}
+
+func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error) {
+	var nn int
+	var sz uint32
+	sz, nn, err = m.ReadMapHeader()
+	n += nn
+	if err == ErrNil || sz == 0 {
+		err = nil
+		mp = nil
+		return
+	}
+	if err != nil {
+		return
+	}
+	if mp != nil {
+		for key, _ := range mp {
+			delete(mp, key)
+		}
+	} else {
+		mp = make(map[string]interface{})
+	}
+	for i := uint32(0); i < sz; i++ {
+		var key string
+		var val interface{}
+		key, nn, err = m.ReadString()
+		n += nn
+		if err != nil {
+			return
+		}
+		nn, err = m.readInterface(val)
+		n += nn
+		if err != nil {
+			return
+		}
+		mp[key] = val
+	}
+	return
+}
+
+func (m *MsgReader) readInterface(i interface{}) (n int, err error) {
+	switch m.nextKind() {
+	case kint:
+		i, n, err = m.ReadInt64()
+		return
+
+	case kuint:
+		i, n, err = m.ReadUint64()
+		return
+
+	case kbytes:
+		i, n, err = m.ReadBytes(m.scratch)
+		return
+
+	case kstring:
+		i, n, err = m.ReadString()
+		return
+
+	case kextension:
+		e := new(Extension)
+		n, err = m.ReadExtension(e)
+		if err != nil {
+			return
+		}
+		if e.Type == Complex128Extension && len(e.Data) == 16 {
+			rlbits := binary.BigEndian.Uint64(e.Data[0:])
+			imbits := binary.BigEndian.Uint64(e.Data[8:])
+			rl := *(*float64)(unsafe.Pointer(&rlbits))
+			im := *(*float64)(unsafe.Pointer(&imbits))
+			i = complex(rl, im)
+			return
+		}
+		if e.Type == Complex64Extension && len(e.Data) == 8 {
+			rlbits := binary.BigEndian.Uint64(e.Data[0:])
+			imbits := binary.BigEndian.Uint64(e.Data[8:])
+			rl := *(*float32)(unsafe.Pointer(&rlbits))
+			im := *(*float32)(unsafe.Pointer(&imbits))
+			i = complex(rl, im)
+			return
+		}
+		i = e
+		return
+
+	case kmap:
+		mp := make(map[string]interface{})
+		n, err = m.ReadMapStrIntf(mp)
+		i = mp
+		return
+
+	case knull:
+		n, err = m.ReadNil()
+		i = nil
+		return
+
+	case kfloat32:
+		i, n, err = m.ReadFloat32()
+		return
+
+	case kfloat64:
+		i, n, err = m.ReadFloat64()
+		return
+
+	case karray:
+		var sz uint32
+		var nn int
+		sz, nn, err = m.ReadArrayHeader()
+		n += nn
+		if err != nil {
+			return
+		}
+		out := make([]interface{}, int(sz))
+		for j := range out {
+			nn, err = m.readInterface(out[j])
+			n += nn
+			if err != nil {
+				return
+			}
+		}
+		i = out
+		return
+
+	default:
+		return 0, errors.New("bad token in byte stream")
+
+	}
 }
 
 // UnsafeString returns the byte slice as a string
