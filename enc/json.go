@@ -36,6 +36,27 @@ type jsWriter interface {
 	WriteString(string) (int, error)
 }
 
+// AsJSON reads MessagePack from src and
+// translates it to JSON
+func AsJSON(src io.Reader) io.Reader {
+	rd, wr := io.Pipe()
+	go func() {
+		w := bufio.NewWriterSize(wr, 512)
+		_, err := CopyToJSON(w, src)
+		if err != nil {
+			rd.CloseWithError(err)
+		} else {
+			err = w.Flush()
+			if err != nil {
+				rd.CloseWithError(err)
+			} else {
+				rd.Close()
+			}
+		}
+	}()
+	return rd
+}
+
 // CopyToJson reads a single MsgPack-encoded message from 'src' and
 // writes it as JSON to 'dst'. It returns the number of bytes written,
 // and any errors encountered in the process.
@@ -46,9 +67,9 @@ func CopyToJSON(dst io.Writer, src io.Reader) (n int, err error) {
 		w = jsw
 		cast = true
 	} else {
-		w = bufio.NewWriterSize(w, 16)
+		w = bufio.NewWriterSize(w, 256)
 	}
-	r := NewReader(src)
+	r := NewDecoder(src)
 	var k kind
 	k, err = r.nextKind()
 	if err != nil {
@@ -174,7 +195,7 @@ func rwMap(dst jsWriter, src *MsgReader) (n int, err error) {
 		}
 		switch k {
 		case knull:
-			nn, err = dst.WriteString("null")
+			nn, err = dst.Write(null)
 		case kint:
 			nn, err = rwInt(dst, src, kint)
 		case kuint:
@@ -371,12 +392,11 @@ func rwExtension(dst jsWriter, src *MsgReader) (n int, err error) {
 }
 
 func rwString(dst jsWriter, src *MsgReader) (n int, err error) {
-	var s []byte
-	s, _, err = src.ReadStringAsBytes(src.scratch)
+	src.scratch, _, err = src.ReadStringAsBytes(src.scratch)
 	if err != nil {
 		return
 	}
-	return rwquoted(dst, s)
+	return rwquoted(dst, src.scratch)
 }
 
 func rwBytes(dst jsWriter, src *MsgReader) (n int, err error) {

@@ -38,10 +38,13 @@ func pushReader(m *MsgReader) {
 }
 
 func Done(m *MsgReader) {
+	if m == nil {
+		return
+	}
 	pushReader(m)
 }
 
-func NewReader(r io.Reader) *MsgReader {
+func NewDecoder(r io.Reader) *MsgReader {
 	return popReader(r)
 }
 
