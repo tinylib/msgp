@@ -41,17 +41,11 @@ type jsWriter interface {
 func AsJSON(src io.Reader) io.Reader {
 	rd, wr := io.Pipe()
 	go func() {
-		w := bufio.NewWriterSize(wr, 512)
-		_, err := CopyToJSON(w, src)
+		_, err := CopyToJSON(wr, src)
 		if err != nil {
 			rd.CloseWithError(err)
 		} else {
-			err = w.Flush()
-			if err != nil {
-				rd.CloseWithError(err)
-			} else {
-				rd.Close()
-			}
+			rd.Close()
 		}
 	}()
 	return rd
@@ -99,6 +93,18 @@ func (m *MsgReader) nextKind() (kind, error) {
 	if err != nil {
 		return invalid, err
 	}
+	if isfixmap(lead[0]) {
+		return kmap, nil
+	}
+	if isfixint(lead[0]) || isnfixint(lead[0]) {
+		return kint, nil
+	}
+	if isfixstr(lead[0]) {
+		return kstring, nil
+	}
+	if isfixarray(lead[0]) {
+		return karray, nil
+	}
 	switch lead[0] {
 	case mmap16, mmap32:
 		return kmap, nil
@@ -121,18 +127,6 @@ func (m *MsgReader) nextKind() (kind, error) {
 	case mnil:
 		return knull, nil
 	default:
-		if isfixmap(lead[0]) {
-			return kmap, nil
-		}
-		if isfixint(lead[0]) || isnfixint(lead[0]) {
-			return kint, nil
-		}
-		if isfixstr(lead[0]) {
-			return kstring, nil
-		}
-		if isfixarray(lead[0]) {
-			return karray, nil
-		}
 		return invalid, nil
 	}
 }
