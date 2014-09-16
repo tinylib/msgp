@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"strconv"
+	"unicode/utf8"
 )
 
 type kind byte
@@ -24,11 +25,29 @@ const (
 	knull
 )
 
+var null = []byte("null")
+var hex = []byte("0123456789abcdef")
+
+// this is the interface
+// used to write json
+type jsWriter interface {
+	io.Writer
+	io.ByteWriter
+	WriteString(string) (int, error)
+}
+
 // CopyToJson reads a single MsgPack-encoded message from 'src' and
 // writes it as JSON to 'dst'. It returns the number of bytes written,
 // and any errors encountered in the process.
 func CopyToJSON(dst io.Writer, src io.Reader) (n int, err error) {
-	w := bufio.NewWriterSize(dst, 16)
+	var w jsWriter
+	var cast bool
+	if jsw, ok := dst.(jsWriter); ok {
+		w = jsw
+		cast = true
+	} else {
+		w = bufio.NewWriterSize(w, 16)
+	}
 	r := NewReader(src)
 	var k kind
 	k, err = r.nextKind()
@@ -46,7 +65,9 @@ func CopyToJSON(dst io.Writer, src io.Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	err = w.Flush()
+	if !cast {
+		err = w.(*bufio.Writer).Flush()
+	}
 	return
 }
 
@@ -95,7 +116,7 @@ func (m *MsgReader) nextKind() (kind, error) {
 	}
 }
 
-func rwMap(dst *bufio.Writer, src *MsgReader) (n int, err error) {
+func rwMap(dst jsWriter, src *MsgReader) (n int, err error) {
 	var comma bool
 	var sz uint32
 
@@ -113,9 +134,7 @@ func rwMap(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 		return
 	}
 	n += 1
-	var s string
 	var nn int
-	var bts []byte
 	for i := uint32(0); i < sz; i++ {
 		if comma {
 			err = dst.WriteByte(',')
@@ -134,19 +153,21 @@ func rwMap(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 			return n, errors.New("map keys must be strings")
 		}
 
-		s, _, err = src.ReadString()
+		src.scratch, _, err = src.ReadStringAsBytes(src.scratch)
 		if err != nil {
 			return
 		}
-		bts = strconv.AppendQuote(bts[0:0], s)
 
-		bts = append(bts, ':')
-		nn, err = dst.Write(bts)
+		nn, err = rwquoted(dst, src.scratch)
 		n += nn
 		if err != nil {
 			return
 		}
-
+		err = dst.WriteByte(':')
+		if err != nil {
+			return
+		}
+		n++
 		k, err = src.nextKind()
 		if err != nil {
 			return
@@ -192,7 +213,7 @@ func rwMap(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 	return
 }
 
-func rwArray(dst *bufio.Writer, src *MsgReader) (n int, err error) {
+func rwArray(dst jsWriter, src *MsgReader) (n int, err error) {
 	err = dst.WriteByte('[')
 	if err != nil {
 		return
@@ -260,7 +281,7 @@ func rwArray(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 	return
 }
 
-func rwFloat(dst *bufio.Writer, src *MsgReader, k kind) (n int, err error) {
+func rwFloat(dst jsWriter, src *MsgReader, k kind) (n int, err error) {
 	if k == kfloat64 {
 		var f float64
 		f, _, err = src.ReadFloat64()
@@ -280,7 +301,7 @@ func rwFloat(dst *bufio.Writer, src *MsgReader, k kind) (n int, err error) {
 	return dst.Write(src.scratch)
 }
 
-func rwInt(dst *bufio.Writer, src *MsgReader, k kind) (n int, err error) {
+func rwInt(dst jsWriter, src *MsgReader, k kind) (n int, err error) {
 	if k == kint {
 		var i int64
 		i, _, err = src.ReadInt64()
@@ -299,7 +320,7 @@ func rwInt(dst *bufio.Writer, src *MsgReader, k kind) (n int, err error) {
 	return dst.Write(src.scratch)
 }
 
-func rwExtension(dst *bufio.Writer, src *MsgReader) (n int, err error) {
+func rwExtension(dst jsWriter, src *MsgReader) (n int, err error) {
 	var nn int
 	err = dst.WriteByte('{')
 	if err != nil {
@@ -349,17 +370,16 @@ func rwExtension(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 	return
 }
 
-func rwString(dst *bufio.Writer, src *MsgReader) (n int, err error) {
+func rwString(dst jsWriter, src *MsgReader) (n int, err error) {
 	var s []byte
 	s, _, err = src.ReadStringAsBytes(src.scratch)
 	if err != nil {
 		return
 	}
-	src.scratch = strconv.AppendQuote(src.scratch[0:0], UnsafeString(s))
-	return dst.Write(src.scratch)
+	return rwquoted(dst, s)
 }
 
-func rwBytes(dst *bufio.Writer, src *MsgReader) (n int, err error) {
+func rwBytes(dst jsWriter, src *MsgReader) (n int, err error) {
 	var nn int
 	err = dst.WriteByte('"')
 	if err != nil {
@@ -385,5 +405,136 @@ func rwBytes(dst *bufio.Writer, src *MsgReader) (n int, err error) {
 		return
 	}
 	n += 1
+	return
+}
+
+// see: encoding/json/encode.go:(*encodeState).stringbytes()
+func rwquoted(dst jsWriter, s []byte) (n int, err error) {
+	var nn int
+	err = dst.WriteByte('"')
+	if err != nil {
+		return
+	}
+	n += 1
+	start := 0
+	for i := 0; i < len(s); {
+		if b := s[i]; b < utf8.RuneSelf {
+			if 0x20 <= b && b != '\\' && b != '"' && b != '<' && b != '>' && b != '&' {
+				i++
+				continue
+			}
+			if start < i {
+				nn, err = dst.Write(s[start:i])
+				n += nn
+				if err != nil {
+					return
+				}
+			}
+			switch b {
+			case '\\', '"':
+				err = dst.WriteByte('\\')
+				if err != nil {
+					return
+				}
+				n++
+				err = dst.WriteByte(b)
+				if err != nil {
+					return
+				}
+				n++
+			case '\n':
+				err = dst.WriteByte('\\')
+				if err != nil {
+					return
+				}
+				n++
+				err = dst.WriteByte('n')
+				if err != nil {
+					return
+				}
+				n++
+			case '\r':
+				err = dst.WriteByte('\\')
+				if err != nil {
+					return
+				}
+				n++
+				err = dst.WriteByte('r')
+				if err != nil {
+					return
+				}
+				n++
+			default:
+				nn, err = dst.WriteString(`\u00`)
+				n += nn
+				if err != nil {
+					return
+				}
+				err = dst.WriteByte(hex[b>>4])
+				if err != nil {
+					return
+				}
+				n++
+				err = dst.WriteByte(hex[b&0xF])
+				if err != nil {
+					return
+				}
+				n++
+			}
+			i++
+			start = i
+			continue
+		}
+		c, size := utf8.DecodeRune(s[i:])
+		if c == utf8.RuneError && size == 1 {
+			if start < i {
+				nn, err = dst.Write(s[start:i])
+				n += nn
+				if err != nil {
+					return
+				}
+				nn, err = dst.WriteString(`\ufffd`)
+				n += nn
+				if err != nil {
+					return
+				}
+				i += size
+				start = i
+				continue
+			}
+		}
+		if c == '\u2028' || c == '\u2029' {
+			if start < i {
+				nn, err = dst.Write(s[start:i])
+				n += nn
+				if err != nil {
+					return
+				}
+				nn, err = dst.WriteString(`\u202`)
+				n += nn
+				if err != nil {
+					return
+				}
+				err = dst.WriteByte(hex[c&0xF])
+				if err != nil {
+					return
+				}
+				n++
+			}
+		}
+		i += size
+	}
+	if start < len(s) {
+		nn, err = dst.Write(s[start:])
+		n += nn
+		if err != nil {
+			return
+		}
+	}
+	err = dst.WriteByte('"')
+	if err != nil {
+		return
+	}
+	n++
 	return
 }

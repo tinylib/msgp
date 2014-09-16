@@ -39,6 +39,7 @@ func TestCopyJSON(t *testing.T) {
 	mp := make(map[string]interface{})
 	err = json.Unmarshal(js.Bytes(), &mp)
 	if err != nil {
+		t.Log(js.String())
 		t.Fatalf("Error unmarshaling: %s", err)
 	}
 
