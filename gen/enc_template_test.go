@@ -4,14 +4,9 @@ import (
 	"bufio"
 	"os"
 	"testing"
-	"text/template"
 )
 
 func TestEncTemplate(t *testing.T) {
-	tmp, err := template.ParseFiles("encode.tmpl", "elem_enc.tmpl")
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	// type Marshaler struct {
 	// 	thing1 *float64
@@ -79,11 +74,10 @@ type Marshaler struct {
 		t.Fatal(err)
 	}
 
-	err = tmp.Execute(wr, val)
+	err = WriteDecoderMethod(wr, val)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-
 	err = wr.Flush()
 	if err != nil {
 		t.Error(err)

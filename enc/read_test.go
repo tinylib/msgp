@@ -81,7 +81,7 @@ func TestReadArrayHeader(t *testing.T) {
 
 func TestReadNil(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewEncoder(&buf)
 	rd := NewDecoder(&buf)
 
 	n, err := wr.WriteNil()
@@ -99,7 +99,7 @@ func TestReadNil(t *testing.T) {
 
 func TestReadFloat64(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewEncoder(&buf)
 	rd := NewDecoder(&buf)
 
 	for i := 0; i < 10000; i++ {
@@ -128,7 +128,7 @@ func TestReadFloat64(t *testing.T) {
 
 func TestReadFloat32(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewEncoder(&buf)
 	rd := NewDecoder(&buf)
 
 	for i := 0; i < 10000; i++ {
@@ -157,7 +157,7 @@ func TestReadFloat32(t *testing.T) {
 
 func TestReadInt64(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewEncoder(&buf)
 	rd := NewDecoder(&buf)
 
 	ints := []int64{-100000, -5000, -5, 0, 8, 240, int64(tuint16), int64(tuint32), int64(tuint64)}
@@ -181,7 +181,7 @@ func TestReadInt64(t *testing.T) {
 
 func TestReadUint64(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewEncoder(&buf)
 	rd := NewDecoder(&buf)
 
 	ints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), uint64(tuint64)}
@@ -205,7 +205,7 @@ func TestReadUint64(t *testing.T) {
 
 func TestReadBytes(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewEncoder(&buf)
 	rd := NewDecoder(&buf)
 
 	sizes := []int{0, 1, 225, int(tuint32)}
@@ -238,7 +238,7 @@ func TestReadBytes(t *testing.T) {
 
 func TestReadString(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewEncoder(&buf)
 	rd := NewDecoder(&buf)
 
 	sizes := []int{0, 1, 225, int(tuint32)}

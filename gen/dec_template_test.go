@@ -4,15 +4,9 @@ import (
 	"bufio"
 	"os"
 	"testing"
-	"text/template"
 )
 
 func TestDecTemplate(t *testing.T) {
-	tmp, err := template.ParseFiles("decode.tmpl", "elem_dec.tmpl")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	var val *Ptr = &Ptr{
 		Varname: "z",
 		Value: &Struct{
@@ -73,9 +67,9 @@ type Marshaler struct {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = tmp.Execute(wr, val)
+	err = WriteDecoderMethod(wr, val)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	err = wr.Flush()
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"sync"
 	"unsafe"
@@ -72,6 +73,10 @@ func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
 		return
 	}
 	n += 1
+	if isfixmap(lead) {
+		sz = uint32(rfixmap(lead))
+		return
+	}
 	switch lead {
 	case mnil:
 		return // analagous to "0"
@@ -93,10 +98,6 @@ func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
 		sz = binary.BigEndian.Uint32(m.leader[:])
 		return
 	default:
-		if isfixmap(lead) {
-			sz = uint32(rfixmap(lead))
-			return
-		}
 		err = fmt.Errorf("unexpected byte 0x%x for map", lead)
 		return
 	}
@@ -110,6 +111,10 @@ func (m *MsgReader) ReadArrayHeader() (sz uint32, n int, err error) {
 		return
 	}
 	n += 1
+	if isfixarray(lead) {
+		sz = uint32(rfixarray(lead))
+		return
+	}
 	switch lead {
 	case mnil:
 		return // sz = 0
@@ -134,10 +139,6 @@ func (m *MsgReader) ReadArrayHeader() (sz uint32, n int, err error) {
 		return
 
 	default:
-		if isfixarray(lead) {
-			sz = uint32(rfixarray(lead))
-			return
-		}
 		err = fmt.Errorf("unexpected byte 0x%x for array", lead)
 		return
 	}
@@ -215,6 +216,15 @@ func (m *MsgReader) ReadInt64() (i int64, n int, err error) {
 		return
 	}
 	n += 1
+	if isfixint(lead) {
+		i = int64(rfixint(lead))
+		return
+	}
+	// try to decode negative fixnum
+	if isnfixint(lead) {
+		i = int64(rnfixint(lead))
+		return
+	}
 	switch lead {
 	case mnil:
 		err = ErrNil
@@ -256,196 +266,58 @@ func (m *MsgReader) ReadInt64() (i int64, n int, err error) {
 		return
 
 	default:
-		// try to decode positive fixnum
-		if lead&0x80 == 0 {
-			i = int64(int8(lead & 0x7f))
-			return
-		}
-		// try to decode negative fixnum
-		if lead&mnfixint == mnfixint {
-			i = int64(int8(lead))
-			return
-		}
 		err = fmt.Errorf("unknown leading byte 0x%x for int", lead)
 		return
 	}
 }
 
 func (m *MsgReader) ReadInt32() (i int32, n int, err error) {
-	var nn int
-	var lead byte
-	lead, err = m.r.ReadByte()
-	if err != nil {
+	var in int64
+	in, n, err = m.ReadInt64()
+	if in > math.MaxInt32 || in < math.MinInt32 {
+		err = fmt.Errorf("%d overflows int32", in)
 		return
 	}
-	n += 1
-	switch lead {
-	case mnil:
-		err = ErrNil
-		return
-
-	case mint8:
-		var next byte
-		next, err = m.r.ReadByte()
-		if err != nil {
-			return
-		}
-		n += 1
-		i = int32(int8(next))
-		return
-
-	case mint16:
-		nn, err = io.ReadFull(m.r, m.leader[:2])
-		n += nn
-		i = int32((int16(m.leader[0]) << 8) | int16(m.leader[1]))
-		return
-
-	case mint32:
-		nn, err = io.ReadFull(m.r, m.leader[:4])
-		n += nn
-		i = ((int32(m.leader[0]) << 24) | (int32(m.leader[1]) << 16) | (int32(m.leader[2]) << 8) | (int32(m.leader[3])))
-		return
-
-	case mint64:
-		err = errors.New("int64 overflows int32")
-		return
-
-	default:
-		// try to decode positive fixnum
-		if lead&0x80 == 0 {
-			i = int32(int8(lead & 0x7f))
-			return
-		}
-		// try to decode negative fixnum
-		if lead&mnfixint == mnfixint {
-			i = int32(int8(lead))
-			return
-		}
-		err = fmt.Errorf("unknown leading byte %x for int", lead)
-		return
-	}
+	i = int32(in)
+	return
 }
 
 func (m *MsgReader) ReadInt16() (i int16, n int, err error) {
-	var nn int
-	var lead byte
-	lead, err = m.r.ReadByte()
-	if err != nil {
+	var in int64
+	in, n, err = m.ReadInt64()
+	if in > math.MaxInt16 || in < math.MinInt16 {
+		err = fmt.Errorf("%d overflows int16", in)
 		return
 	}
-	n += 1
-	switch lead {
-	case mnil:
-		err = ErrNil
-		return
-
-	case mint8:
-		var next byte
-		next, err = m.r.ReadByte()
-		if err != nil {
-			return
-		}
-		n += 1
-		i = int16(int8(next))
-		return
-
-	case mint16:
-		nn, err = io.ReadFull(m.r, m.leader[:2])
-		n += nn
-		i = (int16(m.leader[0]) << 8) | int16(m.leader[1])
-		return
-
-	case mint32:
-		err = errors.New("int32 overflows int16")
-		return
-
-	case mint64:
-		err = errors.New("int64 overflows int16")
-		return
-
-	default:
-		// try to decode positive fixnum
-		if lead&0x80 == 0 {
-			i = int16(int8(lead & 0x7f))
-			return
-		}
-		// try to decode negative fixnum
-		if lead&mnfixint == mnfixint {
-			i = int16(int8(lead))
-			return
-		}
-		err = fmt.Errorf("unknown leading byte %x for int", lead)
-		return
-	}
+	i = int16(in)
+	return
 }
 
 func (m *MsgReader) ReadInt8() (i int8, n int, err error) {
-	var lead byte
-	lead, err = m.r.ReadByte()
-	if err != nil {
+	var in int64
+	in, n, err = m.ReadInt64()
+	if in > math.MaxInt8 || in < math.MinInt8 {
+		err = fmt.Errorf("%d overflows in8", in)
 		return
 	}
-	n += 1
-	switch lead {
-	case mnil:
-		err = ErrNil
-		return
-
-	case mint8:
-		var next byte
-		next, err = m.r.ReadByte()
-		if err != nil {
-			return
-		}
-		n += 1
-		i = int8(next)
-		return
-
-	case mint16:
-		err = errors.New("int16 overflows int8")
-		return
-
-	case mint32:
-		err = errors.New("int32 overflows int8")
-		return
-
-	case mint64:
-		err = errors.New("int64 overflows int8")
-		return
-
-	default:
-		// try to decode positive fixnum
-		if lead&0x80 == 0 {
-			i = int8(lead & 0x7f)
-			return
-		}
-		// try to decode negative fixnum
-		if lead&mnfixint == mnfixint {
-			i = int8(lead)
-			return
-		}
-		err = fmt.Errorf("unknown leading byte %x for int", lead)
-		return
-	}
+	i = int8(in)
+	return
 }
 
 func (m *MsgReader) ReadInt() (i int, n int, err error) {
-	var s int64
-	var l int32
+	var in int64
+	var sin int32
 	switch unsafe.Sizeof(i) {
-	case unsafe.Sizeof(s):
-		s, n, err = m.ReadInt64()
-		i = int(s)
+	case unsafe.Sizeof(in):
+		in, n, err = m.ReadInt64()
+		i = int(in)
 		return
-
-	case unsafe.Sizeof(l):
-		l, n, err = m.ReadInt32()
-		i = int(l)
+	case unsafe.Sizeof(sin):
+		sin, n, err = m.ReadInt32()
+		i = int(sin)
 		return
-
-	default:
-		panic("???")
 	}
+	panic("impossible")
 }
 
 func (m *MsgReader) ReadUint64() (u uint64, n int, err error) {
@@ -456,6 +328,10 @@ func (m *MsgReader) ReadUint64() (u uint64, n int, err error) {
 		return
 	}
 	n += 1
+	if isfixint(lead) {
+		u = uint64(rfixint(lead))
+		return
+	}
 	switch lead {
 	case mnil:
 		err = ErrNil
@@ -492,11 +368,6 @@ func (m *MsgReader) ReadUint64() (u uint64, n int, err error) {
 		return
 
 	default:
-		// try positive fixnum (first bit is zero)
-		if lead&0x80 == 0 {
-			u = uint64(lead & 0x7f)
-			return
-		}
 		err = fmt.Errorf("unexpected byte %x for Uint", lead)
 		return
 
@@ -504,150 +375,34 @@ func (m *MsgReader) ReadUint64() (u uint64, n int, err error) {
 }
 
 func (m *MsgReader) ReadUint32() (u uint32, n int, err error) {
-	var nn int
-	var lead byte
-	lead, err = m.r.ReadByte()
-	if err != nil {
+	var in uint64
+	in, n, err = m.ReadUint64()
+	if in > math.MaxUint32 {
+		err = fmt.Errorf("%d overflows uint32", in)
 		return
 	}
-	n += 1
-	switch lead {
-	case mnil:
-		err = ErrNil
-		return
-
-	case muint8:
-		var next byte
-		next, err = m.r.ReadByte()
-		if err != nil {
-			return
-		}
-		n += 1
-		u = uint32(next)
-		return
-
-	case muint16:
-		nn, err = io.ReadFull(m.r, m.leader[:2])
-		n += nn
-		usz := binary.BigEndian.Uint16(m.leader[:])
-		u = uint32(usz)
-		return
-
-	case muint32:
-		nn, err = io.ReadFull(m.r, m.leader[:4])
-		n += nn
-		u = binary.BigEndian.Uint32(m.leader[:])
-		return
-
-	case muint64:
-		err = errors.New("uint64 overflows uint32")
-		return
-
-	default:
-		// try positive fixnum (first bit is zero)
-		if lead&0x80 == 0 {
-			u = uint32(lead & 0x7f)
-			return
-		}
-		err = fmt.Errorf("unexpected byte %x for Uint", lead)
-		return
-
-	}
+	u = uint32(in)
+	return
 }
 
 func (m *MsgReader) ReadUint16() (u uint16, n int, err error) {
-	var nn int
-	var lead byte
-	lead, err = m.r.ReadByte()
-	if err != nil {
-		return
+	var in uint64
+	in, n, err = m.ReadUint64()
+	if in > math.MaxUint16 {
+		err = fmt.Errorf("%d overflows uint16", in)
 	}
-	n += 1
-	switch lead {
-	case mnil:
-		err = ErrNil
-		return
-
-	case muint8:
-		var next byte
-		next, err = m.r.ReadByte()
-		if err != nil {
-			return
-		}
-		n += 1
-		u = uint16(next)
-		return
-
-	case muint16:
-		nn, err = io.ReadFull(m.r, m.leader[:2])
-		n += nn
-		u = binary.BigEndian.Uint16(m.leader[:])
-		return
-
-	case muint32:
-		err = errors.New("uint32 overflows uint16")
-		return
-
-	case muint64:
-		err = errors.New("uint64 overflows uint16")
-		return
-
-	default:
-		// try positive fixnum (first bit is zero)
-		if lead&0x80 == 0 {
-			u = uint16(lead & 0x7f)
-			return
-		}
-		err = fmt.Errorf("unexpected byte %x for Uint", lead)
-		return
-
-	}
+	u = uint16(in)
+	return
 }
 
 func (m *MsgReader) ReadUint8() (u uint8, n int, err error) {
-	var lead byte
-	lead, err = m.r.ReadByte()
-	if err != nil {
-		return
+	var in uint64
+	in, n, err = m.ReadUint64()
+	if in > math.MaxUint8 {
+		err = fmt.Errorf("%d overflows uint8", in)
 	}
-	n += 1
-	switch lead {
-	case mnil:
-		err = ErrNil
-		return
-
-	case muint8:
-		var next byte
-		next, err = m.r.ReadByte()
-		if err != nil {
-			return
-		}
-		n += 1
-		u = uint8(next)
-		return
-
-	case muint16:
-		err = errors.New("uint16 overflows uint8")
-		return
-
-	case muint32:
-		err = errors.New("uint32 overflows uint8")
-		return
-
-	case muint64:
-		err = errors.New("uint64 overflows uint8")
-		return
-
-	default:
-		// try positive fixnum (first bit is zero)
-		if lead&0x80 == 0 {
-			u = uint8(lead & 0x7f)
-			return
-		}
-		err = fmt.Errorf("unexpected byte %x for Uint", lead)
-		return
-
-	}
+	u = uint8(in)
+	return
 }
 
 func (m *MsgReader) ReadUint() (u uint, n int, err error) {
@@ -662,9 +417,8 @@ func (m *MsgReader) ReadUint() (u uint, n int, err error) {
 		l, n, err = m.ReadUint64()
 		u = uint(l)
 		return
-	default:
-		panic("???")
 	}
+	panic("impossible")
 }
 
 func (m *MsgReader) ReadBytes(scratch []byte) (b []byte, n int, err error) {

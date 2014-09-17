@@ -123,8 +123,7 @@ func BenchmarkStdlibJSON(b *testing.B) {
 		},
 	}
 	var js bytes.Buffer
-	enc := json.NewEncoder(&js)
-	err := enc.Encode(&obj)
+	err := json.NewEncoder(&js).Encode(&obj)
 	if err != nil {
 		b.Fatal(err)
 	}

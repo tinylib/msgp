@@ -1,8 +1,26 @@
 package gen
 
 import (
+	//"errors"
+	"fmt"
+	"reflect"
 	"strings"
 )
+
+var (
+	mssType reflect.Type
+	msiType reflect.Type
+	btsType reflect.Type
+)
+
+func init() {
+	var mss map[string]string
+	mssType = reflect.TypeOf(mss)
+	var msi map[string]interface{}
+	msiType = reflect.TypeOf(msi)
+	var bts []byte
+	btsType = reflect.TypeOf(bts)
+}
 
 // This code defines the template
 // syntax tree. If the input were:
@@ -90,6 +108,7 @@ type Elem interface {
 	Struct() *Struct
 	Base() *BaseElem
 	TypeName() string
+	String() string
 }
 
 type Slice struct {
@@ -103,6 +122,9 @@ func (s *Slice) Slice() *Slice    { return s }
 func (s *Slice) Struct() *Struct  { return nil }
 func (s *Slice) Base() *BaseElem  { return nil }
 func (s *Slice) TypeName() string { return s.Els.TypeName() }
+func (s *Slice) String() string {
+	return fmt.Sprintf("SliceOf(%s - %s)", s.Els.String(), s.Varname)
+}
 
 type Ptr struct {
 	Varname string
@@ -115,6 +137,9 @@ func (s *Ptr) Slice() *Slice    { return nil }
 func (s *Ptr) Struct() *Struct  { return nil }
 func (s *Ptr) Base() *BaseElem  { return nil }
 func (s *Ptr) TypeName() string { return s.Value.TypeName() }
+func (s *Ptr) String() string {
+	return fmt.Sprintf("PointerTo(%s - %s)", s.Value.String(), s.Varname)
+}
 
 type Struct struct {
 	Name   string
@@ -127,10 +152,18 @@ func (s *Struct) Slice() *Slice    { return nil }
 func (s *Struct) Struct() *Struct  { return s }
 func (s *Struct) Base() *BaseElem  { return nil }
 func (s *Struct) TypeName() string { return s.Name }
+func (s *Struct) String() string {
+	return fmt.Sprintf("%s{%s}", s.Name, s.Fields)
+}
 
 type StructField struct {
 	FieldTag  string
+	FieldName string
 	FieldElem Elem
+}
+
+func (s StructField) String() string {
+	return fmt.Sprintf("\n\t%s: %s %q, ", s.FieldName, s.FieldElem, s.FieldTag)
 }
 
 type BaseElem struct {
@@ -143,8 +176,9 @@ func (s *BaseElem) Ptr() *Ptr        { return nil }
 func (s *BaseElem) Slice() *Slice    { return nil }
 func (s *BaseElem) Struct() *Struct  { return nil }
 func (s *BaseElem) Base() *BaseElem  { return s }
-func (s *BaseElem) String() string   { return s.Value.String() }
-func (s *BaseElem) TypeName() string { return strings.ToLower(s.String()) }
+func (s *BaseElem) String() string   { return fmt.Sprintf("(%s - %s)", s.BaseName(), s.Varname) }
+func (s *BaseElem) TypeName() string { return strings.ToLower(s.BaseName()) }
+func (s *BaseElem) BaseName() string { return s.Value.String() }
 func (s *BaseElem) IsMap() bool      { return (s.Value == MapStrStr || s.Value == MapStrIntf) }
 
 func (k Base) String() string {
@@ -194,4 +228,154 @@ func (k Base) String() string {
 	default:
 		return "INVALID"
 	}
+}
+
+// construct make the type tree
+// out of a reflect.Type. it doesn't try
+// to insert variable names, in most cases. additionally,
+// some fields may be nil.
+func construct(t reflect.Type) Elem {
+	switch t.Kind() {
+	case reflect.Struct:
+		out := &Struct{
+			Name:   t.Name(),
+			Fields: make([]StructField, t.NumField()),
+		}
+		for i := range out.Fields {
+			field := t.Field(i)
+			tag := field.Tag.Get("msg")
+			if tag == "" {
+				tag = field.Name
+			}
+			out.Fields[i] = StructField{
+				FieldName: field.Name,
+				FieldTag:  tag,
+				FieldElem: construct(field.Type),
+			}
+		}
+		return out
+
+	case reflect.Map:
+		if t.Key().Kind() != reflect.String {
+			return nil
+		}
+		switch t.Elem().Kind() {
+		case reflect.String:
+			return &BaseElem{Value: MapStrStr}
+		case reflect.Interface:
+			return &BaseElem{Value: MapStrIntf}
+		default:
+			return nil
+		}
+
+	case reflect.String:
+		return &BaseElem{Value: String}
+	case reflect.Slice, reflect.Array:
+		if t.AssignableTo(btsType) {
+			return &BaseElem{Value: Bytes}
+		} else {
+			return &Slice{Els: construct(t.Elem())}
+		}
+	case reflect.Float32:
+		return &BaseElem{Value: Float32}
+	case reflect.Float64:
+		return &BaseElem{Value: Float64}
+	case reflect.Int:
+		return &BaseElem{Value: Int}
+	case reflect.Int8:
+		return &BaseElem{Value: Int8}
+	case reflect.Int16:
+		return &BaseElem{Value: Int16}
+	case reflect.Int32:
+		return &BaseElem{Value: Int32}
+	case reflect.Int64:
+		return &BaseElem{Value: Int64}
+	case reflect.Uint:
+		return &BaseElem{Value: Uint}
+	case reflect.Uint8:
+		return &BaseElem{Value: Uint8}
+	case reflect.Uint16:
+		return &BaseElem{Value: Uint16}
+	case reflect.Uint32:
+		return &BaseElem{Value: Uint32}
+	case reflect.Uint64:
+		return &BaseElem{Value: Uint64}
+	case reflect.Complex64:
+		return &BaseElem{Value: Complex64}
+	case reflect.Complex128:
+		return &BaseElem{Value: Complex128}
+	case reflect.Ptr:
+		return &Ptr{Value: construct(t.Elem())}
+	default:
+		return nil
+	}
+}
+
+// propNames propogates names through a *Ptr-to-*Struct
+func propogate(p *Ptr, name string) {
+	if p == nil || p.Value == nil || p.Value.Struct() == nil {
+		panic("propogate called on non-Ptr-to-Struct")
+	}
+	p.Varname = name
+
+	writeStructFields(p.Value.Struct().Fields, name)
+}
+
+func writeStructFields(s []StructField, name string) {
+	prefix := name + "."
+	for i := range s {
+		switch s[i].FieldElem.Type() {
+		case BaseType:
+			s[i].FieldElem.Base().Varname = prefix + s[i].FieldName
+		case StructType:
+			writeStructFields(s[i].FieldElem.Struct().Fields, prefix+s[i].FieldName)
+		case SliceType:
+			s[i].FieldElem.Slice().Varname = prefix + s[i].FieldName
+			writeBase(s[i].FieldElem.Slice().Els, s[i].FieldElem.Slice())
+		case PtrType:
+			s[i].FieldElem.Ptr().Varname = prefix + s[i].FieldName
+			writeBase(s[i].FieldElem.Ptr().Value, s[i].FieldElem.Ptr())
+		}
+	}
+}
+
+// writeBase recursively writes variable names
+// on pointers, slices, and base types.
+func writeBase(b Elem, parent Elem) {
+	switch parent.Type() {
+	case SliceType:
+		switch b.Type() {
+		case BaseType:
+			b.Base().Varname = parent.Slice().Varname + "[i]"
+		case SliceType:
+			b.Slice().Varname = parent.Slice().Varname + "[i]"
+			writeBase(b.Slice().Els, b.Slice())
+		case PtrType:
+			b.Ptr().Varname = parent.Slice().Varname + "[i]"
+			writeBase(b.Ptr().Value, b.Ptr())
+		case StructType:
+			writeStructFields(b.Struct().Fields, parent.Slice().Varname+"[i]")
+		}
+	case PtrType:
+		switch b.Type() {
+		case BaseType:
+			b.Base().Varname = "*" + parent.Ptr().Varname
+		case SliceType:
+			b.Slice().Varname = "*" + parent.Ptr().Varname
+			writeBase(b.Slice().Els, b.Slice())
+		case PtrType:
+			b.Ptr().Varname = "*" + parent.Ptr().Varname
+			writeBase(b.Ptr().Value, b.Ptr())
+		case StructType:
+			// struct fields are dereferenced automatically
+			writeStructFields(b.Struct().Fields, parent.Ptr().Varname)
+		}
+	}
+}
+
+func GenerateTree(v reflect.Type) (Elem, error) {
+	var err error
+	el := construct(v)
+	propogate(el.Ptr(), "z")
+	return el, err
 }

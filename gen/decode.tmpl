@@ -2,6 +2,7 @@ func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeMsg(r io.Reader) (n int, err e
 	var sz uint32
 	var nn int
 	dc := NewDecoder(r)
+	enc.Done(dc)
 	_ = sz
 	_ = nn
 
@@ -9,3 +10,4 @@ func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeMsg(r io.Reader) (n int, err e
 	enc.Done(dc)
 	return
 }
+

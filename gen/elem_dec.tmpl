@@ -59,9 +59,9 @@
 	{{if eq (.Value) 1}}{{/* is []byte */}}
 	{{.Varname}}, nn, err = dc.ReadBytes({{.Varname}})
 	{{else if .IsMap }}{{/* is map[string]string or map[string]interface{} */}}
-	nn, err = dc.Read{{.String}}({{.Varname}})
+	nn, err = dc.Read{{.BaseName}}({{.Varname}})
 	{{else}}
-	{{.Varname}}, nn, err = dc.Read{{.String}}()
+	{{.Varname}}, nn, err = dc.Read{{.BaseName}}()
 	{{end}}
 	n += nn
 	if err != nil {

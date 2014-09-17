@@ -12,7 +12,7 @@
 	}{{end}}
 
 {{define "BaseTempl"}}
-	nn, err = en.Write{{ .String}}({{.Varname}})
+	nn, err = en.Write{{.BaseName}}({{.Varname}})
 	n += nn
 	if err != nil {
 		return
