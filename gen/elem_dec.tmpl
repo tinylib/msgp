@@ -43,7 +43,6 @@
 	if err != nil {
 		return
 	}
-	var field []byte
 	for xplz:=uint32(0); xplz<sz; xplz++ {
 		field, nn, err = dc.ReadStringAsBytes(field)
 		n += nn

@@ -1,9 +1,11 @@
 func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeMsg(r io.Reader) (n int, err error) {
 	var sz uint32
 	var nn int
+	var field []byte
 	dc := enc.NewDecoder(r)
 	_ = sz
 	_ = nn
+	_ = field
 
 	{{template "PtrTempl" .}}
 	enc.Done(dc)

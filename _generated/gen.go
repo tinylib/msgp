@@ -130,9 +130,11 @@ func (z *TestType) EncodeMsg(w io.Writer) (n int, err error) {
 func (z *TestType) DecodeMsg(r io.Reader) (n int, err error) {
 	var sz uint32
 	var nn int
+	var field []byte
 	dc := enc.NewDecoder(r)
 	_ = sz
 	_ = nn
+	_ = field
 
 	if dc.IsNil() {
 		nn, err = dc.ReadNil()
@@ -151,7 +153,6 @@ func (z *TestType) DecodeMsg(r io.Reader) (n int, err error) {
 		if err != nil {
 			return
 		}
-		var field []byte
 		for xplz := uint32(0); xplz < sz; xplz++ {
 			field, nn, err = dc.ReadStringAsBytes(field)
 			n += nn
@@ -200,7 +201,6 @@ func (z *TestType) DecodeMsg(r io.Reader) (n int, err error) {
 				if err != nil {
 					return
 				}
-				var field []byte
 				for xplz := uint32(0); xplz < sz; xplz++ {
 					field, nn, err = dc.ReadStringAsBytes(field)
 					n += nn
