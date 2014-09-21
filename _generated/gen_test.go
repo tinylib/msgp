@@ -3,6 +3,7 @@ package _generated
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/ugorji/go/codec"
 	"reflect"
 	"testing"
 )
@@ -80,6 +81,34 @@ func BenchmarkEncodeDecode(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+func BenchmarkReflectEncodeDecode(b *testing.B) {
+	f := 32.00
+	tt := &TestType{
+		F: &f,
+		Els: map[string]string{
+			"thing_one": "one",
+			"thing_two": "two",
+		},
+		Obj: struct {
+			ValueA string `msg:"value_a"`
+			ValueB []byte `msg:"value_b"`
+		}{
+			ValueA: "here's the first inner value",
+			ValueB: []byte("here's the second inner value"),
+		},
+		Child: nil,
+	}
+	var buf bytes.Buffer
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		codec.NewEncoder(&buf, &codec.MsgpackHandle{}).Encode(tt)
+		codec.NewDecoder(&buf, &codec.MsgpackHandle{}).Decode(tt)
 	}
 }
 
