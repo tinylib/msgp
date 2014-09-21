@@ -245,7 +245,10 @@ func construct(t reflect.Type) Elem {
 			field := t.Field(i)
 			tag := field.Tag.Get("msg")
 			if tag == "" {
-				tag = field.Name
+				tag = field.Tag.Get("json")
+				if tag == "" {
+					tag = field.Name
+				}
 			}
 			out.Fields[i] = StructField{
 				FieldName: field.Name,

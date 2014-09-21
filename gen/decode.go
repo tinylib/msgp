@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"go/format"
 	"io"
+	"os"
 	"text/template"
 )
 
@@ -15,10 +16,13 @@ var (
 )
 
 func init() {
-	decTemplate = template.Must(template.ParseFiles("decode.tmpl", "elem_dec.tmpl"))
-	encTemplate = template.Must(template.ParseFiles("encode.tmpl", "elem_enc.tmpl"))
-	marTemplate = template.Must(template.ParseFiles("marshal.tmpl"))
-	unmTemplate = template.Must(template.ParseFiles("unmarshal.tmpl"))
+	gopath := os.Getenv("GOPATH")
+	prefix := gopath + "/src/github.com/philhofer/msgp/gen/"
+
+	decTemplate = template.Must(template.ParseFiles(prefix+"decode.tmpl", prefix+"elem_dec.tmpl"))
+	encTemplate = template.Must(template.ParseFiles(prefix+"encode.tmpl", prefix+"elem_enc.tmpl"))
+	marTemplate = template.Must(template.ParseFiles(prefix + "marshal.tmpl"))
+	unmTemplate = template.Must(template.ParseFiles(prefix + "unmarshal.tmpl"))
 }
 
 // WriteDecoderMethod writes the DecodeMsg(io.Reader) method.
