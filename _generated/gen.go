@@ -3,8 +3,20 @@ package _generated
 import(
 	"github.com/philhofer/msgp/enc"
 	"io"
+	"bytes"
 
 )
+
+func (z *TestType) Marshal() ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := z.EncodeMsg(&buf)
+	return buf.Bytes(), err
+}
+
+func (z *TestType) Unmarshal(b []byte) error {
+	_, err := z.DecodeMsg(bytes.NewReader(b))
+	return err
+}
 
 func (z *TestType) EncodeMsg(w io.Writer) (n int, err error) {
 	var nn int

@@ -42,11 +42,21 @@ func WriteDecoderMethod(w io.Writer, p *Ptr) error {
 	}
 
 	_, err = w.Write(bts)
-	if err != nil {
-		return err
-	}
+	return err
+}
 
-	return nil
+func WriteUnmarshalMethod(w io.Writer, p *Ptr) error {
+	var buf bytes.Buffer
+	err := unmTemplate.Execute(&buf, p)
+	if err != nil {
+		return fmt.Errorf("template: %s", err)
+	}
+	bts, err := format.Source(buf.Bytes())
+	if err != nil {
+		fmt.Errorf("gofmt: %s", err)
+	}
+	_, err = w.Write(bts)
+	return err
 }
 
 // WriteEncoderMethod writes the EncodeMsg(io.Writer) method.
@@ -69,4 +79,18 @@ func WriteEncoderMethod(w io.Writer, p *Ptr) error {
 		return err
 	}
 	return nil
+}
+
+func WriteMarshalMethod(w io.Writer, p *Ptr) error {
+	var buf bytes.Buffer
+	err := marTemplate.Execute(&buf, p)
+	if err != nil {
+		return fmt.Errorf("template: %s", err)
+	}
+	bts, err := format.Source(buf.Bytes())
+	if err != nil {
+		fmt.Errorf("gofmt: %s", err)
+	}
+	_, err = w.Write(bts)
+	return err
 }

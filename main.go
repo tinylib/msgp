@@ -51,7 +51,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = writeImportHeader(wr, "github.com/philhofer/msgp/enc", "io")
+	err = writeImportHeader(wr, "github.com/philhofer/msgp/enc", "io", "bytes")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -62,6 +62,18 @@ func main() {
 		if !ok {
 			continue
 		}
+		err = gen.WriteMarshalMethod(wr, p)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		err = gen.WriteUnmarshalMethod(wr, p)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
 		err = gen.WriteEncoderMethod(wr, p)
 		if err != nil {
 			fmt.Println(err)

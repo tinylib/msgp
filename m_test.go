@@ -27,7 +27,7 @@ func TestGenerated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = writeImportHeader(wr, "github.com/philhofer/msgp/enc", "io")
+	err = writeImportHeader(wr, "github.com/philhofer/msgp/enc", "io", "bytes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,6 +41,14 @@ func TestGenerated(t *testing.T) {
 
 		gen.Propogate(p, "z")
 
+		err = gen.WriteMarshalMethod(wr, p)
+		if err != nil {
+			t.Error(err)
+		}
+		err = gen.WriteUnmarshalMethod(wr, p)
+		if err != nil {
+			t.Error(err)
+		}
 		err = gen.WriteEncoderMethod(wr, p)
 		if err != nil {
 			t.Error(err)
