@@ -64,7 +64,7 @@ func TestGenerated(t *testing.T) {
 		t.Error(err)
 	}
 
-	cmd := exec.Command("go", "test", "-v", "-bench=.", "github.com/philhofer/msgp/_generated")
+	cmd := exec.Command("go", "test", "-v", "github.com/philhofer/msgp/_generated")
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
