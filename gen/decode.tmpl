@@ -1,8 +1,7 @@
 func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeMsg(r io.Reader) (n int, err error) {
 	var sz uint32
 	var nn int
-	dc := NewDecoder(r)
-	enc.Done(dc)
+	dc := enc.NewDecoder(r)
 	_ = sz
 	_ = nn
 

@@ -248,13 +248,10 @@ func parseExpr(e ast.Expr) gen.Elem {
 			}
 
 		default:
-			// by default, we write
-			// unrecognized identities
-			// as interface{} and determine
-			// if they satisfy the right
-			// intefaces at runtime.
+			// this is an IDENT
 			return &gen.BaseElem{
-				Value: gen.Intf,
+				Value: gen.IDENT,
+				Ident: e.(*ast.Ident).Name,
 			}
 		}
 

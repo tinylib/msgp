@@ -2,6 +2,7 @@ package gen
 
 import (
 	"bytes"
+	"fmt"
 	"go/format"
 	"io"
 	"os"
@@ -32,12 +33,12 @@ func WriteDecoderMethod(w io.Writer, p *Ptr) error {
 	var buf bytes.Buffer
 	err := decTemplate.Execute(&buf, p)
 	if err != nil {
-		return err
+		return fmt.Errorf("template: %s", err)
 	}
 
 	bts, err := format.Source(buf.Bytes())
 	if err != nil {
-		return err
+		return fmt.Errorf("gofmt: %s", err)
 	}
 
 	_, err = w.Write(bts)

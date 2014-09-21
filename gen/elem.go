@@ -87,7 +87,9 @@ const (
 	Bool
 	MapStrStr  // map[string]string
 	MapStrIntf // map[string]interface{}
-	Intf       // interface{} - must be one of the base types, or a struct
+	Intf       // interface{}
+
+	IDENT
 )
 
 type ElemType int
@@ -169,17 +171,43 @@ func (s StructField) String() string {
 type BaseElem struct {
 	Varname string
 	Value   Base
+	Ident   string
 }
 
-func (s *BaseElem) Type() ElemType   { return BaseType }
-func (s *BaseElem) Ptr() *Ptr        { return nil }
-func (s *BaseElem) Slice() *Slice    { return nil }
-func (s *BaseElem) Struct() *Struct  { return nil }
-func (s *BaseElem) Base() *BaseElem  { return s }
-func (s *BaseElem) String() string   { return fmt.Sprintf("(%s - %s)", s.BaseName(), s.Varname) }
-func (s *BaseElem) TypeName() string { return strings.ToLower(s.BaseName()) }
+func (s *BaseElem) Type() ElemType  { return BaseType }
+func (s *BaseElem) Ptr() *Ptr       { return nil }
+func (s *BaseElem) Slice() *Slice   { return nil }
+func (s *BaseElem) Struct() *Struct { return nil }
+func (s *BaseElem) Base() *BaseElem { return s }
+func (s *BaseElem) String() string  { return fmt.Sprintf("(%s - %s)", s.BaseName(), s.Varname) }
+
+// TypeName returns the syntactically correct Go
+// type name for the base element.
+func (s *BaseElem) TypeName() string {
+	switch s.Value {
+	case IDENT:
+		return s.Ident
+	case MapStrIntf:
+		return "map[string]interface{}"
+	case MapStrStr:
+		return "map[string]string"
+	default:
+		return strings.ToLower(s.BaseName())
+	}
+}
+
+// BaseName returns the string form of the
+// base type (e.g. Float64, Ident, MapStrStr, etc)
 func (s *BaseElem) BaseName() string { return s.Value.String() }
-func (s *BaseElem) IsMap() bool      { return (s.Value == MapStrStr || s.Value == MapStrIntf) }
+
+// is this a map?
+func (s *BaseElem) IsMap() bool { return (s.Value == MapStrStr || s.Value == MapStrIntf) }
+
+// is this an interface{}
+func (s *BaseElem) IsIntf() bool { return s.Value == Intf }
+
+// is this an external identity?
+func (s *BaseElem) IsIdent() bool { return s.Value == IDENT }
 
 func (k Base) String() string {
 	switch k {
@@ -225,6 +253,8 @@ func (k Base) String() string {
 		return "MapStrIntf"
 	case Intf:
 		return "Intf"
+	case IDENT:
+		return "Ident"
 	default:
 		return "INVALID"
 	}
@@ -315,7 +345,7 @@ func construct(t reflect.Type) Elem {
 }
 
 // propNames propogates names through a *Ptr-to-*Struct
-func propogate(p *Ptr, name string) {
+func Propogate(p *Ptr, name string) {
 	if p == nil || p.Value == nil || p.Value.Struct() == nil {
 		panic("propogate called on non-Ptr-to-Struct")
 	}
@@ -362,7 +392,14 @@ func writeBase(b Elem, parent Elem) {
 	case PtrType:
 		switch b.Type() {
 		case BaseType:
-			b.Base().Varname = "*" + parent.Ptr().Varname
+			if b.Base().IsIdent() {
+				// SPECIAL CASE
+				// WE ASSUME POINTER IDENTS
+				// IMPLEMENT THE DECODER/ENCODER INTERFACES.
+				b.Base().Varname = parent.Ptr().Varname
+			} else {
+				b.Base().Varname = "*" + parent.Ptr().Varname
+			}
 		case SliceType:
 			b.Slice().Varname = "*" + parent.Ptr().Varname
 			writeBase(b.Slice().Els, b.Slice())
@@ -379,6 +416,6 @@ func writeBase(b Elem, parent Elem) {
 func GenerateTree(v reflect.Type) (Elem, error) {
 	var err error
 	el := construct(v)
-	propogate(el.Ptr(), "z")
+	Propogate(el.Ptr(), "z")
 	return el, err
 }

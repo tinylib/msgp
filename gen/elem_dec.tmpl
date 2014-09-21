@@ -9,6 +9,9 @@
 		}
 		{{.Varname}} = nil
 	} else {
+		if {{.Varname}} == nil {
+			{{.Varname}} = new({{.TypeName}})
+		}
 		{{template "ElemTempl" .Value}}	
 	}
 {{end}}
@@ -59,7 +62,14 @@
 	{{if eq (.Value) 1}}{{/* is []byte */}}
 	{{.Varname}}, nn, err = dc.ReadBytes({{.Varname}})
 	{{else if .IsMap }}{{/* is map[string]string or map[string]interface{} */}}
+	if {{.Varname}} == nil {
+		{{.Varname}} = make({{.TypeName}})
+	}
 	nn, err = dc.Read{{.BaseName}}({{.Varname}})
+	{{else if .IsIntf }}
+	nn, err = dc.ReadIntf({{.Varname}})
+	{{else if .IsIdent}}
+	nn, err = dc.ReadIdent({{.Varname}})
 	{{else}}
 	{{.Varname}}, nn, err = dc.Read{{.BaseName}}()
 	{{end}}

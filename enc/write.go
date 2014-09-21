@@ -332,6 +332,10 @@ func (mw *MsgWriter) WriteMapStrIntf(mp map[string]interface{}) (n int, err erro
 	return
 }
 
+func (mw *MsgWriter) WriteIdent(e MsgEncoder) (n int, err error) {
+	return e.EncodeMsg(mw.w)
+}
+
 func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
 	if enc, ok := v.(MsgEncoder); ok {
 		return enc.EncodeMsg(mw.w)

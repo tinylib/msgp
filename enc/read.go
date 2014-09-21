@@ -578,6 +578,7 @@ func (m *MsgReader) ReadComplex128() (f complex128, n int, err error) {
 	return
 }
 
+// ReadMapStrStr CANNOT be passed a nil map
 func (m *MsgReader) ReadMapStrStr(mp map[string]string) (n int, err error) {
 	var nn int
 	var sz uint32
@@ -591,12 +592,8 @@ func (m *MsgReader) ReadMapStrStr(mp map[string]string) (n int, err error) {
 	if err != nil {
 		return
 	}
-	if mp != nil {
-		for key, _ := range mp {
-			delete(mp, key)
-		}
-	} else {
-		mp = make(map[string]string)
+	for key, _ := range mp {
+		delete(mp, key)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var key string
@@ -748,6 +745,18 @@ func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error)
 		mp[key] = val
 	}
 	return
+}
+
+func (m *MsgReader) ReadIdent(d MsgDecoder) (n int, err error) {
+	return d.DecodeMsg(m.r)
+}
+
+func (m *MsgReader) ReadIntf(i interface{}) (n int, err error) {
+	d, ok := i.(MsgDecoder)
+	if ok {
+		return d.DecodeMsg(m.r)
+	}
+	return m.readInterface(i)
 }
 
 func (m *MsgReader) readInterface(i interface{}) (n int, err error) {
