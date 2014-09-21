@@ -4,6 +4,18 @@ msgp
 This is a tool for serializing Go `struct`s using the [MesssagePack](http://msgpack.org) standard. It is targeted 
 at the `go generate` tool.
 
+### Use
+
+In a source file, include the following directive:
+
+```go
+//go:generate msgp
+```
+
+The `msgp` command will generate `Unmarshal`, `Marshal`, `EncodeMsg`, and `DecodeMsg` methods for all struct
+definitions in the file. You will need to include that directive in every file that contains structs that 
+need code generation.
+
 ### Status
 
 Very alpha.
