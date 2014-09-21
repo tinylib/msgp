@@ -15,11 +15,18 @@ var (
 	GOFILE string
 	GOPKG  string
 	GOPATH string
+
+	// these are the required imports
+	injectImports []string = []string{
+		"github.com/philhofer/msgp/enc",
+		"io",
+		"bytes",
+	}
 )
 
 func init() {
 	GOFILE = os.Getenv("GOFILE")
-	GOPKG = os.Getenv("GOPKG")
+	GOPKG = os.Getenv("GOPACKAGE")
 	GOPATH = os.Getenv("GOPATH")
 }
 
@@ -51,7 +58,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = writeImportHeader(wr, "github.com/philhofer/msgp/enc", "io", "bytes")
+	err = writeImports(wr)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -62,26 +69,34 @@ func main() {
 		if !ok {
 			continue
 		}
+		// propogate names to
+		// child elements of struct
+		gen.Propogate(p, "z")
+
 		err = gen.WriteMarshalMethod(wr, p)
 		if err != nil {
+			wr.Flush()
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
 		err = gen.WriteUnmarshalMethod(wr, p)
 		if err != nil {
+			wr.Flush()
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
 		err = gen.WriteEncoderMethod(wr, p)
 		if err != nil {
+			wr.Flush()
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
 		err = gen.WriteDecoderMethod(wr, p)
 		if err != nil {
+			wr.Flush()
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -95,7 +110,10 @@ func main() {
 }
 
 func writePkgHeader(w io.Writer, name string) error {
-	_, err := io.WriteString(w, fmt.Sprintf("package %s\n\n", name))
+	// get the last string after the last "/"
+	sls := strings.Split(name, "/")
+
+	_, err := io.WriteString(w, fmt.Sprintf("package %s\n\n", sls[len(sls)-1]))
 	return err
 }
 
@@ -107,4 +125,8 @@ func writeImportHeader(w io.Writer, imports ...string) error {
 	start += "\n)\n\n"
 	_, err := io.WriteString(w, start)
 	return err
+}
+
+func writeImports(w io.Writer) error {
+	return writeImportHeader(w, injectImports...)
 }
