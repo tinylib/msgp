@@ -12,13 +12,29 @@ In a source file, include the following directive:
 //go:generate msgp
 ```
 
-The `msgp` command will generate `Unmarshal`, `Marshal`, `EncodeMsg`, and `DecodeMsg` methods for all struct
+The `msgp` command will generate `Unmarshal`, `Marshal`, `EncodeMsg`, and `DecodeMsg` methods for all exported struct
 definitions in the file. You will need to include that directive in every file that contains structs that 
-need code generation.
+need code generation. The generated files will be named {filename}_gen.go.
+
+Field names can be overridden in much the same way as the `encoding/json` package. For example:
+
+```go
+type Person struct {
+	Name       string `msg:"name"`
+	Address    string `msg:"address"`
+	Age        int    `msg:"age"`
+	Hidden     string `msg:"-"` // this field is ignored
+	unexported bool             // this field is also ignored
+}
+```
+
+The `msgp/enc` package has a function called `CopyToJSON` which can take MessagePack-encoded binary
+and translate it directly into JSON. It has reasonably high performance, and works much the same way that `io.Copy` does.
 
 ### Status
 
-Very alpha.
+Very alpha. The code generation can be flaky for complicated structs. However, if the generated code compiles, you 
+can be reasonably certain that it will work.
 
 ### Performance
 
