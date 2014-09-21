@@ -261,3 +261,161 @@ func (z *TestType) DecodeMsg(r io.Reader) (n int, err error) {
 	return
 }
 
+func (z *TestFast) Marshal() ([]byte, error) {
+	var buf bytes.Buffer
+	_, err := z.EncodeMsg(&buf)
+	return buf.Bytes(), err
+}
+
+func (z *TestFast) Unmarshal(b []byte) error {
+	_, err := z.DecodeMsg(bytes.NewReader(b))
+	return err
+}
+
+func (z *TestFast) EncodeMsg(w io.Writer) (n int, err error) {
+	var nn int
+	en := enc.NewEncoder(w)
+	_ = nn
+	_ = en
+
+	if z == nil {
+		nn, err = en.WriteNil()
+		n += nn
+		if err != nil {
+			return
+		}
+	} else {
+
+		nn, err = en.WriteMapHeader(uint32(4))
+		n += nn
+		if err != nil {
+			return
+		}
+
+		nn, err = en.WriteString("Lat")
+		n += nn
+		if err != nil {
+			return
+		}
+
+		nn, err = en.WriteFloat64(z.Lat)
+		n += nn
+		if err != nil {
+			return
+		}
+		nn, err = en.WriteString("Long")
+		n += nn
+		if err != nil {
+			return
+		}
+
+		nn, err = en.WriteFloat64(z.Long)
+		n += nn
+		if err != nil {
+			return
+		}
+		nn, err = en.WriteString("Alt")
+		n += nn
+		if err != nil {
+			return
+		}
+
+		nn, err = en.WriteFloat64(z.Alt)
+		n += nn
+		if err != nil {
+			return
+		}
+		nn, err = en.WriteString("Data")
+		n += nn
+		if err != nil {
+			return
+		}
+
+		nn, err = en.WriteBytes(z.Data)
+		n += nn
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (z *TestFast) DecodeMsg(r io.Reader) (n int, err error) {
+	var sz uint32
+	var nn int
+	var field []byte
+	dc := enc.NewDecoder(r)
+	_ = sz
+	_ = nn
+	_ = field
+
+	if dc.IsNil() {
+		nn, err = dc.ReadNil()
+		n += nn
+		if err != nil {
+			return
+		}
+		z = nil
+	} else {
+		if z == nil {
+			z = new(TestFast)
+		}
+
+		sz, nn, err = dc.ReadMapHeader()
+		n += nn
+		if err != nil {
+			return
+		}
+		for xplz := uint32(0); xplz < sz; xplz++ {
+			field, nn, err = dc.ReadStringAsBytes(field)
+			n += nn
+			if err != nil {
+				return
+			}
+			switch enc.UnsafeString(field) {
+
+			case "Lat":
+
+				z.Lat, nn, err = dc.ReadFloat64()
+
+				n += nn
+				if err != nil {
+					return
+				}
+
+			case "Long":
+
+				z.Long, nn, err = dc.ReadFloat64()
+
+				n += nn
+				if err != nil {
+					return
+				}
+
+			case "Alt":
+
+				z.Alt, nn, err = dc.ReadFloat64()
+
+				n += nn
+				if err != nil {
+					return
+				}
+
+			case "Data":
+
+				z.Data, nn, err = dc.ReadBytes(z.Data)
+
+				n += nn
+				if err != nil {
+					return
+				}
+
+			}
+		}
+
+	}
+
+	enc.Done(dc)
+	return
+}
+

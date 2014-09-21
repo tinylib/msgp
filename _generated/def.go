@@ -9,3 +9,10 @@ type TestType struct {
 	} `msg:"object"`
 	Child *TestType `msg:"child"`
 }
+
+type TestFast struct {
+	Lat  float64
+	Long float64
+	Alt  float64
+	Data []byte
+}
