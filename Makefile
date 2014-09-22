@@ -1,6 +1,6 @@
 
 install:
-	@go install
+	@go install ./...
 
 test: install
 	@go test -v

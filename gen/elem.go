@@ -350,7 +350,6 @@ func Propogate(p *Ptr, name string) {
 		panic("propogate called on non-Ptr-to-Struct")
 	}
 	p.Varname = name
-
 	writeStructFields(p.Value.Struct().Fields, name)
 }
 
@@ -358,16 +357,23 @@ func writeStructFields(s []StructField, name string) {
 	prefix := name + "."
 	for i := range s {
 		switch s[i].FieldElem.Type() {
+
 		case BaseType:
 			s[i].FieldElem.Base().Varname = prefix + s[i].FieldName
+
 		case StructType:
 			writeStructFields(s[i].FieldElem.Struct().Fields, prefix+s[i].FieldName)
+
 		case SliceType:
 			s[i].FieldElem.Slice().Varname = prefix + s[i].FieldName
 			writeBase(s[i].FieldElem.Slice().Els, s[i].FieldElem.Slice())
+
 		case PtrType:
 			s[i].FieldElem.Ptr().Varname = prefix + s[i].FieldName
 			writeBase(s[i].FieldElem.Ptr().Value, s[i].FieldElem.Ptr())
+
+		default:
+			panic("unrecognized type!")
 		}
 	}
 }

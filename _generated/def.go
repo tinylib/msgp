@@ -11,8 +11,6 @@ type TestType struct {
 }
 
 type TestFast struct {
-	Lat  float64
-	Long float64
-	Alt  float64
-	Data []byte
+	Lat, Long, Alt float64
+	Data           []byte
 }
