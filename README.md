@@ -6,6 +6,8 @@ at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_
 
 ### Use
 
+*** Note: `go generate` is a go 1.4+ feature. ***
+
 In a source file, include the following directive:
 
 ```go

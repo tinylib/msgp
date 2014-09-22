@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/philhofer/msgp/gen"
 	"github.com/philhofer/msgp/parse"
+	"github.com/ttacon/chalk"
 	"io"
 	"os"
 	"strings"
@@ -32,9 +33,10 @@ func init() {
 func main() {
 	err := DoAll(GOPKG, GOFILE)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(chalk.Red.Color(err.Error()))
 		os.Exit(1)
 	}
+	fmt.Println(chalk.Magenta.Color("MSGP: Done."))
 }
 
 // DoAll writes all methods using the associated GOPATH, GOPACKAGE,
@@ -42,6 +44,7 @@ func main() {
 func DoAll(gopkg string, gofile string) error {
 	// location of the file to pase
 
+	fmt.Printf(chalk.Magenta.Color("MSGP: using %s/%s\n"), gopkg, gofile)
 	elems, err := parse.GetElems(gofile)
 	if err != nil {
 		return err
@@ -50,6 +53,7 @@ func DoAll(gopkg string, gofile string) error {
 	// new file name is old file name + _gen.go
 	newfile := strings.TrimSuffix(gofile, ".go") + "_gen.go"
 
+	fmt.Printf(chalk.Magenta.Color("MSGP: Writing file %s/%s\n"), gopkg, newfile)
 	file, err := os.Create(newfile)
 	if err != nil {
 		return err

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/philhofer/msgp/gen"
+	"github.com/ttacon/chalk"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -78,12 +79,19 @@ func GenElem(in *ast.TypeSpec) gen.Elem {
 
 	case *ast.StructType:
 		v := in.Type.(*ast.StructType)
-		return &gen.Ptr{
+		fmt.Printf(chalk.Green.Color("MSGP: parsing %s\n"), in.Name.Name)
+		p := &gen.Ptr{
 			Value: &gen.Struct{
 				Name:   in.Name.Name, // ast.Ident
 				Fields: parseFieldList(v.Fields),
 			},
 		}
+		if len(p.Value.(*gen.Struct).Fields) == 0 {
+			fmt.Printf(chalk.Yellow.Color("MSGP: %s has no exported fields\n"), in.Name.Name)
+			return nil
+		}
+		return p
+
 	default:
 		return nil
 
@@ -92,7 +100,6 @@ func GenElem(in *ast.TypeSpec) gen.Elem {
 
 func parseFieldList(fl *ast.FieldList) []gen.StructField {
 	if fl == nil || fl.NumFields() == 0 {
-		fmt.Println("encountered struct with no fields...")
 		return nil
 	}
 	out := make([]gen.StructField, 0, fl.NumFields())
@@ -138,6 +145,7 @@ for_fields:
 		e := parseExpr(field.Type)
 		if e == nil {
 			// unsupported type
+			fmt.Printf(chalk.Yellow.Color("\t -> field %q ignored; type not supported\n"), sf.FieldName)
 			continue
 		}
 		sf.FieldElem = e
@@ -162,7 +170,7 @@ func embedded(f ast.Expr) string {
 	}
 }
 
-// go from ast.Expr to gen.Elem
+// go from ast.Expr to gen.Elem; nil means type not supported
 func parseExpr(e ast.Expr) gen.Elem {
 	switch e.(type) {
 
@@ -183,15 +191,12 @@ func parseExpr(e ast.Expr) gen.Elem {
 						Value: gen.MapStrIntf,
 					}
 				default:
-					fmt.Println("Maps must have string or interface{} values.")
 					return nil
 				}
 			default:
-				fmt.Println("Map keys must be strings.")
 				return nil
 			}
 		default:
-			fmt.Println("Map keys must be strings.")
 			// we don't support non-string map keys
 			return nil
 		}
@@ -303,7 +308,6 @@ func parseExpr(e ast.Expr) gen.Elem {
 		}
 
 	default: // other types not supported
-		fmt.Println("type not supported:", e)
 		return nil
 	}
 }

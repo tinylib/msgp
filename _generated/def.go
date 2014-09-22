@@ -16,3 +16,9 @@ type TestFast struct {
 	Lat, Long, Alt float64
 	Data           []byte
 }
+
+type TestHidden struct {
+	A   string
+	B   []float64
+	Bad func(string) bool
+}
