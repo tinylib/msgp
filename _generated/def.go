@@ -22,3 +22,13 @@ type TestHidden struct {
 	B   []float64
 	Bad func(string) bool
 }
+
+type Embedded struct {
+	*Embedded
+	Other string
+}
+
+type Things struct {
+	Cmplx []complex64 `msg:"complexes"`
+	Vals  []int32     `msg:"values"`
+}

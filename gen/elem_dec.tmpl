@@ -22,13 +22,8 @@
 	if err != nil {
 		return
 	}
-	if cap({{.Varname}}) > 0 {
-		if cap({{.Varname}})>= int(sz) {
-			{{.Varname}} = {{.Varname}}[0:int(sz)]
-		} else {
-			extra := make([]{{.TypeName}}, int(sz))
-			{{.Varname}} = append({{.Varname}}[0:cap({{.Varname}})], extra...)
-		}
+	if cap({{.Varname}}) > 0 && cap({{.Varname}}) >= int(sz){
+		{{.Varname}} = {{.Varname}}[0:int(sz)]
 	} else {
 		{{.Varname}} = make([]{{.TypeName}}, sz)
 	}
