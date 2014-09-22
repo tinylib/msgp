@@ -31,13 +31,22 @@ func init() {
 }
 
 func main() {
-	// location of the file to pase
-	loc := GOPATH + "/src/" + GOPKG + "/" + GOFILE
-
-	elems, err := parse.GetElems(loc)
+	err := DoAll(GOPATH, GOPKG, GOFILE)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+}
+
+// DoAll writes all methods using the associated GOPATH, GOPACKAGE,
+// and GOFILE variables.
+func DoAll(gpth string, gopkg string, gofile string) error {
+	// location of the file to pase
+	loc := gpth + "/src/" + gopkg + "/" + gofile
+
+	elems, err := parse.GetElems(loc)
+	if err != nil {
+		return err
 	}
 
 	// new file name is old file name + _gen.go
@@ -45,23 +54,20 @@ func main() {
 
 	file, err := os.Create(newfile)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return err
 	}
 	defer file.Close()
 
 	wr := bufio.NewWriter(file)
 
-	err = writePkgHeader(wr, GOPKG)
+	err = writePkgHeader(wr, gopkg)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return err
 	}
 
 	err = writeImports(wr)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return err
 	}
 
 	for _, el := range elems {
@@ -76,37 +82,29 @@ func main() {
 		err = gen.WriteMarshalMethod(wr, p)
 		if err != nil {
 			wr.Flush()
-			fmt.Println(err)
-			os.Exit(1)
+			return err
 		}
 
 		err = gen.WriteUnmarshalMethod(wr, p)
 		if err != nil {
 			wr.Flush()
-			fmt.Println(err)
-			os.Exit(1)
+			return err
 		}
 
 		err = gen.WriteEncoderMethod(wr, p)
 		if err != nil {
 			wr.Flush()
-			fmt.Println(err)
-			os.Exit(1)
+			return err
 		}
 
 		err = gen.WriteDecoderMethod(wr, p)
 		if err != nil {
 			wr.Flush()
-			fmt.Println(err)
-			os.Exit(1)
+			return err
 		}
 	}
 	err = wr.Flush()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	return
+	return err
 }
 
 func writePkgHeader(w io.Writer, name string) error {
@@ -118,12 +116,17 @@ func writePkgHeader(w io.Writer, name string) error {
 }
 
 func writeImportHeader(w io.Writer, imports ...string) error {
-	start := "import(\n"
-	for _, im := range imports {
-		start += fmt.Sprintf("\t%q\n", im)
+	_, err := io.WriteString(w, "import (\n")
+	if err != nil {
+		return err
 	}
-	start += "\n)\n\n"
-	_, err := io.WriteString(w, start)
+	for _, im := range imports {
+		_, err = io.WriteString(w, fmt.Sprintf("\t%q\n", im))
+		if err != nil {
+			return err
+		}
+	}
+	_, err = io.WriteString(w, "\n)\n\n")
 	return err
 }
 

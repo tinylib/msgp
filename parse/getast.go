@@ -97,13 +97,29 @@ func parseFieldList(fl *ast.FieldList) []gen.StructField {
 	}
 	out := make([]gen.StructField, 0, fl.NumFields())
 
+for_fields:
 	for _, field := range fl.List {
 		var sf gen.StructField
 		// field name
-		if len(field.Names) > 0 {
+
+		switch len(field.Names) {
+		case 1:
 			sf.FieldName = field.Names[0].Name
-		} else {
+		case 0:
 			sf.FieldName = embedded(field.Type)
+		default:
+			// inline multiple field declaration
+			for _, nm := range field.Names {
+				out = append(out, gen.StructField{
+					FieldTag:  nm.Name,
+					FieldName: nm.Name,
+					// we have to duplicate the field
+					// type here, or otherwise the FieldElems
+					// will be the same pointer
+					FieldElem: parseExpr(field.Type),
+				})
+			}
+			continue for_fields
 		}
 
 		// field tag
@@ -116,7 +132,7 @@ func parseFieldList(fl *ast.FieldList) []gen.StructField {
 			sf.FieldTag = sf.FieldName
 		} else if sf.FieldTag == "-" {
 			// deliberately ignore field
-			continue
+			continue for_fields
 		}
 
 		e := parseExpr(field.Type)
