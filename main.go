@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"github.com/philhofer/msgp/gen"
 	"github.com/philhofer/msgp/parse"
@@ -12,10 +13,10 @@ import (
 )
 
 var (
-	// exports from go:generate
-	GOFILE string
-	GOPKG  string
-	GOPATH string
+	// command line flags
+	out  string
+	file string
+	pkg  string
 
 	// these are the required imports
 	injectImports []string = []string{
@@ -26,34 +27,57 @@ var (
 )
 
 func init() {
-	GOFILE = os.Getenv("GOFILE")
-	GOPKG = os.Getenv("GOPACKAGE")
+	flag.StringVar(&out, "o", "", "output file")
+	flag.StringVar(&file, "file", "", "input file")
+	flag.StringVar(&pkg, "pkg", "", "output package")
 }
 
 func main() {
-	err := DoAll(GOPKG, GOFILE)
+	flag.Parse()
+
+	if file == "" {
+		file = os.Getenv("GOFILE")
+	}
+	if pkg == "" {
+		pkg = os.Getenv("GOPACKAGE")
+	}
+
+	if file == "" {
+		fmt.Println(chalk.Red.Color("No file to parse."))
+		os.Exit(1)
+	}
+	if pkg == "" {
+		fmt.Println(chalk.Red.Color("No package specified."))
+		os.Exit(1)
+	}
+
+	err := DoAll(pkg, file)
 	if err != nil {
 		fmt.Println(chalk.Red.Color(err.Error()))
 		os.Exit(1)
 	}
-	fmt.Println(chalk.Magenta.Color("MSGP: Done."))
 }
 
-// DoAll writes all methods using the associated GOPATH, GOPACKAGE,
-// and GOFILE variables.
+// DoAll writes all methods using the associated file and package.
+// (The package is only relevant for writing the new file's package declaration.)
 func DoAll(gopkg string, gofile string) error {
 	// location of the file to pase
 
-	fmt.Printf(chalk.Magenta.Color("MSGP: using %s/%s\n"), gopkg, gofile)
+	fmt.Printf(chalk.Magenta.Color("=========%12s      =========\n"), gofile)
 	elems, err := parse.GetElems(gofile)
 	if err != nil {
 		return err
 	}
 
 	// new file name is old file name + _gen.go
-	newfile := strings.TrimSuffix(gofile, ".go") + "_gen.go"
+	var newfile string
+	if out != "" {
+		newfile = out
+	} else {
+		newfile = strings.TrimSuffix(gofile, ".go") + "_gen.go"
+	}
 
-	fmt.Printf(chalk.Magenta.Color("MSGP: Writing file %s/%s\n"), gopkg, newfile)
+	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s/%s"), gopkg, newfile)
 	file, err := os.Create(newfile)
 	if err != nil {
 		return err
@@ -106,7 +130,11 @@ func DoAll(gopkg string, gofile string) error {
 		}
 	}
 	err = wr.Flush()
-	return err
+	if err != nil {
+		return err
+	}
+	fmt.Print(chalk.Green.Color(" \u2713\n"))
+	return nil
 }
 
 func writePkgHeader(w io.Writer, name string) error {

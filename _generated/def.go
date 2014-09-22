@@ -42,3 +42,5 @@ type Things struct {
 	Cmplx []complex64 `msg:"complexes"` // test slices
 	Vals  []int32     `msg:"values"`
 }
+
+type Empty struct{}

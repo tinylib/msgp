@@ -79,7 +79,7 @@ func GenElem(in *ast.TypeSpec) gen.Elem {
 
 	case *ast.StructType:
 		v := in.Type.(*ast.StructType)
-		fmt.Printf(chalk.Green.Color("MSGP: parsing %s\n"), in.Name.Name)
+		fmt.Printf(chalk.Green.Color("parsing %s..."), in.Name.Name)
 		p := &gen.Ptr{
 			Value: &gen.Struct{
 				Name:   in.Name.Name, // ast.Ident
@@ -87,9 +87,10 @@ func GenElem(in *ast.TypeSpec) gen.Elem {
 			},
 		}
 		if len(p.Value.(*gen.Struct).Fields) == 0 {
-			fmt.Printf(chalk.Yellow.Color("MSGP: %s has no exported fields\n"), in.Name.Name)
+			fmt.Printf(chalk.Red.Color(" has no exported fields \u2717\n"))
 			return nil
 		}
+		fmt.Print(chalk.Green.Color("  \u2713\n"))
 		return p
 
 	default:
@@ -145,7 +146,7 @@ for_fields:
 		e := parseExpr(field.Type)
 		if e == nil {
 			// unsupported type
-			fmt.Printf(chalk.Yellow.Color("\t -> field %q ignored; type not supported\n"), sf.FieldName)
+			fmt.Printf(chalk.Yellow.Color(" (\u26a0 field %q unsupported)"), sf.FieldName)
 			continue
 		}
 		sf.FieldElem = e
