@@ -2,8 +2,11 @@
 install:
 	@go install ./...
 
-test: install
-	@go test -v
+generate:
+	@go generate ./_generated
+
+test: install generate
+	@go test -v ./_generated
 
 bench: test
-	@go test -bench . ./_generated
+	@go test -v -bench . ./_generated

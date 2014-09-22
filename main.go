@@ -27,11 +27,10 @@ var (
 func init() {
 	GOFILE = os.Getenv("GOFILE")
 	GOPKG = os.Getenv("GOPACKAGE")
-	GOPATH = os.Getenv("GOPATH")
 }
 
 func main() {
-	err := DoAll(GOPATH, GOPKG, GOFILE)
+	err := DoAll(GOPKG, GOFILE)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -40,17 +39,16 @@ func main() {
 
 // DoAll writes all methods using the associated GOPATH, GOPACKAGE,
 // and GOFILE variables.
-func DoAll(gpth string, gopkg string, gofile string) error {
+func DoAll(gopkg string, gofile string) error {
 	// location of the file to pase
-	loc := gpth + "/src/" + gopkg + "/" + gofile
 
-	elems, err := parse.GetElems(loc)
+	elems, err := parse.GetElems(gofile)
 	if err != nil {
 		return err
 	}
 
 	// new file name is old file name + _gen.go
-	newfile := strings.TrimSuffix(loc, ".go") + "_gen.go"
+	newfile := strings.TrimSuffix(gofile, ".go") + "_gen.go"
 
 	file, err := os.Create(newfile)
 	if err != nil {
@@ -108,10 +106,7 @@ func DoAll(gpth string, gopkg string, gofile string) error {
 }
 
 func writePkgHeader(w io.Writer, name string) error {
-	// get the last string after the last "/"
-	sls := strings.Split(name, "/")
-
-	_, err := io.WriteString(w, fmt.Sprintf("package %s\n\n", sls[len(sls)-1]))
+	_, err := io.WriteString(w, fmt.Sprintf("package %s\n\n", name))
 	if err != nil {
 		return err
 	}
