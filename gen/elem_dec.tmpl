@@ -48,6 +48,12 @@
 		{{range .Fields}}
 		case "{{ .FieldTag}}":{{template "ElemTempl" .FieldElem}}
 		{{end}}
+		default:
+			nn, err = dc.Skip()
+			n += nn
+			if err != nil {
+				return
+			}
 		}
 	}	
 {{end}}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"reflect"
 	"sync"
@@ -63,6 +64,247 @@ type MsgReader struct {
 func (m *MsgReader) IsNil() bool {
 	k, _ := m.nextKind()
 	return byte(k) == mnil
+}
+
+// Skip skips over the next object
+func (m *MsgReader) Skip() (n int, err error) {
+	var k kind
+	var nn int
+	var sz uint32
+	k, err = m.nextKind()
+	if err != nil {
+		return
+	}
+	switch k {
+	case kmap:
+		sz, nn, err = m.ReadMapHeader()
+		n += nn
+		if err != nil {
+			return
+		}
+		// maps have 2n fields
+		sz *= 2
+		for i := uint32(0); i < sz; i++ {
+			nn, err = m.Skip()
+			n += nn
+			if err != nil {
+				return
+			}
+		}
+		return
+
+	case karray:
+		_, nn, err = m.ReadArrayHeader()
+		n += nn
+		if err != nil {
+			return
+		}
+		for i := uint32(0); i < sz; i++ {
+			nn, err = m.Skip()
+			n += nn
+			if err != nil {
+				return
+			}
+		}
+		return
+
+	case kint:
+		_, n, err = m.ReadInt64()
+		return
+
+	case kuint:
+		_, n, err = m.ReadUint64()
+		return
+
+	case kfloat32:
+		_, n, err = m.ReadFloat32()
+		return
+
+	case kfloat64:
+		_, n, err = m.ReadFloat64()
+		return
+
+	case kextension:
+		return m.skipExtension()
+
+	case kbytes:
+		return m.skipBytes()
+
+	case kstring:
+		return m.skipString()
+
+	case knull:
+		return m.ReadNil()
+
+	default:
+		err = fmt.Errorf("unknown leading byte: 0x%x", byte(k))
+		return
+	}
+}
+
+func (m *MsgReader) skipExtension() (n int, err error) {
+	var lead byte
+	var nn int
+	lead, err = m.r.ReadByte()
+	if err != nil {
+		return
+	}
+	n += 1
+	var read int
+	switch lead {
+	case mfixext1:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		return
+
+	case mfixext2:
+		nn, err = io.ReadFull(m.r, m.leader[:3])
+		n += nn
+		return
+
+	case mfixext4:
+		nn, err = io.ReadFull(m.r, m.leader[:5])
+		n += nn
+		return
+
+	case mfixext8:
+		nn, err = io.ReadFull(m.r, m.leader[:9])
+		n += nn
+		return
+
+	case mfixext16:
+		nn, err = io.ReadFull(m.r, m.leader[:17])
+		n += nn
+		return
+
+	case mext8:
+		lead, err = m.r.ReadByte()
+		if err != nil {
+			return
+		}
+		n += 1
+		read = int(uint8(lead))
+
+	case mext16:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint32(m.leader[:]))
+
+	case mext32:
+		nn, err = io.ReadFull(m.r, m.leader[:4])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint32(m.leader[:]))
+
+	default:
+		err = fmt.Errorf("unexpected byte 0x%x for extension", lead)
+		return
+
+	}
+
+	var cn int64
+	cn, err = io.CopyN(ioutil.Discard, m.r, int64(read))
+	n += int(cn)
+	return
+}
+
+func (m *MsgReader) skipBytes() (n int, err error) {
+	var nn int
+	var lead byte
+	lead, err = m.r.ReadByte()
+	if err != nil {
+		return
+	}
+	n += 1
+	var read int
+	switch lead {
+	case mnil:
+		return
+	case mbin8:
+		nn, err = io.ReadFull(m.r, m.leader[:1])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(m.leader[0])
+	case mbin16:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint16(m.leader[:]))
+	case mbin32:
+		nn, err = io.ReadFull(m.r, m.leader[:4])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint32(m.leader[:]))
+	default:
+		err = fmt.Errorf("bad byte %x for []byte", m.leader[0])
+		return
+	}
+	var cn int64
+	cn, err = io.CopyN(ioutil.Discard, m.r, int64(read))
+	n += int(cn)
+	return
+}
+
+func (m *MsgReader) skipString() (n int, err error) {
+	var nn int
+	var lead byte
+	lead, err = m.r.ReadByte()
+	if err != nil {
+		return
+	}
+	n += 1
+	var read int
+	switch lead {
+	case mnil:
+		return
+	case mstr8:
+		nn, err = io.ReadFull(m.r, m.leader[:1])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(m.leader[0])
+	case mstr16:
+		nn, err = io.ReadFull(m.r, m.leader[:2])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint16(m.leader[:]))
+	case mstr32:
+		nn, err = io.ReadFull(m.r, m.leader[:4])
+		n += nn
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint32(m.leader[:]))
+	default:
+		// try fixstr - first bits should be 101
+		if isfixstr(lead) {
+			read = int(rfixstr(lead))
+		} else {
+			err = fmt.Errorf("unexpected byte %x for string", lead)
+			return
+		}
+	}
+	if read == 0 {
+		return
+	}
+	var cn int64
+	cn, err = io.CopyN(ioutil.Discard, m.r, int64(read))
+	n += int(cn)
+	return
 }
 
 func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
