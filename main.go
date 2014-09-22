@@ -112,6 +112,12 @@ func writePkgHeader(w io.Writer, name string) error {
 	sls := strings.Split(name, "/")
 
 	_, err := io.WriteString(w, fmt.Sprintf("package %s\n\n", sls[len(sls)-1]))
+	if err != nil {
+		return err
+	}
+
+	_, err = io.WriteString(w, "// NOTE: THIS FILE WAS PRODUCED BY THE\n// MSGP CODE GENERATION TOOL (github.com/philhofer/msgp)\n// DO NOT EDIT\n\n")
+
 	return err
 }
 
@@ -126,7 +132,7 @@ func writeImportHeader(w io.Writer, imports ...string) error {
 			return err
 		}
 	}
-	_, err = io.WriteString(w, "\n)\n\n")
+	_, err = io.WriteString(w, ")\n\n")
 	return err
 }
 
