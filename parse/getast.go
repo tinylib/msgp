@@ -113,6 +113,9 @@ for_fields:
 				out = append(out, gen.StructField{
 					FieldTag:  nm.Name,
 					FieldName: nm.Name,
+					// we have to duplicate the field
+					// type here, or otherwise the FieldElems
+					// will be the same pointer
 					FieldElem: parseExpr(field.Type),
 				})
 			}

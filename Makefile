@@ -6,4 +6,4 @@ test: install
 	@go test -v
 
 bench: test
-	@go test -v -bench . ./_generated
+	@go test -bench . ./_generated
