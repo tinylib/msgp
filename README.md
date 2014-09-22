@@ -49,6 +49,7 @@ and translate it directly into JSON. It has reasonably high performance, and wor
 ### Features
 
  - Proper handling of pointers, nullables, and recursive types
+ - Backwards-compatible decoding logic
  - Efficient and readable generated code
  - JSON interoperability
  - Support for embedded fields (see Benchmark 1) and inline comma-separated declarations (see Benchmark 2)
