@@ -3,7 +3,7 @@
 {{define "PtrTempl"}}
 	if dc.IsNil() {
 		nn, err = dc.ReadNil()
-		n += nn
+		n += int64(nn)
 		if err != nil {
 			return
 		}
@@ -18,7 +18,7 @@
 
 {{define "SliceTempl"}}
 	sz, nn, err = dc.ReadArrayHeader()
-	n += nn
+	n += int64(nn)
 	if err != nil {
 		return
 	}
@@ -34,13 +34,13 @@
 
 {{define "StructTempl"}}
 	sz, nn, err = dc.ReadMapHeader()
-	n += nn
+	n += int64(nn)
 	if err != nil {
 		return
 	}
 	for xplz:=uint32(0); xplz<sz; xplz++ {
 		field, nn, err = dc.ReadStringAsBytes(field)
-		n += nn
+		n += int64(nn)
 		if err != nil {
 			return
 		}
@@ -50,7 +50,7 @@
 		{{end}}
 		default:
 			nn, err = dc.Skip()
-			n += nn
+			n += int64(nn)
 			if err != nil {
 				return
 			}
@@ -73,7 +73,7 @@
 	{{else}}
 	{{.Varname}}, nn, err = dc.Read{{.BaseName}}()
 	{{end}}
-	n += nn
+	n += int64(nn)
 	if err != nil {
 		return
 	}
