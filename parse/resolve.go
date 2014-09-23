@@ -26,6 +26,15 @@ func findUnresolved(g gen.Elem) []string {
 		}
 
 	case *gen.Struct:
+		nm := g.(*gen.Struct).Name
+		_, ok := globalIdents[nm]
+
+		// we have to check that the name is
+		// not empty; otherwise we flag anonymous structs
+		if !ok && nm != "" {
+			out = append(out, nm)
+		}
+
 		for _, field := range g.(*gen.Struct).Fields {
 			out = append(out, findUnresolved(field.FieldElem)...)
 		}

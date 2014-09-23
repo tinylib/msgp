@@ -13,6 +13,11 @@ import (
 )
 
 var (
+	// this records a set of all the
+	// identifiers in the file that are
+	// not go builtins. identities not
+	// in this set after the first pass
+	// of processing are "unknown" identifiers.
 	globalIdents map[string]struct{}
 )
 
