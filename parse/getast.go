@@ -87,10 +87,10 @@ func GenElem(in *ast.TypeSpec) gen.Elem {
 			},
 		}
 		if len(p.Value.(*gen.Struct).Fields) == 0 {
-			fmt.Printf(chalk.Red.Color(" has no exported fields \u2717\n"))
+			fmt.Printf(chalk.Red.Color(" has no exported fields \u2717\n")) // X
 			return nil
 		}
-		fmt.Print(chalk.Green.Color("  \u2713\n"))
+		fmt.Print(chalk.Green.Color("  \u2713\n")) // check
 		return p
 
 	default:

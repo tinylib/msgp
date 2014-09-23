@@ -16,7 +16,8 @@ In a source file, include the following directive:
 
 The `msgp` command will generate `Unmarshal`, `Marshal`, `WriteTo`, and `ReadFrom` methods for all exported struct
 definitions in the file. You will need to include that directive in every file that contains structs that 
-need code generation. The generated files will be named {filename}_gen.go.
+need code generation. The generated files will be named {filename}_gen.go by default (but can 
+be overridden with th `-o` flag.)
 
 Field names can be overridden in much the same way as the `encoding/json` package. For example:
 
