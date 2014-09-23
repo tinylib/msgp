@@ -114,3 +114,13 @@ type TestFast struct {
 | msgp codegen | 1151ns | 57 B | 1 allocs |
 | [ugorji/go](http://github.com/ugorji/go) | 5199ns | 1227 B | 27 allocs |
 | encoding/json | 8120ns | 1457 B | 11 allocs |
+
+
+### TODO
+
+ - Support JSON method generation. The front-end for the existing generator will work fine; we just need new templates.
+ - Support non-struct types.
+ - Support finer-grained directive control (e.g. read string as []byte and vice-versa), probably via struct tags
+ - Support `Seek`ing internal fields in the encoded binary
+
+If you've found a bug, please open an issue! Thanks.
