@@ -12,7 +12,11 @@
 	}{{end}}
 
 {{define "BaseTempl"}}
+	{{if .Convert}}
+	nn, err = en.Write{{.BaseName}}({{.BaseType}}({{.Varname}}))
+	{{else}}
 	nn, err = en.Write{{.BaseName}}({{.Varname}})
+	{{end}}
 	n += int64(nn)
 	if err != nil {
 		return

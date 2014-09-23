@@ -44,3 +44,11 @@ type Things struct {
 }
 
 type Empty struct{}
+
+type CustomInt int
+type CustomBytes []byte
+type CustomMap map[string]string
+
+type Custom struct {
+	Int []CustomInt
+}

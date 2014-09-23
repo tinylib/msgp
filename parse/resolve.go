@@ -19,9 +19,26 @@ func findUnresolved(g gen.Elem) []string {
 	case *gen.BaseElem:
 		base := g.(*gen.BaseElem).Value
 		if base == gen.IDENT {
-			_, ok := globalIdents[g.(*gen.BaseElem).Ident]
+			tp, ok := globalIdents[g.(*gen.BaseElem).Ident]
 			if !ok {
 				out = append(out, g.(*gen.BaseElem).Ident)
+			} else {
+				_, ok = globalProcessed[g.(*gen.BaseElem).Ident]
+
+				// TYPE LOWERING
+				// this is where a type like `type Custom int`
+				// gets lowered to an `int` and explicitly
+				// converted in the generated code
+
+				if !ok {
+					// Lower type one level
+					i := g.(*gen.BaseElem).Ident
+					*(g.(*gen.BaseElem)) = gen.BaseElem{
+						Value:   tp,
+						Ident:   i, // save identifier
+						Convert: true,
+					}
+				}
 			}
 		}
 

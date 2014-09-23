@@ -18,11 +18,17 @@ var (
 	// not go builtins. identities not
 	// in this set after the first pass
 	// of processing are "unknown" identifiers.
-	globalIdents map[string]struct{}
+	globalIdents map[string]gen.Base
+
+	// this records the set of all
+	// processed types (e.g. types that don't
+	// need post-process lowering)
+	globalProcessed map[string]struct{}
 )
 
 func init() {
-	globalIdents = make(map[string]struct{})
+	globalIdents = make(map[string]gen.Base)
+	globalProcessed = make(map[string]struct{})
 }
 
 // GetAST simply creates the ast out of a filename and filters
@@ -91,6 +97,23 @@ func GetTypeSpecs(f *ast.File) []*ast.TypeSpec {
 				// for ast.TypeSpecs....
 				if ts, ok := s.(*ast.TypeSpec); ok {
 					out = append(out, ts)
+
+					// record identifier
+					switch ts.Type.(type) {
+					case *ast.StructType:
+						globalIdents[ts.Name.Name] = gen.IDENT
+
+					case *ast.Ident:
+						// we will resolve this later
+						globalIdents[ts.Name.Name] = pullIdent(ts.Type.(*ast.Ident).Name)
+
+					case *ast.ArrayType:
+						globalIdents[ts.Name.Name] = gen.IDENT
+
+					case *ast.StarExpr:
+						globalIdents[ts.Name.Name] = gen.IDENT
+
+					}
 				}
 			}
 		}
@@ -115,8 +138,8 @@ func GenElem(in *ast.TypeSpec) gen.Elem {
 			},
 		}
 
-		// add the struct to our recognized identifiers
-		globalIdents[in.Name.Name] = struct{}{}
+		// mark type as processed
+		globalProcessed[in.Name.Name] = struct{}{}
 
 		if len(p.Value.(*gen.Struct).Fields) == 0 {
 			fmt.Printf(chalk.Red.Color(" has no exported fields \u2717\n")) // X

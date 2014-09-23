@@ -171,7 +171,8 @@ func (s StructField) String() string {
 type BaseElem struct {
 	Varname string
 	Value   Base
-	Ident   string
+	Ident   string // IDENT name if unresolved
+	Convert bool   // should we do an explicit conversion?
 }
 
 func (s *BaseElem) Type() ElemType  { return BaseType }
@@ -184,9 +185,11 @@ func (s *BaseElem) String() string  { return fmt.Sprintf("(%s - %s)", s.BaseName
 // TypeName returns the syntactically correct Go
 // type name for the base element.
 func (s *BaseElem) TypeName() string {
-	switch s.Value {
-	case IDENT:
+	if s.Ident != "" {
 		return s.Ident
+	}
+
+	switch s.Value {
 	case MapStrIntf:
 		return "map[string]interface{}"
 	case MapStrStr:
@@ -199,6 +202,18 @@ func (s *BaseElem) TypeName() string {
 // BaseName returns the string form of the
 // base type (e.g. Float64, Ident, MapStrStr, etc)
 func (s *BaseElem) BaseName() string { return s.Value.String() }
+func (s *BaseElem) BaseType() string {
+	switch s.Value {
+	case IDENT:
+		return s.Ident
+	case MapStrStr:
+		return "map[string]string"
+	case MapStrIntf:
+		return "map[string]interface{}"
+	default:
+		return strings.ToLower(s.BaseName())
+	}
+}
 
 // is this a map?
 func (s *BaseElem) IsMap() bool { return (s.Value == MapStrStr || s.Value == MapStrIntf) }
