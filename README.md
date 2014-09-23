@@ -14,7 +14,7 @@ In a source file, include the following directive:
 //go:generate msgp
 ```
 
-The `msgp` command will generate `Unmarshal`, `Marshal`, `EncodeMsg`, and `DecodeMsg` methods for all exported struct
+The `msgp` command will generate `Unmarshal`, `Marshal`, `WriteTo`, and `ReadFrom` methods for all exported struct
 definitions in the file. You will need to include that directive in every file that contains structs that 
 need code generation. The generated files will be named {filename}_gen.go.
 
@@ -37,9 +37,9 @@ func (z *Person) Marshal() ([]byte, error)
 
 func (z *Person) Unmarshal(b []byte) error
 
-func (z *Person) EncodeMsg(w io.Writer) (n int, err error)
+func (z *Person) WriteTo(w io.Writer) (n int, err error)
 
-func (z *Person) DecodeMsg(r io.Reader) (n int, err error)
+func (z *Person) ReadFrom(r io.Reader) (n int, err error)
 ```
 
 The `msgp/enc` package has a function called `CopyToJSON` which can take MessagePack-encoded binary
@@ -62,7 +62,7 @@ and translate it directly into JSON. It has reasonably high performance, and wor
 Very alpha. Here are the known limitations:
 
  - The only currently supported map types are `map[string]string` and `map[string]interface{}`.
- - All fields of a struct that are not Go built-ins are assumed to satisfy the `enc.MsgEncoder` and `enc.MsgDecoder`
+ - All fields of a struct that are not Go built-ins are assumed to satisfy the `io.WriterTo` and `io.ReaderFrom`
    interface. This will only *actually* be the case if the declaration for that type is in a file touched by the code generator.
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
 
