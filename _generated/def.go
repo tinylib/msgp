@@ -51,4 +51,5 @@ type CustomMap map[string]string
 
 type Custom struct {
 	Int []CustomInt
+	Bts CustomBytes
 }

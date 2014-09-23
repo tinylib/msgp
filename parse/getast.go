@@ -12,6 +12,16 @@ import (
 	"strings"
 )
 
+type Identity uint8
+
+const (
+	IDENT Identity = iota
+	Struct
+	Builtin
+	Map
+	Unsupported
+)
+
 var (
 	// this records a set of all the
 	// identifiers in the file that are
@@ -108,7 +118,17 @@ func GetTypeSpecs(f *ast.File) []*ast.TypeSpec {
 						globalIdents[ts.Name.Name] = pullIdent(ts.Type.(*ast.Ident).Name)
 
 					case *ast.ArrayType:
-						globalIdents[ts.Name.Name] = gen.IDENT
+						a := ts.Type.(*ast.ArrayType)
+						switch a.Elt.(type) {
+						case *ast.Ident:
+							if a.Elt.(*ast.Ident).Name == "byte" {
+								globalIdents[ts.Name.Name] = gen.Bytes
+							} else {
+								globalIdents[ts.Name.Name] = gen.IDENT
+							}
+						default:
+							globalIdents[ts.Name.Name] = gen.IDENT
+						}
 
 					case *ast.StarExpr:
 						globalIdents[ts.Name.Name] = gen.IDENT

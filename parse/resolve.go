@@ -23,6 +23,9 @@ func findUnresolved(g gen.Elem) []string {
 			if !ok {
 				out = append(out, g.(*gen.BaseElem).Ident)
 			} else {
+
+				// determine if the identity satisfies
+				// is IDENT as a consequence of processing
 				_, ok = globalProcessed[g.(*gen.BaseElem).Ident]
 
 				// TYPE LOWERING

@@ -210,6 +210,8 @@ func (s *BaseElem) BaseType() string {
 		return "map[string]string"
 	case MapStrIntf:
 		return "map[string]interface{}"
+	case Bytes:
+		return "[]byte"
 	default:
 		return strings.ToLower(s.BaseName())
 	}
