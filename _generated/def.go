@@ -30,7 +30,7 @@ type TestFast struct {
 type TestHidden struct {
 	A   string
 	B   []float64
-	Bad func(string) bool // This results in a warning: field "Bad" ignored; type not supported
+	Bad func(string) bool // This results in a warning: field "Bad" unsupported
 }
 
 type Embedded struct {

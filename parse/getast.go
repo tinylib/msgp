@@ -12,6 +12,14 @@ import (
 	"strings"
 )
 
+var (
+	globalIdents map[string]struct{}
+)
+
+func init() {
+	globalIdents = make(map[string]struct{})
+}
+
 // GetAST simply creates the ast out of a filename and filters
 // out non-exported elements.
 func GetAST(filename string) (f *ast.File, err error) {
@@ -44,6 +52,21 @@ func GetElems(filename string) ([]gen.Elem, error) {
 			out = append(out, el)
 		}
 	}
+
+	var ptd bool
+	for _, o := range out {
+		unr := findUnresolved(o)
+		if unr != nil {
+			if !ptd {
+				fmt.Println(chalk.Yellow.Color("Non-local or unresolved identifiers:"))
+				ptd = true
+			}
+			for _, u := range unr {
+				fmt.Printf(chalk.Yellow.Color(" -> %q\n"), u)
+			}
+		}
+	}
+
 	return out, nil
 }
 
@@ -86,6 +109,10 @@ func GenElem(in *ast.TypeSpec) gen.Elem {
 				Fields: parseFieldList(v.Fields),
 			},
 		}
+
+		// add the struct to our recognized identifiers
+		globalIdents[in.Name.Name] = struct{}{}
+
 		if len(p.Value.(*gen.Struct).Fields) == 0 {
 			fmt.Printf(chalk.Red.Color(" has no exported fields \u2717\n")) // X
 			return nil
@@ -203,79 +230,13 @@ func parseExpr(e ast.Expr) gen.Elem {
 		}
 
 	case *ast.Ident:
-		switch e.(*ast.Ident).Name {
-		case "float32":
-			return &gen.BaseElem{
-				Value: gen.Float32,
-			}
-		case "float64":
-			return &gen.BaseElem{
-				Value: gen.Float64,
-			}
-		case "complex128":
-			return &gen.BaseElem{
-				Value: gen.Complex128,
-			}
-		case "complex64":
-			return &gen.BaseElem{
-				Value: gen.Complex64,
-			}
-		case "int":
-			return &gen.BaseElem{
-				Value: gen.Int,
-			}
-		case "int8":
-			return &gen.BaseElem{
-				Value: gen.Int8,
-			}
-		case "int16":
-			return &gen.BaseElem{
-				Value: gen.Int16,
-			}
-		case "int32":
-			return &gen.BaseElem{
-				Value: gen.Int32,
-			}
-		case "int64":
-			return &gen.BaseElem{
-				Value: gen.Int64,
-			}
-		case "uint":
-			return &gen.BaseElem{
-				Value: gen.Uint,
-			}
-		case "uint8":
-			return &gen.BaseElem{
-				Value: gen.Uint8,
-			}
-		case "uint16":
-			return &gen.BaseElem{
-				Value: gen.Uint16,
-			}
-		case "uint32":
-			return &gen.BaseElem{
-				Value: gen.Uint32,
-			}
-		case "uint64":
-			return &gen.BaseElem{
-				Value: gen.Uint64,
-			}
-		case "string":
-			return &gen.BaseElem{
-				Value: gen.String,
-			}
-		case "bool":
-			return &gen.BaseElem{
-				Value: gen.Bool,
-			}
-
-		default:
-			// this is an IDENT
-			return &gen.BaseElem{
-				Value: gen.IDENT,
-				Ident: e.(*ast.Ident).Name,
-			}
+		b := &gen.BaseElem{
+			Value: pullIdent(e.(*ast.Ident).Name),
 		}
+		if b.Value == gen.IDENT {
+			b.Ident = (e.(*ast.Ident).Name)
+		}
+		return b
 
 	case *ast.ArrayType:
 		// special case for []byte
@@ -310,5 +271,47 @@ func parseExpr(e ast.Expr) gen.Elem {
 
 	default: // other types not supported
 		return nil
+	}
+}
+
+func pullIdent(name string) gen.Base {
+	switch name {
+	case "string":
+		return gen.String
+	case "byte":
+		return gen.Byte
+	case "int":
+		return gen.Int
+	case "int8":
+		return gen.Int8
+	case "int16":
+		return gen.Int16
+	case "int32":
+		return gen.Int32
+	case "int64":
+		return gen.Int64
+	case "uint":
+		return gen.Uint
+	case "uint8":
+		return gen.Uint8
+	case "uint16":
+		return gen.Uint16
+	case "uint32":
+		return gen.Uint32
+	case "uint64":
+		return gen.Uint64
+	case "bool":
+		return gen.Bool
+	case "float64":
+		return gen.Float64
+	case "float32":
+		return gen.Float32
+	case "complex64":
+		return gen.Complex64
+	case "complex128":
+		return gen.Complex128
+	default:
+		// unrecognized identity
+		return gen.IDENT
 	}
 }
