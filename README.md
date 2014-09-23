@@ -1,6 +1,9 @@
 msgp
 =======
 
+[![forthebadge](http://forthebadge.com/badges/uses-badges.svg)](http://forthebadge.com)
+[![forthebadge](http://forthebadge.com/badges/certified-snoop-lion.svg)](http://forthebadge.com)
+
 This is a code generation tool for serializing Go `struct`s using the [MesssagePack](http://msgpack.org) standard. It is targeted 
 at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_by_processing_source).
 
