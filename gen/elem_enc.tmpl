@@ -3,7 +3,7 @@
 {{define "PtrTempl"}}
 	if {{.Varname}} == nil {
 		nn, err = en.WriteNil()
-		n += nn
+		n += int64(nn)
 		if err != nil {
 			return
 		}
@@ -13,14 +13,14 @@
 
 {{define "BaseTempl"}}
 	nn, err = en.Write{{.BaseName}}({{.Varname}})
-	n += nn
+	n += int64(nn)
 	if err != nil {
 		return
 	}{{end}}
 
 {{define "SliceTempl"}}
 	nn, err = en.WriteArrayHeader(uint32(len({{.Varname}})))
-	n += nn
+	n += int64(nn)
 	if err != nil {
 		return
 	}
@@ -30,13 +30,13 @@
 
 {{define "StructTempl"}}
 	nn, err = en.WriteMapHeader(uint32({{len .Fields}}))
-	n += nn
+	n += int64(nn)
 	if err != nil {
 		return
 	}
 	{{range .Fields}}
 	nn, err = en.WriteString("{{.FieldTag}}")
-	n += nn
+	n += int64(nn)
 	if err != nil {
 		return
 	}

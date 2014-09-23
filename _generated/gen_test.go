@@ -23,8 +23,8 @@ func Benchmark2EncodeDecode(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
-		f.EncodeMsg(&buf)
-		_, err := f.DecodeMsg(&buf)
+		f.WriteTo(&buf)
+		_, err := f.ReadFrom(&buf)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -86,14 +86,14 @@ func Test1EncodeDecode(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	_, err := tt.EncodeMsg(&buf)
+	_, err := tt.WriteTo(&buf)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	tnew := new(TestType)
 
-	_, err = tnew.DecodeMsg(&buf)
+	_, err = tnew.ReadFrom(&buf)
 	if err != nil {
 		t.Error(err)
 	}
@@ -128,11 +128,11 @@ func Benchmark1EncodeDecode(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
-		_, err := tt.EncodeMsg(&buf)
+		_, err := tt.WriteTo(&buf)
 		if err != nil {
 			b.Fatal(err)
 		}
-		_, err = tt.DecodeMsg(&buf)
+		_, err = tt.ReadFrom(&buf)
 		if err != nil {
 			b.Fatal(err)
 		}

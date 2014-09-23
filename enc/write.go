@@ -39,9 +39,11 @@ const (
 	Complex128Extension = 4
 )
 
-type MsgEncoder interface {
+/*
+type io.WriterTo interface {
 	EncodeMsg(io.Writer) (int, error)
 }
+*/
 
 type MsgWriter struct {
 	w       io.Writer
@@ -332,13 +334,19 @@ func (mw *MsgWriter) WriteMapStrIntf(mp map[string]interface{}) (n int, err erro
 	return
 }
 
-func (mw *MsgWriter) WriteIdent(e MsgEncoder) (n int, err error) {
-	return e.EncodeMsg(mw.w)
+func (mw *MsgWriter) WriteIdent(e io.WriterTo) (n int, err error) {
+	var ni int64
+	ni, err = e.WriteTo(mw.w)
+	n = int(ni)
+	return
 }
 
 func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
-	if enc, ok := v.(MsgEncoder); ok {
-		return enc.EncodeMsg(mw.w)
+	if enc, ok := v.(io.WriterTo); ok {
+		var ni int64
+		ni, err = enc.WriteTo(mw.w)
+		n = int(ni)
+		return
 	}
 	switch v.(type) {
 	case float32:
@@ -432,8 +440,11 @@ func (mw *MsgWriter) writeSlice(v reflect.Value) (n int, err error) {
 }
 
 func (mw *MsgWriter) writeStruct(v reflect.Value) (n int, err error) {
-	if enc, ok := v.Interface().(MsgEncoder); ok {
-		return enc.EncodeMsg(mw.w)
+	if enc, ok := v.Interface().(io.WriterTo); ok {
+		var ni int64
+		ni, err = enc.WriteTo(mw.w)
+		n = int(ni)
+		return
 	}
 
 	sz := uint32(v.NumField())

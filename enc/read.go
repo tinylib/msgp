@@ -50,9 +50,11 @@ func NewDecoder(r io.Reader) *MsgReader {
 	return popReader(r)
 }
 
+/*
 type MsgDecoder interface {
 	DecodeMsg(r io.Reader) (int, error)
 }
+*/
 
 type MsgReader struct {
 	r       *bufio.Reader
@@ -989,14 +991,20 @@ func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error)
 	return
 }
 
-func (m *MsgReader) ReadIdent(d MsgDecoder) (n int, err error) {
-	return d.DecodeMsg(m.r)
+func (m *MsgReader) ReadIdent(d io.ReaderFrom) (n int, err error) {
+	var ni int64
+	ni, err = d.ReadFrom(m.r)
+	n = int(ni)
+	return
 }
 
 func (m *MsgReader) ReadIntf(i interface{}) (n int, err error) {
-	d, ok := i.(MsgDecoder)
+	d, ok := i.(io.ReaderFrom)
 	if ok {
-		return d.DecodeMsg(m.r)
+		var ni int64
+		ni, err = d.ReadFrom(m.r)
+		n = int(ni)
+		return
 	}
 	return m.readInterface(i)
 }
