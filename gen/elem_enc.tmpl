@@ -22,6 +22,25 @@
 		return
 	}{{end}}
 
+{{define "MapTempl"}}
+	nn, err = enc.WriteMapHeader(uint32(len({{.Varname}})))
+	n += int64(nn)
+	if err != nil {
+		return
+	}
+
+	for key, val := range {{.Varname}} {
+		nn, err = en.WriteString(key)
+		n += int64(nn)
+		if err != nil {
+			return
+		}
+
+		var val {{.Value.TypeName}}
+		{{template "ElemTempl" .Value}}
+	}
+{{end}}
+
 {{define "SliceTempl"}}
 	nn, err = en.WriteArrayHeader(uint32(len({{.Varname}})))
 	n += int64(nn)

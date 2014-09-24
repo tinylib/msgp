@@ -89,9 +89,11 @@ const (
 	//MapStrIntf // map[string]interface{}
 	Intf // interface{}
 
-	IDENT
+	IDENT // IDENT means an unrecognized identifier
 )
 
+// ElemType is one of Ptr, Map
+// Slice, Struct, or Base
 type ElemType int
 
 const (

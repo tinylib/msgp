@@ -16,6 +16,28 @@
 	}
 {{end}}
 
+{{define "MapTempl"}}
+	sz, nn, err = dc.ReadMapHeader()
+	n += int64(nn)
+	if err != nil {
+		return
+	}
+	if {{.Varname}} == nil && sz > 0 {
+		{{.Varname}} = make({{.TypeName}}, int(sz))
+	}
+	for inx := uint32(0); inx < sz; inx++ {
+		var key string 
+		var val {{.Value.TypeName}}
+		key, nn, err = dc.ReadString()
+		n += int64(nn)
+		if err != nil {
+			return
+		}
+		{{template "ElemTempl" .Value}}
+		{{.Varname}}[key] = val
+	}
+{{end}}
+
 {{define "SliceTempl"}}
 	sz, nn, err = dc.ReadArrayHeader()
 	n += int64(nn)
@@ -62,16 +84,9 @@
 	{{if .Convert}}var tmp {{.BaseType}}{{end}}{{/* type lowering shim */}}
 	{{if eq (.Value) 1}}{{/* is []byte */}}
 	{{if .Convert}}tmp, nn, err = dc.ReadBytes([]byte({{.Varname}})){{else}}{{.Varname}}, nn, err = dc.ReadBytes({{.Varname}}){{end}}
-	{{else if .IsMap }}{{/* is map[string]string or map[string]interface{} */}}
-	if {{.Varname}} == nil {
-		{{if .Convert}}{{.Varname}} = make({{.Ident}}){{else}}{{.Varname}} = make({{.TypeName}}){{end}}
-	}
-	{{if .Convert}}nn, err = dc.Read{{.BaseName}}({{.TypeName}}({{.Varname}})){{else}}nn, err = dc.Read{{.BaseName}}({{.Varname}}){{end}}
-	{{else if .IsIntf }}
-	nn, err = dc.ReadIntf({{.Varname}})
-	{{else if .IsIdent}}
+	{{else if .IsIdent}}{{/* is ReaderFrom */}}
 	nn, err = dc.ReadIdent({{.Varname}})
-	{{else}}
+	{{else}}{{/* any other type */}}
 	{{if .Convert}}tmp, nn, err = dc.Read{{.BaseName}}(){{else}}{{.Varname}}, nn, err = dc.Read{{.BaseName}}(){{end}}
 	{{end}}
 	{{if .Convert}}{{.Varname}} = {{.Ident}}(tmp){{end}}
