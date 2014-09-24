@@ -1,26 +1,9 @@
 package gen
 
 import (
-	//"errors"
 	"fmt"
-	"reflect"
 	"strings"
 )
-
-var (
-	mssType reflect.Type
-	msiType reflect.Type
-	btsType reflect.Type
-)
-
-func init() {
-	var mss map[string]string
-	mssType = reflect.TypeOf(mss)
-	var msi map[string]interface{}
-	msiType = reflect.TypeOf(msi)
-	var bts []byte
-	btsType = reflect.TypeOf(bts)
-}
 
 // This code defines the template
 // syntax tree. If the input were:
@@ -85,8 +68,6 @@ const (
 	Int32
 	Int64
 	Bool
-	//MapStrStr  // map[string]string
-	//MapStrIntf // map[string]interface{}
 	Intf // interface{}
 
 	IDENT // IDENT means an unrecognized identifier
@@ -217,7 +198,7 @@ func (s *BaseElem) TypeName() string {
 }
 
 // BaseName returns the string form of the
-// base type (e.g. Float64, Ident, MapStrStr, etc)
+// base type (e.g. Float64, Ident, etc)
 func (s *BaseElem) BaseName() string { return s.Value.String() }
 func (s *BaseElem) BaseType() string {
 	switch s.Value {
@@ -284,92 +265,6 @@ func (k Base) String() string {
 		return "INVALID"
 	}
 }
-
-// construct make the type tree
-// out of a reflect.Type. it doesn't try
-// to insert variable names, in most cases. additionally,
-// some fields may be nil.
-/*
-func construct(t reflect.Type) Elem {
-	switch t.Kind() {
-	case reflect.Struct:
-		out := &Struct{
-			Name:   t.Name(),
-			Fields: make([]StructField, t.NumField()),
-		}
-		for i := range out.Fields {
-			field := t.Field(i)
-			tag := field.Tag.Get("msg")
-			if tag == "" {
-				tag = field.Tag.Get("json")
-				if tag == "" {
-					tag = field.Name
-				}
-			}
-			out.Fields[i] = StructField{
-				FieldName: field.Name,
-				FieldTag:  tag,
-				FieldElem: construct(field.Type),
-			}
-		}
-		return out
-
-	case reflect.Map:
-		if t.Key().Kind() != reflect.String {
-			return nil
-		}
-		switch t.Elem().Kind() {
-		case reflect.String:
-			return &BaseElem{Value: MapStrStr}
-		case reflect.Interface:
-			return &BaseElem{Value: MapStrIntf}
-		default:
-			return nil
-		}
-
-	case reflect.String:
-		return &BaseElem{Value: String}
-	case reflect.Slice, reflect.Array:
-		if t.AssignableTo(btsType) {
-			return &BaseElem{Value: Bytes}
-		} else {
-			return &Slice{Els: construct(t.Elem())}
-		}
-	case reflect.Float32:
-		return &BaseElem{Value: Float32}
-	case reflect.Float64:
-		return &BaseElem{Value: Float64}
-	case reflect.Int:
-		return &BaseElem{Value: Int}
-	case reflect.Int8:
-		return &BaseElem{Value: Int8}
-	case reflect.Int16:
-		return &BaseElem{Value: Int16}
-	case reflect.Int32:
-		return &BaseElem{Value: Int32}
-	case reflect.Int64:
-		return &BaseElem{Value: Int64}
-	case reflect.Uint:
-		return &BaseElem{Value: Uint}
-	case reflect.Uint8:
-		return &BaseElem{Value: Uint8}
-	case reflect.Uint16:
-		return &BaseElem{Value: Uint16}
-	case reflect.Uint32:
-		return &BaseElem{Value: Uint32}
-	case reflect.Uint64:
-		return &BaseElem{Value: Uint64}
-	case reflect.Complex64:
-		return &BaseElem{Value: Complex64}
-	case reflect.Complex128:
-		return &BaseElem{Value: Complex128}
-	case reflect.Ptr:
-		return &Ptr{Value: construct(t.Elem())}
-	default:
-		return nil
-	}
-}
-*/
 
 // propNames propogates names through a *Ptr-to-*Struct
 func Propogate(p *Ptr, name string) {
@@ -475,11 +370,3 @@ func writeBase(b Elem, parent Elem) {
 		}
 	}
 }
-
-/*
-func GenerateTree(v reflect.Type) (Elem, error) {
-	var err error
-	el := construct(v)
-	Propogate(el.Ptr(), "z")
-	return el, err
-}*/
