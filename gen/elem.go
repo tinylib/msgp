@@ -85,9 +85,9 @@ const (
 	Int32
 	Int64
 	Bool
-	MapStrStr  // map[string]string
-	MapStrIntf // map[string]interface{}
-	Intf       // interface{}
+	//MapStrStr  // map[string]string
+	//MapStrIntf // map[string]interface{}
+	Intf // interface{}
 
 	IDENT
 )
@@ -100,17 +100,36 @@ const (
 	SliceType
 	StructType
 	BaseType
+	MapType
 )
 
-// Elem is Base, Slice, Stuct, or Ptr
+// Elem is Base, Slice, Stuct, Map, or Ptr
 type Elem interface {
 	Type() ElemType // Returns element type
 	Ptr() *Ptr
 	Slice() *Slice
 	Struct() *Struct
 	Base() *BaseElem
+	Map() *Map
 	TypeName() string
 	String() string
+}
+
+// Map is a map[string]Elem
+type Map struct {
+	Varname string
+	Value   Elem
+}
+
+func (m *Map) Type() ElemType   { return MapType }
+func (m *Map) Ptr() *Ptr        { return nil }
+func (m *Map) Slice() *Slice    { return nil }
+func (m *Map) Struct() *Struct  { return nil }
+func (m *Map) Base() *BaseElem  { return nil }
+func (m *Map) Map() *Map        { return m }
+func (m *Map) TypeName() string { return fmt.Sprintf("map[string]%s", m.Value.TypeName()) }
+func (m *Map) String() string {
+	return fmt.Sprintf("MapOf([string]%s - %s)", m.Value.String(), m.Varname)
 }
 
 type Slice struct {
@@ -123,6 +142,7 @@ func (s *Slice) Ptr() *Ptr        { return nil }
 func (s *Slice) Slice() *Slice    { return s }
 func (s *Slice) Struct() *Struct  { return nil }
 func (s *Slice) Base() *BaseElem  { return nil }
+func (s *Slice) Map() *Map        { return nil }
 func (s *Slice) TypeName() string { return s.Els.TypeName() }
 func (s *Slice) String() string {
 	return fmt.Sprintf("SliceOf(%s - %s)", s.Els.String(), s.Varname)
@@ -138,6 +158,7 @@ func (s *Ptr) Ptr() *Ptr        { return s }
 func (s *Ptr) Slice() *Slice    { return nil }
 func (s *Ptr) Struct() *Struct  { return nil }
 func (s *Ptr) Base() *BaseElem  { return nil }
+func (s *Ptr) Map() *Map        { return nil }
 func (s *Ptr) TypeName() string { return s.Value.TypeName() }
 func (s *Ptr) String() string {
 	return fmt.Sprintf("PointerTo(%s - %s)", s.Value.String(), s.Varname)
@@ -153,6 +174,7 @@ func (s *Struct) Ptr() *Ptr        { return nil }
 func (s *Struct) Slice() *Slice    { return nil }
 func (s *Struct) Struct() *Struct  { return s }
 func (s *Struct) Base() *BaseElem  { return nil }
+func (s *Struct) Map() *Map        { return nil }
 func (s *Struct) TypeName() string { return s.Name }
 func (s *Struct) String() string {
 	return fmt.Sprintf("%s{%s}", s.Name, s.Fields)
@@ -179,6 +201,7 @@ func (s *BaseElem) Type() ElemType  { return BaseType }
 func (s *BaseElem) Ptr() *Ptr       { return nil }
 func (s *BaseElem) Slice() *Slice   { return nil }
 func (s *BaseElem) Struct() *Struct { return nil }
+func (s *BaseElem) Map() *Map       { return nil }
 func (s *BaseElem) Base() *BaseElem { return s }
 func (s *BaseElem) String() string  { return fmt.Sprintf("(%s - %s)", s.BaseName(), s.Varname) }
 
@@ -188,15 +211,7 @@ func (s *BaseElem) TypeName() string {
 	if s.Ident != "" {
 		return s.Ident
 	}
-
-	switch s.Value {
-	case MapStrIntf:
-		return "map[string]interface{}"
-	case MapStrStr:
-		return "map[string]string"
-	default:
-		return strings.ToLower(s.BaseName())
-	}
+	return s.BaseType()
 }
 
 // BaseName returns the string form of the
@@ -206,19 +221,14 @@ func (s *BaseElem) BaseType() string {
 	switch s.Value {
 	case IDENT:
 		return s.Ident
-	case MapStrStr:
-		return "map[string]string"
-	case MapStrIntf:
-		return "map[string]interface{}"
+	case Intf:
+		return "interface{}"
 	case Bytes:
 		return "[]byte"
 	default:
 		return strings.ToLower(s.BaseName())
 	}
 }
-
-// is this a map?
-func (s *BaseElem) IsMap() bool { return (s.Value == MapStrStr || s.Value == MapStrIntf) }
 
 // is this an interface{}
 func (s *BaseElem) IsIntf() bool { return s.Value == Intf }
@@ -264,10 +274,6 @@ func (k Base) String() string {
 		return "Int64"
 	case Bool:
 		return "Bool"
-	case MapStrStr:
-		return "MapStrStr"
-	case MapStrIntf:
-		return "MapStrIntf"
 	case Intf:
 		return "Intf"
 	case IDENT:
@@ -281,6 +287,7 @@ func (k Base) String() string {
 // out of a reflect.Type. it doesn't try
 // to insert variable names, in most cases. additionally,
 // some fields may be nil.
+/*
 func construct(t reflect.Type) Elem {
 	switch t.Kind() {
 	case reflect.Struct:
@@ -360,6 +367,7 @@ func construct(t reflect.Type) Elem {
 		return nil
 	}
 }
+*/
 
 // propNames propogates names through a *Ptr-to-*Struct
 func Propogate(p *Ptr, name string) {
@@ -370,6 +378,8 @@ func Propogate(p *Ptr, name string) {
 	writeStructFields(p.Value.Struct().Fields, name)
 }
 
+// writeStructFields is a trampoline for writeBase for
+// all of the fields in a struct
 func writeStructFields(s []StructField, name string) {
 	prefix := name + "."
 	for i := range s {
@@ -389,6 +399,10 @@ func writeStructFields(s []StructField, name string) {
 			s[i].FieldElem.Ptr().Varname = prefix + s[i].FieldName
 			writeBase(s[i].FieldElem.Ptr().Value, s[i].FieldElem.Ptr())
 
+		case MapType:
+			s[i].FieldElem.Map().Varname = prefix + s[i].FieldName
+			writeBase(s[i].FieldElem.Map().Value, s[i].FieldElem.Map())
+
 		default:
 			panic("unrecognized type!")
 		}
@@ -396,7 +410,8 @@ func writeStructFields(s []StructField, name string) {
 }
 
 // writeBase recursively writes variable names
-// on pointers, slices, and base types.
+// on pointers, slices, and base types, using the name
+// of the parent to name the child
 func writeBase(b Elem, parent Elem) {
 	switch parent.Type() {
 	case SliceType:
@@ -411,6 +426,9 @@ func writeBase(b Elem, parent Elem) {
 			writeBase(b.Ptr().Value, b.Ptr())
 		case StructType:
 			writeStructFields(b.Struct().Fields, parent.Slice().Varname+"[i]")
+		case MapType:
+			b.Map().Varname = parent.Slice().Varname + "[i]"
+			writeBase(b.Map().Value, b.Map())
 		}
 	case PtrType:
 		switch b.Type() {
@@ -429,16 +447,37 @@ func writeBase(b Elem, parent Elem) {
 		case PtrType:
 			b.Ptr().Varname = "*" + parent.Ptr().Varname
 			writeBase(b.Ptr().Value, b.Ptr())
+		case MapType:
+			b.Map().Varname = "*" + parent.Ptr().Varname
+			writeBase(b.Map().Value, b.Map())
 		case StructType:
 			// struct fields are dereferenced automatically
 			writeStructFields(b.Struct().Fields, parent.Ptr().Varname)
 		}
+
+	case MapType:
+		switch b.Type() {
+		case BaseType:
+			b.Base().Varname = "val"
+		case PtrType:
+			b.Ptr().Varname = "val"
+			writeBase(b.Ptr().Value, b.Ptr())
+		case SliceType:
+			b.Slice().Varname = "val"
+			writeBase(b.Slice().Els, b.Slice())
+		case MapType:
+			b.Map().Varname = "val"
+			writeBase(b.Map().Value, b.Map())
+		case StructType:
+			writeStructFields(b.Struct().Fields, "val")
+		}
 	}
 }
 
+/*
 func GenerateTree(v reflect.Type) (Elem, error) {
 	var err error
 	el := construct(v)
 	Propogate(el.Ptr(), "z")
 	return el, err
-}
+}*/
