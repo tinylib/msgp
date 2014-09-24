@@ -84,6 +84,7 @@ Very alpha. Here are the known limitations:
    The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field.
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
  - Methods are only generated for `struct` definitions.
+ - Encoding/decoding of `interface{}` doesn't work yet.
 
 ### Performance
 
