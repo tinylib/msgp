@@ -145,7 +145,7 @@ func (s *Slice) Slice() *Slice    { return s }
 func (s *Slice) Struct() *Struct  { return nil }
 func (s *Slice) Base() *BaseElem  { return nil }
 func (s *Slice) Map() *Map        { return nil }
-func (s *Slice) TypeName() string { return s.Els.TypeName() }
+func (s *Slice) TypeName() string { return "[]" + s.Els.TypeName() }
 func (s *Slice) String() string {
 	return fmt.Sprintf("SliceOf(%s - %s)", s.Els.String(), s.Varname)
 }
@@ -161,7 +161,7 @@ func (s *Ptr) Slice() *Slice    { return nil }
 func (s *Ptr) Struct() *Struct  { return nil }
 func (s *Ptr) Base() *BaseElem  { return nil }
 func (s *Ptr) Map() *Map        { return nil }
-func (s *Ptr) TypeName() string { return s.Value.TypeName() }
+func (s *Ptr) TypeName() string { return "*" + s.Value.TypeName() }
 func (s *Ptr) String() string {
 	return fmt.Sprintf("PointerTo(%s - %s)", s.Value.String(), s.Varname)
 }

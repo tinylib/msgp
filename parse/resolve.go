@@ -33,7 +33,7 @@ func findUnresolved(g gen.Elem) []string {
 				// gets lowered to an `int` and explicitly
 				// converted in the generated code
 
-				if !ok {
+				if !ok && tp != gen.IDENT {
 					// Lower type one level
 					i := g.(*gen.BaseElem).Ident
 					*(g.(*gen.BaseElem)) = gen.BaseElem{
@@ -41,6 +41,8 @@ func findUnresolved(g gen.Elem) []string {
 						Ident:   i, // save identifier
 						Convert: true,
 					}
+				} else if !ok && tp == gen.IDENT {
+					out = append(out, g.(*gen.BaseElem).Ident)
 				}
 			}
 		}

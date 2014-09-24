@@ -47,10 +47,9 @@ type Empty struct{}
 
 type CustomInt int
 type CustomBytes []byte
-type CustomMap map[string]string
 
 type Custom struct {
 	Int []CustomInt
 	Bts CustomBytes
-	Mp  CustomMap
+	Mp  map[string]*Embedded
 }

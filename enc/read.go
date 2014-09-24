@@ -50,12 +50,6 @@ func NewDecoder(r io.Reader) *MsgReader {
 	return popReader(r)
 }
 
-/*
-type MsgDecoder interface {
-	DecodeMsg(r io.Reader) (int, error)
-}
-*/
-
 type MsgReader struct {
 	r       *bufio.Reader
 	under   io.Reader
@@ -63,9 +57,10 @@ type MsgReader struct {
 	scratch []byte // recycled []byte for temporary storage
 }
 
+// is the next byte 'nil'?
 func (m *MsgReader) IsNil() bool {
 	k, _ := m.nextKind()
-	return byte(k) == mnil
+	return k == knull
 }
 
 // Skip skips over the next object
@@ -323,7 +318,8 @@ func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
 	}
 	switch lead {
 	case mnil:
-		return // analagous to "0"
+		err = ErrNil
+		return
 	case mmap16:
 		nn, err = io.ReadFull(m.r, m.leader[:2])
 		n += nn

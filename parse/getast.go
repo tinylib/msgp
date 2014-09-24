@@ -31,8 +31,7 @@ var (
 	globalIdents map[string]gen.Base
 
 	// this records the set of all
-	// processed types (e.g. types that don't
-	// need post-process lowering)
+	// processed types (types for which we created code)
 	globalProcessed map[string]struct{}
 )
 
@@ -131,6 +130,9 @@ func GetTypeSpecs(f *ast.File) []*ast.TypeSpec {
 						}
 
 					case *ast.StarExpr:
+						globalIdents[ts.Name.Name] = gen.IDENT
+
+					case *ast.MapType:
 						globalIdents[ts.Name.Name] = gen.IDENT
 
 					}
@@ -257,17 +259,12 @@ func parseExpr(e ast.Expr) gen.Elem {
 		case *ast.Ident:
 			switch e.(*ast.MapType).Key.(*ast.Ident).Name {
 			case "string":
-				switch e.(*ast.MapType).Value.(*ast.Ident).Name {
-				case "string":
-					return &gen.BaseElem{
-						Value: gen.MapStrStr,
-					}
-				case "interface{}":
-					return &gen.BaseElem{
-						Value: gen.MapStrIntf,
-					}
-				default:
+				inner := parseExpr(e.(*ast.MapType).Value)
+				if inner == nil {
 					return nil
+				}
+				return &gen.Map{
+					Value: inner,
 				}
 			default:
 				return nil

@@ -9,9 +9,10 @@ import (
 func TestEncTemplate(t *testing.T) {
 
 	// type Marshaler struct {
-	// 	thing1 *float64
-	// 	body   []byte
-	//	things []complex128
+	// 	Thing1 *float64
+	// 	Body   []byte
+	//	Things []complex128
+	//  M      map[string]string
 	// }
 	var val *Ptr = &Ptr{
 		Varname: "z",
@@ -21,9 +22,9 @@ func TestEncTemplate(t *testing.T) {
 				{
 					FieldTag: "thing1",
 					FieldElem: &Ptr{
-						Varname: "z.thing1",
+						Varname: "z.Thing1",
 						Value: &BaseElem{
-							Varname: "*z.thing1",
+							Varname: "*z.Thing1",
 							Value:   Float64,
 						},
 					},
@@ -31,17 +32,27 @@ func TestEncTemplate(t *testing.T) {
 				{
 					FieldTag: "body",
 					FieldElem: &BaseElem{
-						Varname: "z.body",
+						Varname: "z.Body",
 						Value:   Bytes,
 					},
 				},
 				{
 					FieldTag: "things",
 					FieldElem: &Slice{
-						Varname: "z.things",
+						Varname: "z.Things",
 						Els: &BaseElem{
-							Varname: "z.things[i]",
+							Varname: "z.Things[i]",
 							Value:   Complex128,
+						},
+					},
+				},
+				{
+					FieldTag: "a_map",
+					FieldElem: &Map{
+						Varname: "z.M",
+						Value: &BaseElem{
+							Varname: "val",
+							Value:   String,
 						},
 					},
 				},
