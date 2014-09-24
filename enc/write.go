@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"reflect"
+	"time"
 	"unsafe"
 )
 
@@ -37,6 +38,8 @@ const (
 
 	// Complex128 numbers are encoded as extension #4
 	Complex128Extension = 4
+
+	TimeExtension = 5
 )
 
 /*
@@ -339,6 +342,19 @@ func (mw *MsgWriter) WriteIdent(e io.WriterTo) (n int, err error) {
 	ni, err = e.WriteTo(mw.w)
 	n = int(ni)
 	return
+}
+
+func (mw *MsgWriter) WriteTime(t time.Time) (n int, err error) {
+	var bts []byte
+	bts, err = t.MarshalBinary()
+	if err != nil {
+		return
+	}
+	mw.scratch[0] = mfixext16     // byte 0 is mfixext16
+	mw.scratch[1] = TimeExtension // TimeExtension byte
+	copy(mw.scratch[2:], bts)     // time is 15 bytes
+	mw.scratch[17] = 0            // last byte is 0
+	return mw.w.Write(mw.scratch[:18])
 }
 
 func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
