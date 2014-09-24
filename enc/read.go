@@ -10,6 +10,7 @@ import (
 	"math"
 	"reflect"
 	"sync"
+	"time"
 	"unsafe"
 )
 
@@ -50,12 +51,6 @@ func NewDecoder(r io.Reader) *MsgReader {
 	return popReader(r)
 }
 
-/*
-type MsgDecoder interface {
-	DecodeMsg(r io.Reader) (int, error)
-}
-*/
-
 type MsgReader struct {
 	r       *bufio.Reader
 	under   io.Reader
@@ -63,9 +58,10 @@ type MsgReader struct {
 	scratch []byte // recycled []byte for temporary storage
 }
 
+// is the next byte 'nil'?
 func (m *MsgReader) IsNil() bool {
 	k, _ := m.nextKind()
-	return byte(k) == mnil
+	return k == knull
 }
 
 // Skip skips over the next object
@@ -323,7 +319,8 @@ func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
 	}
 	switch lead {
 	case mnil:
-		return // analagous to "0"
+		err = ErrNil
+		return
 	case mmap16:
 		nn, err = io.ReadFull(m.r, m.leader[:2])
 		n += nn
@@ -988,6 +985,24 @@ func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error)
 		}
 		mp[key] = val
 	}
+	return
+}
+
+func (m *MsgReader) ReadTime() (t time.Time, n int, err error) {
+	// read all 18 bytes
+	n, err = io.ReadFull(m.r, m.leader[:])
+	if err != nil {
+		return
+	}
+	if m.leader[0] != mfixext16 {
+		err = fmt.Errorf("unexpected byte 0x%x for time.Time", m.leader[0])
+		return
+	}
+	if m.leader[1] != TimeExtension {
+		err = fmt.Errorf("unexpected extension type %d for time.Time", m.leader[1])
+		return
+	}
+	err = t.UnmarshalBinary(m.leader[2:17]) // wants 15 bytes; last byte is 0
 	return
 }
 

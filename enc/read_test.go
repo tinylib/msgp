@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 func TestReadMapHeader(t *testing.T) {
@@ -320,6 +321,30 @@ func TestReadComplex128(t *testing.T) {
 			t.Errorf("Wrote %f; read %f", f, out)
 		}
 
+	}
+}
+
+func TestTime(t *testing.T) {
+	var buf bytes.Buffer
+	now := time.Now()
+	en := NewEncoder(&buf)
+	dc := NewDecoder(&buf)
+
+	n, err := en.WriteTime(now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, no, err := dc.ReadTime()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if no != n {
+		t.Errorf("Read %d bytes; wrote %d bytes", no, n)
+	}
+
+	if !now.Equal(out) {
+		t.Fatalf("%s in; %s out", now, out)
 	}
 }
 

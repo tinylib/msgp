@@ -38,6 +38,7 @@ func WriteDecoderMethod(w io.Writer, p *Ptr) error {
 
 	bts, err := format.Source(buf.Bytes())
 	if err != nil {
+		w.Write(buf.Bytes())
 		return fmt.Errorf("gofmt: %s", err)
 	}
 
@@ -53,7 +54,9 @@ func WriteUnmarshalMethod(w io.Writer, p *Ptr) error {
 	}
 	bts, err := format.Source(buf.Bytes())
 	if err != nil {
-		fmt.Errorf("gofmt: %s", err)
+		err = fmt.Errorf("gofmt: %s", err)
+		w.Write(buf.Bytes())
+		return err
 	}
 	_, err = w.Write(bts)
 	return err
@@ -71,6 +74,7 @@ func WriteEncoderMethod(w io.Writer, p *Ptr) error {
 
 	bts, err := format.Source(buf.Bytes())
 	if err != nil {
+		w.Write(buf.Bytes())
 		return err
 	}
 
@@ -89,6 +93,7 @@ func WriteMarshalMethod(w io.Writer, p *Ptr) error {
 	}
 	bts, err := format.Source(buf.Bytes())
 	if err != nil {
+		w.Write(buf.Bytes())
 		fmt.Errorf("gofmt: %s", err)
 	}
 	_, err = w.Write(bts)

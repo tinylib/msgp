@@ -31,8 +31,10 @@ var want gen.Elem = &gen.Ptr{
 			{
 				FieldTag:  "map",
 				FieldName: "M",
-				FieldElem: &gen.BaseElem{
-					Value: gen.MapStrStr,
+				FieldElem: &gen.Map{
+					Value: &gen.BaseElem{
+						Value: gen.String,
+					},
 				},
 			},
 			{
@@ -48,7 +50,6 @@ var want gen.Elem = &gen.Ptr{
 				FieldTag:  "thing",
 				FieldName: "Thing",
 				FieldElem: &gen.Struct{
-					Name: "",
 					Fields: []gen.StructField{
 						{
 							FieldTag:  "a",

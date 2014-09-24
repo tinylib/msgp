@@ -56,28 +56,44 @@ and translate it directly into JSON. It has reasonably high performance, and wor
  - Backwards-compatible decoding logic
  - Efficient and readable generated code
  - JSON interoperability
- - Support for embedded fields (see Benchmark 1) and inline comma-separated declarations (see Benchmark 2)
- - Support for Go's `complex64` and `complex128` types
+ - Support for embedded fields and anonymous structs (see Benchmark 1) and inline comma-separated declarations (see Benchmark 2)
+ - Identifier resolution (see below)
+ - Support for Go's `complex64` and `complex128` types through extensions
  - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods.
+
+For example, this will work fine:
+```go
+type MyInt int
+type Data []byte
+type Struct struct {
+	Which  map[string]*MyInt `msg:"which"`
+	Other  Data              `msg:"other"`
+}
+```
+As long as the declarations of `MyInt` and `Data` are in the same file, the parser will figure out that 
+`MyInt` is really an `int`, and `Data` is really just a `[]byte`. Note that this only works for "base" types 
+(no slices or maps, although `[]byte` is supported as a special case.)
 
 
 ### Status
 
 Very alpha. Here are the known limitations:
 
- - The only currently supported map types are `map[string]string` and `map[string]interface{}`.
  - All fields of a struct that are not Go built-ins are assumed to satisfy the `io.WriterTo` and `io.ReaderFrom`
    interface. This will only *actually* be the case if the declaration for that type is in a file touched by the code generator.
+   The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field.
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
-
-We will (soon) offer support for `map[string]T`, where `T` is any other supported type. We do *not* plan on 
-supporting maps keyed on non-string fields, as it would severly limit JSON interoperability.
+ - Methods are only generated for `struct` definitions.
+ - Encoding/decoding of `interface{}` doesn't work yet.
 
 ### Performance
 
 As you might imagine, the generated code is quite a lot more performant than reflection-based serialization. Here 
 are the two built-in benchmarking cases provided. Each benchmark writes the struct to a buffer and then extracts 
-it again.
+it again. Keep in mind, too, that the generated methods support `io.Reader` and `io.Writer` *natively*. (This means
+that, unlike many other serializers, the methods never have to hold the serialized object in memory, unlike `Marashal`- and
+`Unmarshal`-style methods. So, in general, the generated methods run slower than they would if they operated on `[]byte`,
+but they generate very little garbage.)
 
 
 ##### Benchmark 1
@@ -85,13 +101,13 @@ it again.
 Type specification:
 ```go
 type TestType struct {
-	F   *float64          `msg:"float"`
-	Els map[string]string `msg:"elements"`
-	Obj struct {
-		ValueA string `msg:"value_a"`
-		ValueB []byte `msg:"value_b"`
-	} `msg:"object"`
-	Child *TestType `msg:"child"`
+	F     *float64          `msg:"float"`
+	Els   map[string]string `msg:"elements"`
+	Obj   struct {
+		  ValueA string     `msg:"value_a"`
+		  ValueB []byte     `msg:"value_b"`
+	}                       `msg:"object"`
+	Child *TestType         `msg:"child"`
 }
 ```
 
