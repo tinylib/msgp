@@ -7,61 +7,70 @@ import (
 	"time"
 )
 
-// this will work if we compile
+// this will work if we compile...
 func TestBuild(t *testing.T) {}
 
-func BenchmarkMarshal(b *testing.B) {
-	v := &TestBench{
-		Name:     "A-Name",
-		BirthDay: time.Now(),
-		Phone:    "1015559098",
-		Siblings: 5,
-		Spouse:   false,
-		Money:    10982.0,
-		Tags: map[string]string{
-			"tag_a": "a_tag_value",
-		},
-		Aliases: []string{
-			"Another_Alias",
-			"Yet_Another_Alias",
-		},
+// benchmark encoding a small, "fast" type.
+// the point here is to see how much garbage
+// is generated intrinsically by the encoding/
+// decoding process as opposed to the nature
+// of the struct.
+func BenchmarkFastEncode(b *testing.B) {
+	v := &TestFast{
+		Lat:  40.12398,
+		Long: -41.9082,
+		Alt:  201.08290,
+		Data: []byte("whaaaaargharbl"),
 	}
-
+	var buf bytes.Buffer
+	n, _ := v.WriteTo(&buf)
+	b.SetBytes(n)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		v.Marshal()
+		buf.Reset()
+		v.WriteTo(&buf)
 	}
+
+	// should return ~500ns and 1 alloc
+	// anything else means a regression
 }
 
-func BenchmarkUnmarshal(b *testing.B) {
-	v := &TestBench{
-		Name:     "A-Name",
-		BirthDay: time.Now(),
-		Phone:    "1015559098",
-		Siblings: 5,
-		Spouse:   false,
-		Money:    10982.0,
-		Tags: map[string]string{
-			"tag_a": "a_tag_value",
-		},
-		Aliases: []string{
-			"Another_Alias",
-			"Yet_Another_Alias",
-		},
+// benchmark decoding a small, "fast" type.
+// the point here is to see how much garbage
+// is generated intrinsically by the encoding/
+// decoding process as opposed to the nature
+// of the struct.
+func BenchmarkFastDecode(b *testing.B) {
+	v := &TestFast{
+		Lat:  40.12398,
+		Long: -41.9082,
+		Alt:  201.08290,
+		Data: []byte("whaaaaargharbl"),
 	}
 
 	var buf bytes.Buffer
-	v.WriteTo(&buf)
-	bts := buf.Bytes()
+	n, _ := v.WriteTo(&buf)
+	rd := bytes.NewReader(buf.Bytes())
+	b.SetBytes(n)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		v.Unmarshal(bts)
+		rd.Seek(0, 0) // reset
+		v.ReadFrom(rd)
 	}
 
+	// should return ~700ns and 2 allocs
+	// anything else means a regression
 }
 
+// This covers the following cases:
+//  - Recursive types
+//  - Non-builtin identifiers (and recursive types)
+//  - time.Time
+//  - map[string]string
+//  - anonymous structs
+//
 func Test1EncodeDecode(t *testing.T) {
 	f := 32.00
 	tt := &TestType{
