@@ -228,7 +228,7 @@ func (mw *MsgWriter) WriteBool(b bool) (n int, err error) {
 	if b {
 		mw.scratch[0] = mtrue
 	} else {
-		mw.scratch[1] = mfalse
+		mw.scratch[0] = mfalse
 	}
 	return mw.w.Write(mw.scratch[:1])
 }
@@ -261,7 +261,7 @@ func (mw *MsgWriter) WriteString(s string) (n int, err error) {
 	if err != nil {
 		return
 	}
-	nn, err = io.WriteString(mw.w, s)
+	nn, err = mw.w.Write(UnsafeBytes(s))
 	n += nn
 	return
 }
