@@ -43,15 +43,16 @@
 	{{end}}
 
 {{define "SliceTempl"}}
-	sz, nn, err = dc.ReadArrayHeader()
+	var xsz uint32
+	xsz, nn, err = dc.ReadArrayHeader()
 	n += int64(nn)
 	if err != nil {
 		return
 	}
-	if cap({{.Varname}}) > 0 && cap({{.Varname}}) >= int(sz){
-		{{.Varname}} = {{.Varname}}[0:int(sz)]
+	if cap({{.Varname}}) > 0 && cap({{.Varname}}) >= int(xsz){
+		{{.Varname}} = {{.Varname}}[0:int(xsz)]
 	} else {
-		{{.Varname}} = make({{.TypeName}}, sz)
+		{{.Varname}} = make({{.TypeName}}, int(xsz))
 	}
 	for i := range {{.Varname}} {
 		{{template "ElemTempl" .Els}}

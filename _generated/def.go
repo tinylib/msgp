@@ -27,6 +27,17 @@ type TestType struct {
 	Time  time.Time
 }
 
+type TestBench struct {
+	Name     string
+	BirthDay time.Time
+	Phone    string
+	Siblings int
+	Spouse   bool
+	Money    float64
+	Tags     map[string]string
+	Aliases  []string
+}
+
 type TestFast struct {
 	Lat, Long, Alt float64 // test inline decl
 	Data           []byte

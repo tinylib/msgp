@@ -56,9 +56,9 @@ and translate it directly into JSON. It has reasonably high performance, and wor
  - Backwards-compatible decoding logic
  - Efficient and readable generated code
  - JSON interoperability
- - Support for embedded fields and anonymous structs (see Benchmark 1) and inline comma-separated declarations (see Benchmark 2)
+ - Support for embedded fields, anonymous structs, and multi-field inline declarations
  - Identifier resolution (see below)
- - Support for Go's `complex64` and `complex128` types through extensions
+ - Support for Go's `time.Time`, `complex64`, and `complex128` types through extensions
  - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods.
 
 For example, this will work fine:
@@ -72,7 +72,8 @@ type Struct struct {
 ```
 As long as the declarations of `MyInt` and `Data` are in the same file, the parser will figure out that 
 `MyInt` is really an `int`, and `Data` is really just a `[]byte`. Note that this only works for "base" types 
-(no slices or maps, although `[]byte` is supported as a special case.)
+(no slices or maps, although `[]byte` is supported as a special case.) Unresolved identifiers are (optimistically) 
+assumed to be struct definitions in other files. (The parser will spit out warnings about unresolved identifiers.)
 
 
 ### Status
@@ -84,62 +85,13 @@ Very alpha. Here are the known limitations:
    The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field.
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
  - Methods are only generated for `struct` definitions.
- - Encoding/decoding of `interface{}` doesn't work yet.
+ - *Encoding/decoding of `interface{}` doesn't work yet*.
+
+There may be other problems. I want this code to be in beta by the go 1.4 release.
 
 ### Performance
 
-As you might imagine, the generated code is quite a lot more performant than reflection-based serialization. Here 
-are the two built-in benchmarking cases provided. Each benchmark writes the struct to a buffer and then extracts 
-it again. Keep in mind, too, that the generated methods support `io.Reader` and `io.Writer` *natively*. (This means
-that, unlike many other serializers, the methods never have to hold the serialized object in memory, unlike `Marashal`- and
-`Unmarshal`-style methods. So, in general, the generated methods run slower than they would if they operated on `[]byte`,
-but they generate very little garbage.)
+As you might imagine, the generated code is quite a lot more performant than reflection-based serialization; generally 
+you can expect a ~4x speed improvement and an order of magnitude fewer memory allocations when compared to other reflection-based messagepack serialization libraries. YMMV.
 
 
-##### Benchmark 1
-
-Type specification:
-```go
-type TestType struct {
-	F     *float64          `msg:"float"`
-	Els   map[string]string `msg:"elements"`
-	Obj   struct {
-		  ValueA string     `msg:"value_a"`
-		  ValueB []byte     `msg:"value_b"`
-	}                       `msg:"object"`
-	Child *TestType         `msg:"child"`
-}
-```
-
-|  Method | Time | Heap Use | Heap Allocs |
-|:-------:|:----:|:--------:|:-----------:|
-| msgp codegen | 2553ns | 129 B | 5 allocs |
-| [ugorji/go](http://github.com/ugorji/go) | 8467ns | 2015 B | 43 allocs |
-| encoding/json | 11976ns | 2004 B | 33 allocs |
-
-
-
-##### Benchmark 2
-
-Type specification:
-```go
-type TestFast struct {
-	Lat, Long, Alt float64
-	Data []byte
-}
-```
-|  Method | Time | Heap Use | Heap Allocs |
-|:-------:|:----:|:--------:|:-----------:|
-| msgp codegen | 1151ns | 57 B | 1 allocs |
-| [ugorji/go](http://github.com/ugorji/go) | 5199ns | 1227 B | 27 allocs |
-| encoding/json | 8120ns | 1457 B | 11 allocs |
-
-
-### TODO
-
- - Support JSON method generation. The front-end for the existing generator will work fine; we just need new templates.
- - Support non-struct types.
- - Support finer-grained directive control (e.g. read string as []byte and vice-versa), probably via struct tags
- - Support `Seek`ing internal fields in the encoded binary
-
-If you've found a bug, please open an issue! Thanks.
