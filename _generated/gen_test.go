@@ -6,6 +6,7 @@ import (
 	"github.com/ugorji/go/codec"
 	"reflect"
 	"testing"
+	"time"
 )
 
 // this will work if we compile
@@ -82,6 +83,7 @@ func Test1EncodeDecode(t *testing.T) {
 			ValueB: []byte("here's the second inner value"),
 		},
 		Child: nil,
+		Time:  time.Now(),
 	}
 
 	var buf bytes.Buffer

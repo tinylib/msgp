@@ -69,6 +69,7 @@ const (
 	Int64
 	Bool
 	Intf // interface{}
+	Time // time.Time
 
 	IDENT // IDENT means an unrecognized identifier
 )
@@ -199,7 +200,14 @@ func (s *BaseElem) TypeName() string {
 
 // BaseName returns the string form of the
 // base type (e.g. Float64, Ident, etc)
-func (s *BaseElem) BaseName() string { return s.Value.String() }
+func (s *BaseElem) BaseName() string {
+	// time is a special case;
+	// we strip the package prefix
+	if s.Value == Time {
+		return "Time"
+	}
+	return s.Value.String()
+}
 func (s *BaseElem) BaseType() string {
 	switch s.Value {
 	case IDENT:
@@ -259,6 +267,8 @@ func (k Base) String() string {
 		return "Bool"
 	case Intf:
 		return "Intf"
+	case Time:
+		return "time.Time"
 	case IDENT:
 		return "Ident"
 	default:
