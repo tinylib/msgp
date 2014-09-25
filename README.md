@@ -41,9 +41,9 @@ func (z *Person) Marshal() ([]byte, error)
 
 func (z *Person) Unmarshal(b []byte) error
 
-func (z *Person) WriteTo(w io.Writer) (n int, err error)
+func (z *Person) WriteTo(w io.Writer) (n int64, err error)
 
-func (z *Person) ReadFrom(r io.Reader) (n int, err error)
+func (z *Person) ReadFrom(r io.Reader) (n int64, err error)
 ```
 
 The `msgp/enc` package has a function called `CopyToJSON` which can take MessagePack-encoded binary
@@ -85,7 +85,8 @@ Very alpha. Here are the known limitations:
    The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field.
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
  - Methods are only generated for `struct` definitions.
- - *Encoding/decoding of `interface{}` doesn't work yet*.
+ - *Encoding/decoding of `interface{}` and doesn't work yet*.
+ - Static arrays are not yet supported.
 
 There may be other problems. I want this code to be in beta by the go 1.4 release.
 
