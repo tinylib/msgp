@@ -1,5 +1,9 @@
 package _generated
 
+import (
+	"time"
+)
+
 //go:generate msgp
 
 // All of the struct
@@ -20,6 +24,18 @@ type TestType struct {
 		ValueB []byte `msg:"value_b"`
 	} `msg:"object"`
 	Child *TestType `msg:"child"`
+	Time  time.Time
+}
+
+type TestBench struct {
+	Name     string
+	BirthDay time.Time
+	Phone    string
+	Siblings int
+	Spouse   bool
+	Money    float64
+	Tags     map[string]string
+	Aliases  []string
 }
 
 type TestFast struct {

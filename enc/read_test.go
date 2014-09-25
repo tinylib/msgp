@@ -117,7 +117,7 @@ func TestReadFloat64(t *testing.T) {
 			continue
 		}
 
-		if nr != n {
+		if nr != n || n != 9 || nr != 9 {
 			t.Errorf("Wrote %d bytes but read %d", n, nr)
 		}
 
@@ -146,7 +146,7 @@ func TestReadFloat32(t *testing.T) {
 			continue
 		}
 
-		if nr != n {
+		if nr != n || nr != 5 || n != 5 {
 			t.Errorf("Wrote %d bytes but read %d", n, nr)
 		}
 

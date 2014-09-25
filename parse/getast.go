@@ -314,6 +314,20 @@ func parseExpr(e ast.Expr) gen.Elem {
 			Fields: parseFieldList(e.(*ast.StructType).Fields),
 		}
 
+	case *ast.SelectorExpr:
+		// the only case
+		// we care about here
+		// is time.Time
+		v := e.(*ast.SelectorExpr)
+		if im, ok := v.X.(*ast.Ident); ok {
+			if v.Sel.Name == "Time" && im.Name == "time" {
+				return &gen.BaseElem{
+					Value: gen.Time,
+				}
+			}
+		}
+		return nil
+
 	default: // other types not supported
 		return nil
 	}
@@ -355,6 +369,8 @@ func pullIdent(name string) gen.Base {
 		return gen.Complex64
 	case "complex128":
 		return gen.Complex128
+	case "time.Time":
+		return gen.Time
 	default:
 		// unrecognized identity
 		return gen.IDENT
