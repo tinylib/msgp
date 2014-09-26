@@ -14,6 +14,7 @@ type kind byte
 const (
 	invalid kind = iota
 	kmap
+	kbool
 	karray
 	kint
 	kuint
@@ -93,19 +94,23 @@ func (m *MsgReader) nextKind() (kind, error) {
 	if err != nil {
 		return invalid, err
 	}
-	if isfixmap(lead[0]) {
+	l := lead[0]
+	if isfixmap(l) {
 		return kmap, nil
 	}
-	if isfixint(lead[0]) || isnfixint(lead[0]) {
+	if isfixint(l) {
 		return kint, nil
 	}
-	if isfixstr(lead[0]) {
+	if isnfixint(l) {
+		return kint, nil
+	}
+	if isfixstr(l) {
 		return kstring, nil
 	}
-	if isfixarray(lead[0]) {
+	if isfixarray(l) {
 		return karray, nil
 	}
-	switch lead[0] {
+	switch l {
 	case mmap16, mmap32:
 		return kmap, nil
 	case marray16, marray32:
@@ -126,6 +131,8 @@ func (m *MsgReader) nextKind() (kind, error) {
 		return kbytes, nil
 	case mnil:
 		return knull, nil
+	case mfalse, mtrue:
+		return kbool, nil
 	default:
 		return invalid, nil
 	}

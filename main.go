@@ -106,7 +106,7 @@ func DoAll(gopkg string, gofile string) error {
 	var twr *bufio.Writer
 	var testfile string
 	if test {
-		testfile := strings.TrimSuffix(newfile, ".go") + "_test.go"
+		testfile = strings.TrimSuffix(newfile, ".go") + "_test.go"
 		tfl, err := os.Create(testfile)
 		if err != nil {
 			return err
@@ -117,7 +117,7 @@ func DoAll(gopkg string, gofile string) error {
 		if err != nil {
 			return err
 		}
-		err = writeImportHeader(twr, "testing", "bytes")
+		err = writeImportHeader(twr, "testing", "bytes", "github.com/philhofer/msgp/enc")
 		if err != nil {
 			return err
 		}

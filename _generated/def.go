@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-//go:generate msgp
+//go:generate msgp -test
 
 // All of the struct
 // definitions in this
@@ -55,8 +55,8 @@ type Embedded struct {
 }
 
 type Things struct {
-	Cmplx []complex64 `msg:"complexes"` // test slices
-	Vals  []int32     `msg:"values"`
+	Cmplx complex64 `msg:"complex"` // test slices
+	Vals  []int32   `msg:"values"`
 }
 
 type Empty struct{}
