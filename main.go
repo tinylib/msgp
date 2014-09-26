@@ -75,6 +75,12 @@ func DoAll(gopkg string, gofile string) error {
 		return nil
 	}
 
+	if len(elems) == 0 {
+		fmt.Println(chalk.Magenta.Color(
+			"No structs requiring code generation were found..."))
+		return nil
+	}
+
 	// new file name is old file name + _gen.go
 	var newfile string
 	if out != "" {
