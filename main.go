@@ -17,6 +17,7 @@ var (
 	out  string
 	file string
 	pkg  string
+	test bool
 
 	// these are the required imports
 	injectImports []string = []string{
@@ -30,6 +31,7 @@ func init() {
 	flag.StringVar(&out, "o", "", "output file")
 	flag.StringVar(&file, "file", "", "input file")
 	flag.StringVar(&pkg, "pkg", "", "output package")
+	flag.BoolVar(&test, "test", false, "generate test and bench files")
 }
 
 func main() {
@@ -68,6 +70,10 @@ func DoAll(gopkg string, gofile string) error {
 	if err != nil {
 		return err
 	}
+	if len(elems) == 0 {
+		fmt.Println(chalk.Yellow.Color("No structs with exported fields. Nothing to generate."))
+		return nil
+	}
 
 	// new file name is old file name + _gen.go
 	var newfile string
@@ -96,21 +102,24 @@ func DoAll(gopkg string, gofile string) error {
 	}
 
 	// TESTING FILES
-	testfile := strings.TrimSuffix(newfile, ".go") + "_test.go"
-	tfl, err := os.Create(testfile)
-	if err != nil {
-		return err
-	}
-	defer tfl.Close()
-	twr := bufio.NewWriter(tfl)
-	err = writePkgHeader(twr, gopkg)
-	if err != nil {
-		return err
-	}
-
-	err = writeImportHeader(twr, "testing", "bytes")
-	if err != nil {
-		return err
+	var twr *bufio.Writer
+	var testfile string
+	if test {
+		testfile := strings.TrimSuffix(newfile, ".go") + "_test.go"
+		tfl, err := os.Create(testfile)
+		if err != nil {
+			return err
+		}
+		defer tfl.Close()
+		twr = bufio.NewWriter(tfl)
+		err = writePkgHeader(twr, gopkg)
+		if err != nil {
+			return err
+		}
+		err = writeImportHeader(twr, "testing", "bytes")
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, el := range elems {
@@ -146,23 +155,27 @@ func DoAll(gopkg string, gofile string) error {
 			return err
 		}
 
-		err = gen.WriteTestNBench(twr, p.Value.Struct())
-		if err != nil {
-			wr.Flush()
-			return err
+		if test {
+			err = gen.WriteTestNBench(twr, p.Value.Struct())
+			if err != nil {
+				wr.Flush()
+				return err
+			}
 		}
-
 	}
+
 	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s/%s"), gopkg, newfile)
 	err = wr.Flush()
 	if err != nil {
 		return err
 	}
 	fmt.Print(chalk.Green.Color(" \u2713\n"))
-	fmt.Printf(chalk.Magenta.Color("TESTS =====> %s/%s"), gopkg, testfile)
-	err = twr.Flush()
-	if err != nil {
-		return err
+	if test {
+		fmt.Printf(chalk.Magenta.Color("TESTS =====> %s/%s"), gopkg, testfile)
+		err = twr.Flush()
+		if err != nil {
+			return err
+		}
 	}
 	fmt.Print(chalk.Green.Color(" \u2713\n"))
 	return nil
