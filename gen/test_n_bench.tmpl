@@ -13,6 +13,14 @@ func TestEncodeDecode{{.Name}}(t *testing.T) {
 		t.Errorf("Wrote %d bytes; read %d bytes", n, nr)
 	}
 
+	buf.Reset()
+	v.WriteTo(&buf)
+	// Validate encoding by "skipping"
+	// the entire object
+	_, err = enc.NewDecoder(&buf).Skip()
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func BenchmarkWrite{{.Name}}(b *testing.B) {

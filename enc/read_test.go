@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+func TestSanity(t *testing.T) {
+	if !isfixint(0) {
+		t.Fatal("WUT.")
+	}
+}
+
 func TestReadMapHeader(t *testing.T) {
 	tests := []struct {
 		Sz uint32

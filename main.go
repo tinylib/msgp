@@ -106,7 +106,7 @@ func DoAll(gopkg string, gofile string) error {
 	var twr *bufio.Writer
 	var testfile string
 	if test {
-		testfile := strings.TrimSuffix(newfile, ".go") + "_test.go"
+		testfile = strings.TrimSuffix(newfile, ".go") + "_test.go"
 		tfl, err := os.Create(testfile)
 		if err != nil {
 			return err
@@ -117,7 +117,7 @@ func DoAll(gopkg string, gofile string) error {
 		if err != nil {
 			return err
 		}
-		err = writeImportHeader(twr, "testing", "bytes")
+		err = writeImportHeader(twr, "testing", "bytes", "github.com/philhofer/msgp/enc")
 		if err != nil {
 			return err
 		}
@@ -165,20 +165,20 @@ func DoAll(gopkg string, gofile string) error {
 		}
 	}
 
-	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s/%s"), gopkg, newfile)
+	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s/%s "), gopkg, newfile)
 	err = wr.Flush()
 	if err != nil {
 		return err
 	}
-	fmt.Print(chalk.Green.Color(" \u2713\n"))
+	fmt.Print(chalk.Green.Color("\u2713\n"))
 	if test {
-		fmt.Printf(chalk.Magenta.Color("TESTS =====> %s/%s"), gopkg, testfile)
+		fmt.Printf(chalk.Magenta.Color("TESTS =====> %s/%s "), gopkg, testfile)
 		err = twr.Flush()
 		if err != nil {
 			return err
 		}
+		fmt.Print(chalk.Green.Color("\u2713\n"))
 	}
-	fmt.Print(chalk.Green.Color(" \u2713\n"))
 	return nil
 }
 

@@ -134,8 +134,16 @@ func (m *MsgReader) Skip() (n int, err error) {
 	case knull:
 		return m.ReadNil()
 
-	default:
+	case kbool:
+		_, n, err = m.ReadBool()
+		return
+
+	case invalid:
 		err = fmt.Errorf("unknown leading byte: 0x%x", byte(k))
+		return
+
+	default:
+		err = errors.New("unknown leading type...?")
 		return
 	}
 }
