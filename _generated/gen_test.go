@@ -86,8 +86,8 @@ func Test1EncodeDecode(t *testing.T) {
 			ValueA: "here's the first inner value",
 			ValueB: []byte("here's the second inner value"),
 		},
-		Child: nil,
-		Time:  time.Now(),
+		//Child: nil,
+		Time: time.Now(),
 	}
 
 	var buf bytes.Buffer

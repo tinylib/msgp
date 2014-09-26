@@ -14,6 +14,7 @@ var (
 	encTemplate *template.Template
 	marTemplate *template.Template
 	unmTemplate *template.Template
+	benTemplate *template.Template
 )
 
 func init() {
@@ -24,6 +25,7 @@ func init() {
 	encTemplate = template.Must(template.ParseFiles(prefix+"encode.tmpl", prefix+"elem_enc.tmpl"))
 	marTemplate = template.Must(template.ParseFiles(prefix + "marshal.tmpl"))
 	unmTemplate = template.Must(template.ParseFiles(prefix + "unmarshal.tmpl"))
+	benTemplate = template.Must(template.ParseFiles(prefix + "test_n_bench.tmpl"))
 }
 
 // WriteDecoderMethod writes the DecodeMsg(io.Reader) method.

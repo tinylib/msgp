@@ -1,0 +1,40 @@
+func TestEncodeDecode{{.Name}}(t *testing.T) {
+	v := new({{.Name}})
+	var buf bytes.Buffer
+	n, _ := v.WriteTo(&buf)
+
+	vn := new({{.Name}})
+	nr, err := vn.ReadFrom(&buf)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if nr != n {
+		t.Errorf("Wrote %d bytes; read %d bytes", n, nr)
+	}
+
+}
+
+func BenchmarkWrite{{.Name}}(b *testing.B) {
+	v := new({{.Name}})
+	var buf bytes.Buffer
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i:=0; i<b.N; i++ {
+		buf.Reset()
+		v.WriteTo(&buf)
+	}
+}
+
+func BenchmarkRead{{.Name}}(b *testing.B) {
+	v := new({{.Name}})
+	var buf bytes.Buffer
+	v.WriteTo(&buf)
+	rd := bytes.NewReader(buf.Bytes())
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i:=0; i<b.N; i++ {
+		rd.Seek(0, 0)
+		v.ReadFrom(rd)
+	}
+}

@@ -53,7 +53,7 @@
 {{end}}
 
 {{define "StructTempl"}}
-	nn, err = en.WriteMapHeader(uint32({{len .Fields}}))
+	nn, err = en.WriteMapHeader({{len .Fields}})
 	n += int64(nn)
 	if err != nil {
 		return

@@ -76,8 +76,7 @@ func DoAll(gopkg string, gofile string) error {
 	} else {
 		newfile = strings.TrimSuffix(gofile, ".go") + "_gen.go"
 	}
-
-	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s/%s"), gopkg, newfile)
+	// GENERATED FILES
 	file, err := os.Create(newfile)
 	if err != nil {
 		return err
@@ -92,6 +91,24 @@ func DoAll(gopkg string, gofile string) error {
 	}
 
 	err = writeImports(wr)
+	if err != nil {
+		return err
+	}
+
+	// TESTING FILES
+	testfile := strings.TrimSuffix(newfile, ".go") + "_test.go"
+	tfl, err := os.Create(testfile)
+	if err != nil {
+		return err
+	}
+	defer tfl.Close()
+	twr := bufio.NewWriter(tfl)
+	err = writePkgHeader(twr, gopkg)
+	if err != nil {
+		return err
+	}
+
+	err = writeImportHeader(twr, "testing", "bytes")
 	if err != nil {
 		return err
 	}
@@ -128,8 +145,22 @@ func DoAll(gopkg string, gofile string) error {
 			wr.Flush()
 			return err
 		}
+
+		err = gen.WriteTestNBench(twr, p.Value.Struct())
+		if err != nil {
+			wr.Flush()
+			return err
+		}
+
 	}
+	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s/%s"), gopkg, newfile)
 	err = wr.Flush()
+	if err != nil {
+		return err
+	}
+	fmt.Print(chalk.Green.Color(" \u2713\n"))
+	fmt.Printf(chalk.Magenta.Color("TESTS =====> %s/%s"), gopkg, testfile)
+	err = twr.Flush()
 	if err != nil {
 		return err
 	}
