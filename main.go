@@ -70,14 +70,9 @@ func DoAll(gopkg string, gofile string) error {
 	if err != nil {
 		return err
 	}
-	if len(elems) == 0 {
-		fmt.Println(chalk.Yellow.Color("No structs with exported fields. Nothing to generate."))
-		return nil
-	}
 
 	if len(elems) == 0 {
-		fmt.Println(chalk.Magenta.Color(
-			"No structs requiring code generation were found..."))
+		fmt.Println(chalk.Magenta.Color("No structs requiring code generation were found..."))
 		return nil
 	}
 
