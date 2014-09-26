@@ -61,6 +61,9 @@ func findUnresolved(g gen.Elem) []string {
 			out = append(out, findUnresolved(field.FieldElem)...)
 		}
 
+	case *gen.Map:
+		out = append(out, findUnresolved(g.(*gen.Map).Value)...)
+
 	}
 	return out
 }

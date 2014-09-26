@@ -1,4 +1,5 @@
 func TestEncodeDecode{{.Name}}(t *testing.T) {
+	t.Parallel()
 	v := new({{.Name}})
 	var buf bytes.Buffer
 	n, _ := v.WriteTo(&buf)

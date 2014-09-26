@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-//go:generate msgp -test
+//go:generate msgp
 
 // All of the struct
 // definitions in this
@@ -61,11 +61,10 @@ type Things struct {
 
 type Empty struct{}
 
-type CustomInt int
-type CustomBytes []byte
-
 type Custom struct {
-	Int []CustomInt
+	Int map[string]CustomInt
 	Bts CustomBytes
 	Mp  map[string]*Embedded
 }
+type CustomInt int
+type CustomBytes []byte
