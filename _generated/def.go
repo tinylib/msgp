@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-//go:generate msgp
+//go:generate msgp -test
 
 // All of the struct
 // definitions in this
