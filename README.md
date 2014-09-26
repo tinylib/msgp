@@ -95,4 +95,4 @@ There may be other problems. I want this code to be in beta by the go 1.4 releas
 As you might imagine, the generated code is quite a lot more performant than reflection-based serialization; generally 
 you can expect a ~4x speed improvement and an order of magnitude fewer memory allocations when compared to other reflection-based messagepack serialization libraries. YMMV.
 
-If you like benchmarks, we're the [fastest round-trip serializer for Go in this test.](https://github.com/alecthomas/go_serialization_benchmarks)
+If you like benchmarks, we're the [second-fastest and lowest memory footprint round-trip serializer for Go in this test.](https://github.com/alecthomas/go_serialization_benchmarks) (And )
