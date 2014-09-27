@@ -328,6 +328,15 @@ func parseExpr(e ast.Expr) gen.Elem {
 		}
 		return nil
 
+	case *ast.InterfaceType:
+		// support `interface{}`
+		if len(e.(*ast.InterfaceType).Methods.List) == 0 {
+			return &gen.BaseElem{
+				Value: gen.Intf,
+			}
+		}
+		return nil
+
 	default: // other types not supported
 		return nil
 	}
@@ -371,6 +380,8 @@ func pullIdent(name string) gen.Base {
 		return gen.Complex128
 	case "time.Time":
 		return gen.Time
+	case "interface{}":
+		return gen.Intf
 	default:
 		// unrecognized identity
 		return gen.IDENT

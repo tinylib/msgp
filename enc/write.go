@@ -365,6 +365,9 @@ func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
 		n = int(ni)
 		return
 	}
+	if v == nil {
+		return mw.WriteNil()
+	}
 	switch v.(type) {
 	case bool:
 		return mw.WriteBool(v.(bool))

@@ -23,8 +23,9 @@ type TestType struct {
 		ValueA string `msg:"value_a"`
 		ValueB []byte `msg:"value_b"`
 	} `msg:"object"`
-	Child *TestType `msg:"child"`
-	Time  time.Time `msg:"time"`
+	Child *TestType   `msg:"child"`
+	Time  time.Time   `msg:"time"`
+	Any   interface{} `msg:"any"`
 }
 
 type TestBench struct {
