@@ -8,5 +8,5 @@ generate:
 test: install generate
 	@go test -v ./_generated
 
-bench: test
+bench: install generate
 	@go test -v -bench . ./_generated

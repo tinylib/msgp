@@ -55,7 +55,7 @@ func AsJSON(src io.Reader) io.Reader {
 // CopyToJson reads a single MsgPack-encoded message from 'src' and
 // writes it as JSON to 'dst'. It returns the number of bytes written,
 // and any errors encountered in the process.
-func CopyToJSON(dst io.Writer, src io.Reader) (n int, err error) {
+func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
 	var w jsWriter
 	var cast bool
 	if jsw, ok := dst.(jsWriter); ok {
@@ -70,14 +70,16 @@ func CopyToJSON(dst io.Writer, src io.Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
+	var nn int
 	switch k {
 	case kmap:
-		n, err = rwMap(w, r)
+		nn, err = rwMap(w, r)
 	case karray:
-		n, err = rwArray(w, r)
+		nn, err = rwArray(w, r)
 	default:
 		return 0, errors.New("enc: 'src' must represent a map or array")
 	}
+	n = int64(nn)
 	if err != nil {
 		return
 	}
@@ -215,6 +217,8 @@ func rwMap(dst jsWriter, src *MsgReader) (n int, err error) {
 			nn, err = rwMap(dst, src)
 		case kextension:
 			nn, err = rwExtension(dst, src)
+		case kbool:
+			nn, err = rwBool(dst, src)
 		default:
 			return n, errors.New("bad token in src")
 		}
@@ -281,6 +285,8 @@ func rwArray(dst jsWriter, src *MsgReader) (n int, err error) {
 			nn, err = rwMap(dst, src)
 		case kextension:
 			nn, err = rwExtension(dst, src)
+		case kbool:
+			nn, err = rwBool(dst, src)
 		default:
 			return n, errors.New("bad token in src")
 		}
@@ -340,6 +346,17 @@ func rwInt(dst jsWriter, src *MsgReader, k kind) (n int, err error) {
 		src.scratch = strconv.AppendUint(src.scratch[0:0], u, 10)
 	}
 	return dst.Write(src.scratch)
+}
+
+func rwBool(dst jsWriter, src *MsgReader) (int, error) {
+	b, _, err := src.ReadBool()
+	if err != nil {
+		return 0, err
+	}
+	if b {
+		return dst.WriteString("true")
+	}
+	return dst.WriteString("false")
 }
 
 func rwExtension(dst jsWriter, src *MsgReader) (n int, err error) {

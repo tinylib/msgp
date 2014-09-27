@@ -976,7 +976,7 @@ func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error)
 			delete(mp, key)
 		}
 	} else {
-		mp = make(map[string]interface{})
+		mp = make(map[string]interface{}, int(sz))
 	}
 	for i := uint32(0); i < sz; i++ {
 		var key string
@@ -986,7 +986,7 @@ func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error)
 		if err != nil {
 			return
 		}
-		nn, err = m.readInterface(val)
+		val, nn, err = m.readInterface()
 		n += nn
 		if err != nil {
 			return
@@ -1021,24 +1021,21 @@ func (m *MsgReader) ReadIdent(d io.ReaderFrom) (n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadIntf(i interface{}) (n int, err error) {
-	d, ok := i.(io.ReaderFrom)
-	if ok {
-		var ni int64
-		ni, err = d.ReadFrom(m.r)
-		n = int(ni)
-		return
-	}
-	return m.readInterface(i)
+func (m *MsgReader) ReadIntf() (i interface{}, n int, err error) {
+	return m.readInterface()
 }
 
-func (m *MsgReader) readInterface(i interface{}) (n int, err error) {
+func (m *MsgReader) readInterface() (i interface{}, n int, err error) {
 	var k kind
 	k, err = m.nextKind()
 	if err != nil {
 		return
 	}
 	switch k {
+	case kbool:
+		i, n, err = m.ReadBool()
+		return
+
 	case kint:
 		i, n, err = m.ReadInt64()
 		return
@@ -1048,7 +1045,7 @@ func (m *MsgReader) readInterface(i interface{}) (n int, err error) {
 		return
 
 	case kbytes:
-		i, n, err = m.ReadBytes(m.scratch)
+		i, n, err = m.ReadBytes(nil)
 		return
 
 	case kstring:
@@ -1075,6 +1072,12 @@ func (m *MsgReader) readInterface(i interface{}) (n int, err error) {
 			rl := *(*float32)(unsafe.Pointer(&rlbits))
 			im := *(*float32)(unsafe.Pointer(&imbits))
 			i = complex(rl, im)
+			return
+		}
+		if e.Type == TimeExtension && len(e.Data) == 16 {
+			var t time.Time
+			err = t.UnmarshalBinary(e.Data[:15])
+			i = t
 			return
 		}
 		i = e
@@ -1109,7 +1112,7 @@ func (m *MsgReader) readInterface(i interface{}) (n int, err error) {
 		}
 		out := make([]interface{}, int(sz))
 		for j := range out {
-			nn, err = m.readInterface(out[j])
+			out[j], nn, err = m.readInterface()
 			n += nn
 			if err != nil {
 				return
@@ -1119,7 +1122,7 @@ func (m *MsgReader) readInterface(i interface{}) (n int, err error) {
 		return
 
 	default:
-		return 0, errors.New("bad token in byte stream")
+		return nil, 0, errors.New("unrecognized type")
 
 	}
 }

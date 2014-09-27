@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-//go:generate msgp -test
+//go:generate msgp
 
 // All of the struct
 // definitions in this
@@ -23,8 +23,9 @@ type TestType struct {
 		ValueA string `msg:"value_a"`
 		ValueB []byte `msg:"value_b"`
 	} `msg:"object"`
-	Child *TestType `msg:"child"`
-	Time  time.Time
+	Child *TestType   `msg:"child"`
+	Time  time.Time   `msg:"time"`
+	Any   interface{} `msg:"any"`
 }
 
 type TestBench struct {
@@ -61,11 +62,10 @@ type Things struct {
 
 type Empty struct{}
 
-type CustomInt int
-type CustomBytes []byte
-
 type Custom struct {
-	Int []CustomInt
+	Int map[string]CustomInt
 	Bts CustomBytes
 	Mp  map[string]*Embedded
 }
+type CustomInt int
+type CustomBytes []byte

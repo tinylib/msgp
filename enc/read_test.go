@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"math"
 	"math/rand"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -12,6 +13,53 @@ func TestSanity(t *testing.T) {
 	if !isfixint(0) {
 		t.Fatal("WUT.")
 	}
+}
+
+func TestReadIntf(t *testing.T) {
+	// NOTE: if you include cases
+	// with, say, int32s, the test
+	// will fail, b/c integers are
+	// always read out as int64, and
+	// unsigned integers as uint64
+
+	var testCases = []interface{}{
+		float64(128.032),
+		float32(9082.092),
+		int64(-40),
+		uint64(9082981),
+		time.Now(),
+		"hello!",
+		[]byte("hello!"),
+		map[string]interface{}{
+			"thing-1": "thing-1-value",
+			"thing-2": int64(800),
+			"thing-3": []byte("some inner bytes..."),
+			"thing-4": false,
+		},
+	}
+
+	var buf bytes.Buffer
+	var v interface{}
+	var err error
+	dec := NewDecoder(&buf)
+	enc := NewEncoder(&buf)
+
+	for i, ts := range testCases {
+		buf.Reset()
+		_, err = enc.WriteIntf(ts)
+		if err != nil {
+			t.Errorf("Test case %d: %s", i, err)
+			continue
+		}
+		v, _, err = dec.ReadIntf()
+		if err != nil {
+			t.Errorf("Test case: %d: %s", i, err)
+		}
+		if !reflect.DeepEqual(v, ts) {
+			t.Errorf("%v in; %v out", ts, v)
+		}
+	}
+
 }
 
 func TestReadMapHeader(t *testing.T) {

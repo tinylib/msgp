@@ -10,7 +10,7 @@ import (
 func TestCopyJSON(t *testing.T) {
 	var buf bytes.Buffer
 	enc := NewEncoder(&buf)
-	enc.WriteMapHeader(4)
+	enc.WriteMapHeader(5)
 
 	enc.WriteString("thing_1")
 	enc.WriteString("a string object")
@@ -24,6 +24,8 @@ func TestCopyJSON(t *testing.T) {
 
 	enc.WriteString("some bytes")
 	enc.WriteBytes([]byte("here are some bytes"))
+	enc.WriteString("a bool")
+	enc.WriteBool(true)
 
 	enc.WriteString("a map")
 	enc.WriteMapStrStr(map[string]string{
@@ -43,7 +45,7 @@ func TestCopyJSON(t *testing.T) {
 		t.Fatalf("Error unmarshaling: %s", err)
 	}
 
-	if len(mp) != 4 {
+	if len(mp) != 5 {
 		t.Errorf("map length should be %d, not %d", 4, len(mp))
 	}
 
