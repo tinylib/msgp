@@ -7,9 +7,6 @@ import (
 	"time"
 )
 
-// this will work if we compile...
-func TestBuild(t *testing.T) {}
-
 // benchmark encoding a small, "fast" type.
 // the point here is to see how much garbage
 // is generated intrinsically by the encoding/
@@ -86,8 +83,8 @@ func Test1EncodeDecode(t *testing.T) {
 			ValueA: "here's the first inner value",
 			ValueB: []byte("here's the second inner value"),
 		},
-		//Child: nil,
-		Time: time.Now(),
+		Child: nil,
+		Time:  time.Now(),
 	}
 
 	var buf bytes.Buffer

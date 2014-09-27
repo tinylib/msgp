@@ -2,6 +2,7 @@ package enc
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -365,6 +366,8 @@ func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
 		return
 	}
 	switch v.(type) {
+	case bool:
+		return mw.WriteBool(v.(bool))
 	case float32:
 		return mw.WriteFloat32(v.(float32))
 	case float64:
@@ -401,33 +404,57 @@ func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
 		return mw.WriteMapStrStr(v.(map[string]string))
 	case map[string]interface{}:
 		return mw.WriteMapStrIntf(v.(map[string]interface{}))
+	case time.Time:
+		return mw.WriteTime(v.(time.Time))
 	}
 
 	val := reflect.ValueOf(v)
-	if !isSupported(val.Kind()) {
-		return 0, fmt.Errorf("type %s not supported", val.Type())
+	if !isSupported(val.Kind()) || !val.IsValid() {
+		return 0, fmt.Errorf("type %s not supported", val)
 	}
 
 	switch val.Kind() {
 	case reflect.Struct:
 		return mw.writeStruct(val)
 	case reflect.Ptr:
+		if val.IsNil() {
+			return mw.WriteNil()
+		}
 		return mw.WriteIntf(val.Elem().Interface())
 	case reflect.Slice:
 		return mw.writeSlice(val)
+	case reflect.Map:
+		return mw.writeMap(val)
 	}
 	return 0, fmt.Errorf("type %s not supported", val.Type())
 }
 
 func (mw *MsgWriter) writeMap(v reflect.Value) (n int, err error) {
-	tp := v.Type()
-	if tp.AssignableTo(mapStrStr) || tp.ConvertibleTo(mapStrStr) {
-		return mw.WriteMapStrStr(v.Interface().(map[string]string))
-	} else if tp.AssignableTo(mapStrIntf) || tp.ConvertibleTo(mapStrIntf) {
-		return mw.WriteMapStrIntf(v.Interface().(map[string]interface{}))
-	} else {
-		return 0, fmt.Errorf("type %s not supported", tp)
+	if v.Elem().Kind() != reflect.String {
+		return 0, errors.New("map keys must be strings")
 	}
+	ks := v.MapKeys()
+	var nn int
+	nn, err = mw.WriteMapHeader(uint32(len(ks)))
+	n += nn
+	if err != nil {
+		return
+	}
+	for _, key := range ks {
+		val := v.MapIndex(key)
+
+		nn, err = mw.WriteString(key.String())
+		n += nn
+		if err != nil {
+			return
+		}
+		nn, err = mw.WriteIntf(val.Interface())
+		n += nn
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
 func (mw *MsgWriter) writeSlice(v reflect.Value) (n int, err error) {
@@ -462,35 +489,7 @@ func (mw *MsgWriter) writeStruct(v reflect.Value) (n int, err error) {
 		n = int(ni)
 		return
 	}
-
-	sz := uint32(v.NumField())
-	var nn int
-	nn, err = mw.WriteArrayHeader(sz)
-	n += nn
-	if err != nil {
-		return
-	}
-	for i := uint32(0); i < sz; i++ {
-		field := v.Field(int(i))
-		if !isSupported(field.Kind()) {
-			continue
-		}
-		// get struct tag name
-		var name string
-		// TODO - pull out name
-
-		nn, err = mw.WriteString(name)
-		n += nn
-		if err != nil {
-			return
-		}
-		nn, err = mw.writeVal(field)
-		n += nn
-		if err != nil {
-			return
-		}
-	}
-	return
+	return 0, fmt.Errorf("unsupported type: %s", v.Type())
 }
 
 func (mw *MsgWriter) writeVal(v reflect.Value) (n int, err error) {
@@ -516,6 +515,9 @@ func (mw *MsgWriter) writeVal(v reflect.Value) (n int, err error) {
 		return mw.WriteInt64(v.Int())
 
 	case reflect.Interface, reflect.Ptr:
+		if v.IsNil() {
+			mw.WriteNil()
+		}
 		return mw.writeVal(v.Elem())
 
 	case reflect.Map:

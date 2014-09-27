@@ -42,6 +42,8 @@ func init() {
 func main() {
 	flag.Parse()
 
+	// GOFILE and GOPACKAGE are
+	// set by `go generate`
 	if file == "" {
 		file = os.Getenv("GOFILE")
 	}

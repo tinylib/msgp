@@ -24,7 +24,7 @@ type TestType struct {
 		ValueB []byte `msg:"value_b"`
 	} `msg:"object"`
 	Child *TestType `msg:"child"`
-	Time  time.Time
+	Time  time.Time `msg:"time"`
 }
 
 type TestBench struct {
