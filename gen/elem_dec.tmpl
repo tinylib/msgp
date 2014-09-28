@@ -3,7 +3,7 @@
 {{define "PtrTempl"}}
 	if dc.IsNil() {
 		nn, err = dc.ReadNil()
-		n += int64(nn)
+		n += nn
 		if err != nil {
 			return
 		}
@@ -18,7 +18,7 @@
 
 {{define "MapTempl"}}
 	sz, nn, err = dc.ReadMapHeader()
-	n += int64(nn)
+	n += nn
 	if err != nil {
 		return
 	}
@@ -33,7 +33,7 @@
 		var key string 
 		var val {{.Value.TypeName}}
 		key, nn, err = dc.ReadString()
-		n += int64(nn)
+		n += nn
 		if err != nil {
 			return
 		}
@@ -45,7 +45,7 @@
 {{define "SliceTempl"}}
 	var xsz uint32
 	xsz, nn, err = dc.ReadArrayHeader()
-	n += int64(nn)
+	n += nn
 	if err != nil {
 		return
 	}
@@ -62,13 +62,13 @@
 {{define "StructTempl"}}
 	var isz uint32
 	isz, nn, err = dc.ReadMapHeader()
-	n += int64(nn)
+	n += nn
 	if err != nil {
 		return
 	}
 	for xplz:=uint32(0); xplz<isz; xplz++ {
 		field, nn, err = dc.ReadStringAsBytes(field)
-		n += int64(nn)
+		n += nn
 		if err != nil {
 			return
 		}
@@ -78,7 +78,7 @@
 		{{end}}
 		default:
 			nn, err = dc.Skip()
-			n += int64(nn)
+			n += nn
 			if err != nil {
 				return
 			}
@@ -96,7 +96,7 @@
 	{{if .Convert}}tmp, nn, err = dc.Read{{.BaseName}}(){{else}}{{.Varname}}, nn, err = dc.Read{{.BaseName}}(){{end}}
 	{{end}}
 	{{if .Convert}}{{.Varname}} = {{.Ident}}(tmp){{end}}
-	n += int64(nn)
+	n += nn
 	if err != nil {
 		return
 	}

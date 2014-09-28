@@ -1,6 +1,6 @@
 func ({{ .Varname}} *{{ .Value.Struct.Name}}) Marshal() ([]byte, error) {
 	var buf bytes.Buffer
-	_, err := {{.Varname}}.WriteTo(&buf)
+	_, err := {{.Varname}}.EncodeMsg(&buf)
 	return buf.Bytes(), err
 }
 

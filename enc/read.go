@@ -47,6 +47,10 @@ func Done(m *MsgReader) {
 	pushReader(m)
 }
 
+type MsgDecoder interface {
+	DecodeMsg(r io.Reader) (int, error)
+}
+
 func NewDecoder(r io.Reader) *MsgReader {
 	return popReader(r)
 }
@@ -1014,11 +1018,8 @@ func (m *MsgReader) ReadTime() (t time.Time, n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadIdent(d io.ReaderFrom) (n int, err error) {
-	var ni int64
-	ni, err = d.ReadFrom(m.r)
-	n = int(ni)
-	return
+func (m *MsgReader) ReadIdent(d MsgDecoder) (n int, err error) {
+	return d.DecodeMsg(m.r)
 }
 
 func (m *MsgReader) ReadIntf() (i interface{}, n int, err error) {

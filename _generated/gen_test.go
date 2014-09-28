@@ -20,13 +20,13 @@ func BenchmarkFastEncode(b *testing.B) {
 		Data: []byte("whaaaaargharbl"),
 	}
 	var buf bytes.Buffer
-	n, _ := v.WriteTo(&buf)
-	b.SetBytes(n)
+	n, _ := v.EncodeMsg(&buf)
+	b.SetBytes(int64(n))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
-		v.WriteTo(&buf)
+		v.EncodeMsg(&buf)
 	}
 
 	// should return ~500ns and 1 alloc
@@ -47,14 +47,14 @@ func BenchmarkFastDecode(b *testing.B) {
 	}
 
 	var buf bytes.Buffer
-	n, _ := v.WriteTo(&buf)
+	n, _ := v.EncodeMsg(&buf)
 	rd := bytes.NewReader(buf.Bytes())
-	b.SetBytes(n)
+	b.SetBytes(int64(n))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		rd.Seek(0, 0) // reset
-		v.ReadFrom(rd)
+		v.DecodeMsg(rd)
 	}
 
 	// should return ~700ns and 2 allocs
@@ -89,14 +89,14 @@ func Test1EncodeDecode(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	_, err := tt.WriteTo(&buf)
+	_, err := tt.EncodeMsg(&buf)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	tnew := new(TestType)
 
-	_, err = tnew.ReadFrom(&buf)
+	_, err = tnew.DecodeMsg(&buf)
 	if err != nil {
 		t.Error(err)
 	}

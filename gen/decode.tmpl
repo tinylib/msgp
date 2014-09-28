@@ -1,4 +1,4 @@
-func ({{.Varname}} *{{.Value.Struct.Name}}) ReadFrom(r io.Reader) (n int64, err error) {
+func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeMsg(r io.Reader) (n int, err error) {
 	var sz uint32
 	var nn int
 	var field []byte

@@ -3,7 +3,7 @@
 {{define "PtrTempl"}}
 	if {{.Varname}} == nil {
 		nn, err = en.WriteNil()
-		n += int64(nn)
+		n += nn
 		if err != nil {
 			return
 		}
@@ -18,7 +18,7 @@
 	{{else}}
 	nn, err = en.Write{{.BaseName}}({{.Varname}})
 	{{end}}
-	n += int64(nn)
+	n += nn
 	if err != nil {
 		return
 	}
@@ -26,14 +26,14 @@
 
 {{define "MapTempl"}}
 	nn, err = en.WriteMapHeader(uint32(len({{.Varname}})))
-	n += int64(nn)
+	n += nn
 	if err != nil {
 		return
 	}
 
 	for key, val := range {{.Varname}} {
 		nn, err = en.WriteString(key)
-		n += int64(nn)
+		n += nn
 		if err != nil {
 			return
 		}
@@ -43,7 +43,7 @@
 
 {{define "SliceTempl"}}
 	nn, err = en.WriteArrayHeader(uint32(len({{.Varname}})))
-	n += int64(nn)
+	n += nn
 	if err != nil {
 		return
 	}
@@ -54,13 +54,13 @@
 
 {{define "StructTempl"}}
 	nn, err = en.WriteMapHeader({{len .Fields}})
-	n += int64(nn)
+	n += nn
 	if err != nil {
 		return
 	}
 	{{range .Fields}}
 	nn, err = en.WriteString("{{.FieldTag}}")
-	n += int64(nn)
+	n += nn
 	if err != nil {
 		return
 	}
