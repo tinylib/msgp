@@ -41,9 +41,9 @@ func (z *Person) Marshal() ([]byte, error)
 
 func (z *Person) Unmarshal(b []byte) error
 
-func (z *Person) WriteTo(w io.Writer) (n int64, err error)
+func (z *Person) EncodeMsg(w io.Writer) (n int, err error)
 
-func (z *Person) ReadFrom(r io.Reader) (n int64, err error)
+func (z *Person) DecodeMsg(r io.Reader) (n int, err error)
 ```
 
 The `msgp/enc` package has a function called `CopyToJSON` which can take MessagePack-encoded binary
@@ -80,8 +80,8 @@ assumed to be struct definitions in other files. (The parser will spit out warni
 
 Very alpha. Here are the known limitations:
 
- - All fields of a struct that are not Go built-ins are assumed to satisfy the `io.WriterTo` and `io.ReaderFrom`
-   interface. This will only *actually* be the case if the declaration for that type is in a file touched by the code generator.
+ - All fields of a struct that are not Go built-ins are assumed to satisfy the `enc.MsgEncoder` and `enc.MsgDecoder`
+   interfaces. This will only *actually* be the case if the declaration for that type is in a file touched by the code generator.
    The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field.
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
  - Methods are only generated for `struct` definitions.
