@@ -58,6 +58,10 @@ func NewEncoder(w io.Writer) *MsgWriter {
 	}
 }
 
+func (mw *MsgWriter) Reset(w io.Writer) {
+	mw.w = w
+}
+
 func (mw *MsgWriter) WriteMapHeader(sz uint32) (n int, err error) {
 	switch {
 	case sz < 16:

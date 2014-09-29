@@ -69,6 +69,11 @@ type MsgReader struct {
 	scratch []byte // recycled []byte for temporary storage
 }
 
+func (m *MsgReader) Reset(r io.Reader) {
+	m.r.Reset(r)
+	m.under = r
+}
+
 // is the next byte 'nil'?
 func (m *MsgReader) IsNil() bool {
 	k, _ := m.nextKind()
