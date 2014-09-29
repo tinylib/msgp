@@ -23,16 +23,17 @@ var (
 
 func init() {
 	readerPool.New = func() interface{} {
-		return &MsgReader{
-			r: bufio.NewReaderSize(nil, 16),
-		}
+		return &MsgReader{}
 	}
 }
 
 func popReader(r io.Reader) *MsgReader {
 	p := readerPool.Get().(*MsgReader)
-	p.r.Reset(r)
-	p.under = r
+	if p.r == nil {
+		p.r = bufio.NewReaderSize(r, 32)
+		return p
+	}
+	p.Reset(r)
 	return p
 }
 
