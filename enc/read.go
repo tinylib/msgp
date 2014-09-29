@@ -70,6 +70,16 @@ type MsgReader struct {
 	scratch []byte // recycled []byte for temporary storage
 }
 
+// Read implements the standard io.Reader method
+func (m *MsgReader) Read(p []byte) (int, error) {
+	return m.r.Read(p)
+}
+
+// ReadFull implements io.ReadFull
+func (m *MsgReader) ReadFull(p []byte) (int, error) {
+	return io.ReadFull(m.r, p)
+}
+
 func (m *MsgReader) Reset(r io.Reader) {
 	m.r.Reset(r)
 	m.under = r

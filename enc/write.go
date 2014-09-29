@@ -58,6 +58,11 @@ func NewEncoder(w io.Writer) *MsgWriter {
 	}
 }
 
+// Write implements the standard io.Write method
+func (mw *MsgWriter) Write(p []byte) (int, error) {
+	return mw.w.Write(p)
+}
+
 func (mw *MsgWriter) Reset(w io.Writer) {
 	mw.w = w
 }
