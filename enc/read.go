@@ -55,6 +55,13 @@ func NewDecoder(r io.Reader) *MsgReader {
 	return popReader(r)
 }
 
+func NewDecoderSize(r io.Reader, sz int) *MsgReader {
+	return &MsgReader{
+		r:     bufio.NewReaderSize(r, sz),
+		under: r,
+	}
+}
+
 type MsgReader struct {
 	r       *bufio.Reader
 	under   io.Reader
