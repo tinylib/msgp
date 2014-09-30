@@ -1,8 +1,11 @@
 func ({{.Varname}} *{{.Value.Struct.Name}}) EncodeMsg(w io.Writer) (n int, err error) {
-	var nn int
 	en := enc.NewEncoder(w)
+	return {{.Varname}}.EncodeTo(en)
+}
+
+func ({{.Varname}} *{{.Value.Struct.Name}}) EncodeTo(en *enc.MsgWriter) (n int, err error) {
+	var nn int 
 	_ = nn
-	_ = en
 
 	{{template "PtrTempl" .}}
 	return

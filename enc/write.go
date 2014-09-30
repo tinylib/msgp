@@ -45,6 +45,7 @@ const (
 
 type MsgEncoder interface {
 	EncodeMsg(io.Writer) (int, error)
+	EncodeTo(*MsgWriter) (int, error)
 }
 
 type MsgWriter struct {
@@ -346,7 +347,7 @@ func (mw *MsgWriter) WriteMapStrIntf(mp map[string]interface{}) (n int, err erro
 }
 
 func (mw *MsgWriter) WriteIdent(e MsgEncoder) (n int, err error) {
-	return e.EncodeMsg(mw.w)
+	return e.EncodeTo(mw)
 }
 
 func (mw *MsgWriter) WriteTime(t time.Time) (n int, err error) {

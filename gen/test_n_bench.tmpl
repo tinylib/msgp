@@ -27,11 +27,12 @@ func TestEncodeDecode{{.Name}}(t *testing.T) {
 func BenchmarkWrite{{.Name}}(b *testing.B) {
 	v := new({{.Name}})
 	var buf bytes.Buffer
+	en := enc.NewEncoder(&buf)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i:=0; i<b.N; i++ {
 		buf.Reset()
-		v.EncodeMsg(&buf)
+		v.EncodeTo(en)
 	}
 }
 
@@ -40,10 +41,11 @@ func BenchmarkRead{{.Name}}(b *testing.B) {
 	var buf bytes.Buffer
 	v.EncodeMsg(&buf)
 	rd := bytes.NewReader(buf.Bytes())
+	dc := enc.NewDecoder(rd)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i:=0; i<b.N; i++ {
 		rd.Seek(0, 0)
-		v.DecodeMsg(rd)
+		v.DecodeFrom(dc)
 	}
 }

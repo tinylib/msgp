@@ -50,6 +50,7 @@ func Done(m *MsgReader) {
 
 type MsgDecoder interface {
 	DecodeMsg(r io.Reader) (int, error)
+	DecodeFrom(*MsgReader) (int, error)
 }
 
 func NewDecoder(r io.Reader) *MsgReader {
@@ -1039,7 +1040,7 @@ func (m *MsgReader) ReadTime() (t time.Time, n int, err error) {
 }
 
 func (m *MsgReader) ReadIdent(d MsgDecoder) (n int, err error) {
-	return d.DecodeMsg(m.r)
+	return d.DecodeFrom(m)
 }
 
 func (m *MsgReader) ReadIntf() (i interface{}, n int, err error) {
