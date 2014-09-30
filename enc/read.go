@@ -58,14 +58,12 @@ func NewDecoder(r io.Reader) *MsgReader {
 
 func NewDecoderSize(r io.Reader, sz int) *MsgReader {
 	return &MsgReader{
-		r:     bufio.NewReaderSize(r, sz),
-		under: r,
+		r: bufio.NewReaderSize(r, sz),
 	}
 }
 
 type MsgReader struct {
 	r       *bufio.Reader
-	under   io.Reader
 	leader  [18]byte
 	scratch []byte // recycled []byte for temporary storage
 }
@@ -82,7 +80,6 @@ func (m *MsgReader) ReadFull(p []byte) (int, error) {
 
 func (m *MsgReader) Reset(r io.Reader) {
 	m.r.Reset(r)
-	m.under = r
 }
 
 // is the next byte 'nil'?
