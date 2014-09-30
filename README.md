@@ -41,6 +41,10 @@ func (z *Person) Marshal() ([]byte, error)
 
 func (z *Person) Unmarshal(b []byte) error
 
+func (z *Person) EncodeTo(en *enc.MsgWriter) (n int, err error)
+
+func (z *Person) DecodeFrom(dc *enc.MsgReader) (n int, err error)
+
 func (z *Person) EncodeMsg(w io.Writer) (n int, err error)
 
 func (z *Person) DecodeMsg(r io.Reader) (n int, err error)
