@@ -234,13 +234,20 @@ for_fields:
 		default:
 			// inline multiple field declaration
 			for _, nm := range field.Names {
+				el := parseExpr(field.Type)
+				if el == nil {
+					// skip
+					fmt.Printf(chalk.Yellow.Color(" (\u26a0 field %q unsupported)"), sf.FieldName)
+					continue for_fields
+				}
+
 				out = append(out, gen.StructField{
 					FieldTag:  nm.Name,
 					FieldName: nm.Name,
 					// we have to duplicate the field
 					// type here, or otherwise the FieldElems
 					// will be the same pointer
-					FieldElem: parseExpr(field.Type),
+					FieldElem: el,
 				})
 			}
 			continue for_fields
