@@ -99,9 +99,9 @@ func GetElems(filename string) ([]gen.Elem, string, error) {
 	var specs []*ast.TypeSpec
 	for _, file := range f {
 		specs = append(specs, GetTypeSpecs(file)...)
-		if specs == nil {
-			return nil, "", nil
-		}
+	}
+	if specs == nil {
+		return nil, "", nil
 	}
 
 	var out []gen.Elem
