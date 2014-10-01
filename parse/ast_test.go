@@ -7,13 +7,17 @@ import (
 )
 
 func TestAST(t *testing.T) {
-	f, err := GetElems("./_to_parse.go")
+	f, pkgName, err := GetElems("./_to_parse.go")
 	if err != nil {
 		t.Error(err)
 	}
 
+	if pkgName != "parse" {
+		t.Error("expected pkgName to be parse, was: ", pkgName)
+	}
+
 	if len(f) != 1 {
-		t.Fatal("Got %d elements; expected %d", 1, len(f))
+		t.Fatalf("Got %d elements; expected %d", 1, len(f))
 	}
 
 	if !reflect.DeepEqual(f[0], want) {

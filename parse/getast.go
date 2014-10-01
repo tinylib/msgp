@@ -8,6 +8,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -42,8 +43,38 @@ func init() {
 
 // GetAST simply creates the ast out of a filename and filters
 // out non-exported elements.
-func GetAST(filename string) (f *ast.File, err error) {
+func GetAST(filename string) (files []*ast.File, pkgName string, err error) {
+	var (
+		f     *ast.File
+		fInfo os.FileInfo
+	)
+
 	fset := token.NewFileSet()
+	fInfo, err = os.Stat(filename)
+	if err != nil {
+		return
+	}
+	if fInfo.IsDir() {
+		var pkgs map[string]*ast.Package
+		pkgs, err = parser.ParseDir(fset, filename, nil, parser.AllErrors)
+		if err != nil {
+			return
+		}
+
+		// we'll assume one package per dir
+		var pkg *ast.Package
+		for _, pkg = range pkgs {
+			pkgName = pkg.Name
+		}
+		files = make([]*ast.File, len(pkg.Files))
+		var i = 0
+		for _, file := range pkg.Files {
+			files[i] = file
+			i++
+		}
+		return
+	}
+
 	f, err = parser.ParseFile(fset, filename, nil, parser.AllErrors)
 	if err != nil {
 		return
@@ -51,25 +82,31 @@ func GetAST(filename string) (f *ast.File, err error) {
 	if !ast.FileExports(f) {
 		f, err = nil, errors.New("no exports in file")
 	}
+	files = []*ast.File{f}
+	if f != nil {
+		pkgName = f.Name.Name
+	}
 	return
 }
 
 // GetElems gets the generator elements out of a file (may be nil)
-func GetElems(filename string) ([]gen.Elem, error) {
-	f, err := GetAST(filename)
+func GetElems(filename string) ([]gen.Elem, string, error) {
+	f, pkg, err := GetAST(filename)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	var out []gen.Elem
-	specs := GetTypeSpecs(f)
-	if specs == nil {
-		return nil, nil
-	}
+	for _, file := range f {
+		specs := GetTypeSpecs(file)
+		if specs == nil {
+			return nil, "", nil
+		}
 
-	for i := range specs {
-		el := GenElem(specs[i])
-		if el != nil {
-			out = append(out, el)
+		for i := range specs {
+			el := GenElem(specs[i])
+			if el != nil {
+				out = append(out, el)
+			}
 		}
 	}
 
@@ -87,7 +124,7 @@ func GetElems(filename string) ([]gen.Elem, error) {
 		}
 	}
 
-	return out, nil
+	return out, pkg, nil
 }
 
 // should return a list of *ast.TypeSpec we are interested in

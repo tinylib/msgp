@@ -55,10 +55,6 @@ func main() {
 		fmt.Println(chalk.Red.Color("No file to parse."))
 		os.Exit(1)
 	}
-	if pkg == "" {
-		fmt.Println(chalk.Red.Color("No package specified."))
-		os.Exit(1)
-	}
 
 	err := DoAll(pkg, file)
 	if err != nil {
@@ -73,9 +69,12 @@ func DoAll(gopkg string, gofile string) error {
 	// location of the file to pase
 
 	fmt.Printf(chalk.Magenta.Color("=========%12s      =========\n"), gofile)
-	elems, err := parse.GetElems(gofile)
+	elems, pkgName, err := parse.GetElems(gofile)
 	if err != nil {
 		return err
+	}
+	if len(gopkg) == 0 {
+		gopkg = pkgName
 	}
 
 	if len(elems) == 0 {
@@ -88,6 +87,11 @@ func DoAll(gopkg string, gofile string) error {
 	if out != "" {
 		newfile = out
 	} else {
+		// small sanity check if gofile == . or dir
+		// let's just stat it again, not too costly
+		if fInfo, err := os.Stat(gofile); err == nil && fInfo.IsDir() {
+			gofile = pkgName
+		}
 		newfile = strings.TrimSuffix(gofile, ".go") + "_gen.go"
 	}
 
