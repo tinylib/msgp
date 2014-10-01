@@ -9,6 +9,7 @@ import (
 	"github.com/ttacon/chalk"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -83,14 +84,23 @@ func DoAll(gopkg string, gofile string) error {
 	}
 
 	// new file name is old file name + _gen.go
+	var isDir bool
+	if fInfo, err := os.Stat(gofile); err == nil && fInfo.IsDir() {
+		isDir = true
+	}
+
 	var newfile string
 	if out != "" {
 		newfile = out
+		if pre := strings.TrimPrefix(out, gofile); len(pre) > 0 &&
+			!strings.HasSuffix(out, ".go") {
+			newfile = filepath.Join(gofile, out)
+		}
 	} else {
 		// small sanity check if gofile == . or dir
 		// let's just stat it again, not too costly
-		if fInfo, err := os.Stat(gofile); err == nil && fInfo.IsDir() {
-			gofile = pkgName
+		if isDir {
+			gofile = filepath.Join(gofile, pkgName)
 		}
 		newfile = strings.TrimSuffix(gofile, ".go") + "_gen.go"
 	}
@@ -182,13 +192,13 @@ func DoAll(gopkg string, gofile string) error {
 		}
 	}
 
-	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s/%s "), gopkg, newfile)
+	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s "), newfile)
 	err = wr.Flush()
 	if err != nil {
 		return err
 	}
 	fmt.Print(chalk.Green.Color("\u2713\n"))
-	fmt.Printf(chalk.Magenta.Color("TESTS =====> %s/%s "), gopkg, testfile)
+	fmt.Printf(chalk.Magenta.Color("TESTS =====> %s "), testfile)
 	err = twr.Flush()
 	if err != nil {
 		return err
