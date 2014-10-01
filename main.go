@@ -69,7 +69,18 @@ func main() {
 func DoAll(gopkg string, gofile string) error {
 	// location of the file to pase
 
-	fmt.Printf(chalk.Magenta.Color("=========%12s      =========\n"), gofile)
+	// new file name is old file name + _gen.go
+	var isDir bool
+	if fInfo, err := os.Stat(gofile); err == nil && fInfo.IsDir() {
+		isDir = true
+	}
+
+	if isDir {
+		fmt.Printf(chalk.Magenta.Color("========= %s =========\n"), filepath.Clean(gofile))
+	} else {
+		fmt.Printf(chalk.Magenta.Color("========= %s =========\n"), gofile)
+	}
+
 	elems, pkgName, err := parse.GetElems(gofile)
 	if err != nil {
 		return err
@@ -81,12 +92,6 @@ func DoAll(gopkg string, gofile string) error {
 	if len(elems) == 0 {
 		fmt.Println(chalk.Magenta.Color("No structs requiring code generation were found..."))
 		return nil
-	}
-
-	// new file name is old file name + _gen.go
-	var isDir bool
-	if fInfo, err := os.Stat(gofile); err == nil && fInfo.IsDir() {
-		isDir = true
 	}
 
 	var newfile string

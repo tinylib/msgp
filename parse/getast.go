@@ -231,6 +231,12 @@ for_fields:
 			sf.FieldName = field.Names[0].Name
 		case 0:
 			sf.FieldName = embedded(field.Type)
+			if sf.FieldName == "" {
+				// means it's a selector expr., or
+				// something else unsupported
+				fmt.Printf(chalk.Yellow.Color(" (\u26a0 field %v unsupported)"), field.Type)
+				continue for_fields
+			}
 		default:
 			// inline multiple field declaration
 			for _, nm := range field.Names {
@@ -244,9 +250,6 @@ for_fields:
 				out = append(out, gen.StructField{
 					FieldTag:  nm.Name,
 					FieldName: nm.Name,
-					// we have to duplicate the field
-					// type here, or otherwise the FieldElems
-					// will be the same pointer
 					FieldElem: el,
 				})
 			}
@@ -287,9 +290,9 @@ func embedded(f ast.Expr) string {
 	case *ast.StarExpr:
 		return embedded(f.(*ast.StarExpr).X)
 	default:
-		// not sure what to do here,
-		// i don't think any other types
-		// are allowed to be embedded
+		// other possibilities (like selector expressions)
+		// are disallowed; we can't reasonably know
+		// their type
 		return ""
 	}
 }
