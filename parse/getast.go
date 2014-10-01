@@ -296,11 +296,7 @@ func parseExpr(e ast.Expr) gen.Elem {
 
 		switch e.(*ast.MapType).Key.(type) {
 		case *ast.Ident:
-			keyIdent, ok := e.(*ast.MapType).Key.(*ast.Ident)
-			if !ok {
-				return nil
-			}
-			switch keyIdent.Name {
+			switch e.(*ast.MapType).Key.(*ast.Ident).Name {
 			case "string":
 				inner := parseExpr(e.(*ast.MapType).Value)
 				if inner == nil {
