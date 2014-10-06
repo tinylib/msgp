@@ -66,7 +66,7 @@ func DecodeToJSON(dst io.Writer, src *MsgReader) (n int64, err error) {
 		w = jsw
 		cast = true
 	} else {
-		w = bufio.NewWriterSize(w, 256)
+		w = bufio.NewWriterSize(dst, 256)
 	}
 	var k kind
 	k, err = src.nextKind()
