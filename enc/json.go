@@ -56,6 +56,10 @@ func AsJSON(src io.Reader) io.Reader {
 // writes it as JSON to 'dst'. It returns the number of bytes written,
 // and any errors encountered in the process.
 func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
+	return DecodeToJSON(dst, NewDecoder(src))
+}
+
+func DecodeToJSON(dst io.Writer, src *MsgReader) (n int64, err error) {
 	var w jsWriter
 	var cast bool
 	if jsw, ok := dst.(jsWriter); ok {
@@ -64,18 +68,17 @@ func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
 	} else {
 		w = bufio.NewWriterSize(w, 256)
 	}
-	r := NewDecoder(src)
 	var k kind
-	k, err = r.nextKind()
+	k, err = src.nextKind()
 	if err != nil {
 		return
 	}
 	var nn int
 	switch k {
 	case kmap:
-		nn, err = rwMap(w, r)
+		nn, err = rwMap(w, src)
 	case karray:
-		nn, err = rwArray(w, r)
+		nn, err = rwArray(w, src)
 	default:
 		return 0, errors.New("enc: 'src' must represent a map or array")
 	}
