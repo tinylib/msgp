@@ -13,6 +13,6 @@ func (r Raw) EncodeMsg(w io.Writer) (int, error) {
 }
 
 // Raw implements the MsgEncoder interface
-func (r Raw) EncodeTo(wr MsgWriter) (int, error) {
+func (r Raw) EncodeTo(wr *MsgWriter) (int, error) {
 	return wr.Write([]byte(r))
 }
