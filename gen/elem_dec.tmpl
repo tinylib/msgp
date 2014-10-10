@@ -70,7 +70,7 @@
 		err = fmt.Errorf("decoded array size %d; wanted array size %d", asz, {{.Size}})
 		return
 	}
-	for {{.Index}} = range {{.Varname}} {
+	for {{.Index}} := range {{.Varname}} {
 		{{template "ElemTempl" .Els}}
 	}
 	{{end}}

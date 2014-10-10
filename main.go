@@ -24,6 +24,7 @@ var (
 		"github.com/philhofer/msgp/enc",
 		"io",
 		"bytes",
+		"fmt",
 	}
 
 	// testing imports

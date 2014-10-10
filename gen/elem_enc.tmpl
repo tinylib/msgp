@@ -53,7 +53,7 @@
 {{end}}
 
 {{define "ArrayTempl"}}
-	nn, err = WriteArrayHeader({{.Size}})
+	nn, err = en.WriteArrayHeader({{.Size}})
 	n += nn
 	if err != nil {
 		return
