@@ -24,7 +24,6 @@ var (
 		"github.com/philhofer/msgp/enc",
 		"io",
 		"bytes",
-		"fmt",
 	}
 
 	// testing imports
@@ -235,5 +234,6 @@ func writeImportHeader(w io.Writer, imports ...string) error {
 		}
 	}
 	_, err = io.WriteString(w, ")\n\n")
+
 	return err
 }

@@ -67,7 +67,7 @@
 		return
 	}
 	if asz != {{.Size}} {
-		err = fmt.Errorf("decoded array size %d; wanted array size %d", asz, {{.Size}})
+		err = enc.ArrayError{asz, {{.Size}}}
 		return
 	}
 	for {{.Index}} := range {{.Varname}} {
