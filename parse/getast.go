@@ -10,6 +10,7 @@ import (
 	"go/token"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -333,22 +334,59 @@ func parseExpr(e ast.Expr) gen.Elem {
 		return b
 
 	case *ast.ArrayType:
-		// special case for []byte
-		switch e.(*ast.ArrayType).Elt.(type) {
+		arr := e.(*ast.ArrayType)
+
+		// array and not a slice
+		if arr.Len != nil {
+			switch arr.Len.(type) {
+			case *ast.BasicLit:
+				l := arr.Len.(*ast.BasicLit)
+				switch l.Kind {
+				case token.INT:
+					size, err := strconv.Atoi(l.Value)
+					if err != nil {
+						return nil
+					}
+					return &gen.Array{
+						Size: size,
+						Els:  parseExpr(arr.Elt),
+					}
+				}
+
+			case *ast.Ident:
+				// TODO: resolve constant expression
+
+				// maybe atoi will work...?
+				size, err := strconv.Atoi(arr.Len.(*ast.Ident).String())
+				if err != nil {
+					return nil
+				}
+				return &gen.Array{
+					Size: size,
+					Els:  parseExpr(arr.Elt),
+				}
+
+			default:
+				return nil
+			}
+		}
+
+		// special case for []byte; others go to gen.Slice
+		switch arr.Elt.(type) {
 		case *ast.Ident:
-			i := e.(*ast.ArrayType).Elt.(*ast.Ident)
+			i := arr.Elt.(*ast.Ident)
 			if i.Name == "byte" {
 				return &gen.BaseElem{
 					Value: gen.Bytes,
 				}
 			} else {
 				return &gen.Slice{
-					Els: parseExpr(e.(*ast.ArrayType).Elt),
+					Els: parseExpr(arr.Elt),
 				}
 			}
 		default:
 			return &gen.Slice{
-				Els: parseExpr(e.(*ast.ArrayType).Elt),
+				Els: parseExpr(arr.Elt),
 			}
 
 		}

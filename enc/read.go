@@ -17,9 +17,22 @@ import (
 var (
 	// ErrNil is returned when reading
 	// a value encoded as 'nil'
-	ErrNil     = errors.New("value encoded as nil")
+	ErrNil = errors.New("value encoded as nil")
+
 	readerPool sync.Pool
 )
+
+// ArrayError is an error returned
+// when decoding a fix-sized array
+// of the wrong size
+type ArrayError struct {
+	Wanted uint32
+	Got    uint32
+}
+
+func (a ArrayError) Error() string {
+	return fmt.Sprintf("wanted array of size %d; got %d", a.Wanted, a.Got)
+}
 
 func init() {
 	readerPool.New = func() interface{} {

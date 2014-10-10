@@ -154,12 +154,12 @@ func DoAll(gopkg string, gofile string) error {
 
 	for _, el := range elems {
 		p, ok := el.(*gen.Ptr)
-		if !ok {
+		if !ok || p.Value.Type() != gen.StructType {
 			continue
 		}
 		// propogate names to
 		// child elements of struct
-		gen.Propogate(p, "z")
+		p.SetVarname("z")
 
 		// write Marshal()
 		err = gen.WriteMarshalMethod(wr, p)
@@ -234,5 +234,6 @@ func writeImportHeader(w io.Writer, imports ...string) error {
 		}
 	}
 	_, err = io.WriteString(w, ")\n\n")
+
 	return err
 }

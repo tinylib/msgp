@@ -56,8 +56,9 @@ type Embedded struct {
 }
 
 type Things struct {
-	Cmplx complex64 `msg:"complex"` // test slices
-	Vals  []int32   `msg:"values"`
+	Cmplx complex64  `msg:"complex"` // test slices
+	Vals  []int32    `msg:"values"`
+	Arr   [8]float64 `msg:"arr"` // test fixed array
 }
 
 type Empty struct{}

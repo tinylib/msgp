@@ -1,4 +1,4 @@
-{{/* Gross switch */}}{{define "ElemTempl"}}{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{else if eq (.Type) 5 }}{{template "MapTempl" .Map}}{{end}}{{end}}
+{{/* Gross switch */}}{{define "ElemTempl"}}{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{else if eq (.Type) 5 }}{{template "MapTempl" .Map}}{{else if eq (.Type) 6 }}{{template "ArrayTempl" .Array}}{{end}}{{end}}
 
 {{define "PtrTempl"}}
 	if dc.IsNil() {
@@ -30,15 +30,15 @@
 		}
 	}
 	for inx := uint32(0); inx < sz; inx++ {
-		var key string 
-		var val {{.Value.TypeName}}
-		key, nn, err = dc.ReadString()
+		var {{.Keyidx}} string 
+		var {{.Validx}} {{.Value.TypeName}} {{/* TODO: *real* initialization here... this could fail. */}}
+		{{.Keyidx}}, nn, err = dc.ReadString()
 		n += nn
 		if err != nil {
 			return
 		}
 		{{template "ElemTempl" .Value}}
-		{{.Varname}}[key] = val
+		{{.Varname}}[{{.Keyidx}}] = {{.Validx}}
 	}
 	{{end}}
 
@@ -54,7 +54,23 @@
 	} else {
 		{{.Varname}} = make({{.TypeName}}, int(xsz))
 	}
-	for i := range {{.Varname}} {
+	for {{.Index}} := range {{.Varname}} {
+		{{template "ElemTempl" .Els}}
+	}
+	{{end}}
+
+{{define "ArrayTempl"}}
+	var asz uint32 
+	asz, nn, err = dc.ReadArrayHeader()
+	n += nn
+	if err != nil {
+		return
+	}
+	if asz != {{.Size}} {
+		err = enc.ArrayError{asz, {{.Size}}}
+		return
+	}
+	for {{.Index}} := range {{.Varname}} {
 		{{template "ElemTempl" .Els}}
 	}
 	{{end}}
