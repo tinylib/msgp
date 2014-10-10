@@ -24,32 +24,34 @@ func randIdx() string {
 // syntax tree. If the input were:
 //
 // type Marshaler struct {
-// 	thing1 *float64
-// 	body   []byte
+// 	  Thing1 *float64 `msg:"thing1"`
+// 	  Body   []byte   `msg:"body"`
 // }
 //
 // then the AST parsing of *Marshaler should produce:
 //
 // var val Elem = &Ptr{
-// 	Varname: "z",
+// 	name: "z",
 // 	Value: &Struct{
 // 		Name: "Marshaler",
 // 		Fields: []StructField{
 // 			{
 // 				FieldTag: "thing1",
 // 				FieldElem: &Ptr{
-// 					Varname: "z.thing1",
+// 					name: "z.thing1",
 // 					Value: &BaseElem{
-// 						Varname: "*z.thing1",
+// 						name:    "*z.thing1",
 // 						Value:   Float64,
+//						Convert: false,
 // 					},
 // 				},
 // 			},
 // 			{
 // 				FieldTag: "",
 // 				FieldElem: &BaseElem{
-// 					Varname: "z.body",
+// 					name:    "z.body",
 // 					Value:   Bytes,
+// 					Convert: False,
 // 				},
 // 			},
 // 		},
@@ -152,7 +154,15 @@ func (a *Array) Map() *Map       { return nil }
 func (a *Array) Array() *Array   { return a }
 func (a *Array) SetVarname(s string) {
 	a.name = s
+ridx:
 	a.Index = randIdx()
+
+	// try to avoid using the same
+	// index as a parent slice
+	if strings.Contains(a.name, a.Index) {
+		goto ridx
+	}
+
 	a.Els.SetVarname(fmt.Sprintf("%s[%s]", a.name, a.Index))
 }
 func (a *Array) Varname() string  { return a.name }
@@ -178,8 +188,15 @@ func (m *Map) Map() *Map       { return m }
 func (m *Map) Array() *Array   { return nil }
 func (m *Map) SetVarname(s string) {
 	m.name = s
+ridx:
 	m.Keyidx = randIdx()
 	m.Validx = randIdx()
+
+	// just in case
+	if m.Keyidx == m.Validx {
+		goto ridx
+	}
+
 	m.Value.SetVarname(m.Validx)
 }
 func (m *Map) Varname() string  { return m.name }

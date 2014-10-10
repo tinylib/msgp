@@ -31,7 +31,7 @@
 	}
 	for inx := uint32(0); inx < sz; inx++ {
 		var {{.Keyidx}} string 
-		var {{.Validx}} {{.Value.TypeName}}
+		var {{.Validx}} {{.Value.TypeName}} {{/* TODO: *real* initialization here... this could fail. */}}
 		{{.Keyidx}}, nn, err = dc.ReadString()
 		n += nn
 		if err != nil {
