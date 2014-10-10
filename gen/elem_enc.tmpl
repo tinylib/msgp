@@ -1,4 +1,4 @@
-{{define "ElemTempl"}}{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{else if eq (.Type) 5 }}{{/* Map */}}{{template "MapTempl" .Map}}{{end}}{{end}}
+{{define "ElemTempl"}}{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{else if eq (.Type) 5 }}{{/* Map */}}{{template "MapTempl" .Map}}{{else if eq (.Type) 6 }}{{/* Array */}}{{template "ArrayTempl" .Array}}{{end}}{{end}}
 
 {{define "PtrTempl"}}
 	if {{.Varname}} == nil {
@@ -43,6 +43,17 @@
 
 {{define "SliceTempl"}}
 	nn, err = en.WriteArrayHeader(uint32(len({{.Varname}})))
+	n += nn
+	if err != nil {
+		return
+	}
+	for {{.Index}} := range {{.Varname}} {
+		{{template "ElemTempl" .Els}}
+	}
+{{end}}
+
+{{define "ArrayTempl"}}
+	nn, err = WriteArrayHeader({{.Size}})
 	n += nn
 	if err != nil {
 		return
