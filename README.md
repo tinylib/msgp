@@ -1,4 +1,4 @@
-msgp
+MessagePack Code Generator
 =======
 
 [![forthebadge](http://forthebadge.com/badges/uses-badges.svg)](http://forthebadge.com)
@@ -20,7 +20,7 @@ In a source file, include the following directive:
 The `msgp` command will generate `Unmarshal`, `Marshal`, `WriteTo`, and `ReadFrom` methods for all exported struct
 definitions in the file. You will need to include that directive in every file that contains structs that 
 need code generation. The generated files will be named {filename}_gen.go by default (but can 
-be overridden with the `-o` flag.)
+be overridden with the `-o` flag.) Additionally, it will write tests and benchmarks in {{filename}}_gen_test.go.
 
 Field names can be overridden in much the same way as the `encoding/json` package. For example:
 
@@ -82,21 +82,26 @@ assumed to be struct definitions in other files. (The parser will spit out warni
 
 ### Status
 
-Very alpha. Here are the known limitations:
+Alpha. Here are the known limitations/restrictions:
 
  - All fields of a struct that are not Go built-ins are assumed to satisfy the `enc.MsgEncoder` and `enc.MsgDecoder`
-   interfaces. This will only *actually* be the case if the declaration for that type is in a file touched by the code generator.
-   The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field.
- - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
- - Methods are only generated for `struct` definitions.
- - *Encoding/decoding of `interface{}` and doesn't work yet*.
- - Static arrays are not yet supported.
+   interfaces. This will only *actually* be the case if the declaration for that type is in a file touched by the code generator. The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field. The generated code will fail to compile if you encounter this issue, so it shouldn't catch you
+   by surprise.
+ - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields. This is by design.
+ - Methods are only generated for `struct` definitions. Chances are that we will keep things this way.
+ - Encoding/decoding of `interface{}` can be flaky. It works fine for go builtins, but don't count on it working 
+   well for anything beyond that.
+ - Maps must have `string` keys. This is intentional (as it preserves JSON interop.) The generator will yell
+   at you if you try to use something else. Although non-string map keys are not explicitly forbidden by the messagepack
+   standard, many serializers impose this restriction.
 
-There may be other problems. I want this code to be in beta by the go 1.4 release.
+I have no idea whether or not this generator will work with your code. Luckily, if the output compiles, then 
+there's a pretty good chance things are fine. (Plus, we generate tests for you.) *Please, please, please* file 
+an issue if you think the generator is writing broken code.
 
 ### Performance
 
 As you might imagine, the generated code is quite a lot more performant than reflection-based serialization; generally 
-you can expect a ~4x speed improvement and an order of magnitude fewer memory allocations when compared to other reflection-based messagepack serialization libraries. YMMV.
+you can expect a ~4x speed improvement and an order of magnitude fewer memory allocations when compared to other reflection-based messagepack serialization libraries. (Typically, the `EncodeTo` method does zero allocations. `DecodeFrom` can do as little as 1 allocation if the struct fields are already initialized.) YMMV.
 
 If you like benchmarks, we're the [second-fastest and lowest-memory-footprint round-trip serializer for Go in this test.](https://github.com/alecthomas/go_serialization_benchmarks)
