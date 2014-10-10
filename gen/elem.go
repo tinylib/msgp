@@ -106,23 +106,41 @@ const (
 // Elem is Base, Slice, Stuct, Map, or Ptr
 type Elem interface {
 	Type() ElemType // Returns element type
+
+	// We need the following
+	// because objects cannot
+	// be type-asserted in templates.
+	// Yes, this is gross.
 	Ptr() *Ptr
 	Slice() *Slice
 	Struct() *Struct
 	Base() *BaseElem
 	Map() *Map
 	Array() *Array
+
+	// SetVarname sets this nodes
+	// variable name and recursively
+	// sets the names of all its children
 	SetVarname(s string)
+
+	// Varname is the variable
+	// name of the node
 	Varname() string
+
+	// TypeName is the canonical
+	// go type name of the node
+	// e.g. "string", "int", "map[string]float64"
 	TypeName() string
+
+	// fmt.Stringer for debugging
 	String() string
 }
 
 type Array struct {
 	name  string // Varname
-	Index string
-	Size  int
-	Els   Elem
+	Index string // index variable name
+	Size  int    // array size
+	Els   Elem   // child
 }
 
 func (a *Array) Type() ElemType  { return ArrayType }
@@ -145,8 +163,10 @@ func (a *Array) String() string {
 
 // Map is a map[string]Elem
 type Map struct {
-	name  string
-	Value Elem
+	name   string
+	Keyidx string // key variable name
+	Validx string // value variable name
+	Value  Elem
 }
 
 func (m *Map) Type() ElemType  { return MapType }
@@ -158,7 +178,9 @@ func (m *Map) Map() *Map       { return m }
 func (m *Map) Array() *Array   { return nil }
 func (m *Map) SetVarname(s string) {
 	m.name = s
-	m.Value.SetVarname("val")
+	m.Keyidx = randIdx()
+	m.Validx = randIdx()
+	m.Value.SetVarname(m.Validx)
 }
 func (m *Map) Varname() string  { return m.name }
 func (m *Map) TypeName() string { return fmt.Sprintf("map[string]%s", m.Value.TypeName()) }

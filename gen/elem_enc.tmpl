@@ -31,8 +31,8 @@
 		return
 	}
 
-	for key, val := range {{.Varname}} {
-		nn, err = en.WriteString(key)
+	for {{.Keyidx}}, {{.Validx}} := range {{.Varname}} {
+		nn, err = en.WriteString({{.Keyidx}})
 		n += nn
 		if err != nil {
 			return

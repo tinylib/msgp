@@ -30,15 +30,15 @@
 		}
 	}
 	for inx := uint32(0); inx < sz; inx++ {
-		var key string 
-		var val {{.Value.TypeName}}
-		key, nn, err = dc.ReadString()
+		var {{.Keyidx}} string 
+		var {{.Validx}} {{.Value.TypeName}}
+		{{.Keyidx}}, nn, err = dc.ReadString()
 		n += nn
 		if err != nil {
 			return
 		}
 		{{template "ElemTempl" .Value}}
-		{{.Varname}}[key] = val
+		{{.Varname}}[{{.Keyidx}}] = {{.Validx}}
 	}
 	{{end}}
 
