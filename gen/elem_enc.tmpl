@@ -47,7 +47,7 @@
 	if err != nil {
 		return
 	}
-	for i := range {{.Varname}} {
+	for {{.Index}} := range {{.Varname}} {
 		{{template "ElemTempl" .Els}}
 	}
 {{end}}

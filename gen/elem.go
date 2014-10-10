@@ -2,8 +2,23 @@ package gen
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 )
+
+const (
+	idxChars = "abcdefghijlkmnopqrstuvwxyz"
+	idxLen   = 3
+)
+
+// generate a random index variable name
+func randIdx() string {
+	bts := make([]byte, idxLen)
+	for i := range bts {
+		bts[i] = idxChars[rand.Intn(len(idxChars))]
+	}
+	return string(bts)
+}
 
 // This code defines the template
 // syntax tree. If the input were:
@@ -80,11 +95,12 @@ type ElemType int
 
 const (
 	InvalidType ElemType = iota
-	PtrType
-	SliceType
-	StructType
-	BaseType
-	MapType
+	PtrType              // pointer-to-object
+	SliceType            // slice-of-object
+	StructType           // struct-of-objects
+	BaseType             // object
+	MapType              // map[string]object
+	ArrayType            // [Size]object
 )
 
 // Elem is Base, Slice, Stuct, Map, or Ptr
@@ -95,8 +111,28 @@ type Elem interface {
 	Struct() *Struct
 	Base() *BaseElem
 	Map() *Map
+	Array() *Array
 	TypeName() string
 	String() string
+}
+
+type Array struct {
+	Varname string
+	Index   string
+	Size    int
+	Els     Elem
+}
+
+func (a *Array) Type() ElemType   { return ArrayType }
+func (a *Array) Ptr() *Ptr        { return nil }
+func (a *Array) Slice() *Slice    { return nil }
+func (a *Array) Struct() *Struct  { return nil }
+func (a *Array) Base() *BaseElem  { return nil }
+func (a *Array) Map() *Map        { return nil }
+func (a *Array) Array() *Array    { return a }
+func (a *Array) TypeName() string { return fmt.Sprintf("[%d]%s", a.Size, a.Els.TypeName()) }
+func (a *Array) String() string {
+	return fmt.Sprintf("Array[%d]Of(%s - %s)", a.Size, a.Els.String(), a.Varname)
 }
 
 // Map is a map[string]Elem
@@ -111,6 +147,7 @@ func (m *Map) Slice() *Slice    { return nil }
 func (m *Map) Struct() *Struct  { return nil }
 func (m *Map) Base() *BaseElem  { return nil }
 func (m *Map) Map() *Map        { return m }
+func (m *Map) Array() *Array    { return nil }
 func (m *Map) TypeName() string { return fmt.Sprintf("map[string]%s", m.Value.TypeName()) }
 func (m *Map) String() string {
 	return fmt.Sprintf("MapOf([string]%s - %s)", m.Value.String(), m.Varname)
@@ -118,6 +155,7 @@ func (m *Map) String() string {
 
 type Slice struct {
 	Varname string
+	Index   string
 	Els     Elem // The type of each element
 }
 
@@ -127,6 +165,7 @@ func (s *Slice) Slice() *Slice    { return s }
 func (s *Slice) Struct() *Struct  { return nil }
 func (s *Slice) Base() *BaseElem  { return nil }
 func (s *Slice) Map() *Map        { return nil }
+func (s *Slice) Array() *Array    { return nil }
 func (s *Slice) TypeName() string { return "[]" + s.Els.TypeName() }
 func (s *Slice) String() string {
 	return fmt.Sprintf("SliceOf(%s - %s)", s.Els.String(), s.Varname)
@@ -143,6 +182,7 @@ func (s *Ptr) Slice() *Slice    { return nil }
 func (s *Ptr) Struct() *Struct  { return nil }
 func (s *Ptr) Base() *BaseElem  { return nil }
 func (s *Ptr) Map() *Map        { return nil }
+func (s *Ptr) Array() *Array    { return nil }
 func (s *Ptr) TypeName() string { return "*" + s.Value.TypeName() }
 func (s *Ptr) String() string {
 	return fmt.Sprintf("PointerTo(%s - %s)", s.Value.String(), s.Varname)
@@ -159,6 +199,7 @@ func (s *Struct) Slice() *Slice    { return nil }
 func (s *Struct) Struct() *Struct  { return s }
 func (s *Struct) Base() *BaseElem  { return nil }
 func (s *Struct) Map() *Map        { return nil }
+func (s *Struct) Array() *Array    { return nil }
 func (s *Struct) TypeName() string { return s.Name }
 func (s *Struct) String() string {
 	return fmt.Sprintf("%s{%s}", s.Name, s.Fields)
@@ -187,6 +228,7 @@ func (s *BaseElem) Slice() *Slice   { return nil }
 func (s *BaseElem) Struct() *Struct { return nil }
 func (s *BaseElem) Map() *Map       { return nil }
 func (s *BaseElem) Base() *BaseElem { return s }
+func (s *BaseElem) Array() *Array   { return nil }
 func (s *BaseElem) String() string  { return fmt.Sprintf("(%s - %s)", s.BaseName(), s.Varname) }
 
 // TypeName returns the syntactically correct Go
@@ -310,6 +352,10 @@ func writeStructFields(s []StructField, name string) {
 			s[i].FieldElem.Map().Varname = prefix + s[i].FieldName
 			writeBase(s[i].FieldElem.Map().Value, s[i].FieldElem.Map())
 
+		case ArrayType:
+			s[i].FieldElem.Array().Varname = prefix + s[i].FieldName
+			writeBase(s[i].FieldElem.Array().Els, s[i].FieldElem.Array())
+
 		default:
 			panic("unrecognized type!")
 		}
@@ -322,21 +368,32 @@ func writeStructFields(s []StructField, name string) {
 func writeBase(b Elem, parent Elem) {
 	switch parent.Type() {
 	case SliceType:
+		// generate a random
+		// iterator variable name
+		// for the parent; child name
+		// is parent[iterator]
+		parent.Slice().Index = randIdx()
+		child := fmt.Sprintf("%s[%s]", parent.Slice().Varname, parent.Slice().Index)
+
 		switch b.Type() {
 		case BaseType:
-			b.Base().Varname = parent.Slice().Varname + "[i]"
+			b.Base().Varname = child
 		case SliceType:
-			b.Slice().Varname = parent.Slice().Varname + "[i]"
+			b.Slice().Varname = child
 			writeBase(b.Slice().Els, b.Slice())
 		case PtrType:
-			b.Ptr().Varname = parent.Slice().Varname + "[i]"
+			b.Ptr().Varname = child
 			writeBase(b.Ptr().Value, b.Ptr())
 		case StructType:
-			writeStructFields(b.Struct().Fields, parent.Slice().Varname+"[i]")
+			writeStructFields(b.Struct().Fields, child)
 		case MapType:
-			b.Map().Varname = parent.Slice().Varname + "[i]"
+			b.Map().Varname = child
 			writeBase(b.Map().Value, b.Map())
+		case ArrayType:
+			b.Array().Varname = child
+			writeBase(b.Array().Els, b.Array())
 		}
+
 	case PtrType:
 		switch b.Type() {
 		case BaseType:
@@ -351,6 +408,9 @@ func writeBase(b Elem, parent Elem) {
 		case SliceType:
 			b.Slice().Varname = "*" + parent.Ptr().Varname
 			writeBase(b.Slice().Els, b.Slice())
+		case ArrayType:
+			b.Array().Varname = "*" + parent.Ptr().Varname
+			writeBase(b.Array().Els, b.Ptr())
 		case PtrType:
 			b.Ptr().Varname = "*" + parent.Ptr().Varname
 			writeBase(b.Ptr().Value, b.Ptr())
@@ -377,6 +437,33 @@ func writeBase(b Elem, parent Elem) {
 			writeBase(b.Map().Value, b.Map())
 		case StructType:
 			writeStructFields(b.Struct().Fields, "val")
+		case ArrayType:
+			b.Array().Varname = "val"
+			writeBase(b.Array().Els, b.Array())
+		}
+
+	case ArrayType:
+		// like slice, generate iterator variable
+		parent.Array().Index = randIdx()
+		child := fmt.Sprintf("%s[%s]", parent.Array().Varname, parent.Array().Index)
+
+		switch b.Type() {
+		case BaseType:
+			b.Base().Varname = child
+		case SliceType:
+			b.Slice().Varname = child
+			writeBase(b.Slice().Els, b.Slice())
+		case PtrType:
+			b.Ptr().Varname = child
+			writeBase(b.Ptr().Value, b.Ptr())
+		case StructType:
+			writeStructFields(b.Struct().Fields, child)
+		case MapType:
+			b.Map().Varname = child
+			writeBase(b.Map().Value, b.Map())
+		case ArrayType:
+			b.Array().Varname = child
+			writeBase(b.Array().Els, b.Array())
 		}
 	}
 }

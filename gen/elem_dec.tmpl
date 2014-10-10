@@ -54,7 +54,7 @@
 	} else {
 		{{.Varname}} = make({{.TypeName}}, int(xsz))
 	}
-	for i := range {{.Varname}} {
+	for {{.Index}} := range {{.Varname}} {
 		{{template "ElemTempl" .Els}}
 	}
 	{{end}}
