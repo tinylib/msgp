@@ -82,21 +82,21 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 		return
 
 	case marray16:
-		if len(b) < 2 {
+		if len(b) < 3 {
 			err = ErrShortBytes
 			return
 		}
-		sz = uint32(binary.BigEndian.Uint16(b))
-		o = b[2:]
+		sz = uint32(binary.BigEndian.Uint16(b[1:]))
+		o = b[3:]
 		return
 
 	case marray32:
-		if len(b) < 4 {
+		if len(b) < 5 {
 			err = ErrShortBytes
 			return
 		}
-		sz = binary.BigEndian.Uint32(b)
-		o = b[4:]
+		sz = binary.BigEndian.Uint32(b[1:])
+		o = b[5:]
 		return
 
 	default:
@@ -540,7 +540,7 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		return
 	}
 
-	k := getKind(b[1])
+	k := getKind(b[0])
 
 	switch k {
 	case kmap:
