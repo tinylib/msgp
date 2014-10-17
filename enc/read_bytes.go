@@ -48,10 +48,6 @@ func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 	}
 
 	switch lead {
-	case mnil:
-		err = ErrNil
-		return
-
 	case mmap16:
 		if l < 3 {
 			err = ErrShortBytes
@@ -88,10 +84,6 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 	}
 
 	switch lead {
-	case mnil:
-		err = ErrNil
-		return
-
 	case marray16:
 		if len(b) < 3 {
 			err = ErrShortBytes

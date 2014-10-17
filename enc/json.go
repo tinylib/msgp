@@ -52,7 +52,7 @@ func AsJSON(src io.Reader) io.Reader {
 	return rd
 }
 
-// CopyToJson reads a single MsgPack-encoded message from 'src' and
+// CopyToJson reads a single MessagePack-encoded message from 'src' and
 // writes it as JSON to 'dst'. It returns the number of bytes written,
 // and any errors encountered in the process.
 func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
