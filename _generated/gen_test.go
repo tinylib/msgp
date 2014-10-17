@@ -109,4 +109,24 @@ func Test1EncodeDecode(t *testing.T) {
 		t.Logf("out: %v", tnew)
 		t.Fatal("objects not equal")
 	}
+
+	tanother := new(TestType)
+
+	buf.Reset()
+	tt.EncodeMsg(&buf)
+
+	var left []byte
+	left, err = tanother.UnmarshalMsg(buf.Bytes())
+	if err != nil {
+		t.Error(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left", len(left))
+	}
+
+	if !reflect.DeepEqual(tt, tanother) {
+		t.Logf("in: %v", tt)
+		t.Logf("out: %v", tanother)
+		t.Fatal("objects not equal")
+	}
 }

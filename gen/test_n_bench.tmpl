@@ -22,6 +22,19 @@ func TestEncodeDecode{{.Name}}(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	buf.Reset()
+	v.EncodeMsg(&buf)
+
+	ls := new({{.Name}})
+	var left []byte 
+	left, err = ls.UnmarshalMsg(buf.Bytes())
+	if err != nil {
+		t.Error(err)
+	}
+	if len(left) > 0 {
+		t.Error("bytes left over...")
+	}
 }
 
 func BenchmarkWrite{{.Name}}(b *testing.B) {
@@ -46,6 +59,23 @@ func BenchmarkRead{{.Name}}(b *testing.B) {
 	b.ResetTimer()
 	for i:=0; i<b.N; i++ {
 		rd.Seek(0, 0)
-		v.DecodeFrom(dc)
+		_, err := v.DecodeFrom(dc)
+		if  err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkUnmarshal{{.Name}}(b *testing.B) {
+	v := new({{.Name}})
+	var buf bytes.Buffer
+	v.EncodeMsg(&buf)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i:=0; i<b.N; i++ {
+		_, err := v.UnmarshalMsg(buf.Bytes())
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
