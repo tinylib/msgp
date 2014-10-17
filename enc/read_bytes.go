@@ -4,11 +4,15 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 	"unsafe"
 )
 
 var (
+	// ErrShortBytes is returned when the
+	// slice being decoded is too short to
+	// contain the contents of the message
 	ErrShortBytes = errors.New("too few bytes")
 )
 
@@ -254,6 +258,42 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 	}
 }
 
+func ReadInt32Bytes(b []byte) (int32, []byte, error) {
+	i, o, err := ReadInt64Bytes(b)
+	if i > math.MaxInt32 || i < math.MinInt32 {
+		return 0, o, fmt.Errorf("%d overflows int32", i)
+	}
+	return int32(i), o, err
+}
+
+func ReadInt16Bytes(b []byte) (int16, []byte, error) {
+	i, o, err := ReadInt64Bytes(b)
+	if i > math.MaxInt16 || i < math.MinInt16 {
+		return 0, o, fmt.Errorf("%d overflows int16", i)
+	}
+	return int16(i), o, err
+}
+
+func ReadInt8Bytes(b []byte) (int8, []byte, error) {
+	i, o, err := ReadInt64Bytes(b)
+	if i > math.MaxInt8 || i < math.MinInt8 {
+		return 0, o, fmt.Errorf("%d overflows int8", i)
+	}
+	return int8(i), o, err
+}
+
+func ReadIntBytes(b []byte) (int, []byte, error) {
+	var v int
+	i, o, err := ReadInt64Bytes(b)
+	if unsafe.Sizeof(v) == 32 {
+		if i > math.MaxInt32 || i < math.MinInt32 {
+			return 0, o, fmt.Errorf("%d overflows int(32)", i)
+		}
+	}
+	v = int(i)
+	return v, o, err
+}
+
 func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 	l := len(b)
 	if l < 1 {
@@ -310,6 +350,44 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 	}
 }
 
+func ReadUint32Bytes(b []byte) (uint32, []byte, error) {
+	v, o, err := ReadUint64Bytes(b)
+	if v > math.MaxUint32 {
+		return 0, nil, fmt.Errorf("%d overflows uint32", v)
+	}
+	return uint32(v), o, err
+}
+
+func ReadUint16Bytes(b []byte) (uint16, []byte, error) {
+	v, o, err := ReadUint64Bytes(b)
+	if v > math.MaxUint16 {
+		return 0, nil, fmt.Errorf("%d overflows uint16", v)
+	}
+	return uint16(v), o, err
+}
+
+func ReadUint8Bytes(b []byte) (uint8, []byte, error) {
+	v, o, err := ReadUint64Bytes(b)
+	if v > math.MaxUint8 {
+		return 0, nil, fmt.Errorf("%d overflows uint8", v)
+	}
+	return uint8(v), o, err
+}
+
+func ReadUintBytes(b []byte) (uint, []byte, error) {
+	var l uint
+	v, o, err := ReadUint64Bytes(b)
+	if unsafe.Sizeof(l) == 32 && v > math.MaxUint32 {
+		return 0, nil, fmt.Errorf("%d overflows uint(32)", v)
+	}
+	l = uint(v)
+	return l, o, err
+}
+
+func ReadByteBytes(b []byte) (byte, []byte, error) {
+	return ReadUint8Bytes(b)
+}
+
 func ReadBytesBytes(b []byte, scratch []byte) (v []byte, o []byte, err error) {
 	return readBytesBytes(b, scratch, false)
 }
@@ -361,7 +439,7 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 	// zero-copy
 	if zc {
 		v = b[0:read]
-		b = b[read:]
+		o = b[read:]
 		return
 	}
 
@@ -372,14 +450,20 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 	}
 
 	n := copy(v, b)
-	b = b[n:]
+	o = b[n:]
 	return
 }
 
-func ReadZCBytes(b []byte) (v []byte, o []byte, err error) {
+// ReadBytesZC extracts the messagepack-encoded
+// binary field without copying. The returned []byte
+// points to the same memory as the input slice.
+func ReadBytesZC(b []byte) (v []byte, o []byte, err error) {
 	return readBytesBytes(b, nil, true)
 }
 
+// ReadStringZC reads a messagepack string field
+// without copying. The returned []byte points
+// to the same memory as the input slice.
 func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 	l := len(b)
 	if l < 1 {

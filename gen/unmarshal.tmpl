@@ -1,5 +1,10 @@
-func ({{.Varname}} *{{ .Value.Struct.Name}}) Unmarshal(b []byte) error {
-	_, err := {{.Varname}}.DecodeMsg(bytes.NewReader(b))
-	return err
+func ({{.Varname}} *{{ .Value.Struct.Name}}) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var sz uint32 
+	var field []byte 
+	_ = sz 
+	_ = field
+	{{template "PtrTempl" .}}
+	o = bts 
+	return
 }
 

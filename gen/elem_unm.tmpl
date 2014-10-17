@@ -4,7 +4,7 @@
 	{{if .Convert}}var tmp {{.BaseType}}{{end}}{{/* type lowering shim */}}
 	{{if eq (.Value) 1}}{{/* is []byte */}}
 	{{if .Convert}}tmp, bts, err = enc.ReadBytesBytes(bts, []byte({{.Varname}})){{else}}{{.Varname}}, bts, err = enc.ReadBytesBytes(bts, {{.Varname}}){{end}}
-	{{else if .IsIdent}}{{/* is ReaderFrom */}}
+	{{else if .IsIdent}}
 	bts, err = {{.Varname}}.UnmarshalMsg(bts)
 	{{else}}{{/* any other type */}}
 	{{if .Convert}}tmp, bts, err = enc.Read{{.BaseName}}Bytes(bts){{else}}{{.Varname}}, bts, err = enc.Read{{.BaseName}}Bytes(bts){{end}}
@@ -58,7 +58,7 @@
 	var xsz uint32
 	xsz, bts, err = enc.ReadArrayHeaderBytes(bts)
 	if cap({{.Varname}}) >= int(xsz) {
-		{{.Varname}} = {{.Varname}}[0:0]
+		{{.Varname}} = {{.Varname}}[0:int(xsz)]
 	} else {
 		{{.Varname}} = make({{.TypeName}}, int(xsz))
 	}
@@ -93,12 +93,12 @@
 		switch enc.UnsafeString(field) {
 		{{range .Fields}}
 		case "{{.FieldTag}}":{{template "ElemTempl" .FieldElem}}
+		{{end}}
 		default:
 			bts, err = enc.Skip(bts)
 			if err != nil {
 				return
 			}
-		{{end}}
 		}
 	}
 {{end}}

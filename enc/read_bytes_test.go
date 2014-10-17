@@ -213,7 +213,7 @@ func TestReadZCBytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteBytes(v)
-		out, left, err := ReadZCBytes(buf.Bytes())
+		out, left, err := ReadBytesZC(buf.Bytes())
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
