@@ -67,7 +67,7 @@
 		return
 	}
 	if asz != {{.Size}} {
-		err = enc.ArrayError{asz, {{.Size}}}
+		err = enc.ArrayError{Wanted: {{.Size}}, Got: asz}
 		return
 	}
 	for {{.Index}} := range {{.Varname}} {
