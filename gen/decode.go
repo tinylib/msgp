@@ -19,6 +19,11 @@ var (
 
 func init() {
 	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		fmt.Println("msgp/gen: FATAL: GOPATH not set; can't locate templates")
+		os.Exit(1)
+	}
+
 	prefix := gopath + "/src/github.com/philhofer/msgp/gen/"
 
 	decTemplate = template.Must(template.ParseFiles(prefix+"decode.tmpl", prefix+"elem_dec.tmpl"))

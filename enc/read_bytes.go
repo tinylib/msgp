@@ -22,6 +22,13 @@ type MsgUnmarshaler interface {
 	UnmarshalMsg([]byte) ([]byte, error)
 }
 
+func IsNil(b []byte) bool {
+	if len(b) > 0 && b[0] == mnil {
+		return true
+	}
+	return false
+}
+
 func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 	l := len(b)
 	if l < 1 {
@@ -645,5 +652,99 @@ func getKind(v byte) kind {
 		return kbool
 	default:
 		return invalid
+	}
+}
+
+func Skip(b []byte) ([]byte, error) {
+	sz, asz := getSize(b)
+	if sz != 0 {
+		return skipN(b, sz)
+	}
+	var err error
+	for i := 0; i < asz; i++ {
+		b, err = Skip(b)
+		if err != nil {
+			return b, err
+		}
+	}
+	return b, nil
+}
+
+func skipN(b []byte, n int) ([]byte, error) {
+	if len(b) < n {
+		return nil, ErrShortBytes
+	}
+	return b[n:], nil
+}
+
+// returns (byte size, map/array size, error)
+func getSize(b []byte) (int, int) {
+	if len(b) < 1 {
+		return 0, 0
+	}
+
+	lead := b[0]
+
+	switch {
+	case isfixstr(lead):
+		return int(rfixstr(lead)) + 1, 0
+	case isfixint(lead), isnfixint(lead):
+		return 1, 0
+	case isfixarray(lead):
+		return 0, int(rfixarray(lead)) + 1
+	case isfixmap(lead):
+		return 0, int(rfixmap(lead)) + 1
+	}
+
+	switch lead {
+	case mint64, muint64, mfloat64:
+		return 9, 0
+	case mint32, muint32, mfloat32:
+		return 5, 0
+	case mint8, muint8:
+		return 2, 0
+	case mfixext1:
+		return 3, 0
+	case mfixext2:
+		return 4, 0
+	case mfixext4:
+		return 6, 0
+	case mfixext8:
+		return 10, 0
+	case mfixext16:
+		return 18, 0
+	case mbin8, mstr8:
+		if len(b) < 2 {
+			return 0, 0
+		}
+		return int(b[1]) + 1, 0
+
+	case mbin16, mstr16:
+		if len(b) < 3 {
+			return 0, 0
+		}
+		return int(binary.BigEndian.Uint16(b[1:])) + 1, 0
+
+	case mbin32, mstr32:
+		if len(b) < 5 {
+			return 0, 0
+		}
+		return int(binary.BigEndian.Uint32(b[1:])) + 1, 0
+
+	case marray16, mmap16:
+		if len(b) < 3 {
+			return 0, 0
+		}
+		return 0, int(binary.BigEndian.Uint16(b[1:])) + 1
+
+	case marray32, mmap32:
+		if len(b) < 5 {
+			return 0, 0
+		}
+		return 0, int(binary.BigEndian.Uint32(b[1:])) + 1
+
+	default:
+		return 0, 0
+
 	}
 }
