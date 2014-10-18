@@ -107,8 +107,12 @@
 	{{if eq (.Value) 1}}{{/* is []byte */}}
 	{{if .Convert}}tmp, nn, err = dc.ReadBytes([]byte({{.Varname}})){{else}}{{.Varname}}, nn, err = dc.ReadBytes({{.Varname}}){{end}}
 	{{else if .IsIdent}}
-	nn, err = dc.ReadIdent({{.Varname}})
-	{{else}}{{/* any other type */}}
+	if dc.IsNil() {
+		nn, err = dc.ReadNil()
+		{{.Varname}} = nil
+	} else {
+		nn, err = dc.ReadIdent({{.Varname}})
+	}{{else}}{{/* any other type */}}
 	{{if .Convert}}tmp, nn, err = dc.Read{{.BaseName}}(){{else}}{{.Varname}}, nn, err = dc.Read{{.BaseName}}(){{end}}
 	{{end}}
 	{{if .Convert}}{{.Varname}} = {{.Ident}}(tmp){{end}}
