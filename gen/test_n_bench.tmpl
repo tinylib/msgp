@@ -35,6 +35,14 @@ func TestEncodeDecode{{.Name}}(t *testing.T) {
 	if len(left) > 0 {
 		t.Error("bytes left over...")
 	}
+
+	left, err = enc.Skip(buf.Bytes())
+	if err != nil {
+		t.Error(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("bytes left over after skip: %q", left)
+	}
 }
 
 func BenchmarkWrite{{.Name}}(b *testing.B) {

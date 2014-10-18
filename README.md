@@ -17,7 +17,7 @@ In a source file, include the following directive:
 //go:generate msgp
 ```
 
-The `msgp` command will generate `Unmarshal`, `Marshal`, `WriteTo`, and `ReadFrom` methods for all exported struct
+The `msgp` command will generate serialization methods for all exported struct
 definitions in the file. You will need to include that directive in every file that contains structs that 
 need code generation. The generated files will be named {filename}_gen.go by default (but can 
 be overridden with the `-o` flag.) Additionally, it will write tests and benchmarks in {{filename}}_gen_test.go.
@@ -53,7 +53,8 @@ func (z *Person) DecodeMsg(r io.Reader) (n int, err error)
 Each method is optimized for a certain use-case, depending on whether or not the user
 can afford to recycle `*enc.MsgWriter` and `*enc.MsgReader` object, and whether or not
 the user is dealing with `io.Reader/io.Writer` or `[]byte`. (Pro tip: `EncodeTo` is the
-fastest marshaller, and `UnmarshalMsg` is the fastest unmarshaller.)
+fastest marshaller, and `UnmarshalMsg` is the fastest unmarshaller. Also, `*enc.MsgReader`s
+are buffered, and you can create one with an arbitrary buffer size with `enc.NewDecoderSize`.)
 
 The `msgp/enc` package has utility functions for transforming MessagePack to JSON directly,
 both from `io.Reader`s and `[]byte`.

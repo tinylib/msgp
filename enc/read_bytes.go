@@ -732,15 +732,27 @@ func getKind(v byte) kind {
 }
 
 func Skip(b []byte) ([]byte, error) {
-	sz, asz := getSize(b)
-	if sz != 0 {
-		return skipN(b, sz)
+	sz, asz, err := getSize(b)
+	if err != nil {
+		return b, err
 	}
-	var err error
-	for i := 0; i < asz; i++ {
-		b, err = Skip(b)
+
+	if sz < 0 || asz < 0 {
+		panic("wut")
+	}
+
+	if sz > 0 {
+		b, err = skipN(b, sz)
 		if err != nil {
 			return b, err
+		}
+	}
+	if asz > 0 {
+		for i := 0; i < asz; i++ {
+			b, err = Skip(b)
+			if err != nil {
+				return b, err
+			}
 		}
 	}
 	return b, nil
@@ -753,74 +765,128 @@ func skipN(b []byte, n int) ([]byte, error) {
 	return b[n:], nil
 }
 
-// returns (byte size, map/array size, error)
-func getSize(b []byte) (int, int) {
+// returns (skip N bytes, skip M objects, error)
+func getSize(b []byte) (int, int, error) {
 	if len(b) < 1 {
-		return 0, 0
+		return 0, 0, ErrShortBytes
 	}
 
 	lead := b[0]
 
 	switch {
-	case isfixstr(lead):
-		return int(rfixstr(lead)) + 1, 0
-	case isfixint(lead), isnfixint(lead):
-		return 1, 0
 	case isfixarray(lead):
-		return 0, int(rfixarray(lead)) + 1
+		return 1, int(rfixarray(lead)), nil
+
 	case isfixmap(lead):
-		return 0, int(rfixmap(lead)) + 1
+		return 1, 2 * int(rfixmap(lead)), nil
+
+	case isfixstr(lead):
+		return int(rfixstr(lead)) + 1, 0, nil
+
+	case isfixint(lead):
+		return 1, 0, nil
+
+	case isnfixint(lead):
+		return 1, 0, nil
 	}
 
 	switch lead {
+
+	// the following objects
+	// are always the same
+	// number of bytes (including
+	// the leading byte)
+	case mnil, mfalse, mtrue:
+		return 1, 0, nil
 	case mint64, muint64, mfloat64:
-		return 9, 0
+		return 9, 0, nil
 	case mint32, muint32, mfloat32:
-		return 5, 0
+		return 5, 0, nil
 	case mint8, muint8:
-		return 2, 0
+		return 2, 0, nil
 	case mfixext1:
-		return 3, 0
+		return 3, 0, nil
 	case mfixext2:
-		return 4, 0
+		return 4, 0, nil
 	case mfixext4:
-		return 6, 0
+		return 6, 0, nil
 	case mfixext8:
-		return 10, 0
+		return 10, 0, nil
 	case mfixext16:
-		return 18, 0
+		return 18, 0, nil
+
+	// the following objects
+	// need to be skipped N bytes
+	// plus the lead byte and size bytes
 	case mbin8, mstr8:
 		if len(b) < 2 {
-			return 0, 0
+			return 0, 0, ErrShortBytes
 		}
-		return int(b[1]) + 1, 0
+		return int(uint8(b[1])) + 2, 0, nil
 
 	case mbin16, mstr16:
 		if len(b) < 3 {
-			return 0, 0
+			return 0, 0, ErrShortBytes
 		}
-		return int(binary.BigEndian.Uint16(b[1:])) + 1, 0
+		return int(binary.BigEndian.Uint16(b[1:])) + 3, 0, nil
 
 	case mbin32, mstr32:
 		if len(b) < 5 {
-			return 0, 0
+			return 0, 0, ErrShortBytes
 		}
-		return int(binary.BigEndian.Uint32(b[1:])) + 1, 0
+		return int(binary.BigEndian.Uint32(b[1:])) + 5, 0, nil
 
-	case marray16, mmap16:
+	// variable extensions
+	// require 1 extra byte
+	// to skip
+	case mext8:
 		if len(b) < 3 {
-			return 0, 0
+			return 0, 0, ErrShortBytes
 		}
-		return 0, int(binary.BigEndian.Uint16(b[1:])) + 1
+		return int(uint8(b[1])) + 3, 0, nil
 
-	case marray32, mmap32:
-		if len(b) < 5 {
-			return 0, 0
+	case mext16:
+		if len(b) < 4 {
+			return 0, 0, ErrShortBytes
 		}
-		return 0, int(binary.BigEndian.Uint32(b[1:])) + 1
+		return int(binary.BigEndian.Uint16(b[1:])) + 4, 0, nil
+
+	case mext32:
+		if len(b) < 6 {
+			return 0, 0, ErrShortBytes
+		}
+		return int(binary.BigEndian.Uint32(b[1:])) + 6, 0, nil
+
+	// arrays skip lead byte,
+	// size byte, N objects
+	case marray16:
+		if len(b) < 3 {
+			return 0, 0, ErrShortBytes
+		}
+		return 3, int(binary.BigEndian.Uint16(b[1:])), nil
+
+	case marray32:
+		if len(b) < 5 {
+			return 0, 0, ErrShortBytes
+		}
+		return 5, int(binary.BigEndian.Uint32(b[1:])), nil
+
+	// maps skip lead byte,
+	// size byte, 2N objects
+	case mmap16:
+		if len(b) < 3 {
+			return 0, 0, ErrShortBytes
+		}
+		return 3, 2 * (int(binary.BigEndian.Uint16(b[1:]))), nil
+
+	case mmap32:
+		if len(b) < 5 {
+			return 0, 0, ErrShortBytes
+		}
+		return 5, 2 * (int(binary.BigEndian.Uint32(b[1:]))), nil
 
 	default:
-		return 0, 0
+		return 0, 0, fmt.Errorf("unknown leading byte %x", lead)
 
 	}
 }
