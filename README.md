@@ -37,9 +37,9 @@ type Person struct {
 Running `msgp` on a file containing the above declaration would generate the following methods:
 
 ```go
-func (z *Person) Marshal() ([]byte, error)
+func (z *Person) MarshalMsg() ([]byte, error)
 
-func (z *Person) Unmarshal(b []byte) error
+func (z *Person) UnmarshalMsg(b []byte) ([]byte, error)
 
 func (z *Person) EncodeTo(en *enc.MsgWriter) (n int, err error)
 
@@ -50,8 +50,13 @@ func (z *Person) EncodeMsg(w io.Writer) (n int, err error)
 func (z *Person) DecodeMsg(r io.Reader) (n int, err error)
 ```
 
-The `msgp/enc` package has a function called `CopyToJSON` which can take MessagePack-encoded binary
-and translate it directly into JSON. It has reasonably high performance, and works much the same way that `io.Copy` does.
+Each method is optimized for a certain use-case, depending on whether or not the user
+can afford to recycle `*enc.MsgWriter` and `*enc.MsgReader` object, and whether or not
+the user is dealing with `io.Reader/io.Writer` or `[]byte`. (Pro tip: `EncodeTo` is the
+fastest marshaller, and `UnmarshalMsg` is the fastest unmarshaller.)
+
+The `msgp/enc` package has utility functions for transforming MessagePack to JSON directly,
+both from `io.Reader`s and `[]byte`.
 
 
 ### Features
@@ -85,9 +90,8 @@ assumed to be struct definitions in other files. (The parser will spit out warni
 Alpha. Here are the known limitations/restrictions:
 
  - All fields of a struct that are not Go built-ins are assumed to satisfy the `enc.MsgEncoder` and `enc.MsgDecoder`
-   interfaces. This will only *actually* be the case if the declaration for that type is in a file touched by the code generator. The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field. The generated code will fail to compile if you encounter this issue, so it shouldn't catch you
-   by surprise.
- - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields. This is by design.
+   interfaces. This will only *actually* be the case if the declaration for that type is in a file touched by the code generator. The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field. The generated code will fail to compile if you encounter this issue, so it shouldn't catch you by surprise.
+ - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
  - Methods are only generated for `struct` definitions. Chances are that we will keep things this way.
  - Encoding/decoding of `interface{}` can be flaky. It works fine for go builtins, but don't count on it working 
    well for anything beyond that.
