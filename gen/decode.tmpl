@@ -18,6 +18,6 @@ func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeFrom(dc *enc.MsgReader) (n int
 	_ = nn 
 	_ = field 
 
-	{{template "PtrTempl" .}}
+	{{template "StructTempl" .Value.Struct}}
 	return
 }

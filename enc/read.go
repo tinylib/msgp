@@ -61,16 +61,37 @@ func Done(m *MsgReader) {
 	pushReader(m)
 }
 
+// MsgDecoder is the interface fulfilled
+// by objects that know how to decode themselves
+// from MessagePack
 type MsgDecoder interface {
+	// UnmarshalMsg unmarshals the object
+	// from binary, returing any leftover
+	// bytes and any errors encountered
 	UnmarshalMsg([]byte) ([]byte, error)
-	DecodeMsg(r io.Reader) (int, error)
+
+	// DecodeMsg decodes the object
+	// from an io.Reader, returning
+	// the number of bytes read and
+	// any errors encountered
+	DecodeMsg(io.Reader) (int, error)
+
+	// DecodeFrom decodes the object
+	// using an existing *MsgReader,
+	// returning the number of bytes
+	// read and any errors encountered
 	DecodeFrom(*MsgReader) (int, error)
 }
 
+// NewDecoder returns a *MsgReader that
+// reads from the provided reader.
 func NewDecoder(r io.Reader) *MsgReader {
 	return popReader(r)
 }
 
+// NewDecoderSize returns a *MsgReader with
+// a buffer of the given size. (This is preferable to
+// passing the decoder a reader that is already buffered.)
 func NewDecoderSize(r io.Reader, sz int) *MsgReader {
 	return &MsgReader{
 		r: bufio.NewReaderSize(r, sz),

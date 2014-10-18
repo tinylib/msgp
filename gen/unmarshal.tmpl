@@ -6,7 +6,7 @@ func ({{.Varname}} *{{ .Value.Struct.Name}}) UnmarshalMsg(bts []byte) (o []byte,
 	var field []byte 
 	_ = sz 
 	_ = field
-	{{template "PtrTempl" .}}
+	{{template "StructTempl" .Value.Struct}}
 	o = bts 
 	return
 }

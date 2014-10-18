@@ -12,6 +12,6 @@ func ({{.Varname}} *{{.Value.Struct.Name}}) EncodeTo(en *enc.MsgWriter) (n int, 
 	var nn int 
 	_ = nn
 
-	{{template "PtrTempl" .}}
+	{{template "StructTempl" .Value.Struct}}
 	return
 }

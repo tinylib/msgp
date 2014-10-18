@@ -16,16 +16,6 @@ var (
 	ErrShortBytes = errors.New("too few bytes")
 )
 
-// MsgUnmarshaler is the interface
-// fulfilled by types that know how to
-// unmarshal themselves from raw MessagePack
-// bytes
-type MsgUnmarshaler interface {
-	// UnmarshalMsg works similarly to encoding.BinaryUnmarshaler,
-	// except that it returns the bytes left over in the slice
-	UnmarshalMsg([]byte) ([]byte, error)
-}
-
 func IsNil(b []byte) bool {
 	if len(b) > 0 && b[0] == mnil {
 		return true
@@ -48,6 +38,9 @@ func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 	}
 
 	switch lead {
+	case mnil:
+		return 0, b, ErrNil
+
 	case mmap16:
 		if l < 3 {
 			err = ErrShortBytes
@@ -84,6 +77,9 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 	}
 
 	switch lead {
+	case mnil:
+		return 0, b, ErrNil
+
 	case marray16:
 		if len(b) < 3 {
 			err = ErrShortBytes
@@ -736,11 +732,6 @@ func Skip(b []byte) ([]byte, error) {
 	if err != nil {
 		return b, err
 	}
-
-	if sz < 0 || asz < 0 {
-		panic("wut")
-	}
-
 	if sz > 0 {
 		b, err = skipN(b, sz)
 		if err != nil {
