@@ -16,3 +16,10 @@ func (r Raw) EncodeMsg(w io.Writer) (int, error) {
 func (r Raw) EncodeTo(wr *MsgWriter) (int, error) {
 	return wr.Write([]byte(r))
 }
+
+// MarshalMsg implements the MsgEncoder interface
+func (r Raw) MarshalMsg() ([]byte, error) {
+	o := make([]byte, len(r))
+	copy(o, []byte(r))
+	return o, nil
+}
