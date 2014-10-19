@@ -131,6 +131,7 @@ func DoAll(gopkg string, gofile string) error {
 	if err != nil {
 		return err
 	}
+
 	///////////////////
 
 	///////////////////

@@ -29,6 +29,7 @@ func writeNext(w jsWriter, msg []byte) ([]byte, error) {
 	}
 	k := getKind(msg[0])
 	switch k {
+	// TODO: extension
 	case karray:
 		return rwArrayBytes(w, msg)
 	case kmap:
@@ -50,7 +51,7 @@ func writeNext(w jsWriter, msg []byte) ([]byte, error) {
 	case kbytes:
 		return rwBytesBytes(w, msg)
 	default:
-		return msg, errors.New("bad encoding; invalid type")
+		return msg, errors.New("msgp/enc: bad encoding: invalid type")
 	}
 }
 
