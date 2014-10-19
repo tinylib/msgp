@@ -49,7 +49,9 @@ func BenchmarkWrite{{.Name}}(b *testing.B) {
 	v := new({{.Name}})
 	var buf bytes.Buffer
 	en := enc.NewEncoder(&buf)
+	v.EncodeTo(en)
 	b.ReportAllocs()
+	b.SetBytes(int64(buf.Len()))
 	b.ResetTimer()
 	for i:=0; i<b.N; i++ {
 		buf.Reset()
@@ -64,6 +66,7 @@ func BenchmarkRead{{.Name}}(b *testing.B) {
 	rd := bytes.NewReader(buf.Bytes())
 	dc := enc.NewDecoder(rd)
 	b.ReportAllocs()
+	b.SetBytes(int64(buf.Len()))
 	b.ResetTimer()
 	for i:=0; i<b.N; i++ {
 		rd.Seek(0, 0)
@@ -79,6 +82,7 @@ func BenchmarkUnmarshal{{.Name}}(b *testing.B) {
 	var buf bytes.Buffer
 	v.EncodeMsg(&buf)
 	b.ReportAllocs()
+	b.SetBytes(int64(buf.Len()))
 	b.ResetTimer()
 	for i:=0; i<b.N; i++ {
 		_, err := v.UnmarshalMsg(buf.Bytes())
