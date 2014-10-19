@@ -35,18 +35,19 @@
 {{end}}
 
 {{define "MapTempl"}}
-	sz, bts, err = enc.ReadMapHeaderBytes(bts)
+	var msz uint32
+	msz, bts, err = enc.ReadMapHeaderBytes(bts)
 	if err != nil {
 		return
 	}
-	if {{.Varname}} == nil && sz > 0 {
-		{{.Varname}} = make({{.TypeName}}, int(sz))
+	if {{.Varname}} == nil && msz > 0 {
+		{{.Varname}} = make({{.TypeName}}, int(msz))
 	} else if len({{.Varname}}) > 0 {
 		for key, _ := range {{.Varname}} {
 			delete({{.Varname}}, key)
 		}
 	}
-	for inx := uint32(0); inx < sz; inx++ {
+	for inx := uint32(0); inx < msz; inx++ {
 		var {{.Keyidx}} string 
 		var {{.Validx}} {{.Value.TypeName}}
 		{{.Keyidx}}, bts, err = enc.ReadStringBytes(bts)
@@ -75,7 +76,7 @@
 	var asz uint32
 	asz, bts, err = enc.ReadArrayHeaderBytes(bts)
 	if int(asz) != {{.Size}} {
-		err = enc.ArrayError{asz, {{.Size}}}
+		err = enc.ArrayError{Wanted: {{.Size}}, Got: asz}
 		return
 	}
 	for {{.Index}} := range {{.Varname}} {

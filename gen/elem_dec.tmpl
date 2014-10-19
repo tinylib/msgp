@@ -17,19 +17,20 @@
 	{{end}}
 
 {{define "MapTempl"}}
-	sz, nn, err = dc.ReadMapHeader()
+	var msz uint32
+	msz, nn, err = dc.ReadMapHeader()
 	n += nn
 	if err != nil {
 		return
 	}
-	if {{.Varname}} == nil && sz > 0 {
-		{{.Varname}} = make({{.TypeName}}, int(sz))
+	if {{.Varname}} == nil && msz > 0 {
+		{{.Varname}} = make({{.TypeName}}, int(msz))
 	} else if len({{.Varname}}) > 0 {
 		for key, _ := range {{.Varname}} {
 			delete({{.Varname}}, key)
 		}
 	}
-	for inx := uint32(0); inx < sz; inx++ {
+	for inx := uint32(0); inx < msz; inx++ {
 		var {{.Keyidx}} string 
 		var {{.Validx}} {{.Value.TypeName}} {{/* TODO: *real* initialization here... this could fail. */}}
 		{{.Keyidx}}, nn, err = dc.ReadString()

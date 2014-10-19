@@ -11,12 +11,10 @@ func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeMsg(r io.Reader) (n int, err e
 // DecodeFrom deocdes MessagePack from the provided decoder into the {{.Value.Struct.Name}},
 // returning the number of bytes read and any errors encountered.
 func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeFrom(dc *enc.MsgReader) (n int, err error) {
-	var sz uint32
 	var nn int 
 	var field []byte 
-	_ = sz 
 	_ = nn 
-	_ = field 
+	_ = field
 
 	{{template "StructTempl" .Value.Struct}}
 	return
