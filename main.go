@@ -131,6 +131,7 @@ func DoAll(gopkg string, gofile string) error {
 	if err != nil {
 		return err
 	}
+
 	///////////////////
 
 	///////////////////
@@ -161,28 +162,28 @@ func DoAll(gopkg string, gofile string) error {
 		// child elements of struct
 		p.SetVarname("z")
 
-		// write Marshal()
+		// write MarshalMsg()
 		err = gen.WriteMarshalMethod(wr, p)
 		if err != nil {
 			wr.Flush()
 			return err
 		}
 
-		// write Unmarshal()
+		// write UnmarshalMsg()
 		err = gen.WriteUnmarshalMethod(wr, p)
 		if err != nil {
 			wr.Flush()
 			return err
 		}
 
-		// write WriteTo()
+		// write EncodeMsg(), EncodeTo()
 		err = gen.WriteEncoderMethod(wr, p)
 		if err != nil {
 			wr.Flush()
 			return err
 		}
 
-		// write ReadFrom()
+		// write DecodeMsg(), DecodeFrom()
 		err = gen.WriteDecoderMethod(wr, p)
 		if err != nil {
 			wr.Flush()

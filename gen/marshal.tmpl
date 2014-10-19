@@ -1,6 +1,7 @@
-func ({{ .Varname}} *{{ .Value.Struct.Name}}) Marshal() ([]byte, error) {
+
+// MarshalMsg marshals a {{.Value.Struct.Name}} into MessagePack
+func ({{ .Varname}} *{{ .Value.Struct.Name}}) MarshalMsg() ([]byte, error) {
 	var buf bytes.Buffer
 	_, err := {{.Varname}}.EncodeMsg(&buf)
 	return buf.Bytes(), err
 }
-

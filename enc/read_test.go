@@ -285,7 +285,7 @@ func TestReadBytes(t *testing.T) {
 		}
 
 		if !bytes.Equal(bts, out) {
-			t.Error("Test case %d: Bytes not equal.", i)
+			t.Errorf("Test case %d: Bytes not equal.", i)
 		}
 
 	}

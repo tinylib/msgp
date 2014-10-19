@@ -61,15 +61,37 @@ func Done(m *MsgReader) {
 	pushReader(m)
 }
 
+// MsgDecoder is the interface fulfilled
+// by objects that know how to decode themselves
+// from MessagePack
 type MsgDecoder interface {
-	DecodeMsg(r io.Reader) (int, error)
+	// UnmarshalMsg unmarshals the object
+	// from binary, returing any leftover
+	// bytes and any errors encountered
+	UnmarshalMsg([]byte) ([]byte, error)
+
+	// DecodeMsg decodes the object
+	// from an io.Reader, returning
+	// the number of bytes read and
+	// any errors encountered
+	DecodeMsg(io.Reader) (int, error)
+
+	// DecodeFrom decodes the object
+	// using an existing *MsgReader,
+	// returning the number of bytes
+	// read and any errors encountered
 	DecodeFrom(*MsgReader) (int, error)
 }
 
+// NewDecoder returns a *MsgReader that
+// reads from the provided reader.
 func NewDecoder(r io.Reader) *MsgReader {
 	return popReader(r)
 }
 
+// NewDecoderSize returns a *MsgReader with
+// a buffer of the given size. (This is preferable to
+// passing the decoder a reader that is already buffered.)
 func NewDecoderSize(r io.Reader, sz int) *MsgReader {
 	return &MsgReader{
 		r: bufio.NewReaderSize(r, sz),
@@ -364,9 +386,6 @@ func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
 		return
 	}
 	switch lead {
-	case mnil:
-		err = ErrNil
-		return
 	case mmap16:
 		nn, err = io.ReadFull(m.r, m.leader[:2])
 		n += nn
@@ -403,9 +422,6 @@ func (m *MsgReader) ReadArrayHeader() (sz uint32, n int, err error) {
 		return
 	}
 	switch lead {
-	case mnil:
-		return // sz = 0
-
 	case marray16:
 		nn, err = io.ReadFull(m.r, m.leader[:2])
 		n += nn
@@ -484,8 +500,6 @@ func (m *MsgReader) ReadBool() (bool, int, error) {
 		return false, 0, err
 	}
 	switch lead {
-	case mnil:
-		return false, 1, ErrNil
 	case mtrue:
 		return true, 1, nil
 	case mfalse:
@@ -513,10 +527,6 @@ func (m *MsgReader) ReadInt64() (i int64, n int, err error) {
 		return
 	}
 	switch lead {
-	case mnil:
-		err = ErrNil
-		return
-
 	case mint8:
 		var next byte
 		next, err = m.r.ReadByte()
@@ -620,10 +630,6 @@ func (m *MsgReader) ReadUint64() (u uint64, n int, err error) {
 		return
 	}
 	switch lead {
-	case mnil:
-		err = ErrNil
-		return
-
 	case muint8:
 		var next byte
 		next, err = m.r.ReadByte()
@@ -718,8 +724,6 @@ func (m *MsgReader) ReadBytes(scratch []byte) (b []byte, n int, err error) {
 	n += 1
 	var read int
 	switch lead {
-	case mnil:
-		return
 	case mbin8:
 		nn, err = io.ReadFull(m.r, m.leader[:1])
 		n += nn
@@ -773,8 +777,6 @@ func (m *MsgReader) ReadStringAsBytes(scratch []byte) (b []byte, n int, err erro
 	n += 1
 	var read int
 	switch lead {
-	case mnil:
-		return
 	case mstr8:
 		nn, err = io.ReadFull(m.r, m.leader[:1])
 		n += nn

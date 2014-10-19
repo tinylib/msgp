@@ -1,9 +1,27 @@
 {{/* Gross switch */}}{{define "ElemTempl"}}{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{else if eq (.Type) 5 }}{{template "MapTempl" .Map}}{{else if eq (.Type) 6 }}{{template "ArrayTempl" .Array}}{{end}}{{end}}
 
+{{define "BaseTempl"}}
+	{{if .Convert}}var tmp {{.BaseType}}{{end}}{{/* type lowering shim */}}
+	{{if eq (.Value) 1}}{{/* is []byte */}}
+	{{if .Convert}}tmp, bts, err = enc.ReadBytesBytes(bts, []byte({{.Varname}})){{else}}{{.Varname}}, bts, err = enc.ReadBytesBytes(bts, {{.Varname}}){{end}}
+	{{else if .IsIdent}}
+	if enc.IsNil(bts) {
+		bts, err = enc.ReadNilBytes(bts)
+		{{.Varname}} = nil
+	} else {
+		bts, err = {{.Varname}}.UnmarshalMsg(bts)
+	}{{else}}{{/* any other type */}}
+	{{if .Convert}}tmp, bts, err = enc.Read{{.BaseName}}Bytes(bts){{else}}{{.Varname}}, bts, err = enc.Read{{.BaseName}}Bytes(bts){{end}}
+	{{end}}
+	{{if .Convert}}{{.Varname}} = {{.Ident}}(tmp){{end}}
+	if err != nil {
+		return
+	}
+{{end}}
+
 {{define "PtrTempl"}}
-	if dc.IsNil() {
-		nn, err = dc.ReadNil()
-		n += nn
+	if enc.IsNil(bts) {
+		bts, err = enc.ReadNilBytes(bts)
 		if err != nil {
 			return
 		}
@@ -12,14 +30,13 @@
 		if {{.Varname}} == nil {
 			{{.Varname}} = new({{.Value.TypeName}})
 		}
-		{{template "ElemTempl" .Value}}	
+		{{template "ElemTempl" .Value}}
 	}
-	{{end}}
+{{end}}
 
 {{define "MapTempl"}}
 	var msz uint32
-	msz, nn, err = dc.ReadMapHeader()
-	n += nn
+	msz, bts, err = enc.ReadMapHeaderBytes(bts)
 	if err != nil {
 		return
 	}
@@ -32,25 +49,20 @@
 	}
 	for inx := uint32(0); inx < msz; inx++ {
 		var {{.Keyidx}} string 
-		var {{.Validx}} {{.Value.TypeName}} {{/* TODO: *real* initialization here... this could fail. */}}
-		{{.Keyidx}}, nn, err = dc.ReadString()
-		n += nn
+		var {{.Validx}} {{.Value.TypeName}}
+		{{.Keyidx}}, bts, err = enc.ReadStringBytes(bts)
 		if err != nil {
 			return
 		}
 		{{template "ElemTempl" .Value}}
 		{{.Varname}}[{{.Keyidx}}] = {{.Validx}}
 	}
-	{{end}}
+{{end}}
 
 {{define "SliceTempl"}}
 	var xsz uint32
-	xsz, nn, err = dc.ReadArrayHeader()
-	n += nn
-	if err != nil {
-		return
-	}
-	if cap({{.Varname}}) > 0 && cap({{.Varname}}) >= int(xsz){
+	xsz, bts, err = enc.ReadArrayHeaderBytes(bts)
+	if cap({{.Varname}}) >= int(xsz) {
 		{{.Varname}} = {{.Varname}}[0:int(xsz)]
 	} else {
 		{{.Varname}} = make({{.TypeName}}, int(xsz))
@@ -58,67 +70,40 @@
 	for {{.Index}} := range {{.Varname}} {
 		{{template "ElemTempl" .Els}}
 	}
-	{{end}}
+{{end}}
 
 {{define "ArrayTempl"}}
-	var asz uint32 
-	asz, nn, err = dc.ReadArrayHeader()
-	n += nn
-	if err != nil {
-		return
-	}
-	if asz != {{.Size}} {
+	var asz uint32
+	asz, bts, err = enc.ReadArrayHeaderBytes(bts)
+	if int(asz) != {{.Size}} {
 		err = enc.ArrayError{Wanted: {{.Size}}, Got: asz}
 		return
 	}
 	for {{.Index}} := range {{.Varname}} {
 		{{template "ElemTempl" .Els}}
 	}
-	{{end}}
+{{end}}
 
 {{define "StructTempl"}}
 	var isz uint32
-	isz, nn, err = dc.ReadMapHeader()
-	n += nn
+	isz, bts, err = enc.ReadMapHeaderBytes(bts)
 	if err != nil {
 		return
 	}
-	for xplz:=uint32(0); xplz<isz; xplz++ {
-		field, nn, err = dc.ReadStringAsBytes(field)
-		n += nn
+	for xplz := uint32(0); xplz < isz; xplz++ {
+		field, bts, err = enc.ReadStringZC(bts)
 		if err != nil {
 			return
 		}
 		switch enc.UnsafeString(field) {
 		{{range .Fields}}
-		case "{{ .FieldTag}}":{{template "ElemTempl" .FieldElem}}
+		case "{{.FieldTag}}":{{template "ElemTempl" .FieldElem}}
 		{{end}}
 		default:
-			nn, err = dc.Skip()
-			n += nn
+			bts, err = enc.Skip(bts)
 			if err != nil {
 				return
 			}
 		}
-	}	
-{{end}}
-
-{{define "BaseTempl"}}{{/* TODO: make this less gross */}}
-	{{if .Convert}}var tmp {{.BaseType}}{{end}}{{/* type lowering shim */}}
-	{{if eq (.Value) 1}}{{/* is []byte */}}
-	{{if .Convert}}tmp, nn, err = dc.ReadBytes([]byte({{.Varname}})){{else}}{{.Varname}}, nn, err = dc.ReadBytes({{.Varname}}){{end}}
-	{{else if .IsIdent}}
-	if dc.IsNil() {
-		nn, err = dc.ReadNil()
-		{{.Varname}} = nil
-	} else {
-		nn, err = dc.ReadIdent({{.Varname}})
-	}{{else}}{{/* any other type */}}
-	{{if .Convert}}tmp, nn, err = dc.Read{{.BaseName}}(){{else}}{{.Varname}}, nn, err = dc.Read{{.BaseName}}(){{end}}
-	{{end}}
-	{{if .Convert}}{{.Varname}} = {{.Ident}}(tmp){{end}}
-	n += nn
-	if err != nil {
-		return
 	}
-	{{end}}
+{{end}}

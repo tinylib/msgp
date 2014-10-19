@@ -19,16 +19,10 @@ func abs(i int64) int64 {
 }
 
 var (
-	mapStrStr  reflect.Type
-	mapStrIntf reflect.Type
-	btsType    reflect.Type
+	btsType reflect.Type
 )
 
 func init() {
-	var mss map[string]string
-	mapStrStr = reflect.TypeOf(mss)
-	var msi map[string]interface{}
-	mapStrIntf = reflect.TypeOf(msi)
 	var bts []byte
 	btsType = reflect.TypeOf(bts)
 }
@@ -40,10 +34,12 @@ const (
 	// Complex128 numbers are encoded as extension #4
 	Complex128Extension = 4
 
+	// time.Time values are encoded as extension #5
 	TimeExtension = 5
 )
 
 type MsgEncoder interface {
+	MarshalMsg() ([]byte, error)
 	EncodeMsg(io.Writer) (int, error)
 	EncodeTo(*MsgWriter) (int, error)
 }
@@ -365,7 +361,7 @@ func (mw *MsgWriter) WriteTime(t time.Time) (n int, err error) {
 
 func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
 	if enc, ok := v.(MsgEncoder); ok {
-		return enc.EncodeMsg(mw.w)
+		return enc.EncodeTo(mw)
 	}
 	if v == nil {
 		return mw.WriteNil()
@@ -489,7 +485,7 @@ func (mw *MsgWriter) writeSlice(v reflect.Value) (n int, err error) {
 
 func (mw *MsgWriter) writeStruct(v reflect.Value) (n int, err error) {
 	if enc, ok := v.Interface().(MsgEncoder); ok {
-		return enc.EncodeMsg(mw.w)
+		return enc.EncodeTo(mw)
 	}
 	return 0, fmt.Errorf("unsupported type: %s", v.Type())
 }
