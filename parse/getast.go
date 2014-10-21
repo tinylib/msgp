@@ -303,8 +303,6 @@ func parseExpr(e ast.Expr) gen.Elem {
 	switch e.(type) {
 
 	case *ast.MapType:
-		// we only support map[string]string and map[string]interface{} right now
-
 		switch e.(*ast.MapType).Key.(type) {
 		case *ast.Ident:
 			switch e.(*ast.MapType).Key.(*ast.Ident).Name {

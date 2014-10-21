@@ -51,8 +51,10 @@ type TestHidden struct {
 }
 
 type Embedded struct {
-	*Embedded // test embedded field
-	Other     string
+	*Embedded   // test embedded field
+	Children    []Embedded
+	PtrChildren []*Embedded
+	Other       string
 }
 
 type Things struct {

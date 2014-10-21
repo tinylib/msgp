@@ -5,12 +5,8 @@
 	{{if eq (.Value) 1}}{{/* is []byte */}}
 	{{if .Convert}}tmp, bts, err = enc.ReadBytesBytes(bts, []byte({{.Varname}})){{else}}{{.Varname}}, bts, err = enc.ReadBytesBytes(bts, {{.Varname}}){{end}}
 	{{else if .IsIdent}}
-	if enc.IsNil(bts) {
-		bts, err = enc.ReadNilBytes(bts)
-		{{.Varname}} = nil
-	} else {
-		bts, err = {{.Varname}}.UnmarshalMsg(bts)
-	}{{else}}{{/* any other type */}}
+	bts, err = {{.Varname}}.UnmarshalMsg(bts)
+	{{else}}{{/* any other type */}}
 	{{if .Convert}}tmp, bts, err = enc.Read{{.BaseName}}Bytes(bts){{else}}{{.Varname}}, bts, err = enc.Read{{.BaseName}}Bytes(bts){{end}}
 	{{end}}
 	{{if .Convert}}{{.Varname}} = {{.Ident}}(tmp){{end}}
