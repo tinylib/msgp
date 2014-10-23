@@ -106,7 +106,9 @@ an issue if you think the generator is writing broken code.
 
 ### Performance
 
-As you might imagine, the generated code is quite a lot more performant than reflection-based serialization; generally 
-you can expect a ~4x speed improvement and an order of magnitude fewer memory allocations when compared to other reflection-based messagepack serialization libraries. (Typically, the `EncodeTo` method does zero allocations. `DecodeFrom` can do as little as 1 allocation if the struct fields are already initialized.) YMMV.
+If you like benchmarks, this is [the fastest and lowest-memory-footprint serializer for Go in this test.](https://github.com/alecthomas/go_serialization_benchmarks) (I put considerable effort into generating high-performance code. I figure there's no 
+point in putting up with the extra complexity of generated code if it does not buy you a substantial performance improvement.)
 
-If you like benchmarks, we're the [second-fastest and lowest-memory-footprint round-trip serializer for Go in this test.](https://github.com/alecthomas/go_serialization_benchmarks)
+As you might imagine, the generated code is quite a lot more performant than reflection-based serialization; generally 
+you can expect a ~4x speed improvement and an order of magnitude fewer memory allocations when compared to other reflection-based messagepack serialization libraries. (Typically, the `EncodeTo` method does zero allocations. `UnmarshalMsg` can also do zero allocations in the best case.) YMMV.
+
