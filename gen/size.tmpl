@@ -1,0 +1,7 @@
+
+// MsgpSize returns the encoded size of the object when messagepack encoded.
+// This value will be estimated if fields have indeterminate size.
+func ({{.Varname}} *{{ .Value.Struct.Name}}) Maxsize() (s int) {
+	{{template "StructTempl" .Value.Struct}}
+	return
+}

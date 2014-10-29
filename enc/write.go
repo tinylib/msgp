@@ -18,6 +18,10 @@ func abs(i int64) int64 {
 	return i
 }
 
+type sizer interface {
+	Maxsize() int
+}
+
 var (
 	btsType reflect.Type
 )
@@ -40,6 +44,7 @@ const (
 
 type MsgEncoder interface {
 	MarshalMsg() ([]byte, error)
+	AppendMsg([]byte) ([]byte, error)
 	EncodeMsg(io.Writer) (int, error)
 	EncodeTo(*MsgWriter) (int, error)
 }
@@ -545,4 +550,34 @@ func isSupported(k reflect.Kind) bool {
 	default:
 		return true
 	}
+}
+
+func GuessSize(i interface{}) int {
+	if s, ok := i.(sizer); ok {
+		return s.Maxsize()
+	} else if i == nil {
+		return NilSize
+	}
+
+	switch i.(type) {
+	case float64:
+		return Float64Size
+	case float32:
+		return Float32Size
+	case uint8, uint16, uint32, uint64, uint:
+		return UintSize
+	case int8, int16, int32, int64, int:
+		return IntSize
+	case []byte:
+		return BytesPrefixSize + len(i.([]byte))
+	case string:
+		return StringPrefixSize + len(i.(string))
+	case complex64:
+		return Complex64Size
+	case complex128:
+		return Complex128Size
+	}
+
+	// TODO: not this
+	return 1024
 }

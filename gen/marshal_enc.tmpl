@@ -1,0 +1,56 @@
+{{define "ElemTempl"}}{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{else if eq (.Type) 5 }}{{/* Map */}}{{template "MapTempl" .Map}}{{else if eq (.Type) 6 }}{{/* Array */}}{{template "ArrayTempl" .Array}}{{end}}{{end}}
+
+{{define "PtrTempl"}}
+	if {{.Varname}} == nil {
+		o = enc.AppendNil(o)
+	} else {
+		{{template "ElemTempl" .Value}}
+	}
+{{end}}
+
+{{define "BaseTempl"}}
+	{{if .Convert}}
+	o = enc.Append{{.BaseName}}(o, {{.BaseType}}({{.Varname}}))
+	{{else if .IsIdent}}
+	o, err = {{.Varname}}.AppendMsg(o)
+	if err != nil {
+		return
+	}
+	{{else if .IsIntf}}
+	o, err = enc.AppendIntf(o, {{.Varname}})
+	if err != nil {
+		return
+	}
+	{{else}}
+	o = enc.Append{{.BaseName}}(o, {{.Varname}})
+	{{end}}
+{{end}}
+
+{{define "MapTempl"}}
+	o = enc.AppendMapHeader(o, uint32(len({{.Varname}})))
+	for {{.Keyidx}}, {{.Validx}} := range {{.Varname}} {
+		o = enc.AppendString(o, {{.Keyidx}})
+		{{template "ElemTempl" .Value}}
+	}
+{{end}}
+
+{{define "SliceTempl"}}
+	o = enc.AppendArrayHeader(o, uint32(len({{.Varname}})))
+	for {{.Index}} := range {{.Varname}} {
+		{{template "ElemTempl" .Els}}
+	}
+{{end}}
+
+{{define "ArrayTempl"}}
+	o = enc.AppendArrayHeader(o, {{.Size}})
+	for {{.Index}} := range {{.Varname}} {
+		{{template "ElemTempl" .Els}}
+	}
+{{end}}
+
+{{define "StructTempl"}}
+	o = enc.AppendMapHeader(o, {{len .Fields}})
+	{{range .Fields}}
+	o = enc.AppendString(o, "{{.FieldTag}}")
+	{{template "ElemTempl" .FieldElem}}{{end}}
+{{end}}

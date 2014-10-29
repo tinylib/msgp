@@ -1,0 +1,56 @@
+{{define "ElemTempl"}}{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{else if eq (.Type) 5 }}{{/* Map */}}{{template "MapTempl" .Map}}{{else if eq (.Type) 6 }}{{/* Array */}}{{template "ArrayTempl" .Array}}{{end}}{{end}}
+
+{{define "PtrTempl"}}
+	if {{.Varname}} == nil {
+		s += enc.NilSize
+	} else {
+		{{template "ElemTempl" .Value}}
+	}
+{{end}}
+
+{{define "SliceTempl"}}
+	s += enc.ArrayHeaderSize
+	for {{.Index}} := range {{.Varname}} {
+		_ = {{.Index}}
+		{{template "ElemTempl" .Els}}
+	}
+{{end}}
+
+{{define "MapTempl"}}
+	s += enc.MapHeaderSize
+	if {{.Varname}} != nil {
+		for {{.Keyidx}}, {{.Validx}} := range {{.Varname}} {
+			_ = {{.Validx}}
+			s += enc.StringPrefixSize + len({{.Keyidx}})
+			{{template "ElemTempl" .Value}}
+		}
+	}
+{{end}}
+
+{{define "ArrayTempl"}}
+	s += enc.ArrayHeaderSize
+	for {{.Index}} := range {{.Varname}} {
+		_ = {{.Index}}
+		{{template "ElemTempl" .Els}}
+	}
+{{end}}
+
+{{define "StructTempl"}}
+	s += enc.MapHeaderSize
+	{{range .Fields}}
+	s += enc.StringPrefixSize + len("{{.FieldTag}}")
+	{{template "ElemTempl" .FieldElem}}
+	{{end}}
+{{end}}
+
+{{define "BaseTempl"}}
+	{{if .IsIntf}}
+	s += enc.GuessSize({{.Varname}}) // for complicated values, this is just a guess
+	{{else if .IsIdent}}
+	s += {{.Varname}}.Maxsize()
+	{{else if (or (eq .Value 1) (eq .Value 2))}}
+	s += enc.{{.BaseName}}PrefixSize + len({{.Varname}})
+	{{else}}
+	s += enc.{{.BaseName}}Size
+	{{end}}
+{{end}}

@@ -344,10 +344,18 @@ func (s *BaseElem) BaseType() string {
 	switch s.Value {
 	case IDENT:
 		return s.Ident
+
+	// exceptions to the naming/capitalization
+	// rule:
 	case Intf:
 		return "interface{}"
 	case Bytes:
 		return "[]byte"
+	case Time:
+		return "time.Time"
+
+	// everything else is base.String() with
+	// the first letter as lowercase
 	default:
 		return strings.ToLower(s.BaseName())
 	}

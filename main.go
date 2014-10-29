@@ -23,7 +23,6 @@ var (
 	injectImports []string = []string{
 		"github.com/philhofer/msgp/enc",
 		"io",
-		"bytes",
 	}
 
 	// testing imports
@@ -161,6 +160,12 @@ func DoAll(gopkg string, gofile string) error {
 		// propogate names to
 		// child elements of struct
 		p.SetVarname("z")
+
+		err = gen.WriteSizeMethod(wr, p)
+		if err != nil {
+			wr.Flush()
+			return err
+		}
 
 		// write MarshalMsg()
 		err = gen.WriteMarshalMethod(wr, p)
