@@ -42,7 +42,6 @@ func init() {
 
 // execAndFormat executes a template and formats the output, using buf as temporary storage
 func execAndFormat(t *template.Template, w io.Writer, i interface{}, buf *bytes.Buffer) error {
-	// TODO: make this less of a memory hog
 	if buf == nil {
 		buf = bytes.NewBuffer(nil)
 	}

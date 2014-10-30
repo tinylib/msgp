@@ -103,6 +103,9 @@ Alpha. Here are the known limitations/restrictions:
  - Maps must have `string` keys. This is intentional (as it preserves JSON interop.) The generator will yell
    at you if you try to use something else. Although non-string map keys are not explicitly forbidden by the messagepack
    standard, many serializers impose this restriction.
+ - All variable-length fields are limited to `math.MaxUint32` elements. (In other words, you cannot have a `[]byte` or
+   `string` with a length over 4GB, or an array or map with more than ~4 billion elements. This shouldn't be an issue
+   for anyone.
 
 I have no idea whether or not this generator will work with your code. Luckily, if the output compiles, then 
 there's a pretty good chance things are fine. (Plus, we generate tests for you.) *Please, please, please* file 

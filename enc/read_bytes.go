@@ -569,7 +569,7 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 		return
 	}
 
-	if b[1] != TimeExtension {
+	if int8(b[1]) != TimeExtension {
 		err = fmt.Errorf("unexpected byte %x for time extension", b[1])
 		return
 	}
@@ -609,65 +609,6 @@ func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]int
 			return
 		}
 		v[key] = val
-	}
-	return
-}
-
-func ReadExtensionBytes(b []byte) (e Extension, o []byte, err error) {
-	l := len(b)
-	if l < 3 {
-		err = ErrShortBytes
-		return
-	}
-	lead := b[0]
-	e.Type = b[1]
-	var (
-		sz  int // size of 'data'
-		off int // offset of 'data'
-	)
-	switch lead {
-	case mfixext1:
-		sz = 1
-		off = 2
-	case mfixext2:
-		sz = 2
-		off = 2
-	case mfixext4:
-		sz = 4
-		off = 2
-	case mfixext8:
-		sz = 8
-		off = 2
-	case mfixext16:
-		sz = 16
-		off = 2
-	case mext8:
-		sz = int(uint8(b[2]))
-		off = 3
-	case mext16:
-		if l < 4 {
-			err = ErrShortBytes
-			return
-		}
-		sz = int(binary.BigEndian.Uint16(b[2:]))
-		off = 4
-	case mext32:
-		if l < 6 {
-			err = ErrShortBytes
-			return
-		}
-		sz = int(binary.BigEndian.Uint32(b[2:]))
-		off = 6
-	}
-
-	// copy 'sz' bytes from b[off:];
-	// remainder is b[off+c:]
-
-	e.Data = make([]byte, sz)
-	c := copy(e.Data, b[off:])
-	o = b[off+c:]
-	if c < sz {
-		err = ErrShortBytes
 	}
 	return
 }
@@ -722,7 +663,20 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		return
 
 	case kextension:
-		i, o, err = ReadExtensionBytes(b)
+		switch b[1] {
+		case TimeExtension:
+			i, o, err = ReadTimeBytes(b)
+			return
+		case Complex128Extension:
+			i, o, err = ReadComplex128Bytes(b)
+			return
+		case Complex64Extension:
+			i, o, err = ReadComplex64Bytes(b)
+			return
+		}
+		e := RawExtension{}
+		o, err = ReadExtensionBytes(b, &e)
+		i = &e
 		return
 
 	case knull:

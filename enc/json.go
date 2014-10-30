@@ -370,9 +370,9 @@ func rwExtension(dst jsWriter, src *MsgReader) (n int, err error) {
 	}
 	n += 1
 
-	e := Extension{}
+	e := RawExtension{}
 
-	e, nn, err = src.ReadExtension()
+	nn, err = src.ReadExtension(&e)
 	n += nn
 	if err != nil {
 		return

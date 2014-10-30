@@ -907,102 +907,6 @@ func (m *MsgReader) ReadMapStrStr(mp map[string]string) (n int, err error) {
 	return
 }
 
-type Extension struct {
-	Type byte
-	Data []byte
-}
-
-func (m *MsgReader) ReadExtension() (e Extension, n int, err error) {
-	var lead byte
-	var nn int
-	lead, err = m.r.ReadByte()
-	if err != nil {
-		return
-	}
-	n += 1
-	var read int
-	switch lead {
-	case mfixext1:
-		nn, err = io.ReadFull(m.r, m.leader[:2])
-		n += nn
-		if err != nil {
-			return
-		}
-		e.Type = m.leader[0]
-		e.Data = append(e.Data[0:0], m.leader[1])
-		return
-
-	case mfixext2:
-		nn, err = io.ReadFull(m.r, m.leader[:3])
-		n += nn
-		if err != nil {
-			return
-		}
-		e.Type = m.leader[0]
-		e.Data = append(e.Data[0:0], m.leader[1:3]...)
-		return
-
-	case mfixext4:
-		nn, err = io.ReadFull(m.r, m.leader[:5])
-		n += nn
-		if err != nil {
-			return
-		}
-		e.Type = m.leader[0]
-		e.Data = append(e.Data[0:0], m.leader[1:5]...)
-		return
-
-	case mfixext8:
-		nn, err = io.ReadFull(m.r, m.leader[:9])
-		n += nn
-		if err != nil {
-			return
-		}
-		e.Type = m.leader[0]
-		e.Data = append(e.Data[0:0], m.leader[1:9]...)
-		return
-
-	case mfixext16:
-		nn, err = io.ReadFull(m.r, m.leader[:17])
-		n += nn
-		if err != nil {
-			return
-		}
-		e.Type = m.leader[0]
-		e.Data = append(e.Data[0:0], m.leader[1:17]...)
-		return
-
-	case mext8:
-		lead, err = m.r.ReadByte()
-		if err != nil {
-			return
-		}
-		n += 1
-		read = int(uint8(lead))
-
-	case mext16:
-		nn, err = io.ReadFull(m.r, m.leader[:2])
-		n += nn
-		if err != nil {
-			return
-		}
-		read = int(binary.BigEndian.Uint32(m.leader[:]))
-
-	case mext32:
-		nn, err = io.ReadFull(m.r, m.leader[:4])
-		n += nn
-		if err != nil {
-			return
-		}
-		read = int(binary.BigEndian.Uint32(m.leader[:]))
-
-	}
-
-	e.Data, nn, err = readN(m.r, e.Data, read)
-	n += nn
-	return
-}
-
 func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error) {
 	var nn int
 	var sz uint32
@@ -1095,35 +999,28 @@ func (m *MsgReader) readInterface() (i interface{}, n int, err error) {
 		return
 
 	case kextension:
-		var e Extension
-		e, n, err = m.ReadExtension()
+		var t int8
+		t, err = m.peekExtensionType()
 		if err != nil {
 			return
 		}
-		if e.Type == Complex128Extension && len(e.Data) == 16 {
-			rlbits := binary.BigEndian.Uint64(e.Data[0:])
-			imbits := binary.BigEndian.Uint64(e.Data[8:])
-			rl := *(*float64)(unsafe.Pointer(&rlbits))
-			im := *(*float64)(unsafe.Pointer(&imbits))
-			i = complex(rl, im)
+		switch t {
+		case Complex64Extension:
+			i, n, err = m.ReadComplex64()
+			return
+		case Complex128Extension:
+			i, n, err = m.ReadComplex128()
+			return
+		case TimeExtension:
+			i, n, err = m.ReadTime()
+			return
+		default:
+			var e RawExtension
+			e.Type = t
+			n, err = m.ReadExtension(&e)
+			i = &e
 			return
 		}
-		if e.Type == Complex64Extension && len(e.Data) == 8 {
-			rlbits := binary.BigEndian.Uint64(e.Data[0:])
-			imbits := binary.BigEndian.Uint64(e.Data[4:])
-			rl := *(*float32)(unsafe.Pointer(&rlbits))
-			im := *(*float32)(unsafe.Pointer(&imbits))
-			i = complex(rl, im)
-			return
-		}
-		if e.Type == TimeExtension && len(e.Data) == 16 {
-			var t time.Time
-			err = t.UnmarshalBinary(e.Data[:15])
-			i = t
-			return
-		}
-		i = e
-		return
 
 	case kmap:
 		mp := make(map[string]interface{})

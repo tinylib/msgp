@@ -388,16 +388,19 @@ func (mw *MsgWriter) WriteTime(t time.Time) (n int, err error) {
 	if err != nil {
 		return
 	}
-	mw.scratch[0] = mfixext16     // byte 0 is mfixext16
-	mw.scratch[1] = TimeExtension // TimeExtension byte
-	copy(mw.scratch[2:], bts)     // time is 15 bytes
-	mw.scratch[17] = 0            // last byte is 0
+	mw.scratch[0] = mfixext16                 // byte 0 is mfixext16
+	mw.scratch[1] = byte(int8(TimeExtension)) // TimeExtension byte
+	copy(mw.scratch[2:], bts)                 // time is 15 bytes
+	mw.scratch[17] = 0                        // last byte is 0
 	return mw.w.Write(mw.scratch[:18])
 }
 
 func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
 	if enc, ok := v.(MsgEncoder); ok {
 		return enc.EncodeTo(mw)
+	}
+	if ext, ok := v.(Extension); ok {
+		return mw.WriteExtension(ext)
 	}
 	if v == nil {
 		return mw.WriteNil()

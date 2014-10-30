@@ -286,65 +286,12 @@ func AppendMapStrIntf(b []byte, m map[string]interface{}) ([]byte, error) {
 	return b, nil
 }
 
-func AppendExtension(b []byte, e Extension) []byte {
-	o, n := ensure(b, 5+len(e.Data))
-	l := len(e.Data)
-	switch l {
-	case 0:
-		o[n] = mext8
-		o[n+1] = e.Type
-		o[n+2] = 0
-		return o[:n+3]
-	case 1:
-		o[n] = mfixext1
-		o[n+1] = e.Type
-		o[n+2] = e.Data[0]
-		return o[:n+3]
-	case 2:
-		o[n] = mfixext2
-		o[n+1] = e.Type
-		copy(o[n+2:], e.Data)
-		return o[:n+4]
-	case 4:
-		o[n] = mfixext4
-		o[n+1] = e.Type
-		copy(o[n+2:], e.Data)
-		return o[:n+6]
-	case 8:
-		o[n] = mfixext8
-		o[n+1] = e.Type
-		copy(o[n+2:], e.Data)
-		return o[:n+10]
-	case 16:
-		o[n] = mfixext16
-		o[n+1] = e.Type
-		copy(o[n+2:], e.Data)
-		return o[:n+18]
-	}
-	switch {
-	case l < math.MaxUint8:
-		o[n] = mext8
-		o[n+1] = e.Type
-		o[n+2] = byte(uint8(l))
-		n += 3
-	case l < math.MaxUint16:
-		o[n] = mext16
-		o[n+1] = e.Type
-		binary.BigEndian.PutUint16(o[n+2:], uint16(l))
-		n += 4
-	default:
-		o[n] = mext32
-		o[n+1] = e.Type
-		binary.BigEndian.PutUint32(o[n+2:], uint32(l))
-		n += 6
-	}
-	x := copy(o[n:], e.Data)
-	return o[:n+x]
-}
-
 func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 	if m, ok := i.(MsgMarshaler); ok {
 		return m.AppendMsg(b)
+	}
+	if ext, ok := i.(Extension); ok {
+		return AppendExtension(b, ext)
 	}
 
 	if i == nil {
