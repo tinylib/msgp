@@ -37,20 +37,10 @@
 
 {{define "StructTempl"}}
 	s += enc.MapHeaderSize
-	{{range .Fields}}
-	s += enc.StringPrefixSize + len("{{.FieldTag}}")
-	{{template "ElemTempl" .FieldElem}}
-	{{end}}
+	{{range .Fields}}s += enc.StringPrefixSize + {{len .FieldTag}}
+	{{template "ElemTempl" .FieldElem}}{{end}}
 {{end}}
 
 {{define "BaseTempl"}}
-	{{if .IsIntf}}
-	s += enc.GuessSize({{.Varname}}) // for complicated values, this is just a guess
-	{{else if .IsIdent}}
-	s += {{.Varname}}.Maxsize()
-	{{else if (or (eq .Value 1) (eq .Value 2))}}
-	s += enc.{{.BaseName}}PrefixSize + len({{.Varname}})
-	{{else}}
-	s += enc.{{.BaseName}}Size
-	{{end}}
+{{if .IsIntf}}s += enc.GuessSize({{.Varname}}){{else if .IsIdent}}s += {{.Varname}}.Maxsize(){{else if (or (eq .Value 1) (eq .Value 2))}}{{/* string or []byte */}}s += enc.{{.BaseName}}PrefixSize + len({{.Varname}}){{else}}s += enc.{{.BaseName}}Size{{end}}
 {{end}}

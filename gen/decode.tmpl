@@ -15,7 +15,6 @@ func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeFrom(dc *enc.MsgReader) (n int
 	var field []byte 
 	_ = nn 
 	_ = field
-
 	{{template "StructTempl" .Value.Struct}}
 	return
 }

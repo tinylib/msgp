@@ -1,0 +1,60 @@
+
+func Test{{.Name}}EncodeDecode(t *testing.T) {
+	v := new({{.Name}})
+	var buf bytes.Buffer
+	n, _ := v.EncodeMsg(&buf)
+
+	m := v.Maxsize()
+	if n > m {
+		t.Logf("WARNING: Maxsize() for %v is inaccurate", v)
+	}
+
+	vn := new({{.Name}})
+	nr, err := vn.DecodeMsg(&buf)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if nr != n {
+		t.Errorf("Wrote %d bytes; read %d bytes", n, nr)
+	}
+
+	buf.Reset()
+	v.EncodeMsg(&buf)
+	_, err = enc.NewDecoder(&buf).Skip()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func Benchmark{{.Name}}Encode(b *testing.B) {
+	v := new({{.Name}})
+	var buf bytes.Buffer
+	en := enc.NewEncoder(&buf)
+	v.EncodeTo(en)
+	b.ReportAllocs()
+	b.SetBytes(int64(buf.Len()))
+	b.ResetTimer()
+	for i:=0; i<b.N; i++ {
+		buf.Reset()
+		v.EncodeTo(en)
+	}
+}
+
+func Benchmark{{.Name}}Decode(b *testing.B) {
+	v := new({{.Name}})
+	var buf bytes.Buffer
+	v.EncodeMsg(&buf)
+	rd := bytes.NewReader(buf.Bytes())
+	dc := enc.NewDecoder(rd)
+	b.ReportAllocs()
+	b.SetBytes(int64(buf.Len()))
+	b.ResetTimer()
+	for i:=0; i<b.N; i++ {
+		rd.Seek(0, 0)
+		_, err := v.DecodeFrom(dc)
+		if  err != nil {
+			b.Fatal(err)
+		}
+	}
+}

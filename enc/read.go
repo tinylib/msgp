@@ -61,15 +61,20 @@ func Done(m *MsgReader) {
 	pushReader(m)
 }
 
-// MsgDecoder is the interface fulfilled
-// by objects that know how to decode themselves
-// from MessagePack
-type MsgDecoder interface {
+// MsgUnmarshaler is the interface fulfilled
+// byte objects that know how to unmarshal
+// themselves from MessagePack
+type MsgUnmarshaler interface {
 	// UnmarshalMsg unmarshals the object
 	// from binary, returing any leftover
 	// bytes and any errors encountered
 	UnmarshalMsg([]byte) ([]byte, error)
+}
 
+// MsgDecoder is the interface fulfilled
+// by objects that know how to decode themselves
+// from MessagePack
+type MsgDecoder interface {
 	// DecodeMsg decodes the object
 	// from an io.Reader, returning
 	// the number of bytes read and
@@ -907,7 +912,7 @@ type Extension struct {
 	Data []byte
 }
 
-func (m *MsgReader) ReadExtension(e *Extension) (n int, err error) {
+func (m *MsgReader) ReadExtension() (e Extension, n int, err error) {
 	var lead byte
 	var nn int
 	lead, err = m.r.ReadByte()
@@ -1090,8 +1095,8 @@ func (m *MsgReader) readInterface() (i interface{}, n int, err error) {
 		return
 
 	case kextension:
-		e := new(Extension)
-		n, err = m.ReadExtension(e)
+		var e Extension
+		e, n, err = m.ReadExtension()
 		if err != nil {
 			return
 		}
@@ -1105,7 +1110,7 @@ func (m *MsgReader) readInterface() (i interface{}, n int, err error) {
 		}
 		if e.Type == Complex64Extension && len(e.Data) == 8 {
 			rlbits := binary.BigEndian.Uint64(e.Data[0:])
-			imbits := binary.BigEndian.Uint64(e.Data[8:])
+			imbits := binary.BigEndian.Uint64(e.Data[4:])
 			rl := *(*float32)(unsafe.Pointer(&rlbits))
 			im := *(*float32)(unsafe.Pointer(&imbits))
 			i = complex(rl, im)

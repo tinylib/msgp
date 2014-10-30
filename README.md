@@ -37,9 +37,13 @@ type Person struct {
 Running `msgp` on a file containing the above declaration would generate the following methods:
 
 ```go
+func (z *Person) Maxsize() int
+
 func (z *Person) MarshalMsg() ([]byte, error)
 
 func (z *Person) UnmarshalMsg(b []byte) ([]byte, error)
+
+func (z *Person) AppendMsg(b []byte) ([]byte, error)
 
 func (z *Person) EncodeTo(en *enc.MsgWriter) (n int, err error)
 

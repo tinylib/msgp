@@ -42,29 +42,60 @@ const (
 	TimeExtension = 5
 )
 
-type MsgEncoder interface {
-	MarshalMsg() ([]byte, error)
+// MsgMarshaler is the interface implemented
+// by types that know how to marshal themselves
+// as MessagePack
+type MsgMarshaler interface {
+	// AppendMsg appends the marshalled
+	// form of the object to the provided
+	// byte slice, returning the extended
+	// slice and any errors encountered
 	AppendMsg([]byte) ([]byte, error)
+
+	// MarshalMsg returns a new []byte
+	// containing the MessagePack-encoded
+	// form of the object
+	MarshalMsg() ([]byte, error)
+}
+
+// MsgEncoder is the interface implemented
+// by types that know how to write themselves
+// as MessagePack
+type MsgEncoder interface {
+	// EncodeMsg writes the object in MessagePack
+	// format to the writer, returning the number
+	// of bytes written and any errors encountered.
 	EncodeMsg(io.Writer) (int, error)
+
+	// EncodeTo writes the object to a *MsgWriter,
+	// returning the number of bytes written, and
+	// any errors encountered.
 	EncodeTo(*MsgWriter) (int, error)
 }
 
+// MsgWriter is the object used by
+// MsgEncoders to write themselves
+// to an io.Writer
 type MsgWriter struct {
 	w       io.Writer
 	scratch [24]byte
 }
 
+// NewEncoder returns a MsgWriter, which can be
+// used by MsgEncoders to serialize themselves
+// to the provided io.Writer. It does no buffering.
 func NewEncoder(w io.Writer) *MsgWriter {
 	return &MsgWriter{
 		w: w,
 	}
 }
 
-// Write implements the standard io.Write method
+// Write implements the standard io.Writer interface
 func (mw *MsgWriter) Write(p []byte) (int, error) {
 	return mw.w.Write(p)
 }
 
+// Reset changes the underlying writer used by the MsgWriter
 func (mw *MsgWriter) Reset(w io.Writer) {
 	mw.w = w
 }
@@ -420,8 +451,6 @@ func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
 	}
 
 	switch val.Kind() {
-	case reflect.Struct:
-		return mw.writeStruct(val)
 	case reflect.Ptr:
 		if val.IsNil() {
 			return mw.WriteNil()
@@ -497,7 +526,7 @@ func (mw *MsgWriter) writeStruct(v reflect.Value) (n int, err error) {
 
 func (mw *MsgWriter) writeVal(v reflect.Value) (n int, err error) {
 	if !isSupported(v.Kind()) {
-		return 0, fmt.Errorf("unsupported type: %s", v.Type())
+		return 0, fmt.Errorf("msgp/enc: type %q not supported", v.Type())
 	}
 
 	// shortcut for nil values
@@ -539,7 +568,7 @@ func (mw *MsgWriter) writeVal(v reflect.Value) (n int, err error) {
 		return mw.writeStruct(v)
 
 	}
-	return
+	return 0, fmt.Errorf("msgp/enc: type %q not supported", v.Type())
 }
 
 // is the reflect.Kind encodable?
@@ -552,6 +581,10 @@ func isSupported(k reflect.Kind) bool {
 	}
 }
 
+// GuessSize guesses the size of the underlying
+// value of 'i'. If the underlying value is not
+// a simple builtin (or []byte), GuessSize defaults
+// to 512.
 func GuessSize(i interface{}) int {
 	if s, ok := i.(sizer); ok {
 		return s.Maxsize()
@@ -578,6 +611,7 @@ func GuessSize(i interface{}) int {
 		return Complex128Size
 	}
 
-	// TODO: not this
-	return 1024
+	// TODO: maybe we can
+	// do better here...
+	return 512
 }

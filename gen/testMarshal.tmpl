@@ -1,0 +1,59 @@
+
+func Test{{.Name}}MarshalUnmarshal(t *testing.T) {
+	v := new({{.Name}})
+	bts, err := v.MarshalMsg()
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, err := v.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg()", len(left))
+	}
+
+	left, err = enc.Skip(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after Skip()", len(left))
+	}
+}
+
+func Benchmark{{.Name}}MarshalMsg(b *testing.B) {
+	v := new({{.Name}})
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i:=0; i<b.N; i++ {
+		v.MarshalMsg()
+	}
+}
+
+func Benchmark{{.Name}}AppendMsg(b *testing.B) {
+	v := new({{.Name}})
+	bts := make([]byte, 0, v.Maxsize())
+	bts, _ = v.AppendMsg(bts[0:0])
+	b.SetBytes(int64(len(bts)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i:=0; i<b.N; i++ {
+		bts, _ = v.AppendMsg(bts[0:0])
+	}
+}
+
+func Benchmark{{.Name}}Unmarshal(b *testing.B) {
+	v := new({{.Name}})
+	var buf bytes.Buffer
+	v.EncodeMsg(&buf)
+	b.ReportAllocs()
+	b.SetBytes(int64(buf.Len()))
+	b.ResetTimer()
+	for i:=0; i<b.N; i++ {
+		_, err := v.UnmarshalMsg(buf.Bytes())
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
