@@ -16,8 +16,8 @@
 	if err != nil {
 		return
 	}
-	{{else if .IsIntf}}
-	o, err = enc.AppendIntf(o, {{.Varname}})
+	{{else if (or .IsIntf .IsExt)}}{{/* methods with error handling */}}
+	o, err = enc.Append{{.BaseName}}(o, {{.Varname}})
 	if err != nil {
 		return
 	}

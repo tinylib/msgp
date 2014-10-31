@@ -10,7 +10,7 @@ func Test{{.Name}}MarshalUnmarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(left) > 0 {
-		t.Errorf("%d bytes left over after UnmarshalMsg()", len(left))
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
 	}
 
 	left, err = enc.Skip(bts)
@@ -18,7 +18,7 @@ func Test{{.Name}}MarshalUnmarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(left) > 0 {
-		t.Errorf("%d bytes left over after Skip()", len(left))
+		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
 	}
 }
 

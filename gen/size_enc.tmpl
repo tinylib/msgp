@@ -42,5 +42,5 @@
 {{end}}
 
 {{define "BaseTempl"}}
-{{if .IsIntf}}s += enc.GuessSize({{.Varname}}){{else if .IsIdent}}s += {{.Varname}}.Maxsize(){{else if (or (eq .Value 1) (eq .Value 2))}}{{/* string or []byte */}}s += enc.{{.BaseName}}PrefixSize + len({{.Varname}}){{else}}s += enc.{{.BaseName}}Size{{end}}
+{{if .IsIntf}}s += enc.GuessSize({{.Varname}}){{else if .IsIdent}}s += {{.Varname}}.Maxsize(){{else if (or (eq .Value 1) (eq .Value 2))}}{{/* string or []byte */}}s += enc.{{.BaseName}}PrefixSize + len({{.Varname}}){{else if .IsExt}}s += enc.ExtensionSize({{.Varname}}){{else}}s += enc.{{.BaseName}}Size{{end}}
 {{end}}

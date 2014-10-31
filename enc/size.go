@@ -31,6 +31,12 @@ const (
 	MapHeaderSize   = 5
 	ArrayHeaderSize = 5
 
-	BytesPrefixSize  = 5
-	StringPrefixSize = 5
+	BytesPrefixSize     = 5
+	StringPrefixSize    = 5
+	ExtensionPrefixSize = 6
 )
+
+// ExtensionSize is a shim for computing the size of an extension
+func ExtensionSize(e Extension) int {
+	return ExtensionPrefixSize + e.Len()
+}

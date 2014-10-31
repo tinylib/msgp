@@ -23,6 +23,10 @@ type Extension interface {
 	// specifications.)
 	ExtensionType() int8
 
+	// Len should return the length
+	// of the data to be encoded
+	Len() int
+
 	// Extensions must satisfy the
 	// encoding.BinaryMarshaler and
 	// encoding.BinaryUnmarshaler
@@ -38,6 +42,7 @@ type RawExtension struct {
 }
 
 func (r *RawExtension) ExtensionType() int8 { return r.Type }
+func (r *RawExtension) Len() int            { return len(r.Data) }
 func (r *RawExtension) MarshalBinary() ([]byte, error) {
 	d := make([]byte, len(r.Data))
 	copy(d, r.Data)
@@ -388,6 +393,11 @@ func ReadExtensionBytes(b []byte, e Extension) (o []byte, err error) {
 		sz = int(uint8(b[1]))
 		typ = int8(b[2])
 		off = 3
+		if sz == 0 {
+			err = e.UnmarshalBinary(b[3:3])
+			o = b[3:]
+			return
+		}
 	case mext16:
 		if l < 4 {
 			err = ErrShortBytes

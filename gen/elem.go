@@ -87,6 +87,7 @@ const (
 	Bool
 	Intf // interface{}
 	Time // time.Time
+	Ext  // extension
 
 	IDENT // IDENT means an unrecognized identifier
 )
@@ -253,7 +254,7 @@ func (s *Ptr) SetVarname(a string) {
 		return
 
 	case BaseType:
-		// identities also have pointer receivers
+		// identities and extensions have pointer receivers
 		if s.Value.Base().IsIdent() {
 			s.Value.SetVarname(a)
 			return
@@ -309,15 +310,32 @@ type BaseElem struct {
 	Convert bool   // should we do an explicit conversion?
 }
 
-func (s *BaseElem) Type() ElemType      { return BaseType }
-func (s *BaseElem) Ptr() *Ptr           { return nil }
-func (s *BaseElem) Slice() *Slice       { return nil }
-func (s *BaseElem) Struct() *Struct     { return nil }
-func (s *BaseElem) Map() *Map           { return nil }
-func (s *BaseElem) Base() *BaseElem     { return s }
-func (s *BaseElem) Array() *Array       { return nil }
-func (s *BaseElem) Varname() string     { return s.name }
-func (s *BaseElem) SetVarname(a string) { s.name = a }
+func (s *BaseElem) Type() ElemType  { return BaseType }
+func (s *BaseElem) Ptr() *Ptr       { return nil }
+func (s *BaseElem) Slice() *Slice   { return nil }
+func (s *BaseElem) Struct() *Struct { return nil }
+func (s *BaseElem) Map() *Map       { return nil }
+func (s *BaseElem) Base() *BaseElem { return s }
+func (s *BaseElem) Array() *Array   { return nil }
+func (s *BaseElem) Varname() string { return s.name }
+func (s *BaseElem) SetVarname(a string) {
+
+	// extensions are assumed
+	// to have pointer receivers, so
+	// we need to *not* dereference it
+	// (if it's a pointer) OR we need
+	// to take a reference
+	if s.Value == Ext {
+		if strings.HasPrefix(a, "*") {
+			s.name = strings.TrimPrefix(a, "*")
+		} else {
+			s.name = "&" + a
+		}
+		return
+	}
+
+	s.name = a
+}
 
 func (s *BaseElem) String() string { return fmt.Sprintf("(%s - %s)", s.BaseName(), s.Varname()) }
 
@@ -340,6 +358,7 @@ func (s *BaseElem) BaseName() string {
 	}
 	return s.Value.String()
 }
+
 func (s *BaseElem) BaseType() string {
 	switch s.Value {
 	case IDENT:
@@ -353,6 +372,8 @@ func (s *BaseElem) BaseType() string {
 		return "[]byte"
 	case Time:
 		return "time.Time"
+	case Ext:
+		return "enc.Extension"
 
 	// everything else is base.String() with
 	// the first letter as lowercase
@@ -361,8 +382,11 @@ func (s *BaseElem) BaseType() string {
 	}
 }
 
-// is this an interface{}
+// is this an interface{} ?
 func (s *BaseElem) IsIntf() bool { return s.Value == Intf }
+
+// is this an extension?
+func (s *BaseElem) IsExt() bool { return s.Value == Ext }
 
 // is this an external identity?
 func (s *BaseElem) IsIdent() bool { return s.Value == IDENT }
@@ -409,6 +433,8 @@ func (k Base) String() string {
 		return "Intf"
 	case Time:
 		return "time.Time"
+	case Ext:
+		return "Extension"
 	case IDENT:
 		return "Ident"
 	default:

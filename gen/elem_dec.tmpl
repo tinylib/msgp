@@ -109,6 +109,8 @@
 	{{if .Convert}}tmp, nn, err = dc.ReadBytes([]byte({{.Varname}})){{else}}{{.Varname}}, nn, err = dc.ReadBytes({{.Varname}}){{end}}
 	{{else if .IsIdent}}
 	nn, err = {{.Varname}}.DecodeFrom(dc)
+	{{else if .IsExt}}
+	nn, err = dc.ReadExtension({{.Varname}})
 	{{else}}{{/* any other type */}}
 	{{if .Convert}}tmp, nn, err = dc.Read{{.BaseName}}(){{else}}{{.Varname}}, nn, err = dc.Read{{.BaseName}}(){{end}}
 	{{end}}

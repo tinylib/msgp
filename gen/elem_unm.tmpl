@@ -6,6 +6,8 @@
 	{{if .Convert}}tmp, bts, err = enc.ReadBytesBytes(bts, []byte({{.Varname}})){{else}}{{.Varname}}, bts, err = enc.ReadBytesBytes(bts, {{.Varname}}){{end}}
 	{{else if .IsIdent}}
 	bts, err = {{.Varname}}.UnmarshalMsg(bts)
+	{{else if .IsExt}}
+	bts, err = enc.ReadExtensionBytes(bts, {{.Varname}})
 	{{else}}{{/* any other type */}}
 	{{if .Convert}}tmp, bts, err = enc.Read{{.BaseName}}Bytes(bts){{else}}{{.Varname}}, bts, err = enc.Read{{.BaseName}}Bytes(bts){{end}}
 	{{end}}
