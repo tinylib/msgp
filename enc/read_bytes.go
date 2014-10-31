@@ -663,11 +663,15 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		return
 
 	case kextension:
-		if len(b) < 2 {
+		if len(b) < 3 {
 			err = ErrShortBytes
 			return
 		}
-		t := b[1]
+		var t int8
+		t, err = peekExtension(b)
+		if err != nil {
+			return
+		}
 		switch t {
 		case TimeExtension:
 			i, o, err = ReadTimeBytes(b)

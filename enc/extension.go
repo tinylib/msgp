@@ -18,7 +18,9 @@ func errExt(got int8, wanted int8) error {
 type Extension interface {
 	// ExtensionType should return
 	// a int8 that identifies the concrete
-	// type of the extension
+	// type of the extension. (Types <0 are
+	// officially reserved by the MessagePack
+	// specifications.)
 	ExtensionType() int8
 
 	// Extensions must satisfy the
@@ -125,7 +127,7 @@ func (mw *MsgWriter) WriteExtension(e Extension) (int, error) {
 // peek at the extension type, assuming the next
 // kind to be read is Extension
 func (m *MsgReader) peekExtensionType() (int8, error) {
-	l, err := m.r.Peek(5)
+	l, err := m.r.Peek(6)
 	if err != nil {
 		return 0, err
 	}
@@ -140,6 +142,29 @@ func (m *MsgReader) peekExtensionType() (int8, error) {
 		return int8(l[5]), nil
 	default:
 		return 0, fmt.Errorf("unexpected leading byte %x for extension", l[0])
+	}
+}
+
+// peekExtension peeks at the extension encoding type
+// (must guarantee at least 3 bytes in 'b')
+func peekExtension(b []byte) (int8, error) {
+	switch b[0] {
+	case mfixext1, mfixext2, mfixext4, mfixext8, mfixext16:
+		return int8(b[1]), nil
+	case mext8:
+		return int8(b[2]), nil
+	case mext16:
+		if len(b) < 4 {
+			return 0, ErrShortBytes
+		}
+		return int8(b[3]), nil
+	case mext32:
+		if len(b) < 5 {
+			return 0, ErrShortBytes
+		}
+		return int8(b[5]), nil
+	default:
+		return 0, fmt.Errorf("unexpected leading byte %x for extension", b[0])
 	}
 }
 
@@ -215,7 +240,7 @@ func (m *MsgReader) ReadExtension(e Extension) (n int, err error) {
 			err = errExt(int8(m.leader[0]), e.ExtensionType())
 			return
 		}
-		err = e.UnmarshalBinary(m.leader[1:16])
+		err = e.UnmarshalBinary(m.leader[1:17])
 		return
 
 	case mext8:
@@ -272,12 +297,12 @@ func AppendExtension(b []byte, e Extension) ([]byte, error) {
 		return b, err
 	}
 	l := len(bts)
-	o, n := ensure(b, 5+l)
+	o, n := ensure(b, 6+l)
 	switch l {
 	case 0:
 		o[n] = mext8
-		o[n+1] = byte(e.ExtensionType())
-		o[n+2] = 0
+		o[n+1] = 0
+		o[n+2] = byte(e.ExtensionType())
 		return o[:n+3], nil
 	case 1:
 		o[n] = mfixext1
@@ -360,8 +385,8 @@ func ReadExtensionBytes(b []byte, e Extension) (o []byte, err error) {
 		sz = 16
 		off = 2
 	case mext8:
-		typ = int8(b[2])
 		sz = int(uint8(b[1]))
+		typ = int8(b[2])
 		off = 3
 	case mext16:
 		if l < 4 {
