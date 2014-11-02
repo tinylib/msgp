@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bufio"
@@ -41,12 +41,12 @@ type jsWriter interface {
 // writes it as JSON to 'dst' until 'src' returns EOF. It returns the
 // number of bytes written and any errors encountered.
 func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
-	return DecodeToJSON(dst, NewDecoder(src))
+	return DecodeToJSON(dst, NewReader(src))
 }
 
 // DecodeToJSON reads from 'src' until EOF and writes the object
 // as JSON to 'dst'.
-func DecodeToJSON(dst io.Writer, src *MsgReader) (n int64, err error) {
+func DecodeToJSON(dst io.Writer, src *Reader) (n int64, err error) {
 	var w jsWriter
 	var cast bool
 	if jsw, ok := dst.(jsWriter); ok {
@@ -74,7 +74,7 @@ func DecodeToJSON(dst io.Writer, src *MsgReader) (n int64, err error) {
 	return
 }
 
-func rwNext(w jsWriter, src *MsgReader) (int, error) {
+func rwNext(w jsWriter, src *Reader) (int, error) {
 	k, err := src.nextKind()
 	if err != nil {
 		return 0, err
@@ -103,7 +103,7 @@ func rwNext(w jsWriter, src *MsgReader) (int, error) {
 	}
 }
 
-func (m *MsgReader) nextKind() (kind, error) {
+func (m *Reader) nextKind() (kind, error) {
 	var lead []byte
 	var err error
 	lead, err = m.r.Peek(1)
@@ -154,7 +154,7 @@ func (m *MsgReader) nextKind() (kind, error) {
 	}
 }
 
-func rwMap(dst jsWriter, src *MsgReader) (n int, err error) {
+func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 	var comma bool
 	var sz uint32
 
@@ -216,7 +216,7 @@ func rwMap(dst jsWriter, src *MsgReader) (n int, err error) {
 	return
 }
 
-func rwArray(dst jsWriter, src *MsgReader) (n int, err error) {
+func rwArray(dst jsWriter, src *Reader) (n int, err error) {
 	err = dst.WriteByte('[')
 	if err != nil {
 		return
@@ -254,7 +254,7 @@ func rwArray(dst jsWriter, src *MsgReader) (n int, err error) {
 	return
 }
 
-func rwFloat(dst jsWriter, src *MsgReader, k kind) (n int, err error) {
+func rwFloat(dst jsWriter, src *Reader, k kind) (n int, err error) {
 	if k == kfloat64 {
 		var f float64
 		f, _, err = src.ReadFloat64()
@@ -274,7 +274,7 @@ func rwFloat(dst jsWriter, src *MsgReader, k kind) (n int, err error) {
 	return dst.Write(src.scratch)
 }
 
-func rwInt(dst jsWriter, src *MsgReader, k kind) (n int, err error) {
+func rwInt(dst jsWriter, src *Reader, k kind) (n int, err error) {
 	if k == kint {
 		var i int64
 		i, _, err = src.ReadInt64()
@@ -293,7 +293,7 @@ func rwInt(dst jsWriter, src *MsgReader, k kind) (n int, err error) {
 	return dst.Write(src.scratch)
 }
 
-func rwBool(dst jsWriter, src *MsgReader) (int, error) {
+func rwBool(dst jsWriter, src *Reader) (int, error) {
 	b, _, err := src.ReadBool()
 	if err != nil {
 		return 0, err
@@ -304,7 +304,7 @@ func rwBool(dst jsWriter, src *MsgReader) (int, error) {
 	return dst.WriteString("false")
 }
 
-func rwExtension(dst jsWriter, src *MsgReader) (n int, err error) {
+func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
 	var nn int
 	err = dst.WriteByte('{')
 	if err != nil {
@@ -354,7 +354,7 @@ func rwExtension(dst jsWriter, src *MsgReader) (n int, err error) {
 	return
 }
 
-func rwString(dst jsWriter, src *MsgReader) (n int, err error) {
+func rwString(dst jsWriter, src *Reader) (n int, err error) {
 	src.scratch, _, err = src.ReadStringAsBytes(src.scratch)
 	if err != nil {
 		return
@@ -362,7 +362,7 @@ func rwString(dst jsWriter, src *MsgReader) (n int, err error) {
 	return rwquoted(dst, src.scratch)
 }
 
-func rwBytes(dst jsWriter, src *MsgReader) (n int, err error) {
+func rwBytes(dst jsWriter, src *Reader) (n int, err error) {
 	var nn int
 	err = dst.WriteByte('"')
 	if err != nil {

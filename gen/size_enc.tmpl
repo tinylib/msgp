@@ -2,14 +2,14 @@
 
 {{define "PtrTempl"}}
 	if {{.Varname}} == nil {
-		s += enc.NilSize
+		s += msgp.NilSize
 	} else {
 		{{template "ElemTempl" .Value}}
 	}
 {{end}}
 
 {{define "SliceTempl"}}
-	s += enc.ArrayHeaderSize
+	s += msgp.ArrayHeaderSize
 	for {{.Index}} := range {{.Varname}} {
 		_ = {{.Index}}
 		{{template "ElemTempl" .Els}}
@@ -17,18 +17,18 @@
 {{end}}
 
 {{define "MapTempl"}}
-	s += enc.MapHeaderSize
+	s += msgp.MapHeaderSize
 	if {{.Varname}} != nil {
 		for {{.Keyidx}}, {{.Validx}} := range {{.Varname}} {
 			_ = {{.Validx}}
-			s += enc.StringPrefixSize + len({{.Keyidx}})
+			s += msgp.StringPrefixSize + len({{.Keyidx}})
 			{{template "ElemTempl" .Value}}
 		}
 	}
 {{end}}
 
 {{define "ArrayTempl"}}
-	s += enc.ArrayHeaderSize
+	s += msgp.ArrayHeaderSize
 	for {{.Index}} := range {{.Varname}} {
 		_ = {{.Index}}
 		{{template "ElemTempl" .Els}}
@@ -36,11 +36,11 @@
 {{end}}
 
 {{define "StructTempl"}}
-	s += enc.MapHeaderSize
-	{{range .Fields}}s += enc.StringPrefixSize + {{len .FieldTag}}
+	s += msgp.MapHeaderSize
+	{{range .Fields}}s += msgp.StringPrefixSize + {{len .FieldTag}}
 	{{template "ElemTempl" .FieldElem}}{{end}}
 {{end}}
 
 {{define "BaseTempl"}}
-{{if .IsIntf}}s += enc.GuessSize({{.Varname}}){{else if .IsIdent}}s += {{.Varname}}.Maxsize(){{else if (or (eq .Value 1) (eq .Value 2))}}{{/* string or []byte */}}s += enc.{{.BaseName}}PrefixSize + len({{.Varname}}){{else if .IsExt}}s += enc.ExtensionSize({{.Varname}}){{else}}s += enc.{{.BaseName}}Size{{end}}
+{{if .IsIntf}}s += msgp.GuessSize({{.Varname}}){{else if .IsIdent}}s += {{.Varname}}.Maxsize(){{else if (or (eq .Value 1) (eq .Value 2))}}{{/* string or []byte */}}s += msgp.{{.BaseName}}PrefixSize + len({{.Varname}}){{else if .IsExt}}s += msgp.ExtensionSize({{.Varname}}){{else}}s += msgp.{{.BaseName}}Size{{end}}
 {{end}}

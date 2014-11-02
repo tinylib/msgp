@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 // The sizes provided
 // are the worst-case

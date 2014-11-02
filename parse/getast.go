@@ -380,9 +380,6 @@ func parseExpr(e ast.Expr) gen.Elem {
 				}
 
 			case *ast.Ident:
-				// TODO: resolve constant expression
-
-				// maybe atoi will work...?
 				size, err := strconv.Atoi(arr.Len.(*ast.Ident).String())
 				if err != nil {
 					return nil
@@ -393,6 +390,7 @@ func parseExpr(e ast.Expr) gen.Elem {
 				}
 
 			default:
+				// TODO: resolve constant expression
 				return nil
 			}
 		}
@@ -406,20 +404,32 @@ func parseExpr(e ast.Expr) gen.Elem {
 					Value: gen.Bytes,
 				}
 			} else {
+				e := parseExpr(arr.Elt)
+				if e == nil {
+					return nil
+				}
 				return &gen.Slice{
-					Els: parseExpr(arr.Elt),
+					Els: e,
 				}
 			}
 		default:
+			e := parseExpr(arr.Elt)
+			if e == nil {
+				return nil
+			}
 			return &gen.Slice{
-				Els: parseExpr(arr.Elt),
+				Els: e,
 			}
 
 		}
 
 	case *ast.StarExpr:
+		v := parseExpr(e.(*ast.StarExpr).X)
+		if v == nil {
+			return nil
+		}
 		return &gen.Ptr{
-			Value: parseExpr(e.(*ast.StarExpr).X),
+			Value: v,
 		}
 
 	case *ast.StructType:
@@ -428,9 +438,6 @@ func parseExpr(e ast.Expr) gen.Elem {
 		}
 
 	case *ast.SelectorExpr:
-		// the only case
-		// we care about here
-		// is time.Time
 		v := e.(*ast.SelectorExpr)
 		if im, ok := v.X.(*ast.Ident); ok {
 			if v.Sel.Name == "Time" && im.Name == "time" {

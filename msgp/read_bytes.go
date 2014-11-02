@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"encoding/binary"
@@ -683,6 +683,16 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 			i, o, err = ReadComplex64Bytes(b)
 			return
 		}
+		// use a user-defined extension,
+		// if it's been registered
+		f, ok := extensionReg[t]
+		if ok {
+			e := f()
+			o, err = ReadExtensionBytes(b, e)
+			i = e
+			return
+		}
+		// last resort is a raw extension
 		e := RawExtension{}
 		e.Type = int8(t)
 		o, err = ReadExtensionBytes(b, &e)

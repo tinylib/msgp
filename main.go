@@ -25,15 +25,14 @@ var (
 
 	// marshal/unmarshal imports
 	injectImports []string = []string{
-		"github.com/philhofer/msgp/enc",
-		//"io", // only if encode=true
+		"github.com/philhofer/msgp/msgp",
 	}
 
 	// testing imports
 	testImport []string = []string{
 		"testing",
 		"bytes",
-		"github.com/philhofer/msgp/enc",
+		"github.com/philhofer/msgp/msgp",
 	}
 )
 
@@ -50,7 +49,9 @@ func main() {
 	flag.Parse()
 
 	// we only need the "io" import if we're
-	// creating io.Writer/Reader-based methods
+	// creating io.Writer/Reader-based methods,
+	// and we only need the "msgp" import for tests
+	// based on encoder/decoder methods
 	if encode {
 		injectImports = append(injectImports, "io")
 	}

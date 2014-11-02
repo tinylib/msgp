@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bufio"
@@ -36,12 +36,12 @@ func (a ArrayError) Error() string {
 
 func init() {
 	readerPool.New = func() interface{} {
-		return &MsgReader{}
+		return &Reader{}
 	}
 }
 
-func popReader(r io.Reader) *MsgReader {
-	p := readerPool.Get().(*MsgReader)
+func popReader(r io.Reader) *Reader {
+	p := readerPool.Get().(*Reader)
 	if p.r == nil {
 		p.r = bufio.NewReaderSize(r, 32)
 		return p
@@ -50,31 +50,33 @@ func popReader(r io.Reader) *MsgReader {
 	return p
 }
 
-func pushReader(m *MsgReader) {
+func pushReader(m *Reader) {
 	readerPool.Put(m)
 }
 
-func Done(m *MsgReader) {
+// Done recycles a reader
+// to be used by other processes.
+func Done(m *Reader) {
 	if m == nil {
 		return
 	}
 	pushReader(m)
 }
 
-// MsgUnmarshaler is the interface fulfilled
+// Unmarshaler is the interface fulfilled
 // byte objects that know how to unmarshal
 // themselves from MessagePack
-type MsgUnmarshaler interface {
+type Unmarshaler interface {
 	// UnmarshalMsg unmarshals the object
 	// from binary, returing any leftover
 	// bytes and any errors encountered
 	UnmarshalMsg([]byte) ([]byte, error)
 }
 
-// MsgDecoder is the interface fulfilled
+// Decoder is the interface fulfilled
 // by objects that know how to decode themselves
 // from MessagePack
-type MsgDecoder interface {
+type Decoder interface {
 	// DecodeMsg decodes the object
 	// from an io.Reader, returning
 	// the number of bytes read and
@@ -82,55 +84,58 @@ type MsgDecoder interface {
 	DecodeMsg(io.Reader) (int, error)
 
 	// DecodeFrom decodes the object
-	// using an existing *MsgReader,
+	// using an existing *Reader,
 	// returning the number of bytes
 	// read and any errors encountered
-	DecodeFrom(*MsgReader) (int, error)
+	DecodeFrom(*Reader) (int, error)
 }
 
-// NewDecoder returns a *MsgReader that
+// NewDecoder returns a *Reader that
 // reads from the provided reader.
-func NewDecoder(r io.Reader) *MsgReader {
+func NewReader(r io.Reader) *Reader {
 	return popReader(r)
 }
 
-// NewDecoderSize returns a *MsgReader with
+// NewReaderSize returns a *Reader with
 // a buffer of the given size. (This is preferable to
 // passing the decoder a reader that is already buffered.)
-func NewDecoderSize(r io.Reader, sz int) *MsgReader {
-	return &MsgReader{
+func NewReaderSize(r io.Reader, sz int) *Reader {
+	return &Reader{
 		r: bufio.NewReaderSize(r, sz),
 	}
 }
 
-type MsgReader struct {
+// Reader wraps an io.Reader and provides
+// methods to read MessagePack-encoded values
+// from it. Readers are buffered.
+type Reader struct {
 	r       *bufio.Reader
 	leader  [18]byte
 	scratch []byte // recycled []byte for temporary storage
 }
 
 // Read implements the standard io.Reader method
-func (m *MsgReader) Read(p []byte) (int, error) {
+func (m *Reader) Read(p []byte) (int, error) {
 	return m.r.Read(p)
 }
 
 // ReadFull implements io.ReadFull
-func (m *MsgReader) ReadFull(p []byte) (int, error) {
+func (m *Reader) ReadFull(p []byte) (int, error) {
 	return io.ReadFull(m.r, p)
 }
 
-func (m *MsgReader) Reset(r io.Reader) {
+func (m *Reader) Reset(r io.Reader) {
 	m.r.Reset(r)
 }
 
 // is the next byte 'nil'?
-func (m *MsgReader) IsNil() bool {
+func (m *Reader) IsNil() bool {
 	k, _ := m.nextKind()
 	return k == knull
 }
 
 // Skip skips over the next object
-func (m *MsgReader) Skip() (n int, err error) {
+func (m *Reader) Skip() (n int, err error) {
 	var k kind
 	var nn int
 	var sz uint32
@@ -213,7 +218,7 @@ func (m *MsgReader) Skip() (n int, err error) {
 	}
 }
 
-func (m *MsgReader) skipExtension() (n int, err error) {
+func (m *Reader) skipExtension() (n int, err error) {
 	var lead byte
 	var nn int
 	lead, err = m.r.ReadByte()
@@ -284,7 +289,7 @@ func (m *MsgReader) skipExtension() (n int, err error) {
 	return
 }
 
-func (m *MsgReader) skipBytes() (n int, err error) {
+func (m *Reader) skipBytes() (n int, err error) {
 	var nn int
 	var lead byte
 	lead, err = m.r.ReadByte()
@@ -327,7 +332,7 @@ func (m *MsgReader) skipBytes() (n int, err error) {
 	return
 }
 
-func (m *MsgReader) skipString() (n int, err error) {
+func (m *Reader) skipString() (n int, err error) {
 	var nn int
 	var lead byte
 	lead, err = m.r.ReadByte()
@@ -378,7 +383,7 @@ func (m *MsgReader) skipString() (n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
+func (m *Reader) ReadMapHeader() (sz uint32, n int, err error) {
 	var lead byte
 	var nn int
 	lead, err = m.r.ReadByte()
@@ -414,7 +419,7 @@ func (m *MsgReader) ReadMapHeader() (sz uint32, n int, err error) {
 	}
 }
 
-func (m *MsgReader) ReadArrayHeader() (sz uint32, n int, err error) {
+func (m *Reader) ReadArrayHeader() (sz uint32, n int, err error) {
 	var lead byte
 	var nn int
 	lead, err = m.r.ReadByte()
@@ -452,7 +457,7 @@ func (m *MsgReader) ReadArrayHeader() (sz uint32, n int, err error) {
 	}
 }
 
-func (m *MsgReader) ReadNil() (int, error) {
+func (m *Reader) ReadNil() (int, error) {
 	lead, err := m.r.ReadByte()
 	if err != nil {
 		return 0, err
@@ -463,7 +468,7 @@ func (m *MsgReader) ReadNil() (int, error) {
 	return 1, nil
 }
 
-func (m *MsgReader) ReadFloat64() (f float64, n int, err error) {
+func (m *Reader) ReadFloat64() (f float64, n int, err error) {
 	n, err = io.ReadFull(m.r, m.leader[:9])
 	if err != nil {
 		return
@@ -481,7 +486,7 @@ func (m *MsgReader) ReadFloat64() (f float64, n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadFloat32() (f float32, n int, err error) {
+func (m *Reader) ReadFloat32() (f float32, n int, err error) {
 	n, err = io.ReadFull(m.r, m.leader[:5])
 	if err != nil {
 		return
@@ -499,7 +504,7 @@ func (m *MsgReader) ReadFloat32() (f float32, n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadBool() (bool, int, error) {
+func (m *Reader) ReadBool() (bool, int, error) {
 	lead, err := m.r.ReadByte()
 	if err != nil {
 		return false, 0, err
@@ -514,7 +519,7 @@ func (m *MsgReader) ReadBool() (bool, int, error) {
 	}
 }
 
-func (m *MsgReader) ReadInt64() (i int64, n int, err error) {
+func (m *Reader) ReadInt64() (i int64, n int, err error) {
 	var nn int
 	var lead byte
 	lead, err = m.r.ReadByte()
@@ -573,7 +578,7 @@ func (m *MsgReader) ReadInt64() (i int64, n int, err error) {
 	}
 }
 
-func (m *MsgReader) ReadInt32() (i int32, n int, err error) {
+func (m *Reader) ReadInt32() (i int32, n int, err error) {
 	var in int64
 	in, n, err = m.ReadInt64()
 	if in > math.MaxInt32 || in < math.MinInt32 {
@@ -584,7 +589,7 @@ func (m *MsgReader) ReadInt32() (i int32, n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadInt16() (i int16, n int, err error) {
+func (m *Reader) ReadInt16() (i int16, n int, err error) {
 	var in int64
 	in, n, err = m.ReadInt64()
 	if in > math.MaxInt16 || in < math.MinInt16 {
@@ -595,7 +600,7 @@ func (m *MsgReader) ReadInt16() (i int16, n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadInt8() (i int8, n int, err error) {
+func (m *Reader) ReadInt8() (i int8, n int, err error) {
 	var in int64
 	in, n, err = m.ReadInt64()
 	if in > math.MaxInt8 || in < math.MinInt8 {
@@ -606,7 +611,7 @@ func (m *MsgReader) ReadInt8() (i int8, n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadInt() (i int, n int, err error) {
+func (m *Reader) ReadInt() (i int, n int, err error) {
 	var in int64
 	var sin int32
 	switch unsafe.Sizeof(i) {
@@ -622,7 +627,7 @@ func (m *MsgReader) ReadInt() (i int, n int, err error) {
 	panic("impossible")
 }
 
-func (m *MsgReader) ReadUint64() (u uint64, n int, err error) {
+func (m *Reader) ReadUint64() (u uint64, n int, err error) {
 	var nn int
 	var lead byte
 	lead, err = m.r.ReadByte()
@@ -672,7 +677,7 @@ func (m *MsgReader) ReadUint64() (u uint64, n int, err error) {
 	}
 }
 
-func (m *MsgReader) ReadUint32() (u uint32, n int, err error) {
+func (m *Reader) ReadUint32() (u uint32, n int, err error) {
 	var in uint64
 	in, n, err = m.ReadUint64()
 	if in > math.MaxUint32 {
@@ -683,7 +688,7 @@ func (m *MsgReader) ReadUint32() (u uint32, n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadUint16() (u uint16, n int, err error) {
+func (m *Reader) ReadUint16() (u uint16, n int, err error) {
 	var in uint64
 	in, n, err = m.ReadUint64()
 	if in > math.MaxUint16 {
@@ -693,7 +698,7 @@ func (m *MsgReader) ReadUint16() (u uint16, n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadUint8() (u uint8, n int, err error) {
+func (m *Reader) ReadUint8() (u uint8, n int, err error) {
 	var in uint64
 	in, n, err = m.ReadUint64()
 	if in > math.MaxUint8 {
@@ -703,7 +708,7 @@ func (m *MsgReader) ReadUint8() (u uint8, n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadUint() (u uint, n int, err error) {
+func (m *Reader) ReadUint() (u uint, n int, err error) {
 	var l uint64
 	var s uint32
 	switch unsafe.Sizeof(u) {
@@ -719,7 +724,7 @@ func (m *MsgReader) ReadUint() (u uint, n int, err error) {
 	panic("impossible")
 }
 
-func (m *MsgReader) ReadBytes(scratch []byte) (b []byte, n int, err error) {
+func (m *Reader) ReadBytes(scratch []byte) (b []byte, n int, err error) {
 	var nn int
 	var lead byte
 	lead, err = m.r.ReadByte()
@@ -772,7 +777,7 @@ func readN(r io.Reader, scratch []byte, c int) (b []byte, n int, err error) {
 	}
 }
 
-func (m *MsgReader) ReadStringAsBytes(scratch []byte) (b []byte, n int, err error) {
+func (m *Reader) ReadStringAsBytes(scratch []byte) (b []byte, n int, err error) {
 	var nn int
 	var lead byte
 	lead, err = m.r.ReadByte()
@@ -821,14 +826,14 @@ func (m *MsgReader) ReadStringAsBytes(scratch []byte) (b []byte, n int, err erro
 	return
 }
 
-func (m *MsgReader) ReadString() (string, int, error) {
+func (m *Reader) ReadString() (string, int, error) {
 	var n int
 	var err error
 	m.scratch, n, err = m.ReadStringAsBytes(m.scratch)
 	return string(m.scratch), n, err
 }
 
-func (m *MsgReader) ReadComplex64() (f complex64, n int, err error) {
+func (m *Reader) ReadComplex64() (f complex64, n int, err error) {
 	n, err = io.ReadFull(m.r, m.leader[:10])
 	if err != nil {
 		return
@@ -849,7 +854,7 @@ func (m *MsgReader) ReadComplex64() (f complex64, n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadComplex128() (f complex128, n int, err error) {
+func (m *Reader) ReadComplex128() (f complex128, n int, err error) {
 	n, err = io.ReadFull(m.r, m.leader[:18])
 	if err != nil {
 		return
@@ -873,7 +878,7 @@ func (m *MsgReader) ReadComplex128() (f complex128, n int, err error) {
 }
 
 // ReadMapStrStr CANNOT be passed a nil map
-func (m *MsgReader) ReadMapStrStr(mp map[string]string) (n int, err error) {
+func (m *Reader) ReadMapStrStr(mp map[string]string) (n int, err error) {
 	var nn int
 	var sz uint32
 	sz, nn, err = m.ReadMapHeader()
@@ -907,7 +912,7 @@ func (m *MsgReader) ReadMapStrStr(mp map[string]string) (n int, err error) {
 	return
 }
 
-func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error) {
+func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error) {
 	var nn int
 	var sz uint32
 	sz, nn, err = m.ReadMapHeader()
@@ -920,12 +925,8 @@ func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error)
 	if err != nil {
 		return
 	}
-	if mp != nil {
-		for key, _ := range mp {
-			delete(mp, key)
-		}
-	} else {
-		mp = make(map[string]interface{}, int(sz))
+	for key, _ := range mp {
+		delete(mp, key)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var key string
@@ -945,7 +946,7 @@ func (m *MsgReader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error)
 	return
 }
 
-func (m *MsgReader) ReadTime() (t time.Time, n int, err error) {
+func (m *Reader) ReadTime() (t time.Time, n int, err error) {
 	// read all 18 bytes
 	n, err = io.ReadFull(m.r, m.leader[:])
 	if err != nil {
@@ -955,23 +956,23 @@ func (m *MsgReader) ReadTime() (t time.Time, n int, err error) {
 		err = fmt.Errorf("unexpected byte 0x%x for time.Time", m.leader[0])
 		return
 	}
-	if m.leader[1] != TimeExtension {
-		err = fmt.Errorf("unexpected extension type %d for time.Time", m.leader[1])
+	if int8(m.leader[1]) != TimeExtension {
+		err = fmt.Errorf("unexpected extension type %d for time.Time", int8(m.leader[1]))
 		return
 	}
 	err = t.UnmarshalBinary(m.leader[2:17]) // wants 15 bytes; last byte is 0
 	return
 }
 
-func (m *MsgReader) ReadIdent(d MsgDecoder) (n int, err error) {
+func (m *Reader) ReadIdent(d Decoder) (n int, err error) {
 	return d.DecodeFrom(m)
 }
 
-func (m *MsgReader) ReadIntf() (i interface{}, n int, err error) {
+func (m *Reader) ReadIntf() (i interface{}, n int, err error) {
 	return m.readInterface()
 }
 
-func (m *MsgReader) readInterface() (i interface{}, n int, err error) {
+func (m *Reader) readInterface() (i interface{}, n int, err error) {
 	var k kind
 	k, err = m.nextKind()
 	if err != nil {
@@ -1015,6 +1016,13 @@ func (m *MsgReader) readInterface() (i interface{}, n int, err error) {
 			i, n, err = m.ReadTime()
 			return
 		default:
+			f, ok := extensionReg[t]
+			if ok {
+				e := f()
+				n, err = m.ReadExtension(e)
+				i = e
+				return
+			}
 			var e RawExtension
 			e.Type = t
 			n, err = m.ReadExtension(&e)

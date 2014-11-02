@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bytes"
@@ -48,7 +48,7 @@ func TestWriteMapHeader(t *testing.T) {
 	var buf bytes.Buffer
 	var err error
 	var n int
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 	for _, test := range tests {
 		buf.Reset()
 		n, err = wr.WriteMapHeader(test.Sz)
@@ -78,7 +78,7 @@ func TestWriteArrayHeader(t *testing.T) {
 	var buf bytes.Buffer
 	var err error
 	var n int
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 	for _, test := range tests {
 		buf.Reset()
 		n, err = wr.WriteArrayHeader(test.Sz)
@@ -96,7 +96,7 @@ func TestWriteArrayHeader(t *testing.T) {
 
 func TestWriteNil(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 
 	n, err := wr.WriteNil()
 	if err != nil {
@@ -115,7 +115,7 @@ func TestWriteNil(t *testing.T) {
 
 func TestWriteFloat64(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
@@ -148,7 +148,7 @@ func TestWriteFloat64(t *testing.T) {
 
 func TestWriteFloat32(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
@@ -181,7 +181,7 @@ func TestWriteFloat32(t *testing.T) {
 
 func TestWriteInt64(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
@@ -202,7 +202,7 @@ func TestWriteInt64(t *testing.T) {
 
 func TestWriteUint64(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
@@ -224,7 +224,7 @@ func TestWriteUint64(t *testing.T) {
 
 func TestWriteBytes(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 	sizes := []int{0, 1, 225, int(tuint32)}
 
 	for _, size := range sizes {

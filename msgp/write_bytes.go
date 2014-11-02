@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"encoding/binary"
@@ -287,7 +287,7 @@ func AppendMapStrIntf(b []byte, m map[string]interface{}) ([]byte, error) {
 }
 
 func AppendIntf(b []byte, i interface{}) ([]byte, error) {
-	if m, ok := i.(MsgMarshaler); ok {
+	if m, ok := i.(Marshaler); ok {
 		return m.AppendMsg(b)
 	}
 	if ext, ok := i.(Extension); ok {

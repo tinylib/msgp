@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ func (r Raw) EncodeMsg(w io.Writer) (int, error) {
 }
 
 // EncodeTo implements MsgEncoder.EncodeTo
-func (r Raw) EncodeTo(wr *MsgWriter) (int, error) {
+func (r Raw) EncodeTo(wr *Writer) (int, error) {
 	return wr.Write([]byte(r))
 }
 
@@ -36,6 +36,7 @@ func (r Raw) AppendMsg(b []byte) ([]byte, error) {
 // (this translates the raw messagepack directly into JSON)
 func (r Raw) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
+	buf.Grow(3 * len(r) / 2)
 	_, err := UnmarshalAsJSON(&buf, []byte(r))
 	return buf.Bytes(), err
 }

@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bytes"
@@ -19,8 +19,8 @@ func randomExt() RawExtension {
 func TestReadWriteExtension(t *testing.T) {
 	rand.Seed(time.Now().Unix())
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
-	dc := NewDecoder(&buf)
+	en := NewWriter(&buf)
+	dc := NewReader(&buf)
 
 	for i := 0; i < 25; i++ {
 		buf.Reset()

@@ -22,7 +22,20 @@ definitions in the file. You will need to include that directive in every file t
 need code generation. The generated files will be named {filename}_gen.go by default (but can 
 be overridden with the `-o` flag.) Additionally, it will write tests and benchmarks in {{filename}}_gen_test.go.
 
-Field names can be overridden in much the same way as the `encoding/json` package. For example:
+#### Options
+
+The following command-line flags are supported:
+
+ - `-o` - output file name (default is {filename}_gen.go)
+ - `-file` - input file name (default is $GOPATH/src/$GOPACKAGE/$GOFILE, which are set by the `go generate` command)
+ - `-pkg` - output package name (default is $GOPACKAGE)
+ - `-encode` - generate `io.Reader/io.Writer` methods (default is `true`)
+ - `-marshal` - generate `[]byte`-oriented methods (default is `true`)
+ - `-tests` - generate tests and benchmarks (default is `true`)
+
+#### Use
+
+Field names can be set in much the same way as the `encoding/json` package. For example:
 
 ```go
 type Person struct {
@@ -56,13 +69,12 @@ func (z *Person) DecodeMsg(r io.Reader) (n int, err error)
 
 Each method is optimized for a certain use-case, depending on whether or not the user
 can afford to recycle `*enc.MsgWriter` and `*enc.MsgReader` object, and whether or not
-the user is dealing with `io.Reader/io.Writer` or `[]byte`. (Pro tip: `EncodeTo` is the
-fastest marshaller, and `UnmarshalMsg` is the fastest unmarshaller. Also, `*enc.MsgReader`s
+the user is dealing with `io.Reader/io.Writer` or `[]byte`. (Pro tip: `*enc.MsgReader`s
 are buffered, and you can create one with an arbitrary buffer size with `enc.NewDecoderSize`.)
 
 The `msgp/enc` package has utility functions for transforming MessagePack to JSON directly,
-both from `io.Reader`s and `[]byte`.
-
+both from `io.Reader`s and `[]byte`. There are also utilities for in-place manipulation of
+raw MessagePack.
 
 ### Features
 
@@ -72,7 +84,7 @@ both from `io.Reader`s and `[]byte`.
  - JSON interoperability
  - Support for embedded fields, anonymous structs, and multi-field inline declarations
  - Identifier resolution (see below)
- - Support for Go's `time.Time`, `complex64`, and `complex128` types through extensions
+ - Native support for Go's `time.Time`, `complex64`, and `complex128` types 
  - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods.
 
 For example, this will work fine:
@@ -89,20 +101,68 @@ As long as the declarations of `MyInt` and `Data` are in the same file, the pars
 (no slices or maps, although `[]byte` is supported as a special case.) Unresolved identifiers are (optimistically) 
 assumed to be struct definitions in other files. (The parser will spit out warnings about unresolved identifiers.)
 
+#### Extensions
+
+MessagePack supports defining your own types through "extensions," which are just a tuple of
+the data "type" (`int8`) and the raw binary. Extensions should satisfy the `enc.Extension` interface:
+
+```go
+// Extension is the interface fulfilled
+// by types that want to define their
+// own binary encoding. Methods should
+// have a pointer receiver.
+type Extension interface {
+	// ExtensionType should return
+	// a int8 that identifies the concrete
+	// type of the extension. (Types <0 are
+	// officially reserved by the MessagePack
+	// specifications.)
+	ExtensionType() int8
+
+	// Len should return the length
+	// of the data to be encoded. If
+	// that length can't be simply determined,
+	// Len() should return an upper bound on
+	// the encoded object's size. (This function
+	// is used to pre-allocate space for encoding.)
+	Len() int
+
+	// Extensions must satisfy the
+	// encoding.BinaryMarshaler and
+	// encoding.BinaryUnmarshaler
+	// interfaces
+	encoding.BinaryMarshaler
+	encoding.BinaryUnmarshaler
+}
+```
+A simple implementation of `Extension` is the `enc.RawExtension` type.
+
+In order to tell the generator to use the field as an extension, you must include the "extension"
+annotation in the struct tag:
+
+```go
+type Thing struct {
+	Blah enc.RawExtension `msg:"blah,extension"`
+}
+```
+
+The generator assumes that extension methods take pointer receivers.
 
 ### Status
 
-Alpha. Here are the known limitations/restrictions:
+Alpha. I _will_ break your code.
 
- - All fields of a struct that are not Go built-ins are assumed to satisfy the `enc.MsgEncoder` and `enc.MsgDecoder`
-   interfaces. This will only *actually* be the case if the declaration for that type is in a file touched by the code generator. The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field. The generated code will fail to compile if you encounter this issue, so it shouldn't catch you by surprise.
+Here are the known limitations/restrictions:
+
+ - All fields of a struct that are not Go built-ins are assumed (optimistically) to have been seen by the code generator in another file. The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field. The generated code will fail to compile if you encounter this issue, so it shouldn't catch you by surprise.
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
  - Methods are only generated for `struct` definitions. Chances are that we will keep things this way.
  - Encoding/decoding of `interface{}` can be flaky. It works fine for go builtins, but don't count on it working 
    well for anything beyond that.
  - Maps must have `string` keys. This is intentional (as it preserves JSON interop.) The generator will yell
    at you if you try to use something else. Although non-string map keys are not explicitly forbidden by the messagepack
-   standard, many serializers impose this restriction.
+   standard, many serializers impose this restriction. (This restriction also means *any* well-formed `struct` can be
+   de-serialized into a `map[string]interface{}`.)
  - All variable-length fields are limited to `math.MaxUint32` elements. (In other words, you cannot have a `[]byte` or
    `string` with a length over 4GB, or an array or map with more than ~4 billion elements. This shouldn't be an issue
    for anyone.

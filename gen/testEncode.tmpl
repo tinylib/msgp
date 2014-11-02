@@ -21,7 +21,7 @@ func Test{{.Name}}EncodeDecode(t *testing.T) {
 
 	buf.Reset()
 	v.EncodeMsg(&buf)
-	_, err = enc.NewDecoder(&buf).Skip()
+	_, err = msgp.NewReader(&buf).Skip()
 	if err != nil {
 		t.Error(err)
 	}
@@ -30,7 +30,7 @@ func Test{{.Name}}EncodeDecode(t *testing.T) {
 func Benchmark{{.Name}}Encode(b *testing.B) {
 	v := new({{.Name}})
 	var buf bytes.Buffer
-	en := enc.NewEncoder(&buf)
+	en := msgp.NewWriter(&buf)
 	v.EncodeTo(en)
 	b.ReportAllocs()
 	b.SetBytes(int64(buf.Len()))
@@ -46,7 +46,7 @@ func Benchmark{{.Name}}Decode(b *testing.B) {
 	var buf bytes.Buffer
 	v.EncodeMsg(&buf)
 	rd := bytes.NewReader(buf.Bytes())
-	dc := enc.NewDecoder(rd)
+	dc := msgp.NewReader(rd)
 	b.ReportAllocs()
 	b.SetBytes(int64(buf.Len()))
 	b.ResetTimer()

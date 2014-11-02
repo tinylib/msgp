@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 
 func TestLocate(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 	en.WriteMapHeader(2)
 	en.WriteString("thing_one")
 	en.WriteString("value_one")
@@ -21,14 +21,14 @@ func TestLocate(t *testing.T) {
 	}
 
 	var zbuf bytes.Buffer
-	NewEncoder(&zbuf).WriteString("value_one")
+	NewWriter(&zbuf).WriteString("value_one")
 
 	if !bytes.Equal(zbuf.Bytes(), field) {
 		t.Errorf("got %q; wanted %q", field, zbuf.Bytes())
 	}
 
 	zbuf.Reset()
-	NewEncoder(&zbuf).WriteFloat64(2.0)
+	NewWriter(&zbuf).WriteFloat64(2.0)
 	field = Locate("thing_two", buf.Bytes())
 	if len(field) == 0 {
 		t.Fatal("field not found")
@@ -52,7 +52,7 @@ func TestReplace(t *testing.T) {
 	//  - new value is larger than old, and doesn't fit within cap(b)
 
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 	en.WriteMapHeader(3)
 	en.WriteString("thing_one")
 	en.WriteString("value_one")
@@ -63,7 +63,7 @@ func TestReplace(t *testing.T) {
 
 	// same-size replacement
 	var fbuf bytes.Buffer
-	NewEncoder(&fbuf).WriteFloat64(4.0)
+	NewWriter(&fbuf).WriteFloat64(4.0)
 
 	// replace 2.0 with 4.0 in field two
 	raw, err := Replace("thing_two", buf.Bytes(), fbuf.Bytes())
@@ -85,7 +85,7 @@ func TestReplace(t *testing.T) {
 	// smaller-size replacement
 	// replace 2.0 with []byte("hi!")
 	fbuf.Reset()
-	NewEncoder(&fbuf).WriteBytes([]byte("hi!"))
+	NewWriter(&fbuf).WriteBytes([]byte("hi!"))
 	raw, err = Replace("thing_two", raw, fbuf.Bytes())
 	if err != nil {
 		t.Logf("%q", raw)
@@ -104,7 +104,7 @@ func TestReplace(t *testing.T) {
 
 	// larger-size replacement
 	fbuf.Reset()
-	NewEncoder(&fbuf).WriteBytes([]byte("some even larger bytes than before"))
+	NewWriter(&fbuf).WriteBytes([]byte("some even larger bytes than before"))
 	raw, err = Replace("some_bytes", raw, fbuf.Bytes())
 	if err != nil {
 		t.Logf("%q", raw)
@@ -124,7 +124,7 @@ func TestReplace(t *testing.T) {
 
 func BenchmarkLocate(b *testing.B) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 	en.WriteMapHeader(3)
 	en.WriteString("thing_one")
 	en.WriteString("value_one")

@@ -2,7 +2,7 @@
 
 {{define "PtrTempl"}}
 	if {{.Varname}} == nil {
-		o = enc.AppendNil(o)
+		o = msgp.AppendNil(o)
 	} else {
 		{{template "ElemTempl" .Value}}
 	}
@@ -10,47 +10,47 @@
 
 {{define "BaseTempl"}}
 	{{if .Convert}}
-	o = enc.Append{{.BaseName}}(o, {{.BaseType}}({{.Varname}}))
+	o = msgp.Append{{.BaseName}}(o, {{.BaseType}}({{.Varname}}))
 	{{else if .IsIdent}}
 	o, err = {{.Varname}}.AppendMsg(o)
 	if err != nil {
 		return
 	}
 	{{else if (or .IsIntf .IsExt)}}{{/* methods with error handling */}}
-	o, err = enc.Append{{.BaseName}}(o, {{.Varname}})
+	o, err = msgp.Append{{.BaseName}}(o, {{.Varname}})
 	if err != nil {
 		return
 	}
 	{{else}}
-	o = enc.Append{{.BaseName}}(o, {{.Varname}})
+	o = msgp.Append{{.BaseName}}(o, {{.Varname}})
 	{{end}}
 {{end}}
 
 {{define "MapTempl"}}
-	o = enc.AppendMapHeader(o, uint32(len({{.Varname}})))
+	o = msgp.AppendMapHeader(o, uint32(len({{.Varname}})))
 	for {{.Keyidx}}, {{.Validx}} := range {{.Varname}} {
-		o = enc.AppendString(o, {{.Keyidx}})
+		o = msgp.AppendString(o, {{.Keyidx}})
 		{{template "ElemTempl" .Value}}
 	}
 {{end}}
 
 {{define "SliceTempl"}}
-	o = enc.AppendArrayHeader(o, uint32(len({{.Varname}})))
+	o = msgp.AppendArrayHeader(o, uint32(len({{.Varname}})))
 	for {{.Index}} := range {{.Varname}} {
 		{{template "ElemTempl" .Els}}
 	}
 {{end}}
 
 {{define "ArrayTempl"}}
-	o = enc.AppendArrayHeader(o, {{.Size}})
+	o = msgp.AppendArrayHeader(o, {{.Size}})
 	for {{.Index}} := range {{.Varname}} {
 		{{template "ElemTempl" .Els}}
 	}
 {{end}}
 
 {{define "StructTempl"}}
-	o = enc.AppendMapHeader(o, {{len .Fields}})
+	o = msgp.AppendMapHeader(o, {{len .Fields}})
 	{{range .Fields}}
-	o = enc.AppendString(o, "{{.FieldTag}}")
+	o = msgp.AppendString(o, "{{.FieldTag}}")
 	{{template "ElemTempl" .FieldElem}}{{end}}
 {{end}}

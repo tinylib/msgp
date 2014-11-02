@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 
 func TestCopyJSON(t *testing.T) {
 	var buf bytes.Buffer
-	enc := NewEncoder(&buf)
+	enc := NewWriter(&buf)
 	enc.WriteMapHeader(5)
 
 	enc.WriteString("thing_1")
@@ -70,7 +70,7 @@ func TestCopyJSON(t *testing.T) {
 
 func BenchmarkCopyToJSON(b *testing.B) {
 	var buf bytes.Buffer
-	enc := NewEncoder(&buf)
+	enc := NewWriter(&buf)
 	enc.WriteMapHeader(4)
 
 	enc.WriteString("thing_1")

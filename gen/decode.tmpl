@@ -2,15 +2,15 @@
 // DecodeMsg decodes MessagePack from the provided io.Reader into the {{.Value.Struct.Name}},
 // returning the number of bytes read and any errors encountered
 func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeMsg(r io.Reader) (n int, err error) {
-	dc := enc.NewDecoder(r)
+	dc := msgp.NewReader(r)
 	n, err = {{.Varname}}.DecodeFrom(dc)
-	enc.Done(dc)
+	msgp.Done(dc)
 	return
 }
 
 // DecodeFrom deocdes MessagePack from the provided decoder into the {{.Value.Struct.Name}},
 // returning the number of bytes read and any errors encountered.
-func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeFrom(dc *enc.MsgReader) (n int, err error) {
+func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeFrom(dc *msgp.Reader) (n int, err error) {
 	var nn int 
 	var field []byte 
 	_ = nn 

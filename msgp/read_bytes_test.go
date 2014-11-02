@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 
 func TestReadMapHeaderBytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := []uint32{0, 1, 5, 49082}
 
@@ -34,7 +34,7 @@ func TestReadMapHeaderBytes(t *testing.T) {
 
 func TestReadArrayHeaderBytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := []uint32{0, 1, 5, 49082}
 
@@ -59,7 +59,7 @@ func TestReadArrayHeaderBytes(t *testing.T) {
 
 func TestReadNilBytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 	en.WriteNil()
 
 	left, err := ReadNilBytes(buf.Bytes())
@@ -74,7 +74,7 @@ func TestReadNilBytes(t *testing.T) {
 
 func TestReadFloat64Bytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 	en.WriteFloat64(3.14159)
 
 	out, left, err := ReadFloat64Bytes(buf.Bytes())
@@ -91,7 +91,7 @@ func TestReadFloat64Bytes(t *testing.T) {
 
 func TestReadFloat32Bytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 	en.WriteFloat32(3.1)
 
 	out, left, err := ReadFloat32Bytes(buf.Bytes())
@@ -108,7 +108,7 @@ func TestReadFloat32Bytes(t *testing.T) {
 
 func TestReadBoolBytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := []bool{true, false}
 
@@ -133,7 +133,7 @@ func TestReadBoolBytes(t *testing.T) {
 
 func TestReadInt64Bytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := []int64{-5, -30, 0, 1, 127, 300, 40921, 34908219}
 
@@ -158,7 +158,7 @@ func TestReadInt64Bytes(t *testing.T) {
 
 func TestReadUint64Bytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := []uint64{0, 1, 127, 300, 40921, 34908219}
 
@@ -183,7 +183,7 @@ func TestReadUint64Bytes(t *testing.T) {
 
 func TestReadBytesBytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := [][]byte{[]byte{}, []byte("some bytes"), []byte("some more bytes")}
 	var scratch []byte
@@ -206,7 +206,7 @@ func TestReadBytesBytes(t *testing.T) {
 
 func TestReadZCBytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := [][]byte{[]byte{}, []byte("some bytes"), []byte("some more bytes")}
 
@@ -228,7 +228,7 @@ func TestReadZCBytes(t *testing.T) {
 
 func TestReadZCString(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := []string{"", "hello", "here's another string......"}
 
@@ -251,7 +251,7 @@ func TestReadZCString(t *testing.T) {
 
 func TestReadStringBytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := []string{"", "hello", "here's another string......"}
 
@@ -274,7 +274,7 @@ func TestReadStringBytes(t *testing.T) {
 
 func TestReadComplex128Bytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := []complex128{complex(0, 0), complex(12.8, 32.0)}
 
@@ -297,7 +297,7 @@ func TestReadComplex128Bytes(t *testing.T) {
 
 func TestReadComplex64Bytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := []complex64{complex(0, 0), complex(12.8, 32.0)}
 
@@ -320,7 +320,7 @@ func TestReadComplex64Bytes(t *testing.T) {
 
 func TestReadTimeBytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	now := time.Now()
 	en.WriteTime(now)
@@ -339,7 +339,7 @@ func TestReadTimeBytes(t *testing.T) {
 
 func TestReadIntfBytes(t *testing.T) {
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	tests := make([]interface{}, 0, 10)
 	tests = append(tests, float64(3.5))
@@ -368,4 +368,39 @@ func TestReadIntfBytes(t *testing.T) {
 		}
 	}
 
+}
+
+func BenchmarkSkipBytes(b *testing.B) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+	en.WriteMapHeader(6)
+
+	en.WriteString("thing_one")
+	en.WriteString("value_one")
+
+	en.WriteString("thing_two")
+	en.WriteFloat64(3.14159)
+
+	en.WriteString("some_bytes")
+	en.WriteBytes([]byte("nkl4321rqw908vxzpojnlk2314rqew098-s09123rdscasd"))
+
+	en.WriteString("the_time")
+	en.WriteTime(time.Now())
+
+	en.WriteString("what?")
+	en.WriteBool(true)
+
+	en.WriteString("ext")
+	en.WriteExtension(&RawExtension{55, []byte("raw data!!!")})
+
+	bts := buf.Bytes()
+	b.SetBytes(int64(len(bts)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := Skip(bts)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
 }

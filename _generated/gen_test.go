@@ -2,7 +2,7 @@ package _generated
 
 import (
 	"bytes"
-	"github.com/philhofer/msgp/enc"
+	"github.com/philhofer/msgp/msgp"
 	"reflect"
 	"testing"
 	"time"
@@ -22,7 +22,7 @@ func BenchmarkFastEncode(b *testing.B) {
 	}
 	var buf bytes.Buffer
 	n, _ := v.EncodeMsg(&buf)
-	en := enc.NewEncoder(&buf)
+	en := msgp.NewWriter(&buf)
 	b.SetBytes(int64(n))
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -51,7 +51,7 @@ func BenchmarkFastDecode(b *testing.B) {
 	var buf bytes.Buffer
 	n, _ := v.EncodeMsg(&buf)
 	rd := bytes.NewReader(buf.Bytes())
-	dc := enc.NewDecoder(rd)
+	dc := msgp.NewReader(rd)
 	b.SetBytes(int64(n))
 	b.ReportAllocs()
 	b.ResetTimer()

@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 
 func TestUnmarshalJSON(t *testing.T) {
 	var buf bytes.Buffer
-	enc := NewEncoder(&buf)
+	enc := NewWriter(&buf)
 	enc.WriteMapHeader(6)
 
 	enc.WriteString("thing_1")
@@ -76,7 +76,7 @@ func TestUnmarshalJSON(t *testing.T) {
 
 func BenchmarkUnmarshalAsJSON(b *testing.B) {
 	var buf bytes.Buffer
-	enc := NewEncoder(&buf)
+	enc := NewWriter(&buf)
 	enc.WriteMapHeader(4)
 
 	enc.WriteString("thing_1")

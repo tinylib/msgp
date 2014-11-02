@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"encoding"
@@ -7,6 +7,42 @@ import (
 	"io"
 	"math"
 )
+
+const (
+	// Complex64 numbers are encoded as extension #3
+	Complex64Extension = 3
+
+	// Complex128 numbers are encoded as extension #4
+	Complex128Extension = 4
+
+	// time.Time values are encoded as extension #5
+	TimeExtension = 5
+)
+
+var (
+	extensionReg map[int8]func() Extension
+)
+
+func init() {
+	extensionReg = make(map[int8]func() Extension)
+}
+
+// RegisterExtension registers extensions so that they
+// can be initialized and returned by methods that
+// decode `interface{}` values. This should only
+// be called during initialization. f() should return
+// a newly-initialized zero value of the extension. Keep in
+// mind that extensions 3, 4, and 5 are reserved for
+// complex64, complex128, and time.Time, respectively,
+// and that MessagePack reserves extension types from -127 to -1.
+//
+// For example, if you wanted to register a user-defined struct:
+//
+//  enc.RegisterExtension(10, func() enc.Extension { &MyExtension{} })
+//
+func RegisterExtension(typ int8, f func() Extension) {
+	extensionReg[typ] = f
+}
 
 func errExt(got int8, wanted int8) error {
 	return fmt.Errorf("msgp/enc: error decoding extension: wanted type %d; got type %d", wanted, got)
@@ -59,7 +95,7 @@ func (r *RawExtension) UnmarshalBinary(b []byte) error {
 	return nil
 }
 
-func (mw *MsgWriter) WriteExtension(e Extension) (int, error) {
+func (mw *Writer) WriteExtension(e Extension) (int, error) {
 	bts, err := e.MarshalBinary()
 	if err != nil {
 		return 0, err
@@ -131,7 +167,7 @@ func (mw *MsgWriter) WriteExtension(e Extension) (int, error) {
 
 // peek at the extension type, assuming the next
 // kind to be read is Extension
-func (m *MsgReader) peekExtensionType() (int8, error) {
+func (m *Reader) peekExtensionType() (int8, error) {
 	l, err := m.r.Peek(6)
 	if err != nil {
 		return 0, err
@@ -173,7 +209,7 @@ func peekExtension(b []byte) (int8, error) {
 	}
 }
 
-func (m *MsgReader) ReadExtension(e Extension) (n int, err error) {
+func (m *Reader) ReadExtension(e Extension) (n int, err error) {
 	var lead byte
 	var nn int
 	lead, err = m.r.ReadByte()

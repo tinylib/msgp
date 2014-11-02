@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bytes"
@@ -10,8 +10,8 @@ import (
 func BenchmarkReadWriteBytes(b *testing.B) {
 	bts := RandBytes(256)
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
-	rd := NewDecoder(&buf)
+	wr := NewWriter(&buf)
+	rd := NewReader(&buf)
 
 	var ns []byte
 	b.SetBytes(256)
@@ -29,8 +29,8 @@ func BenchmarkReadWriteFloat64(b *testing.B) {
 	flt := rand.Float64()
 	var buf bytes.Buffer
 
-	wr := MsgWriter{w: &buf}
-	rd := NewDecoder(&buf)
+	wr := NewWriter(&buf)
+	rd := NewReader(&buf)
 	b.SetBytes(9)
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -52,8 +52,8 @@ func BenchmarkReadWriteFloat64(b *testing.B) {
 
 func BenchmarkReadWriteInt64(b *testing.B) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
-	rd := NewDecoder(&buf)
+	wr := NewWriter(&buf)
+	rd := NewReader(&buf)
 	ints := make([]int64, b.N)
 	for i := range ints {
 		ints[i] = rand.Int63n(math.MaxInt64) - (math.MaxInt64)

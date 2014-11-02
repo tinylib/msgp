@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 func TestAppendMapHeader(t *testing.T) {
 	szs := []uint32{0, 1, uint32(tint8), uint32(tint16), tuint32}
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	var bts []byte
 	for _, sz := range szs {
@@ -25,7 +25,7 @@ func TestAppendMapHeader(t *testing.T) {
 func TestAppendArrayHeader(t *testing.T) {
 	szs := []uint32{0, 1, uint32(tint8), uint32(tint16), tuint32}
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	var bts []byte
 	for _, sz := range szs {
@@ -50,7 +50,7 @@ func TestAppendNil(t *testing.T) {
 func TestAppendFloat64(t *testing.T) {
 	f := float64(3.14159)
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	var bts []byte
 	en.WriteFloat64(f)
@@ -63,7 +63,7 @@ func TestAppendFloat64(t *testing.T) {
 func TestAppendFloat32(t *testing.T) {
 	f := float32(3.14159)
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	var bts []byte
 	en.WriteFloat32(f)
@@ -76,7 +76,7 @@ func TestAppendFloat32(t *testing.T) {
 func TestAppendInt64(t *testing.T) {
 	is := []int64{0, 1, -5, -50, int64(tint16), int64(tint32), int64(tint64)}
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 
 	var bts []byte
 	for _, i := range is {
@@ -92,7 +92,7 @@ func TestAppendInt64(t *testing.T) {
 func TestAppendUint64(t *testing.T) {
 	us := []uint64{0, 1, uint64(tuint16), uint64(tuint32), tuint64}
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 	var bts []byte
 
 	for _, u := range us {
@@ -108,7 +108,7 @@ func TestAppendUint64(t *testing.T) {
 func TestAppendBytes(t *testing.T) {
 	sizes := []int{0, 1, 225, int(tuint32)}
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 	var bts []byte
 
 	for _, sz := range sizes {
@@ -125,7 +125,7 @@ func TestAppendBytes(t *testing.T) {
 func TestAppendString(t *testing.T) {
 	sizes := []int{0, 1, 225, int(tuint32)}
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 	var bts []byte
 
 	for _, sz := range sizes {
@@ -142,7 +142,7 @@ func TestAppendString(t *testing.T) {
 func TestAppendBool(t *testing.T) {
 	vs := []bool{true, false}
 	var buf bytes.Buffer
-	en := NewEncoder(&buf)
+	en := NewWriter(&buf)
 	var bts []byte
 
 	for _, v := range vs {
