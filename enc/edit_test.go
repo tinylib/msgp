@@ -45,14 +45,23 @@ func TestLocate(t *testing.T) {
 }
 
 func TestReplace(t *testing.T) {
+	// there are 4 cases that need coverage:
+	//  - new value is smaller than old value
+	//  - new value is the same size as the old value
+	//  - new value is larger than old, but fits within cap(b)
+	//  - new value is larger than old, and doesn't fit within cap(b)
+
 	var buf bytes.Buffer
 	en := NewEncoder(&buf)
-	en.WriteMapHeader(2)
+	en.WriteMapHeader(3)
 	en.WriteString("thing_one")
 	en.WriteString("value_one")
 	en.WriteString("thing_two")
 	en.WriteFloat64(2.0)
+	en.WriteString("some_bytes")
+	en.WriteBytes([]byte("here are some bytes"))
 
+	// same-size replacement
 	var fbuf bytes.Buffer
 	NewEncoder(&fbuf).WriteFloat64(4.0)
 
@@ -73,9 +82,10 @@ func TestReplace(t *testing.T) {
 		t.Errorf("wanted %v; got %v", 4.0, m["thing_two"])
 	}
 
+	// smaller-size replacement
 	// replace 2.0 with []byte("hi!")
 	fbuf.Reset()
-	NewEncoder(&fbuf).WriteBytes([]byte("hello there!"))
+	NewEncoder(&fbuf).WriteBytes([]byte("hi!"))
 	raw, err = Replace("thing_two", raw, fbuf.Bytes())
 	if err != nil {
 		t.Logf("%q", raw)
@@ -88,8 +98,27 @@ func TestReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(m["thing_two"], []byte("hello there!")) {
-		t.Errorf("wanted %v; got %v", []byte("hello there!"), m["thing_two"])
+	if !reflect.DeepEqual(m["thing_two"], []byte("hi!")) {
+		t.Errorf("wanted %v; got %v", []byte("hi!"), m["thing_two"])
+	}
+
+	// larger-size replacement
+	fbuf.Reset()
+	NewEncoder(&fbuf).WriteBytes([]byte("some even larger bytes than before"))
+	raw, err = Replace("some_bytes", raw, fbuf.Bytes())
+	if err != nil {
+		t.Logf("%q", raw)
+		t.Fatal(err)
+	}
+
+	m, _, err = ReadMapStrIntfBytes(raw, m)
+	if err != nil {
+		t.Logf("%q", raw)
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(m["some_bytes"], []byte("some even larger bytes than before")) {
+		t.Errorf("wanted %v; got %v", []byte("hello there!"), m["some_bytes"])
 	}
 }
 

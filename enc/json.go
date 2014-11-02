@@ -37,28 +37,15 @@ type jsWriter interface {
 	WriteString(string) (int, error)
 }
 
-// AsJSON reads MessagePack from src and
-// translates it to JSON
-func AsJSON(src io.Reader) io.Reader {
-	rd, wr := io.Pipe()
-	go func() {
-		_, err := CopyToJSON(wr, src)
-		if err != nil {
-			rd.CloseWithError(err)
-		} else {
-			rd.Close()
-		}
-	}()
-	return rd
-}
-
 // CopyToJson reads a single MessagePack-encoded message from 'src' and
-// writes it as JSON to 'dst'. It returns the number of bytes written,
-// and any errors encountered in the process.
+// writes it as JSON to 'dst' until 'src' returns EOF. It returns the
+// number of bytes written and any errors encountered.
 func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
 	return DecodeToJSON(dst, NewDecoder(src))
 }
 
+// DecodeToJSON reads from 'src' until EOF and writes the object
+// as JSON to 'dst'.
 func DecodeToJSON(dst io.Writer, src *MsgReader) (n int64, err error) {
 	var w jsWriter
 	var cast bool
@@ -68,28 +55,52 @@ func DecodeToJSON(dst io.Writer, src *MsgReader) (n int64, err error) {
 	} else {
 		w = bufio.NewWriterSize(dst, 256)
 	}
-	var k kind
-	k, err = src.nextKind()
-	if err != nil {
-		return
-	}
 	var nn int
-	switch k {
-	case kmap:
-		nn, err = rwMap(w, src)
-	case karray:
-		nn, err = rwArray(w, src)
-	default:
-		return 0, errors.New("enc: 'src' must represent a map or array")
+	for err == nil {
+		nn, err = rwNext(w, src)
+		n += int64(nn)
 	}
-	n = int64(nn)
-	if err != nil {
+	if err != io.EOF {
+		if !cast {
+			w.(*bufio.Writer).Flush()
+		}
 		return
+	} else {
+		err = nil
 	}
 	if !cast {
 		err = w.(*bufio.Writer).Flush()
 	}
 	return
+}
+
+func rwNext(w jsWriter, src *MsgReader) (int, error) {
+	k, err := src.nextKind()
+	if err != nil {
+		return 0, err
+	}
+	switch k {
+	case knull:
+		return w.Write(null)
+	case kbool:
+		return rwBool(w, src)
+	case kint, kuint:
+		return rwInt(w, src, k)
+	case kstring:
+		return rwString(w, src)
+	case kbytes:
+		return rwBytes(w, src)
+	case kextension:
+		return rwExtension(w, src)
+	case karray:
+		return rwArray(w, src)
+	case kfloat32, kfloat64:
+		return rwFloat(w, src, k)
+	case kmap:
+		return rwMap(w, src)
+	default:
+		return 0, errors.New("msgp/enc: bad encoding")
+	}
 }
 
 func (m *MsgReader) nextKind() (kind, error) {
@@ -171,15 +182,6 @@ func rwMap(dst jsWriter, src *MsgReader) (n int, err error) {
 			n += 1
 		}
 
-		var k kind
-		k, err = src.nextKind()
-		if err != nil {
-			return
-		}
-		if k != kstring {
-			return n, errors.New("map keys must be strings")
-		}
-
 		src.scratch, _, err = src.ReadStringAsBytes(src.scratch)
 		if err != nil {
 			return
@@ -190,41 +192,13 @@ func rwMap(dst jsWriter, src *MsgReader) (n int, err error) {
 		if err != nil {
 			return
 		}
+
 		err = dst.WriteByte(':')
 		if err != nil {
 			return
 		}
 		n++
-		k, err = src.nextKind()
-		if err != nil {
-			return
-		}
-		switch k {
-		case knull:
-			nn, err = dst.Write(null)
-		case kint:
-			nn, err = rwInt(dst, src, kint)
-		case kuint:
-			nn, err = rwInt(dst, src, kuint)
-		case kstring:
-			nn, err = rwString(dst, src)
-		case kbytes:
-			nn, err = rwBytes(dst, src)
-		case kfloat32:
-			nn, err = rwFloat(dst, src, kfloat32)
-		case kfloat64:
-			nn, err = rwFloat(dst, src, kfloat64)
-		case karray:
-			nn, err = rwArray(dst, src)
-		case kmap:
-			nn, err = rwMap(dst, src)
-		case kextension:
-			nn, err = rwExtension(dst, src)
-		case kbool:
-			nn, err = rwBool(dst, src)
-		default:
-			return n, errors.New("bad token in src")
-		}
+		nn, err = rwNext(dst, src)
 		n += nn
 		if err != nil {
 			return
@@ -262,43 +236,11 @@ func rwArray(dst jsWriter, src *MsgReader) (n int, err error) {
 			}
 			n += 1
 		}
-		var k kind
-		k, err = src.nextKind()
-		if err != nil {
-			return
-		}
-		switch k {
-		case knull:
-			nn, err = dst.WriteString("null")
-		case kint:
-			nn, err = rwInt(dst, src, kint)
-		case kuint:
-			nn, err = rwInt(dst, src, kuint)
-		case kstring:
-			nn, err = rwString(dst, src)
-		case kbytes:
-			nn, err = rwBytes(dst, src)
-		case kfloat32:
-			nn, err = rwFloat(dst, src, kfloat32)
-		case kfloat64:
-			nn, err = rwFloat(dst, src, kfloat64)
-		case karray:
-			nn, err = rwArray(dst, src)
-		case kmap:
-			nn, err = rwMap(dst, src)
-		case kextension:
-			nn, err = rwExtension(dst, src)
-		case kbool:
-			nn, err = rwBool(dst, src)
-		default:
-			return n, errors.New("bad token in src")
-		}
-
+		nn, err = rwNext(dst, src)
 		n += nn
 		if err != nil {
 			return
 		}
-
 		if !comma {
 			comma = true
 		}

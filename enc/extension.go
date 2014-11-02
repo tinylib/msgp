@@ -356,11 +356,10 @@ func AppendExtension(b []byte, e Extension) ([]byte, error) {
 	return o[:n+x], nil
 }
 
-func ReadExtensionBytes(b []byte, e Extension) (o []byte, err error) {
+func ReadExtensionBytes(b []byte, e Extension) ([]byte, error) {
 	l := len(b)
 	if l < 3 {
-		err = ErrShortBytes
-		return
+		return b, ErrShortBytes
 	}
 	lead := b[0]
 	var (
@@ -394,22 +393,18 @@ func ReadExtensionBytes(b []byte, e Extension) (o []byte, err error) {
 		typ = int8(b[2])
 		off = 3
 		if sz == 0 {
-			err = e.UnmarshalBinary(b[3:3])
-			o = b[3:]
-			return
+			return b[3:], e.UnmarshalBinary(b[3:3])
 		}
 	case mext16:
 		if l < 4 {
-			err = ErrShortBytes
-			return
+			return b, ErrShortBytes
 		}
 		sz = int(binary.BigEndian.Uint16(b[1:]))
 		typ = int8(b[3])
 		off = 4
 	case mext32:
 		if l < 6 {
-			err = ErrShortBytes
-			return
+			return b, ErrShortBytes
 		}
 		sz = int(binary.BigEndian.Uint32(b[1:]))
 		typ = int8(b[5])
@@ -417,16 +412,13 @@ func ReadExtensionBytes(b []byte, e Extension) (o []byte, err error) {
 	}
 
 	if typ != e.ExtensionType() {
-		err = errExt(typ, e.ExtensionType())
-		return
+		return b, errExt(typ, e.ExtensionType())
 	}
 
 	// the data of the extension starts
 	// at 'off' and is 'sz' bytes long
 	if len(b[off:]) < sz {
-		err = ErrShortBytes
-		return
+		return b, ErrShortBytes
 	}
-	err = e.UnmarshalBinary(b[off : off+sz])
-	return b[:off+sz], err
+	return b[off+sz:], e.UnmarshalBinary(b[off : off+sz])
 }

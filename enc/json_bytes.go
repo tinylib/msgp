@@ -9,108 +9,125 @@ import (
 )
 
 // UnmarshalAsJSON takes raw messagepack and writes
-// it as JSON to 'w'.
+// it as JSON to 'w'. If an error is returned, the
+// bytes not translated will also be returned. If
+// no errors are encountered, the length of the returned
+// slice will be zero.
 func UnmarshalAsJSON(w io.Writer, msg []byte) ([]byte, error) {
+	var (
+		scratch []byte
+		cast    bool
+		dst     jsWriter
+		err     error
+	)
 	if jsw, ok := w.(jsWriter); ok {
-		return writeNext(jsw, msg)
+		dst = jsw
+		cast = true
+	} else {
+		dst = bufio.NewWriterSize(w, 512)
 	}
-	b := bufio.NewWriterSize(w, 512)
-	msg, err := writeNext(b, msg)
-	if err != nil {
-		return msg, err
+	for len(msg) > 0 && err == nil {
+		msg, scratch, err = writeNext(dst, msg, scratch)
 	}
-	err = b.Flush()
+	if !cast && err == nil {
+		err = dst.(*bufio.Writer).Flush()
+	}
 	return msg, err
 }
 
-func writeNext(w jsWriter, msg []byte) ([]byte, error) {
+func writeNext(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	if len(msg) < 1 {
-		return nil, ErrShortBytes
+		return nil, scratch, ErrShortBytes
 	}
 	k := getKind(msg[0])
+	var err error
 	switch k {
-	// TODO: extension
 	case karray:
-		return rwArrayBytes(w, msg)
+		return rwArrayBytes(w, msg, scratch)
 	case kmap:
-		return rwMapBytes(w, msg)
+		return rwMapBytes(w, msg, scratch)
 	case kbool:
-		return rwBoolBytes(w, msg)
+		msg, err = rwBoolBytes(w, msg)
+		return msg, scratch, err
 	case kint:
-		return rwIntBytes(w, msg)
+		return rwIntBytes(w, msg, scratch)
 	case kuint:
-		return rwUintBytes(w, msg)
+		return rwUintBytes(w, msg, scratch)
 	case kfloat32:
-		return rwFloatBytes(w, msg, false)
+		return rwFloatBytes(w, msg, false, scratch)
 	case kfloat64:
-		return rwFloatBytes(w, msg, true)
+		return rwFloatBytes(w, msg, true, scratch)
 	case knull:
-		return rwNullBytes(w, msg)
+		msg, err = rwNullBytes(w, msg)
+		return msg, scratch, err
 	case kstring:
-		return rwStringBytes(w, msg)
+		msg, err = rwStringBytes(w, msg)
+		return msg, scratch, err
 	case kbytes:
-		return rwBytesBytes(w, msg)
+		return rwBytesBytes(w, msg, scratch)
+	case kextension:
+		return rwExtensionBytes(w, msg, scratch)
 	default:
-		return msg, errors.New("msgp/enc: bad encoding: invalid type")
+		return msg, scratch, errors.New("msgp/enc: bad encoding; invalid type")
 	}
 }
 
-func rwArrayBytes(w jsWriter, msg []byte) ([]byte, error) {
+func rwArrayBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	sz, msg, err := ReadArrayHeaderBytes(msg)
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
 	err = w.WriteByte('[')
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
 	for i := uint32(0); i < sz; i++ {
 		if i != 0 {
 			err = w.WriteByte(',')
 			if err != nil {
-				return msg, err
+				return msg, scratch, err
 			}
 		}
-		msg, err = writeNext(w, msg)
+		msg, scratch, err = writeNext(w, msg, scratch)
 		if err != nil {
-			return msg, err
+			return msg, scratch, err
 		}
 	}
 	err = w.WriteByte(']')
-	return msg, err
+	return msg, scratch, err
 }
 
-func rwMapBytes(w jsWriter, msg []byte) ([]byte, error) {
+func rwMapBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	sz, msg, err := ReadMapHeaderBytes(msg)
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
 	err = w.WriteByte('{')
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
 	for i := uint32(0); i < sz; i++ {
 		if i != 0 {
 			err = w.WriteByte(',')
 			if err != nil {
-				return msg, err
+				return msg, scratch, err
 			}
 		}
 		msg, err = rwStringBytes(w, msg)
 		if err != nil {
-			return msg, err
+			return msg, scratch, err
 		}
 		err = w.WriteByte(':')
 		if err != nil {
-			return msg, err
+			return msg, scratch, err
 		}
-		msg, err = writeNext(w, msg)
+		msg, scratch, err = writeNext(w, msg, scratch)
 		if err != nil {
-			return msg, err
+			return msg, scratch, err
 		}
 	}
 	err = w.WriteByte('}')
-	return msg, err
+	return msg, scratch, err
 }
 
 func rwStringBytes(w jsWriter, msg []byte) ([]byte, error) {
@@ -122,23 +139,28 @@ func rwStringBytes(w jsWriter, msg []byte) ([]byte, error) {
 	return msg, err
 }
 
-func rwBytesBytes(w jsWriter, msg []byte) ([]byte, error) {
+func rwBytesBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	bts, msg, err := ReadBytesZC(msg)
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
-	s := make([]byte, base64.StdEncoding.EncodedLen(len(bts)))
-	base64.StdEncoding.Encode(s, bts)
+	l := base64.StdEncoding.EncodedLen(len(bts))
+	if cap(scratch) >= l {
+		scratch = scratch[0:l]
+	} else {
+		scratch = make([]byte, l)
+	}
+	base64.StdEncoding.Encode(scratch, bts)
 	err = w.WriteByte('"')
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
-	_, err = w.Write(s)
+	_, err = w.Write(scratch)
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
 	err = w.WriteByte('"')
-	return msg, err
+	return msg, scratch, err
 }
 
 func rwNullBytes(w jsWriter, msg []byte) ([]byte, error) {
@@ -146,7 +168,7 @@ func rwNullBytes(w jsWriter, msg []byte) ([]byte, error) {
 	if err != nil {
 		return msg, err
 	}
-	_, err = w.WriteString("null")
+	_, err = w.Write(null)
 	return msg, err
 }
 
@@ -163,25 +185,27 @@ func rwBoolBytes(w jsWriter, msg []byte) ([]byte, error) {
 	return msg, err
 }
 
-func rwIntBytes(w jsWriter, msg []byte) ([]byte, error) {
+func rwIntBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	i, msg, err := ReadInt64Bytes(msg)
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
-	_, err = w.WriteString(strconv.FormatInt(i, 10))
-	return msg, err
+	scratch = strconv.AppendInt(scratch[0:0], i, 10)
+	_, err = w.Write(scratch)
+	return msg, scratch, err
 }
 
-func rwUintBytes(w jsWriter, msg []byte) ([]byte, error) {
+func rwUintBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	u, msg, err := ReadUint64Bytes(msg)
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
-	_, err = w.WriteString(strconv.FormatUint(u, 10))
-	return msg, err
+	scratch = strconv.AppendUint(scratch[0:0], u, 10)
+	_, err = w.Write(scratch)
+	return msg, scratch, err
 }
 
-func rwFloatBytes(w jsWriter, msg []byte, f64 bool) ([]byte, error) {
+func rwFloatBytes(w jsWriter, msg []byte, f64 bool, scratch []byte) ([]byte, []byte, error) {
 	var f float64
 	var err error
 	var sz int
@@ -195,8 +219,53 @@ func rwFloatBytes(w jsWriter, msg []byte, f64 bool) ([]byte, error) {
 		f = float64(v)
 	}
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
-	_, err = w.WriteString(strconv.FormatFloat(f, 'f', -1, sz))
-	return msg, err
+	scratch = strconv.AppendFloat(scratch, f, 'f', -1, sz)
+	_, err = w.Write(scratch)
+	return msg, scratch, err
+}
+
+func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
+	r := RawExtension{}
+	t, err := peekExtension(msg)
+	if err != nil {
+		return msg, scratch, err
+	}
+	r.Type = t
+	msg, err = ReadExtensionBytes(msg, &r)
+	if err != nil {
+		return msg, scratch, err
+	}
+	scratch, err = writeExt(w, r, scratch)
+	return msg, scratch, err
+}
+
+func writeExt(w jsWriter, r RawExtension, scratch []byte) ([]byte, error) {
+	_, err := w.WriteString(`{"type":`)
+	if err != nil {
+		return scratch, err
+	}
+	scratch = strconv.AppendInt(scratch[0:0], int64(r.Type), 10)
+	_, err = w.Write(scratch)
+	if err != nil {
+		return scratch, err
+	}
+	_, err = w.WriteString(`,"data":"`)
+	if err != nil {
+		return scratch, err
+	}
+	l := base64.StdEncoding.EncodedLen(len(r.Data))
+	if cap(scratch) >= l {
+		scratch = scratch[0:l]
+	} else {
+		scratch = make([]byte, l)
+	}
+	base64.StdEncoding.Encode(scratch, r.Data)
+	_, err = w.Write(scratch)
+	if err != nil {
+		return scratch, err
+	}
+	_, err = w.WriteString(`"}`)
+	return scratch, err
 }

@@ -21,7 +21,7 @@ func Locate(key string, raw []byte) []byte {
 // and replaces its value with the one provided and returns
 // the new []byte. The returned []byte may point to the same
 // memory as "raw". Replace makes no effort to evaluate the validity
-// of the contents of 'val'.
+// of the contents of 'val'. It may use up to the full capacity of 'raw.'
 func Replace(key string, raw []byte, val []byte) ([]byte, error) {
 	start, end := locate(raw, key)
 	if start == end {
@@ -44,13 +44,35 @@ func replace(raw []byte, start int, end int, val []byte, inplace bool) []byte {
 	ll := end - start // length of segment to replace
 	lv := len(val)
 
-	// copy in place and shift back
-	if inplace && lv <= ll {
-		x := copy(raw[start:], val)
-		y := copy(raw[start+x:], raw[end:])
-		return raw[:start+x+y]
+	if inplace {
+		extra := lv - ll
+
+		// fastest case: we're doing
+		// a 1:1 replacement
+		if extra == 0 {
+			copy(raw[start:], val)
+			return raw
+
+		} else if extra < 0 {
+			// 'val' smaller than replaced value
+			// copy in place and shift back
+
+			x := copy(raw[start:], val)
+			y := copy(raw[start+x:], raw[end:])
+			return raw[:start+x+y]
+
+		} else if extra < cap(raw)-len(raw) {
+			// 'val' less than (cap-len) extra bytes
+			// copy in place and shift forward
+			raw = raw[0 : len(raw)+extra]
+			// shift end forward
+			copy(raw[end+extra:], raw[end:])
+			copy(raw[start:], val)
+			return raw
+		}
 	}
 
+	// we have to allocate new space
 	out := make([]byte, len(raw)+len(val)-ll)
 	x := copy(out, raw[:start])
 	y := copy(out[x:], val)
