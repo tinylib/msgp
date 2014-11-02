@@ -124,6 +124,7 @@ func (m *Reader) ReadFull(p []byte) (int, error) {
 	return io.ReadFull(m.r, p)
 }
 
+// Reset resets the underlying reader
 func (m *Reader) Reset(r io.Reader) {
 	m.r.Reset(r)
 }
@@ -208,12 +209,8 @@ func (m *Reader) Skip() (n int, err error) {
 		_, n, err = m.ReadBool()
 		return
 
-	case invalid:
-		err = fmt.Errorf("unknown leading byte: 0x%x", byte(k))
-		return
-
 	default:
-		err = errors.New("unknown leading type...?")
+		err = fmt.Errorf("msgp: unknown leading byte: 0x%x", byte(k))
 		return
 	}
 }
@@ -278,7 +275,7 @@ func (m *Reader) skipExtension() (n int, err error) {
 		read = int(binary.BigEndian.Uint32(m.leader[:]))
 
 	default:
-		err = fmt.Errorf("unexpected byte 0x%x for extension", lead)
+		err = fmt.Errorf("msgp: unexpected byte 0x%x for extension", lead)
 		return
 
 	}
@@ -323,7 +320,7 @@ func (m *Reader) skipBytes() (n int, err error) {
 		}
 		read = int(binary.BigEndian.Uint32(m.leader[:]))
 	default:
-		err = fmt.Errorf("bad byte %x for []byte", m.leader[0])
+		err = fmt.Errorf("msgp: bad byte %x for []byte", m.leader[0])
 		return
 	}
 	var cn int64
@@ -370,7 +367,7 @@ func (m *Reader) skipString() (n int, err error) {
 		if isfixstr(lead) {
 			read = int(rfixstr(lead))
 		} else {
-			err = fmt.Errorf("unexpected byte %x for string", lead)
+			err = fmt.Errorf("msgp: unexpected byte %x for string", lead)
 			return
 		}
 	}
@@ -414,7 +411,7 @@ func (m *Reader) ReadMapHeader() (sz uint32, n int, err error) {
 		sz = binary.BigEndian.Uint32(m.leader[:])
 		return
 	default:
-		err = fmt.Errorf("unexpected byte 0x%x for map", lead)
+		err = fmt.Errorf("msgp: unexpected byte 0x%x for map", lead)
 		return
 	}
 }
@@ -452,7 +449,7 @@ func (m *Reader) ReadArrayHeader() (sz uint32, n int, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("unexpected byte 0x%x for array", lead)
+		err = fmt.Errorf("msgp: unexpected byte 0x%x for array", lead)
 		return
 	}
 }
@@ -463,7 +460,7 @@ func (m *Reader) ReadNil() (int, error) {
 		return 0, err
 	}
 	if lead != mnil {
-		return 1, fmt.Errorf("unexpected byte %x for Nil", lead)
+		return 1, fmt.Errorf("msgp: unexpected byte %x for Nil", lead)
 	}
 	return 1, nil
 }
@@ -478,7 +475,7 @@ func (m *Reader) ReadFloat64() (f float64, n int, err error) {
 			err = ErrNil
 			return
 		}
-		err = fmt.Errorf("msgp/enc: unexpected byte %x for Float64; expected %x", m.leader[0], mfloat64)
+		err = fmt.Errorf("msgp: unexpected byte %x for float64; expected %x", m.leader[0], mfloat64)
 		return
 	}
 	bits := binary.BigEndian.Uint64(m.leader[1:])
@@ -496,7 +493,7 @@ func (m *Reader) ReadFloat32() (f float32, n int, err error) {
 			err = ErrNil
 			return
 		}
-		err = fmt.Errorf("msgp/enc: unexpected byte %x for Float32; expected %x", m.leader[0], mfloat64)
+		err = fmt.Errorf("msgp: unexpected byte %x for float32; expected %x", m.leader[0], mfloat64)
 		return
 	}
 	bits := binary.BigEndian.Uint32(m.leader[1:])
@@ -515,7 +512,7 @@ func (m *Reader) ReadBool() (bool, int, error) {
 	case mfalse:
 		return false, 1, nil
 	default:
-		return false, 1, fmt.Errorf("unexpected byte %x for bool", lead)
+		return false, 1, fmt.Errorf("msgp: unexpected byte %x for bool", lead)
 	}
 }
 
@@ -573,7 +570,7 @@ func (m *Reader) ReadInt64() (i int64, n int, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("unknown leading byte 0x%x for int", lead)
+		err = fmt.Errorf("msgp: unknown leading byte 0x%x for int", lead)
 		return
 	}
 }
@@ -582,7 +579,7 @@ func (m *Reader) ReadInt32() (i int32, n int, err error) {
 	var in int64
 	in, n, err = m.ReadInt64()
 	if in > math.MaxInt32 || in < math.MinInt32 {
-		err = fmt.Errorf("%d overflows int32", in)
+		err = fmt.Errorf("msgp: %d overflows int32", in)
 		return
 	}
 	i = int32(in)
@@ -593,7 +590,7 @@ func (m *Reader) ReadInt16() (i int16, n int, err error) {
 	var in int64
 	in, n, err = m.ReadInt64()
 	if in > math.MaxInt16 || in < math.MinInt16 {
-		err = fmt.Errorf("%d overflows int16", in)
+		err = fmt.Errorf("msgp: %d overflows int16", in)
 		return
 	}
 	i = int16(in)
@@ -604,7 +601,7 @@ func (m *Reader) ReadInt8() (i int8, n int, err error) {
 	var in int64
 	in, n, err = m.ReadInt64()
 	if in > math.MaxInt8 || in < math.MinInt8 {
-		err = fmt.Errorf("%d overflows in8", in)
+		err = fmt.Errorf("msgp: %d overflows int8", in)
 		return
 	}
 	i = int8(in)
@@ -671,7 +668,7 @@ func (m *Reader) ReadUint64() (u uint64, n int, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("unexpected byte %x for Uint", lead)
+		err = fmt.Errorf("msgp: unexpected byte %x for Uint", lead)
 		return
 
 	}
@@ -681,7 +678,7 @@ func (m *Reader) ReadUint32() (u uint32, n int, err error) {
 	var in uint64
 	in, n, err = m.ReadUint64()
 	if in > math.MaxUint32 {
-		err = fmt.Errorf("%d overflows uint32", in)
+		err = fmt.Errorf("msgp: %d overflows uint32", in)
 		return
 	}
 	u = uint32(in)
@@ -692,7 +689,7 @@ func (m *Reader) ReadUint16() (u uint16, n int, err error) {
 	var in uint64
 	in, n, err = m.ReadUint64()
 	if in > math.MaxUint16 {
-		err = fmt.Errorf("%d overflows uint16", in)
+		err = fmt.Errorf("msgp: %d overflows uint16", in)
 	}
 	u = uint16(in)
 	return
@@ -702,7 +699,7 @@ func (m *Reader) ReadUint8() (u uint8, n int, err error) {
 	var in uint64
 	in, n, err = m.ReadUint64()
 	if in > math.MaxUint8 {
-		err = fmt.Errorf("%d overflows uint8", in)
+		err = fmt.Errorf("msgp: %d overflows uint8", in)
 	}
 	u = uint8(in)
 	return
@@ -756,7 +753,7 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, n int, err error) {
 		}
 		read = int(binary.BigEndian.Uint32(m.leader[:]))
 	default:
-		err = fmt.Errorf("bad byte %x for []byte", m.leader[0])
+		err = fmt.Errorf("msgp: bad byte %x for []byte", m.leader[0])
 		return
 	}
 	b, nn, err = readN(m.r, scratch, read)
@@ -813,7 +810,7 @@ func (m *Reader) ReadStringAsBytes(scratch []byte) (b []byte, n int, err error) 
 		if isfixstr(lead) {
 			read = int(rfixstr(lead))
 		} else {
-			err = fmt.Errorf("unexpected byte %x for string", lead)
+			err = fmt.Errorf("msgp: unexpected byte %x for string", lead)
 			return
 		}
 	}
@@ -843,10 +840,10 @@ func (m *Reader) ReadComplex64() (f complex64, n int, err error) {
 			err = ErrNil
 			return
 		}
-		err = fmt.Errorf("unexpected byte %x for complex64", m.leader[0])
+		err = fmt.Errorf("msgp: unexpected byte %x for complex64", m.leader[0])
 	}
 	if m.leader[1] != Complex64Extension {
-		err = fmt.Errorf("unexpected byte %x for complex64 extension", m.leader[1])
+		err = fmt.Errorf("msgp: unexpected byte %x for complex64 extension", m.leader[1])
 	}
 	rlb := binary.BigEndian.Uint32(m.leader[2:])
 	imb := binary.BigEndian.Uint32(m.leader[6:])
@@ -864,11 +861,11 @@ func (m *Reader) ReadComplex128() (f complex128, n int, err error) {
 			err = ErrNil
 			return
 		}
-		err = fmt.Errorf("unexpected byte %x for complex128", m.leader[0])
+		err = fmt.Errorf("msgp: unexpected byte %x for complex128", m.leader[0])
 		return
 	}
 	if m.leader[1] != Complex128Extension {
-		err = fmt.Errorf("unexpected byte %x for complex128 extension", m.leader[1])
+		err = fmt.Errorf("msgp: unexpected byte %x for complex128 extension", m.leader[1])
 		return
 	}
 	rlb := binary.BigEndian.Uint64(m.leader[2:])
@@ -953,11 +950,11 @@ func (m *Reader) ReadTime() (t time.Time, n int, err error) {
 		return
 	}
 	if m.leader[0] != mfixext16 {
-		err = fmt.Errorf("unexpected byte 0x%x for time.Time", m.leader[0])
+		err = fmt.Errorf("msgp: unexpected byte 0x%x for time.Time", m.leader[0])
 		return
 	}
 	if int8(m.leader[1]) != TimeExtension {
-		err = fmt.Errorf("unexpected extension type %d for time.Time", int8(m.leader[1]))
+		err = fmt.Errorf("msgp: unexpected extension type %d for time.Time", int8(m.leader[1]))
 		return
 	}
 	err = t.UnmarshalBinary(m.leader[2:17]) // wants 15 bytes; last byte is 0
@@ -1069,7 +1066,7 @@ func (m *Reader) readInterface() (i interface{}, n int, err error) {
 		return
 
 	default:
-		return nil, 0, errors.New("unrecognized type")
+		return nil, 0, errors.New("msgp: bad encoding; unrecognized type prefix")
 
 	}
 }

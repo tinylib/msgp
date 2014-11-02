@@ -29,8 +29,8 @@ The following command-line flags are supported:
  - `-o` - output file name (default is {filename}_gen.go)
  - `-file` - input file name (default is $GOPATH/src/$GOPACKAGE/$GOFILE, which are set by the `go generate` command)
  - `-pkg` - output package name (default is $GOPACKAGE)
- - `-encode` - generate `io.Reader/io.Writer` methods (default is `true`)
- - `-marshal` - generate `[]byte`-oriented methods (default is `true`)
+ - `-encode` - satisfy the `msgp.Decoder` and `msgp.Encoder` interfaces (default is `true`)
+ - `-marshal` - satisfy the `msgp.Marshaler` and `msgp.Unmarshaler` interfaces (default is `true`)
  - `-tests` - generate tests and benchmarks (default is `true`)
 
 #### Use
@@ -58,9 +58,9 @@ func (z *Person) UnmarshalMsg(b []byte) ([]byte, error)
 
 func (z *Person) AppendMsg(b []byte) ([]byte, error)
 
-func (z *Person) EncodeTo(en *enc.MsgWriter) (n int, err error)
+func (z *Person) EncodeTo(en *msgp.Writer) (n int, err error)
 
-func (z *Person) DecodeFrom(dc *enc.MsgReader) (n int, err error)
+func (z *Person) DecodeFrom(dc *msgp.Reader) (n int, err error)
 
 func (z *Person) EncodeMsg(w io.Writer) (n int, err error)
 
@@ -68,11 +68,10 @@ func (z *Person) DecodeMsg(r io.Reader) (n int, err error)
 ```
 
 Each method is optimized for a certain use-case, depending on whether or not the user
-can afford to recycle `*enc.MsgWriter` and `*enc.MsgReader` object, and whether or not
-the user is dealing with `io.Reader/io.Writer` or `[]byte`. (Pro tip: `*enc.MsgReader`s
-are buffered, and you can create one with an arbitrary buffer size with `enc.NewDecoderSize`.)
+can afford to recycle `*msgp.Writer` and `*msgp.Reader` object, and whether or not
+the user is dealing with `io.Reader/io.Writer` or `[]byte`.
 
-The `msgp/enc` package has utility functions for transforming MessagePack to JSON directly,
+The `msgp/msgp` package has utility functions for transforming MessagePack to JSON directly,
 both from `io.Reader`s and `[]byte`. There are also utilities for in-place manipulation of
 raw MessagePack.
 
@@ -104,7 +103,7 @@ assumed to be struct definitions in other files. (The parser will spit out warni
 #### Extensions
 
 MessagePack supports defining your own types through "extensions," which are just a tuple of
-the data "type" (`int8`) and the raw binary. Extensions should satisfy the `enc.Extension` interface:
+the data "type" (`int8`) and the raw binary. Extensions should satisfy the `msgp.Extension` interface:
 
 ```go
 // Extension is the interface fulfilled
@@ -135,18 +134,19 @@ type Extension interface {
 	encoding.BinaryUnmarshaler
 }
 ```
-A simple implementation of `Extension` is the `enc.RawExtension` type.
+A simple implementation of `Extension` is the `msgp.RawExtension` type.
 
 In order to tell the generator to use the field as an extension, you must include the "extension"
 annotation in the struct tag:
 
 ```go
 type Thing struct {
-	Blah enc.RawExtension `msg:"blah,extension"`
+	Blah msgp.RawExtension `msg:"blah,extension"`
 }
 ```
 
-The generator assumes that extension methods take pointer receivers.
+If you want the decoding of `interface{}` values to include the possibility of being a
+user-defined extension type, you should call `msgp.RegisterExtension` during initialization.
 
 ### Status
 
@@ -157,19 +157,16 @@ Here are the known limitations/restrictions:
  - All fields of a struct that are not Go built-ins are assumed (optimistically) to have been seen by the code generator in another file. The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field. The generated code will fail to compile if you encounter this issue, so it shouldn't catch you by surprise.
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
  - Methods are only generated for `struct` definitions. Chances are that we will keep things this way.
- - Encoding/decoding of `interface{}` can be flaky. It works fine for go builtins, but don't count on it working 
-   well for anything beyond that.
- - Maps must have `string` keys. This is intentional (as it preserves JSON interop.) The generator will yell
-   at you if you try to use something else. Although non-string map keys are not explicitly forbidden by the messagepack
+ - Encoding of `interface{}` is limited to built-ins or types that have explicit encoding methods.
+ - _Maps must have `string` keys._ This is intentional (as it preserves JSON interop.) The generator will yell
+   at you if you try to use something else. Although non-string map keys are not explicitly forbidden by the MessagePack
    standard, many serializers impose this restriction. (This restriction also means *any* well-formed `struct` can be
    de-serialized into a `map[string]interface{}`.)
  - All variable-length fields are limited to `math.MaxUint32` elements. (In other words, you cannot have a `[]byte` or
    `string` with a length over 4GB, or an array or map with more than ~4 billion elements. This shouldn't be an issue
    for anyone.
 
-I have no idea whether or not this generator will work with your code. Luckily, if the output compiles, then 
-there's a pretty good chance things are fine. (Plus, we generate tests for you.) *Please, please, please* file 
-an issue if you think the generator is writing broken code.
+If the output compiles, then there's a pretty good chance things are fine. (Plus, we generate tests for you.) *Please, please, please* file an issue if you think the generator is writing broken code.
 
 ### Performance
 

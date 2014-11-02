@@ -68,7 +68,7 @@ func writeNext(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	case kextension:
 		return rwExtensionBytes(w, msg, scratch)
 	default:
-		return msg, scratch, errors.New("msgp/enc: bad encoding; invalid type")
+		return msg, scratch, errors.New("msgp: bad encoding; invalid type")
 	}
 }
 

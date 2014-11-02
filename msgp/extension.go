@@ -38,14 +38,14 @@ func init() {
 //
 // For example, if you wanted to register a user-defined struct:
 //
-//  enc.RegisterExtension(10, func() enc.Extension { &MyExtension{} })
+//  msgp.RegisterExtension(10, func() msgp.Extension { &MyExtension{} })
 //
 func RegisterExtension(typ int8, f func() Extension) {
 	extensionReg[typ] = f
 }
 
 func errExt(got int8, wanted int8) error {
-	return fmt.Errorf("msgp/enc: error decoding extension: wanted type %d; got type %d", wanted, got)
+	return fmt.Errorf("msgp: error decoding extension: wanted type %d; got type %d", wanted, got)
 }
 
 // Extension is the interface fulfilled

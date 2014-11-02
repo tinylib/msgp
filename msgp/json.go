@@ -99,7 +99,7 @@ func rwNext(w jsWriter, src *Reader) (int, error) {
 	case kmap:
 		return rwMap(w, src)
 	default:
-		return 0, errors.New("msgp/enc: bad encoding")
+		return 0, errors.New("msgp: bad encoding; unrecognized type prefix")
 	}
 }
 
