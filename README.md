@@ -49,6 +49,7 @@ type Person struct {
 Running `msgp` on a file containing the above declaration would generate methods 
 to fulfill the following interfaces (which are defined in the `/msgp` subdirectory):
 
+```go
 // Marshaler is the interface implemented
 // by types that know how to marshal themselves
 // as MessagePack
@@ -106,6 +107,7 @@ type Decoder interface {
 	// read and any errors encountered
 	DecodeFrom(*Reader) (int, error)
 }
+```
 
 Each method is optimized for a certain use-case, depending on whether or not the user
 can afford to recycle `*msgp.Writer` and `*msgp.Reader` object, and whether or not
