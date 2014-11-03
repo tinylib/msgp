@@ -19,16 +19,15 @@ In a source file, include the following directive:
 
 The `msgp` command will generate serialization methods for all exported struct
 definitions in the file. You will need to include that directive in every file that contains structs that 
-need code generation. The generated files will be named {filename}_gen.go by default (but can 
-be overridden with the `-o` flag.) Additionally, it will write tests and benchmarks in {{filename}}_gen_test.go.
+need code generation.
 
 #### Options
 
 The following command-line flags are supported:
 
- - `-o` - output file name (default is {filename}_gen.go)
- - `-file` - input file name (default is $GOPATH/src/$GOPACKAGE/$GOFILE, which are set by the `go generate` command)
- - `-pkg` - output package name (default is $GOPACKAGE)
+ - `-o` - output file name (default is `{filename}_gen.go`)
+ - `-file` - input file name (default is `$GOPATH/src/$GOPACKAGE/$GOFILE`, which are set by the `go generate` command)
+ - `-pkg` - output package name (default is `$GOPACKAGE`)
  - `-encode` - satisfy the `msgp.Decoder` and `msgp.Encoder` interfaces (default is `true`)
  - `-marshal` - satisfy the `msgp.Marshaler` and `msgp.Unmarshaler` interfaces (default is `true`)
  - `-tests` - generate tests and benchmarks (default is `true`)
@@ -108,8 +107,7 @@ the data "type" (`int8`) and the raw binary. Extensions should satisfy the `msgp
 ```go
 // Extension is the interface fulfilled
 // by types that want to define their
-// own binary encoding. Methods should
-// have a pointer receiver.
+// own binary encoding.
 type Extension interface {
 	// ExtensionType should return
 	// a int8 that identifies the concrete
@@ -119,19 +117,15 @@ type Extension interface {
 	ExtensionType() int8
 
 	// Len should return the length
-	// of the data to be encoded. If
-	// that length can't be simply determined,
-	// Len() should return an upper bound on
-	// the encoded object's size. (This function
-	// is used to pre-allocate space for encoding.)
+	// of the data to be encoded
 	Len() int
 
-	// Extensions must satisfy the
-	// encoding.BinaryMarshaler and
-	// encoding.BinaryUnmarshaler
-	// interfaces
-	encoding.BinaryMarshaler
-	encoding.BinaryUnmarshaler
+	// MarshalBinaryTo should copy
+	// the data into the supplied slice,
+	// assuming that the slice has length Len()
+	MarshalBinaryTo([]byte) error
+
+	UnmarshalBinary([]byte) error
 }
 ```
 A simple implementation of `Extension` is the `msgp.RawExtension` type.
@@ -158,19 +152,14 @@ Here are the known limitations/restrictions:
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
  - Methods are only generated for `struct` definitions. Chances are that we will keep things this way.
  - Encoding of `interface{}` is limited to built-ins or types that have explicit encoding methods.
- - _Maps must have `string` keys._ This is intentional (as it preserves JSON interop.) The generator will yell
-   at you if you try to use something else. Although non-string map keys are not explicitly forbidden by the MessagePack
-   standard, many serializers impose this restriction. (This restriction also means *any* well-formed `struct` can be
-   de-serialized into a `map[string]interface{}`.)
- - All variable-length fields are limited to `math.MaxUint32` elements. (In other words, you cannot have a `[]byte` or
-   `string` with a length over 4GB, or an array or map with more than ~4 billion elements. This shouldn't be an issue
-   for anyone.
+ - _Maps must have `string` keys._ This is intentional (as it preserves JSON interop.) Although non-string map keys are not explicitly forbidden by the MessagePack standard, many serializers impose this restriction. (This restriction also means *any* well-formed `struct` can be de-serialized into a `map[string]interface{}`.)
+ - All variable-length objects (maps, strings, arrays) cannot have more than `(1<<32)-1` elements.
 
 If the output compiles, then there's a pretty good chance things are fine. (Plus, we generate tests for you.) *Please, please, please* file an issue if you think the generator is writing broken code.
 
 ### Performance
 
-As you might imagine, the generated code is quite a lot more performant than reflection-based serialization; generally 
-you can expect a ~4x speed improvement and an order of magnitude fewer memory allocations when compared to other reflection-based messagepack serialization libraries. (Typically, the `EncodeTo` method does zero allocations. `DecodeFrom` can do as little as 1 allocation if the struct fields are already initialized.) YMMV.
+If you like benchmarks, we're the [fastest and lowest-memory-footprint round-trip serializer for Go in this test.](https://github.com/alecthomas/go_serialization_benchmarks)
 
-If you like benchmarks, we're the [second-fastest and lowest-memory-footprint round-trip serializer for Go in this test.](https://github.com/alecthomas/go_serialization_benchmarks)
+Speed is the core impetus for this project; there are already a number of reflection-based libraries that exist 
+for MessagePack serialization. (Type safety and generated tests are an added bonus.)

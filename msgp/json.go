@@ -3,9 +3,11 @@ package msgp
 import (
 	"bufio"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"io"
 	"strconv"
+	"time"
 	"unicode/utf8"
 )
 
@@ -305,20 +307,55 @@ func rwBool(dst jsWriter, src *Reader) (int, error) {
 }
 
 func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
+	var t int8
+	t, err = src.peekExtensionType()
+	if err != nil {
+	}
+
+	// time.Time is a json.Marshaler
+	if t == TimeExtension {
+		var t time.Time
+		var bts []byte
+		t, _, err = src.ReadTime()
+		if err != nil {
+			return
+		}
+		bts, err = t.MarshalJSON()
+		if err != nil {
+			return
+		}
+		return dst.Write(bts)
+	}
+
+	// registered extensions can override
+	// the JSON encoding
+	if j, ok := extensionReg[t]; ok {
+		var bts []byte
+		e := j()
+		_, err = src.ReadExtension(e)
+		if err != nil {
+			return
+		}
+		bts, err = json.Marshal(e)
+		if err != nil {
+			return
+		}
+		return dst.Write(bts)
+	}
+
+	e := RawExtension{}
+	e.Type = t
+	_, err = src.ReadExtension(&e)
+	if err != nil {
+		return
+	}
+
 	var nn int
 	err = dst.WriteByte('{')
 	if err != nil {
 		return
 	}
 	n += 1
-
-	e := RawExtension{}
-
-	nn, err = src.ReadExtension(&e)
-	n += nn
-	if err != nil {
-		return
-	}
 
 	nn, err = dst.WriteString(`"type:"`)
 	n += nn
