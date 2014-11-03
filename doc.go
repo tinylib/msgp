@@ -1,7 +1,6 @@
 // msgp is a code generation tool for
 // creating methods to serialize and de-serialize
-// Go data structures. Currently the only supported
-// encoding is MessagePack (http://msgpack.org).
+// Go data structures to and from MessagePack.
 //
 // This package is targeted at the `go generate` tool.
 // To use it, include the following directive in a
@@ -9,23 +8,17 @@
 //
 //     //go:generate msgp
 //
-// The tool will read all of the struct type declarations
-// in the file and create the following methods:
+// The go generate tool should set the proper environment variables for
+// the generator to execute without any command-line flags. However, the
+// following options are supported, if you need them:
 //
-//     (z *T) Unmarshal(b []byte) error
+//  -o = output file name (default is {filename}_gen.go)
+//  -file = input file name (default is $GOPATH/src/$GOPACKAGE/$GOFILE, which are set by the `go generate` command)
+//  -pkg = output package name (default is $GOPACKAGE)
+//  -encode = satisfy the `msgp.Decoder` and `msgp.Encoder` interfaces (default is true)
+//  -marshal = satisfy the `msgp.Marshaler` and `msgp.Unmarshaler` interfaces (default is true)
+//  -tests = generate tests and benchmarks (default is true)
 //
-//     (z *T) Marshal() ([]byte, error)
-//
-//     (z *T) WriteTo(w io.Writer) (int64, error)
-//
-//     (z *T) ReadFrom(r io.Reader) (int64, error)
-//
-// There are currently three supported command line flags:
-//
-//     -o        change the name of the output file (by default, {filename}_gen.go)
-//     -file     change the name of the input file (by default, the file with the go:generate directive)
-//     -pkg      change the name of the package header to write (by default, the same as the file with the go:generate directive)
-//
-//
+// For more information, please read README.md
 //
 package main
