@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"encoding/binary"
@@ -13,7 +13,7 @@ var (
 	// ErrShortBytes is returned when the
 	// slice being decoded is too short to
 	// contain the contents of the message
-	ErrShortBytes = errors.New("too few bytes")
+	ErrShortBytes = errors.New("msgp: too few bytes left to read object")
 )
 
 func IsNil(b []byte) bool {
@@ -60,7 +60,7 @@ func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("unexpected byte %x for map", lead)
+		err = fmt.Errorf("msgp: unexpected byte %x for map", lead)
 		return
 	}
 }
@@ -99,7 +99,7 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("unexpected byte 0x%x for array", lead)
+		err = fmt.Errorf("msgp: unexpected byte 0x%x for array", lead)
 		return
 	}
 }
@@ -109,7 +109,7 @@ func ReadNilBytes(b []byte) ([]byte, error) {
 		return nil, ErrShortBytes
 	}
 	if b[0] != mnil {
-		return b, fmt.Errorf("unexpected byte %x for Nil", b[0])
+		return b, fmt.Errorf("msgp: unexpected byte %x for Nil", b[0])
 	}
 	return b[1:], nil
 }
@@ -121,12 +121,11 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 	}
 
 	if b[0] != mfloat64 {
-		err = fmt.Errorf("unexpected byte %x for float64", b[0])
+		err = fmt.Errorf("msgp: unexpected byte %x for float64", b[0])
 		return
 	}
 
-	bits := binary.BigEndian.Uint64(b[1:])
-	f = *(*float64)(unsafe.Pointer(&bits))
+	f = *(*float64)(unsafe.Pointer(&b[1]))
 	o = b[9:]
 	return
 }
@@ -138,12 +137,11 @@ func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 	}
 
 	if b[0] != mfloat32 {
-		err = fmt.Errorf("unexpected byte %x for float32", b[0])
+		err = fmt.Errorf("msgp: unexpected byte %x for float32", b[0])
 		return
 	}
 
-	bits := binary.BigEndian.Uint32(b[1:])
-	f = *(*float32)(unsafe.Pointer(&bits))
+	f = *(*float32)(unsafe.Pointer(&b[1]))
 	o = b[5:]
 	return
 }
@@ -166,7 +164,7 @@ func ReadBoolBytes(b []byte) (v bool, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("unexpected byte %x for bool", b[0])
+		err = fmt.Errorf("msgp: unexpected byte %x for bool", b[0])
 		return
 
 	}
@@ -241,7 +239,7 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("unexpected byte %x for int64", lead)
+		err = fmt.Errorf("msgp: unexpected byte %x for int64", lead)
 		return
 	}
 }
@@ -249,7 +247,7 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 func ReadInt32Bytes(b []byte) (int32, []byte, error) {
 	i, o, err := ReadInt64Bytes(b)
 	if i > math.MaxInt32 || i < math.MinInt32 {
-		return 0, o, fmt.Errorf("%d overflows int32", i)
+		return 0, o, fmt.Errorf("msgp: %d overflows int32", i)
 	}
 	return int32(i), o, err
 }
@@ -257,7 +255,7 @@ func ReadInt32Bytes(b []byte) (int32, []byte, error) {
 func ReadInt16Bytes(b []byte) (int16, []byte, error) {
 	i, o, err := ReadInt64Bytes(b)
 	if i > math.MaxInt16 || i < math.MinInt16 {
-		return 0, o, fmt.Errorf("%d overflows int16", i)
+		return 0, o, fmt.Errorf("msgp: %d overflows int16", i)
 	}
 	return int16(i), o, err
 }
@@ -265,7 +263,7 @@ func ReadInt16Bytes(b []byte) (int16, []byte, error) {
 func ReadInt8Bytes(b []byte) (int8, []byte, error) {
 	i, o, err := ReadInt64Bytes(b)
 	if i > math.MaxInt8 || i < math.MinInt8 {
-		return 0, o, fmt.Errorf("%d overflows int8", i)
+		return 0, o, fmt.Errorf("msgp: %d overflows int8", i)
 	}
 	return int8(i), o, err
 }
@@ -275,7 +273,7 @@ func ReadIntBytes(b []byte) (int, []byte, error) {
 	i, o, err := ReadInt64Bytes(b)
 	if unsafe.Sizeof(v) == 32 {
 		if i > math.MaxInt32 || i < math.MinInt32 {
-			return 0, o, fmt.Errorf("%d overflows int(32)", i)
+			return 0, o, fmt.Errorf("msgp: %d overflows int(32)", i)
 		}
 	}
 	v = int(i)
@@ -333,7 +331,7 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("unexpected byte %x for uint64", lead)
+		err = fmt.Errorf("msgp: unexpected byte %x for uint64", lead)
 		return
 	}
 }
@@ -341,7 +339,7 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 func ReadUint32Bytes(b []byte) (uint32, []byte, error) {
 	v, o, err := ReadUint64Bytes(b)
 	if v > math.MaxUint32 {
-		return 0, nil, fmt.Errorf("%d overflows uint32", v)
+		return 0, nil, fmt.Errorf("msgp: %d overflows uint32", v)
 	}
 	return uint32(v), o, err
 }
@@ -349,7 +347,7 @@ func ReadUint32Bytes(b []byte) (uint32, []byte, error) {
 func ReadUint16Bytes(b []byte) (uint16, []byte, error) {
 	v, o, err := ReadUint64Bytes(b)
 	if v > math.MaxUint16 {
-		return 0, nil, fmt.Errorf("%d overflows uint16", v)
+		return 0, nil, fmt.Errorf("msgp: %d overflows uint16", v)
 	}
 	return uint16(v), o, err
 }
@@ -357,7 +355,7 @@ func ReadUint16Bytes(b []byte) (uint16, []byte, error) {
 func ReadUint8Bytes(b []byte) (uint8, []byte, error) {
 	v, o, err := ReadUint64Bytes(b)
 	if v > math.MaxUint8 {
-		return 0, nil, fmt.Errorf("%d overflows uint8", v)
+		return 0, nil, fmt.Errorf("msgp: %d overflows uint8", v)
 	}
 	return uint8(v), o, err
 }
@@ -366,7 +364,7 @@ func ReadUintBytes(b []byte) (uint, []byte, error) {
 	var l uint
 	v, o, err := ReadUint64Bytes(b)
 	if unsafe.Sizeof(l) == 32 && v > math.MaxUint32 {
-		return 0, nil, fmt.Errorf("%d overflows uint(32)", v)
+		return 0, nil, fmt.Errorf("msgp: %d overflows uint(32)", v)
 	}
 	l = uint(v)
 	return l, o, err
@@ -415,7 +413,7 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 		b = b[5:]
 
 	default:
-		err = fmt.Errorf("unexpected byte %x for bytes", lead)
+		err = fmt.Errorf("msgp: unexpected byte %x for []byte", lead)
 		return
 	}
 
@@ -491,7 +489,7 @@ func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 			b = b[5:]
 
 		default:
-			err = fmt.Errorf("unexpected byte %x for string", lead)
+			err = fmt.Errorf("msgp: unexpected byte %x for string", lead)
 			return
 		}
 	}
@@ -518,12 +516,12 @@ func ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
 	}
 
 	if b[0] != mfixext16 {
-		err = fmt.Errorf("unexpected extension type (%x) for fixext16", b[0])
+		err = fmt.Errorf("msgp: unexpected extension length (%x) for complex128", b[0])
 		return
 	}
 
 	if b[1] != Complex128Extension {
-		err = fmt.Errorf("unexpected byte %x for complex128", b[1])
+		err = fmt.Errorf("msgp: unexpected byte %x for complex128", b[1])
 		return
 	}
 
@@ -542,12 +540,12 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 	}
 
 	if b[0] != mfixext8 {
-		err = fmt.Errorf("unexpected extension type (%x) for fixext8", b[0])
+		err = fmt.Errorf("msgp: unexpected extension length (%x) for complex64", b[0])
 		return
 	}
 
 	if b[1] != Complex64Extension {
-		err = fmt.Errorf("unexpected byte %x for complex64", b[1])
+		err = fmt.Errorf("msgp: unexpected byte %x for complex64", b[1])
 		return
 	}
 
@@ -565,12 +563,12 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 	}
 
 	if b[0] != mfixext16 {
-		err = fmt.Errorf("unexpected extension type (%x) for fixext16", b[0])
+		err = fmt.Errorf("msgp: unexpected extension length (%x) for time.Time", b[0])
 		return
 	}
 
-	if b[1] != TimeExtension {
-		err = fmt.Errorf("unexpected byte %x for time extension", b[1])
+	if int8(b[1]) != TimeExtension {
+		err = fmt.Errorf("msgp: unexpected byte %x for time extension", b[1])
 		return
 	}
 
@@ -663,7 +661,40 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		return
 
 	case kextension:
-		// TODO
+		if len(b) < 3 {
+			err = ErrShortBytes
+			return
+		}
+		var t int8
+		t, err = peekExtension(b)
+		if err != nil {
+			return
+		}
+		switch t {
+		case TimeExtension:
+			i, o, err = ReadTimeBytes(b)
+			return
+		case Complex128Extension:
+			i, o, err = ReadComplex128Bytes(b)
+			return
+		case Complex64Extension:
+			i, o, err = ReadComplex64Bytes(b)
+			return
+		}
+		// use a user-defined extension,
+		// if it's been registered
+		f, ok := extensionReg[t]
+		if ok {
+			e := f()
+			o, err = ReadExtensionBytes(b, e)
+			i = e
+			return
+		}
+		// last resort is a raw extension
+		e := RawExtension{}
+		e.Type = int8(t)
+		o, err = ReadExtensionBytes(b, &e)
+		i = &e
 		return
 
 	case knull:
@@ -679,7 +710,7 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("unrecognized leading byte: %x", b[1])
+		err = fmt.Errorf("msgp: unrecognized leading byte: %x", b[1])
 		return
 	}
 }
@@ -877,7 +908,7 @@ func getSize(b []byte) (int, int, error) {
 		return 5, 2 * (int(binary.BigEndian.Uint32(b[1:]))), nil
 
 	default:
-		return 0, 0, fmt.Errorf("unknown leading byte %x", lead)
+		return 0, 0, fmt.Errorf("msgp: unknown leading byte %x", lead)
 
 	}
 }

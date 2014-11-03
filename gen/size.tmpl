@@ -1,0 +1,9 @@
+
+// Maxsize returns the encoded size of the object when messagepack encoded.
+// This value is guaranteed to be larger than the encoded size
+// of the {{.Value.Struct.Name}} unless it contains any non-concrete
+// (e.g. "interface{}") fields.
+func ({{.Varname}} *{{ .Value.Struct.Name}}) Maxsize() (s int) {
+	{{template "StructTempl" .Value.Struct}}
+	return
+}

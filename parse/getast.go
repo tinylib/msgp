@@ -258,10 +258,18 @@ for_fields:
 		}
 
 		// field tag
+		var flagExtension bool
 		if field.Tag != nil {
 			// we need to trim the leading and trailing ` characters for
 			// to convert to reflect.StructTag
-			sf.FieldTag = reflect.StructTag(strings.Trim(field.Tag.Value, "`")).Get("msg")
+			body := reflect.StructTag(strings.Trim(field.Tag.Value, "`")).Get("msg")
+
+			// check for a tag like `msg:"name,extension"`
+			tags := strings.Split(body, ",")
+			if len(tags) > 1 && tags[1] == "extension" {
+				flagExtension = true
+			}
+			sf.FieldTag = tags[0]
 		}
 		if sf.FieldTag == "" {
 			sf.FieldTag = sf.FieldName
@@ -276,8 +284,28 @@ for_fields:
 			fmt.Printf(chalk.Yellow.Color(" (\u26a0 field %q unsupported)"), sf.FieldName)
 			continue
 		}
-		sf.FieldElem = e
 
+		// mark as extension
+		if flagExtension {
+			// an extension can be
+			// a pointer or base type
+			switch e.Type() {
+			case gen.PtrType:
+				if e.Ptr().Value.Type() == gen.BaseType {
+					e.Ptr().Value.Base().Value = gen.Ext
+				} else {
+					fmt.Printf(chalk.Yellow.Color(" (\u26a0 field %q couldn't be cast as an extension"), sf.FieldName)
+					continue
+				}
+			case gen.BaseType:
+				e.Base().Value = gen.Ext
+			default:
+				fmt.Printf(chalk.Yellow.Color(" (\u26a0 field %q couldn't be cast as an extension"), sf.FieldName)
+				continue
+			}
+		}
+
+		sf.FieldElem = e
 		out = append(out, sf)
 	}
 	return out
@@ -352,9 +380,6 @@ func parseExpr(e ast.Expr) gen.Elem {
 				}
 
 			case *ast.Ident:
-				// TODO: resolve constant expression
-
-				// maybe atoi will work...?
 				size, err := strconv.Atoi(arr.Len.(*ast.Ident).String())
 				if err != nil {
 					return nil
@@ -365,6 +390,7 @@ func parseExpr(e ast.Expr) gen.Elem {
 				}
 
 			default:
+				// TODO: resolve constant expression
 				return nil
 			}
 		}
@@ -378,20 +404,32 @@ func parseExpr(e ast.Expr) gen.Elem {
 					Value: gen.Bytes,
 				}
 			} else {
+				e := parseExpr(arr.Elt)
+				if e == nil {
+					return nil
+				}
 				return &gen.Slice{
-					Els: parseExpr(arr.Elt),
+					Els: e,
 				}
 			}
 		default:
+			e := parseExpr(arr.Elt)
+			if e == nil {
+				return nil
+			}
 			return &gen.Slice{
-				Els: parseExpr(arr.Elt),
+				Els: e,
 			}
 
 		}
 
 	case *ast.StarExpr:
+		v := parseExpr(e.(*ast.StarExpr).X)
+		if v == nil {
+			return nil
+		}
 		return &gen.Ptr{
-			Value: parseExpr(e.(*ast.StarExpr).X),
+			Value: v,
 		}
 
 	case *ast.StructType:
@@ -400,14 +438,16 @@ func parseExpr(e ast.Expr) gen.Elem {
 		}
 
 	case *ast.SelectorExpr:
-		// the only case
-		// we care about here
-		// is time.Time
 		v := e.(*ast.SelectorExpr)
 		if im, ok := v.X.(*ast.Ident); ok {
 			if v.Sel.Name == "Time" && im.Name == "time" {
 				return &gen.BaseElem{
 					Value: gen.Time,
+				}
+			} else {
+				return &gen.BaseElem{
+					Value: gen.IDENT,
+					Ident: im.Name + "." + v.Sel.Name,
 				}
 			}
 		}

@@ -1,7 +1,13 @@
 
 // MarshalMsg marshals a {{.Value.Struct.Name}} into MessagePack
 func ({{ .Varname}} *{{ .Value.Struct.Name}}) MarshalMsg() ([]byte, error) {
-	var buf bytes.Buffer
-	_, err := {{.Varname}}.EncodeMsg(&buf)
-	return buf.Bytes(), err
+	o := make([]byte, 0, {{.Varname}}.Maxsize())
+	return {{.Varname}}.AppendMsg(o)
+}
+
+// AppendMsg marshals a {{.Value.Struct.Name}} onto the end of a []byte
+func ({{ .Varname}} *{{ .Value.Struct.Name}}) AppendMsg(b []byte) (o []byte, err error) {
+	o = b
+	{{template "StructTempl" .Value.Struct}}
+	return
 }

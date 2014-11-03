@@ -68,7 +68,7 @@
 		return
 	}
 	if asz != {{.Size}} {
-		err = enc.ArrayError{Wanted: {{.Size}}, Got: asz}
+		err = msgp.ArrayError{Wanted: {{.Size}}, Got: asz}
 		return
 	}
 	for {{.Index}} := range {{.Varname}} {
@@ -89,7 +89,7 @@
 		if err != nil {
 			return
 		}
-		switch enc.UnsafeString(field) {
+		switch msgp.UnsafeString(field) {
 		{{range .Fields}}
 		case "{{ .FieldTag}}":{{template "ElemTempl" .FieldElem}}
 		{{end}}
@@ -109,6 +109,8 @@
 	{{if .Convert}}tmp, nn, err = dc.ReadBytes([]byte({{.Varname}})){{else}}{{.Varname}}, nn, err = dc.ReadBytes({{.Varname}}){{end}}
 	{{else if .IsIdent}}
 	nn, err = {{.Varname}}.DecodeFrom(dc)
+	{{else if .IsExt}}
+	nn, err = dc.ReadExtension({{.Varname}})
 	{{else}}{{/* any other type */}}
 	{{if .Convert}}tmp, nn, err = dc.Read{{.BaseName}}(){{else}}{{.Varname}}, nn, err = dc.Read{{.BaseName}}(){{end}}
 	{{end}}

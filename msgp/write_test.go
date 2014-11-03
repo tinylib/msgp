@@ -1,8 +1,7 @@
-package enc
+package msgp
 
 import (
 	"bytes"
-	"encoding/binary"
 	"math"
 	"math/rand"
 	"testing"
@@ -48,7 +47,7 @@ func TestWriteMapHeader(t *testing.T) {
 	var buf bytes.Buffer
 	var err error
 	var n int
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 	for _, test := range tests {
 		buf.Reset()
 		n, err = wr.WriteMapHeader(test.Sz)
@@ -78,7 +77,7 @@ func TestWriteArrayHeader(t *testing.T) {
 	var buf bytes.Buffer
 	var err error
 	var n int
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 	for _, test := range tests {
 		buf.Reset()
 		n, err = wr.WriteArrayHeader(test.Sz)
@@ -96,7 +95,7 @@ func TestWriteArrayHeader(t *testing.T) {
 
 func TestWriteNil(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 
 	n, err := wr.WriteNil()
 	if err != nil {
@@ -115,7 +114,7 @@ func TestWriteNil(t *testing.T) {
 
 func TestWriteFloat64(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
@@ -138,17 +137,15 @@ func TestWriteFloat64(t *testing.T) {
 			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
 		}
 
-		bits := binary.BigEndian.Uint64(bts[1:])
-
-		if *(*float64)(unsafe.Pointer(&bits)) != flt {
-			t.Errorf("Value %f came out as %f", flt, *(*float64)(unsafe.Pointer(&bits)))
+		if *(*float64)(unsafe.Pointer(&bts[1])) != flt {
+			t.Errorf("Value %f came out as %f", flt, *(*float64)(unsafe.Pointer(&bts[1])))
 		}
 	}
 }
 
 func TestWriteFloat32(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
@@ -171,17 +168,15 @@ func TestWriteFloat32(t *testing.T) {
 			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
 		}
 
-		bits := binary.BigEndian.Uint32(bts[1:])
-
-		if *(*float32)(unsafe.Pointer(&bits)) != flt {
-			t.Errorf("Value %f came out as %f", flt, *(*float32)(unsafe.Pointer(&bits)))
+		if *(*float32)(unsafe.Pointer(&bts[1])) != flt {
+			t.Errorf("Value %f came out as %f", flt, *(*float32)(unsafe.Pointer(&bts[1])))
 		}
 	}
 }
 
 func TestWriteInt64(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
@@ -202,7 +197,7 @@ func TestWriteInt64(t *testing.T) {
 
 func TestWriteUint64(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
@@ -224,7 +219,7 @@ func TestWriteUint64(t *testing.T) {
 
 func TestWriteBytes(t *testing.T) {
 	var buf bytes.Buffer
-	wr := MsgWriter{w: &buf}
+	wr := NewWriter(&buf)
 	sizes := []int{0, 1, 225, int(tuint32)}
 
 	for _, size := range sizes {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/philhofer/msgp/gen"
@@ -15,22 +16,23 @@ import (
 
 var (
 	// command line flags
-	out  string
-	file string
-	pkg  string
+	out     string // output file
+	file    string // input file (or directory)
+	pkg     string // output package name
+	encode  bool   // write io.Writer/io.Reader-based methods
+	marshal bool   // write []byte-based methods
+	tests   bool   // write test file
 
 	// marshal/unmarshal imports
 	injectImports []string = []string{
-		"github.com/philhofer/msgp/enc",
-		"io",
-		"bytes",
+		"github.com/philhofer/msgp/msgp",
 	}
 
 	// testing imports
 	testImport []string = []string{
 		"testing",
 		"bytes",
-		"github.com/philhofer/msgp/enc",
+		"github.com/philhofer/msgp/msgp",
 	}
 )
 
@@ -38,10 +40,21 @@ func init() {
 	flag.StringVar(&out, "o", "", "output file")
 	flag.StringVar(&file, "file", "", "input file")
 	flag.StringVar(&pkg, "pkg", "", "output package")
+	flag.BoolVar(&encode, "io", true, "create Encode and Decode methods")
+	flag.BoolVar(&marshal, "marshal", true, "create Marshal and Unmarshal methods")
+	flag.BoolVar(&tests, "tests", true, "create tests and benchmarks")
 }
 
 func main() {
 	flag.Parse()
+
+	// we only need the "io" import if we're
+	// creating io.Writer/Reader-based methods,
+	// and we only need the "msgp" import for tests
+	// based on encoder/decoder methods
+	if encode {
+		injectImports = append(injectImports, "io")
+	}
 
 	// GOFILE and GOPACKAGE are
 	// set by `go generate`
@@ -57,7 +70,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := DoAll(pkg, file)
+	if !encode && !marshal {
+		fmt.Println(chalk.Red.Color("No methods to generate; -io=false AND -marshal=false"))
+		os.Exit(1)
+	}
+
+	err := DoAll(pkg, file, marshal, encode, tests)
 	if err != nil {
 		fmt.Println(chalk.Red.Color(err.Error()))
 		os.Exit(1)
@@ -66,8 +84,16 @@ func main() {
 
 // DoAll writes all methods using the associated file and package.
 // (The package is only relevant for writing the new file's package declaration.)
-func DoAll(gopkg string, gofile string) error {
-	// location of the file to pase
+func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) error {
+	var (
+		testwr *bufio.Writer // location to write tests, if applicable
+		outwr  *bufio.Writer // location to write methods
+	)
+
+	// ...nothing to do!
+	if !marshal && !encode {
+		return nil
+	}
 
 	// new file name is old file name + _gen.go
 	var isDir bool
@@ -85,6 +111,7 @@ func DoAll(gopkg string, gofile string) error {
 	if err != nil {
 		return err
 	}
+
 	if len(gopkg) == 0 {
 		gopkg = pkgName
 	}
@@ -120,14 +147,14 @@ func DoAll(gopkg string, gofile string) error {
 	}
 	defer file.Close()
 
-	wr := bufio.NewWriter(file)
+	outwr = bufio.NewWriter(file)
 
-	err = writePkgHeader(wr, gopkg)
+	err = writePkgHeader(outwr, gopkg)
 	if err != nil {
 		return err
 	}
 
-	err = writeImportHeader(wr, injectImports...)
+	err = writeImportHeader(outwr, injectImports...)
 	if err != nil {
 		return err
 	}
@@ -136,23 +163,27 @@ func DoAll(gopkg string, gofile string) error {
 
 	///////////////////
 	// TESTING FILE  //
-	testfile := strings.TrimSuffix(newfile, ".go") + "_test.go"
-	tfl, err := os.Create(testfile)
-	if err != nil {
-		return err
+	var testfile string
+	if tests {
+		testfile = strings.TrimSuffix(newfile, ".go") + "_test.go"
+		tfl, err := os.Create(testfile)
+		if err != nil {
+			return err
+		}
+		defer tfl.Close()
+		testwr = bufio.NewWriter(tfl)
+		err = writePkgHeader(testwr, gopkg)
+		if err != nil {
+			return err
+		}
+		err = writeImportHeader(testwr, testImport...)
+		if err != nil {
+			return err
+		}
 	}
-	defer tfl.Close()
-	twr := bufio.NewWriter(tfl)
-	err = writePkgHeader(twr, gopkg)
-	if err != nil {
-		return err
-	}
-	err = writeImportHeader(twr, testImport...)
-	if err != nil {
-		return err
-	}
-	//////////////////
 
+	//////////////////
+	var buf bytes.Buffer
 	for _, el := range elems {
 		p, ok := el.(*gen.Ptr)
 		if !ok || p.Value.Type() != gen.StructType {
@@ -162,52 +193,53 @@ func DoAll(gopkg string, gofile string) error {
 		// child elements of struct
 		p.SetVarname("z")
 
-		// write MarshalMsg()
-		err = gen.WriteMarshalMethod(wr, p)
-		if err != nil {
-			wr.Flush()
-			return err
+		if marshal {
+			// write MarshalMsg()
+			err = gen.WriteMarshalUnmarshal(outwr, p, &buf)
+			if err != nil {
+				outwr.Flush()
+				return err
+			}
+
+			if tests {
+				err = gen.WriteMarshalUnmarshalTests(testwr, p.Value.Struct(), &buf)
+				if err != nil {
+					testwr.Flush()
+					return err
+				}
+			}
 		}
 
-		// write UnmarshalMsg()
-		err = gen.WriteUnmarshalMethod(wr, p)
-		if err != nil {
-			wr.Flush()
-			return err
-		}
+		if encode {
+			err = gen.WriteEncodeDecode(outwr, p, &buf)
+			if err != nil {
+				outwr.Flush()
+				return err
+			}
 
-		// write EncodeMsg(), EncodeTo()
-		err = gen.WriteEncoderMethod(wr, p)
-		if err != nil {
-			wr.Flush()
-			return err
-		}
-
-		// write DecodeMsg(), DecodeFrom()
-		err = gen.WriteDecoderMethod(wr, p)
-		if err != nil {
-			wr.Flush()
-			return err
-		}
-
-		// write Test{{Type}}, BenchEncode{{Type}}, BenchDecode{{Type}}
-		err = gen.WriteTestNBench(twr, p.Value.Struct())
-		if err != nil {
-			wr.Flush()
-			return err
+			if tests {
+				err = gen.WriteEncodeDecodeTests(testwr, p.Value.Struct(), &buf)
+				if err != nil {
+					testwr.Flush()
+					return err
+				}
+			}
 		}
 	}
 
 	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s "), newfile)
-	err = wr.Flush()
+	err = outwr.Flush()
 	if err != nil {
 		return err
 	}
 	fmt.Print(chalk.Green.Color("\u2713\n"))
-	fmt.Printf(chalk.Magenta.Color("TESTS =====> %s "), testfile)
-	err = twr.Flush()
-	if err != nil {
-		return err
+	if tests {
+		fmt.Printf(chalk.Magenta.Color("TESTS =====> %s "), testfile)
+		err = testwr.Flush()
+		if err != nil {
+			return err
+		}
+
 	}
 	fmt.Print(chalk.Green.Color("\u2713\n"))
 	return nil
@@ -235,6 +267,5 @@ func writeImportHeader(w io.Writer, imports ...string) error {
 		}
 	}
 	_, err = io.WriteString(w, ")\n\n")
-
 	return err
 }

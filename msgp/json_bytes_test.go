@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"bytes"
@@ -9,8 +9,8 @@ import (
 
 func TestUnmarshalJSON(t *testing.T) {
 	var buf bytes.Buffer
-	enc := NewEncoder(&buf)
-	enc.WriteMapHeader(5)
+	enc := NewWriter(&buf)
+	enc.WriteMapHeader(6)
 
 	enc.WriteString("thing_1")
 	enc.WriteString("a string object")
@@ -22,8 +22,13 @@ func TestUnmarshalJSON(t *testing.T) {
 	enc.WriteString("int_b")
 	enc.WriteInt64(-100)
 
+	enc.WriteString("an extension")
+	enc.WriteExtension(&RawExtension{1, []byte("blaaahhh")})
+	//enc.WriteString("hi")
+
 	enc.WriteString("some bytes")
 	enc.WriteBytes([]byte("here are some bytes"))
+
 	enc.WriteString("a bool")
 	enc.WriteBool(true)
 
@@ -36,9 +41,9 @@ func TestUnmarshalJSON(t *testing.T) {
 	var js bytes.Buffer
 	_, err := UnmarshalAsJSON(&js, buf.Bytes())
 	if err != nil {
+		t.Logf("%s", js.Bytes())
 		t.Fatal(err)
 	}
-	t.Logf("%s", js.Bytes())
 	mp := make(map[string]interface{})
 	err = json.Unmarshal(js.Bytes(), &mp)
 	if err != nil {
@@ -46,8 +51,8 @@ func TestUnmarshalJSON(t *testing.T) {
 		t.Fatalf("Error unmarshaling: %s", err)
 	}
 
-	if len(mp) != 5 {
-		t.Errorf("map length should be %d, not %d", 4, len(mp))
+	if len(mp) != 6 {
+		t.Errorf("map length should be %d, not %d", 6, len(mp))
 	}
 
 	so, ok := mp["thing_1"]
@@ -71,7 +76,7 @@ func TestUnmarshalJSON(t *testing.T) {
 
 func BenchmarkUnmarshalAsJSON(b *testing.B) {
 	var buf bytes.Buffer
-	enc := NewEncoder(&buf)
+	enc := NewWriter(&buf)
 	enc.WriteMapHeader(4)
 
 	enc.WriteString("thing_1")
@@ -86,8 +91,8 @@ func BenchmarkUnmarshalAsJSON(b *testing.B) {
 
 	enc.WriteString("an array")
 	enc.WriteArrayHeader(2)
-	enc.WriteString("part_A")
-	enc.WriteString("part_B")
+	enc.WriteBool(true)
+	enc.WriteUint(2089)
 
 	enc.WriteString("a_second_map")
 	enc.WriteMapStrStr(map[string]string{

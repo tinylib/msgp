@@ -1,6 +1,4 @@
-package enc
-
-import ()
+package msgp
 
 const last4 = 0x0f
 const first4 = 0xf0

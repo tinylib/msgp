@@ -2,25 +2,17 @@ package gen
 
 import (
 	"bytes"
-	"fmt"
-	"go/format"
 	"io"
 )
 
-func WriteTestNBench(w io.Writer, s *Struct) error {
-	var buf bytes.Buffer
+// WriteMarshalUnmarshalTests writes tests for s.MarshalMsg and s.UnmarshalMsg, using
+// buf as scratch space
+func WriteMarshalUnmarshalTests(w io.Writer, s *Struct, buf *bytes.Buffer) error {
+	return execAndFormat(marshalTestTemplate, w, s, buf)
+}
 
-	err := benTemplate.Execute(&buf, s)
-	if err != nil {
-		return fmt.Errorf("error executing template: %s", err)
-	}
-
-	bts, err := format.Source(buf.Bytes())
-	if err != nil {
-		w.Write(bts)
-		return fmt.Errorf("go/format: %s", err)
-	}
-
-	_, err = w.Write(bts)
-	return err
+// WriteEncodeDecodeTests writes tests for s.EncodeMsg and s.DecodeMsg, using
+// buf as scratch space
+func WriteEncodeDecodeTests(w io.Writer, s *Struct, buf *bytes.Buffer) error {
+	return execAndFormat(encodeTestTemplate, w, s, buf)
 }

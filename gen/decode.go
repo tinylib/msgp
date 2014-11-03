@@ -10,11 +10,14 @@ import (
 )
 
 var (
-	decTemplate *template.Template
-	encTemplate *template.Template
-	marTemplate *template.Template
-	unmTemplate *template.Template
-	benTemplate *template.Template
+	decTemplate         *template.Template
+	encTemplate         *template.Template
+	marTemplate         *template.Template
+	unmTemplate         *template.Template
+	benTemplate         *template.Template
+	sizTemplate         *template.Template
+	marshalTestTemplate *template.Template
+	encodeTestTemplate  *template.Template
 )
 
 func init() {
@@ -24,85 +27,58 @@ func init() {
 		os.Exit(1)
 	}
 
+	// TODO: there may be a better way to locate the template files...
 	prefix := gopath + "/src/github.com/philhofer/msgp/gen/"
 
 	decTemplate = template.Must(template.ParseFiles(prefix+"decode.tmpl", prefix+"elem_dec.tmpl"))
 	encTemplate = template.Must(template.ParseFiles(prefix+"encode.tmpl", prefix+"elem_enc.tmpl"))
-	marTemplate = template.Must(template.ParseFiles(prefix + "marshal.tmpl"))
+	marTemplate = template.Must(template.ParseFiles(prefix+"marshal.tmpl", prefix+"marshal_enc.tmpl"))
 	unmTemplate = template.Must(template.ParseFiles(prefix+"unmarshal.tmpl", prefix+"elem_unm.tmpl"))
-	benTemplate = template.Must(template.ParseFiles(prefix + "test_n_bench.tmpl"))
+	sizTemplate = template.Must(template.ParseFiles(prefix+"size.tmpl", prefix+"size_enc.tmpl"))
+
+	marshalTestTemplate = template.Must(template.ParseFiles(prefix + "testMarshal.tmpl"))
+	encodeTestTemplate = template.Must(template.ParseFiles(prefix + "testEncode.tmpl"))
 }
 
-// WriteDecoderMethod writes the DecodeMsg(io.Reader) method.
-// Ptr.Value should be a *Struct. If 'unmarshal' is true, the Unmarshal
-// method will also be written.
-func WriteDecoderMethod(w io.Writer, p *Ptr) error {
-	var buf bytes.Buffer
-	err := decTemplate.Execute(&buf, p)
+// execAndFormat executes a template and formats the output, using buf as temporary storage
+func execAndFormat(t *template.Template, w io.Writer, i interface{}, buf *bytes.Buffer) error {
+	if buf == nil {
+		buf = bytes.NewBuffer(nil)
+	}
+	buf.Reset()
+	err := t.Execute(buf, i)
 	if err != nil {
 		return fmt.Errorf("template: %s", err)
 	}
-
 	bts, err := format.Source(buf.Bytes())
 	if err != nil {
 		w.Write(buf.Bytes())
 		return fmt.Errorf("gofmt: %s", err)
 	}
-
 	_, err = w.Write(bts)
 	return err
 }
 
-func WriteUnmarshalMethod(w io.Writer, p *Ptr) error {
-	var buf bytes.Buffer
-	err := unmTemplate.Execute(&buf, p)
+// WriteEncodeDecode writes the EncodeMsg, EncodeTo, DecodeMsg, and DecodeFrom methods,
+// using buf as scratch space.
+func WriteEncodeDecode(w io.Writer, p *Ptr, buf *bytes.Buffer) error {
+	err := execAndFormat(decTemplate, w, p, buf)
 	if err != nil {
-		return fmt.Errorf("template: %s", err)
-	}
-	bts, err := format.Source(buf.Bytes())
-	if err != nil {
-		err = fmt.Errorf("gofmt: %s", err)
-		w.Write(buf.Bytes())
 		return err
 	}
-	_, err = w.Write(bts)
-	return err
+	return execAndFormat(encTemplate, w, p, buf)
 }
 
-// WriteEncoderMethod writes the EncodeMsg(io.Writer) method.
-// Ptr.Value should be a *Struct. If 'marshal' is true, the Marshal
-// method will also be written.
-func WriteEncoderMethod(w io.Writer, p *Ptr) error {
-	var buf bytes.Buffer
-	err := encTemplate.Execute(&buf, p)
+// WriteMarhsalUnmarshal writes the MarshalMsg, UnmarshalMsg, AppendMsg, and Maxsize
+// methods using buf as scratch space.
+func WriteMarshalUnmarshal(w io.Writer, p *Ptr, buf *bytes.Buffer) error {
+	err := execAndFormat(marTemplate, w, p, buf)
 	if err != nil {
 		return err
 	}
-
-	bts, err := format.Source(buf.Bytes())
-	if err != nil {
-		w.Write(buf.Bytes())
-		return err
-	}
-
-	_, err = w.Write(bts)
+	err = execAndFormat(unmTemplate, w, p, buf)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func WriteMarshalMethod(w io.Writer, p *Ptr) error {
-	var buf bytes.Buffer
-	err := marTemplate.Execute(&buf, p)
-	if err != nil {
-		return fmt.Errorf("template: %s", err)
-	}
-	bts, err := format.Source(buf.Bytes())
-	if err != nil {
-		w.Write(buf.Bytes())
-		fmt.Errorf("gofmt: %s", err)
-	}
-	_, err = w.Write(bts)
-	return err
+	return execAndFormat(sizTemplate, w, p, buf)
 }

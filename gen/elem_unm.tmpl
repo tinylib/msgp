@@ -3,11 +3,13 @@
 {{define "BaseTempl"}}
 	{{if .Convert}}var tmp {{.BaseType}}{{end}}{{/* type lowering shim */}}
 	{{if eq (.Value) 1}}{{/* is []byte */}}
-	{{if .Convert}}tmp, bts, err = enc.ReadBytesBytes(bts, []byte({{.Varname}})){{else}}{{.Varname}}, bts, err = enc.ReadBytesBytes(bts, {{.Varname}}){{end}}
+	{{if .Convert}}tmp, bts, err = msgp.ReadBytesBytes(bts, []byte({{.Varname}})){{else}}{{.Varname}}, bts, err = msgp.ReadBytesBytes(bts, {{.Varname}}){{end}}
 	{{else if .IsIdent}}
 	bts, err = {{.Varname}}.UnmarshalMsg(bts)
+	{{else if .IsExt}}
+	bts, err = msgp.ReadExtensionBytes(bts, {{.Varname}})
 	{{else}}{{/* any other type */}}
-	{{if .Convert}}tmp, bts, err = enc.Read{{.BaseName}}Bytes(bts){{else}}{{.Varname}}, bts, err = enc.Read{{.BaseName}}Bytes(bts){{end}}
+	{{if .Convert}}tmp, bts, err = msgp.Read{{.BaseName}}Bytes(bts){{else}}{{.Varname}}, bts, err = msgp.Read{{.BaseName}}Bytes(bts){{end}}
 	{{end}}
 	{{if .Convert}}{{.Varname}} = {{.Ident}}(tmp){{end}}
 	if err != nil {
@@ -16,8 +18,8 @@
 {{end}}
 
 {{define "PtrTempl"}}
-	if enc.IsNil(bts) {
-		bts, err = enc.ReadNilBytes(bts)
+	if msgp.IsNil(bts) {
+		bts, err = msgp.ReadNilBytes(bts)
 		if err != nil {
 			return
 		}
@@ -32,7 +34,7 @@
 
 {{define "MapTempl"}}
 	var msz uint32
-	msz, bts, err = enc.ReadMapHeaderBytes(bts)
+	msz, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
 		return
 	}
@@ -46,7 +48,7 @@
 	for inx := uint32(0); inx < msz; inx++ {
 		var {{.Keyidx}} string 
 		var {{.Validx}} {{.Value.TypeName}}
-		{{.Keyidx}}, bts, err = enc.ReadStringBytes(bts)
+		{{.Keyidx}}, bts, err = msgp.ReadStringBytes(bts)
 		if err != nil {
 			return
 		}
@@ -57,7 +59,7 @@
 
 {{define "SliceTempl"}}
 	var xsz uint32
-	xsz, bts, err = enc.ReadArrayHeaderBytes(bts)
+	xsz, bts, err = msgp.ReadArrayHeaderBytes(bts)
 	if cap({{.Varname}}) >= int(xsz) {
 		{{.Varname}} = {{.Varname}}[0:int(xsz)]
 	} else {
@@ -70,9 +72,9 @@
 
 {{define "ArrayTempl"}}
 	var asz uint32
-	asz, bts, err = enc.ReadArrayHeaderBytes(bts)
+	asz, bts, err = msgp.ReadArrayHeaderBytes(bts)
 	if int(asz) != {{.Size}} {
-		err = enc.ArrayError{Wanted: {{.Size}}, Got: asz}
+		err = msgp.ArrayError{Wanted: {{.Size}}, Got: asz}
 		return
 	}
 	for {{.Index}} := range {{.Varname}} {
@@ -82,21 +84,21 @@
 
 {{define "StructTempl"}}
 	var isz uint32
-	isz, bts, err = enc.ReadMapHeaderBytes(bts)
+	isz, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
 		return
 	}
 	for xplz := uint32(0); xplz < isz; xplz++ {
-		field, bts, err = enc.ReadStringZC(bts)
+		field, bts, err = msgp.ReadStringZC(bts)
 		if err != nil {
 			return
 		}
-		switch enc.UnsafeString(field) {
+		switch msgp.UnsafeString(field) {
 		{{range .Fields}}
 		case "{{.FieldTag}}":{{template "ElemTempl" .FieldElem}}
 		{{end}}
 		default:
-			bts, err = enc.Skip(bts)
+			bts, err = msgp.Skip(bts)
 			if err != nil {
 				return
 			}

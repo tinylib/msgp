@@ -1,6 +1,7 @@
 package _generated
 
 import (
+	"github.com/philhofer/msgp/msgp"
 	"time"
 )
 
@@ -58,9 +59,11 @@ type Embedded struct {
 }
 
 type Things struct {
-	Cmplx complex64  `msg:"complex"` // test slices
-	Vals  []int32    `msg:"values"`
-	Arr   [8]float64 `msg:"arr"` // test fixed array
+	Cmplx complex64          `msg:"complex"` // test slices
+	Vals  []int32            `msg:"values"`
+	Arr   [8]float64         `msg:"arr"`            // test fixed array
+	Ext   *msgp.RawExtension `msg:"ext,extension"`  // test extension
+	Oext  msgp.RawExtension  `msg:"oext,extension"` // test extension reference
 }
 
 type Empty struct{}

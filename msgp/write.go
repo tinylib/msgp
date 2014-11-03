@@ -1,4 +1,4 @@
-package enc
+package msgp
 
 import (
 	"encoding/binary"
@@ -18,6 +18,10 @@ func abs(i int64) int64 {
 	return i
 }
 
+type sizer interface {
+	Maxsize() int
+}
+
 var (
 	btsType reflect.Type
 )
@@ -27,44 +31,65 @@ func init() {
 	btsType = reflect.TypeOf(bts)
 }
 
-const (
-	// Complex64 numbers are encoded as extension #3
-	Complex64Extension = 3
+// Marshaler is the interface implemented
+// by types that know how to marshal themselves
+// as MessagePack
+type Marshaler interface {
+	// AppendMsg appends the marshalled
+	// form of the object to the provided
+	// byte slice, returning the extended
+	// slice and any errors encountered
+	AppendMsg([]byte) ([]byte, error)
 
-	// Complex128 numbers are encoded as extension #4
-	Complex128Extension = 4
-
-	// time.Time values are encoded as extension #5
-	TimeExtension = 5
-)
-
-type MsgEncoder interface {
+	// MarshalMsg returns a new []byte
+	// containing the MessagePack-encoded
+	// form of the object
 	MarshalMsg() ([]byte, error)
-	EncodeMsg(io.Writer) (int, error)
-	EncodeTo(*MsgWriter) (int, error)
 }
 
-type MsgWriter struct {
+// Encoder is the interface implemented
+// by types that know how to write themselves
+// as MessagePack
+type Encoder interface {
+	// EncodeMsg writes the object in MessagePack
+	// format to the writer, returning the number
+	// of bytes written and any errors encountered.
+	EncodeMsg(io.Writer) (int, error)
+
+	// EncodeTo writes the object to a *Writer,
+	// returning the number of bytes written, and
+	// any errors encountered.
+	EncodeTo(*Writer) (int, error)
+}
+
+// Writer is the object used by
+// Encoders to write themselves
+// to an io.Writer
+type Writer struct {
 	w       io.Writer
 	scratch [24]byte
 }
 
-func NewEncoder(w io.Writer) *MsgWriter {
-	return &MsgWriter{
+// NewEncoder returns a MsgWriter, which can be
+// used by MsgEncoders to serialize themselves
+// to the provided io.Writer. It does no buffering.
+func NewWriter(w io.Writer) *Writer {
+	return &Writer{
 		w: w,
 	}
 }
 
-// Write implements the standard io.Write method
-func (mw *MsgWriter) Write(p []byte) (int, error) {
+// Write implements the standard io.Writer interface
+func (mw *Writer) Write(p []byte) (int, error) {
 	return mw.w.Write(p)
 }
 
-func (mw *MsgWriter) Reset(w io.Writer) {
+// Reset changes the underlying writer used by the MsgWriter
+func (mw *Writer) Reset(w io.Writer) {
 	mw.w = w
 }
 
-func (mw *MsgWriter) WriteMapHeader(sz uint32) (n int, err error) {
+func (mw *Writer) WriteMapHeader(sz uint32) (n int, err error) {
 	switch {
 	case sz < 16:
 		mw.scratch[0] = wfixmap(uint8(sz))
@@ -83,7 +108,7 @@ func (mw *MsgWriter) WriteMapHeader(sz uint32) (n int, err error) {
 	}
 }
 
-func (mw *MsgWriter) WriteArrayHeader(sz uint32) (n int, err error) {
+func (mw *Writer) WriteArrayHeader(sz uint32) (n int, err error) {
 	switch {
 	case sz < 16:
 		mw.scratch[0] = wfixarray(uint8(sz))
@@ -99,26 +124,24 @@ func (mw *MsgWriter) WriteArrayHeader(sz uint32) (n int, err error) {
 	}
 }
 
-func (mw *MsgWriter) WriteNil() (n int, err error) {
+func (mw *Writer) WriteNil() (n int, err error) {
 	mw.scratch[0] = mnil
 	return mw.w.Write(mw.scratch[:1])
 }
 
-func (mw *MsgWriter) WriteFloat64(f float64) (n int, err error) {
+func (mw *Writer) WriteFloat64(f float64) (n int, err error) {
 	mw.scratch[0] = mfloat64
-	bits := *(*uint64)(unsafe.Pointer(&f))
-	binary.BigEndian.PutUint64(mw.scratch[1:], bits)
+	copy(mw.scratch[1:], (*(*[8]byte)(unsafe.Pointer(&f)))[:])
 	return mw.w.Write(mw.scratch[:9])
 }
 
-func (mw *MsgWriter) WriteFloat32(f float32) (n int, err error) {
+func (mw *Writer) WriteFloat32(f float32) (n int, err error) {
 	mw.scratch[0] = mfloat32
-	bits := *(*uint32)(unsafe.Pointer(&f))
-	binary.BigEndian.PutUint32(mw.scratch[1:], bits)
+	copy(mw.scratch[1:], (*(*[4]byte)(unsafe.Pointer(&f)))[:])
 	return mw.w.Write(mw.scratch[:5])
 }
 
-func (mw *MsgWriter) WriteInt64(i int64) (n int, err error) {
+func (mw *Writer) WriteInt64(i int64) (n int, err error) {
 	switch {
 	case i < 0 && i > -32:
 		mw.scratch[0] = byte(int8(i))
@@ -162,13 +185,12 @@ func (mw *MsgWriter) WriteInt64(i int64) (n int, err error) {
 
 }
 
-// Integer Utilities
-func (m *MsgWriter) WriteInt8(i int8) (int, error)   { return m.WriteInt64(int64(i)) }
-func (m *MsgWriter) WriteInt16(i int16) (int, error) { return m.WriteInt64(int64(i)) }
-func (m *MsgWriter) WriteInt32(i int32) (int, error) { return m.WriteInt64(int64(i)) }
-func (m *MsgWriter) WriteInt(i int) (int, error)     { return m.WriteInt64(int64(i)) }
+func (m *Writer) WriteInt8(i int8) (int, error)   { return m.WriteInt64(int64(i)) }
+func (m *Writer) WriteInt16(i int16) (int, error) { return m.WriteInt64(int64(i)) }
+func (m *Writer) WriteInt32(i int32) (int, error) { return m.WriteInt64(int64(i)) }
+func (m *Writer) WriteInt(i int) (int, error)     { return m.WriteInt64(int64(i)) }
 
-func (mw *MsgWriter) WriteUint64(u uint64) (n int, err error) {
+func (mw *Writer) WriteUint64(u uint64) (n int, err error) {
 	switch {
 	case u < (1 << 7):
 		mw.scratch[0] = (byte(u) & 0x7f)
@@ -188,17 +210,16 @@ func (mw *MsgWriter) WriteUint64(u uint64) (n int, err error) {
 	}
 }
 
-// Unsigned Integer Utilities
-func (m *MsgWriter) WriteByte(u byte) (int, error)     { return m.WriteUint8(uint8(u)) }
-func (m *MsgWriter) WriteUint8(u uint8) (int, error)   { return m.WriteUint64(uint64(u)) }
-func (m *MsgWriter) WriteUint16(u uint16) (int, error) { return m.WriteUint64(uint64(u)) }
-func (m *MsgWriter) WriteUint32(u uint32) (int, error) { return m.WriteUint64(uint64(u)) }
-func (m *MsgWriter) WriteUint(u uint) (int, error)     { return m.WriteUint64(uint64(u)) }
+func (m *Writer) WriteByte(u byte) (int, error)     { return m.WriteUint8(uint8(u)) }
+func (m *Writer) WriteUint8(u uint8) (int, error)   { return m.WriteUint64(uint64(u)) }
+func (m *Writer) WriteUint16(u uint16) (int, error) { return m.WriteUint64(uint64(u)) }
+func (m *Writer) WriteUint32(u uint32) (int, error) { return m.WriteUint64(uint64(u)) }
+func (m *Writer) WriteUint(u uint) (int, error)     { return m.WriteUint64(uint64(u)) }
 
-func (mw *MsgWriter) WriteBytes(b []byte) (n int, err error) {
+func (mw *Writer) WriteBytes(b []byte) (n int, err error) {
 	l := len(b)
 	if l > math.MaxUint32 {
-		panic("Cannot write bytes with length > MaxUint32")
+		panic("msgp: cannot write bytes with length > MaxUint32")
 	}
 	sz := uint32(l)
 	var nn int
@@ -229,7 +250,7 @@ func (mw *MsgWriter) WriteBytes(b []byte) (n int, err error) {
 	return
 }
 
-func (mw *MsgWriter) WriteBool(b bool) (n int, err error) {
+func (mw *Writer) WriteBool(b bool) (n int, err error) {
 	if b {
 		mw.scratch[0] = mtrue
 	} else {
@@ -238,11 +259,11 @@ func (mw *MsgWriter) WriteBool(b bool) (n int, err error) {
 	return mw.w.Write(mw.scratch[:1])
 }
 
-func (mw *MsgWriter) WriteString(s string) (n int, err error) {
+func (mw *Writer) WriteString(s string) (n int, err error) {
 	var nn int
 	l := len(s)
 	if l > math.MaxUint32 {
-		panic("Cannot write string with length greater than MaxUint32")
+		panic("msgp: cannot write string with length greater than MaxUint32")
 	}
 	sz := uint32(l)
 	switch {
@@ -271,7 +292,7 @@ func (mw *MsgWriter) WriteString(s string) (n int, err error) {
 	return
 }
 
-func (mw *MsgWriter) WriteComplex64(f complex64) (n int, err error) {
+func (mw *Writer) WriteComplex64(f complex64) (n int, err error) {
 	mw.scratch[0] = mfixext8
 	mw.scratch[1] = Complex64Extension
 	rl := real(f)
@@ -281,7 +302,7 @@ func (mw *MsgWriter) WriteComplex64(f complex64) (n int, err error) {
 	return mw.w.Write(mw.scratch[:10])
 }
 
-func (mw *MsgWriter) WriteComplex128(f complex128) (n int, err error) {
+func (mw *Writer) WriteComplex128(f complex128) (n int, err error) {
 	mw.scratch[0] = mfixext16
 	mw.scratch[1] = Complex128Extension
 	rl := real(f)
@@ -291,19 +312,13 @@ func (mw *MsgWriter) WriteComplex128(f complex128) (n int, err error) {
 	return mw.w.Write(mw.scratch[:18])
 }
 
-// WriteExtension writes an extension type (tuple of (type, binary))
-//func WriteExtension(w io.Writer, typ byte, bts []byte) (n int, err error) {/
-//
-//}
-
-func (mw *MsgWriter) WriteMapStrStr(mp map[string]string) (n int, err error) {
+func (mw *Writer) WriteMapStrStr(mp map[string]string) (n int, err error) {
 	var nn int
 	nn, err = mw.WriteMapHeader(uint32(len(mp)))
 	n += nn
 	if err != nil {
 		return
 	}
-
 	for key, val := range mp {
 		nn, err = mw.WriteString(key)
 		n += nn
@@ -319,14 +334,13 @@ func (mw *MsgWriter) WriteMapStrStr(mp map[string]string) (n int, err error) {
 	return
 }
 
-func (mw *MsgWriter) WriteMapStrIntf(mp map[string]interface{}) (n int, err error) {
+func (mw *Writer) WriteMapStrIntf(mp map[string]interface{}) (n int, err error) {
 	var nn int
 	nn, err = mw.WriteMapHeader(uint32(len(mp)))
 	n += nn
 	if err != nil {
 		return
 	}
-
 	for key, val := range mp {
 		nn, err = mw.WriteString(key)
 		n += nn
@@ -342,26 +356,37 @@ func (mw *MsgWriter) WriteMapStrIntf(mp map[string]interface{}) (n int, err erro
 	return
 }
 
-func (mw *MsgWriter) WriteIdent(e MsgEncoder) (n int, err error) {
+func (mw *Writer) WriteIdent(e Encoder) (n int, err error) {
 	return e.EncodeTo(mw)
 }
 
-func (mw *MsgWriter) WriteTime(t time.Time) (n int, err error) {
+func (mw *Writer) WriteTime(t time.Time) (n int, err error) {
 	var bts []byte
 	bts, err = t.MarshalBinary()
 	if err != nil {
 		return
 	}
-	mw.scratch[0] = mfixext16     // byte 0 is mfixext16
-	mw.scratch[1] = TimeExtension // TimeExtension byte
-	copy(mw.scratch[2:], bts)     // time is 15 bytes
-	mw.scratch[17] = 0            // last byte is 0
+	mw.scratch[0] = mfixext16                 // byte 0 is mfixext16
+	mw.scratch[1] = byte(int8(TimeExtension)) // TimeExtension byte
+	copy(mw.scratch[2:], bts)                 // time is 15 bytes
+	mw.scratch[17] = 0                        // last byte is 0
 	return mw.w.Write(mw.scratch[:18])
 }
 
-func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
-	if enc, ok := v.(MsgEncoder); ok {
+// WriteIntf writes the concrete type of 'v'.
+// WriteIntf will error if 'v' is not one of the following:
+//  - A bool, float, string, []byte, int, uint, or complex
+//  - A map of supported types (with string keys)
+//  - An array or slice of supported types
+//  - A pointer to a supported type
+//  - A type that satisfies the msgp.Encoder interface
+//  - A type that satisfies the msgp.Extension interface
+func (mw *Writer) WriteIntf(v interface{}) (n int, err error) {
+	if enc, ok := v.(Encoder); ok {
 		return enc.EncodeTo(mw)
+	}
+	if ext, ok := v.(Extension); ok {
+		return mw.WriteExtension(ext)
 	}
 	if v == nil {
 		return mw.WriteNil()
@@ -411,12 +436,10 @@ func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
 
 	val := reflect.ValueOf(v)
 	if !isSupported(val.Kind()) || !val.IsValid() {
-		return 0, fmt.Errorf("type %s not supported", val)
+		return 0, fmt.Errorf("msgp: type %s not supported", val)
 	}
 
 	switch val.Kind() {
-	case reflect.Struct:
-		return mw.writeStruct(val)
 	case reflect.Ptr:
 		if val.IsNil() {
 			return mw.WriteNil()
@@ -427,12 +450,12 @@ func (mw *MsgWriter) WriteIntf(v interface{}) (n int, err error) {
 	case reflect.Map:
 		return mw.writeMap(val)
 	}
-	return 0, fmt.Errorf("type %s not supported", val.Type())
+	return 0, fmt.Errorf("msgp: type %s not supported", val.Type())
 }
 
-func (mw *MsgWriter) writeMap(v reflect.Value) (n int, err error) {
+func (mw *Writer) writeMap(v reflect.Value) (n int, err error) {
 	if v.Elem().Kind() != reflect.String {
-		return 0, errors.New("map keys must be strings")
+		return 0, errors.New("msgp: map keys must be strings")
 	}
 	ks := v.MapKeys()
 	var nn int
@@ -458,7 +481,7 @@ func (mw *MsgWriter) writeMap(v reflect.Value) (n int, err error) {
 	return
 }
 
-func (mw *MsgWriter) writeSlice(v reflect.Value) (n int, err error) {
+func (mw *Writer) writeSlice(v reflect.Value) (n int, err error) {
 	var nn int
 	if v.Type().ConvertibleTo(btsType) {
 		nn, err = mw.WriteBytes(v.Bytes())
@@ -483,16 +506,16 @@ func (mw *MsgWriter) writeSlice(v reflect.Value) (n int, err error) {
 	return
 }
 
-func (mw *MsgWriter) writeStruct(v reflect.Value) (n int, err error) {
-	if enc, ok := v.Interface().(MsgEncoder); ok {
+func (mw *Writer) writeStruct(v reflect.Value) (n int, err error) {
+	if enc, ok := v.Interface().(Encoder); ok {
 		return enc.EncodeTo(mw)
 	}
-	return 0, fmt.Errorf("unsupported type: %s", v.Type())
+	return 0, fmt.Errorf("msgp: unsupported type: %s", v.Type())
 }
 
-func (mw *MsgWriter) writeVal(v reflect.Value) (n int, err error) {
+func (mw *Writer) writeVal(v reflect.Value) (n int, err error) {
 	if !isSupported(v.Kind()) {
-		return 0, fmt.Errorf("unsupported type: %s", v.Type())
+		return 0, fmt.Errorf("msgp: msgp/enc: type %q not supported", v.Type())
 	}
 
 	// shortcut for nil values
@@ -534,7 +557,7 @@ func (mw *MsgWriter) writeVal(v reflect.Value) (n int, err error) {
 		return mw.writeStruct(v)
 
 	}
-	return
+	return 0, fmt.Errorf("msgp: msgp/enc: type %q not supported", v.Type())
 }
 
 // is the reflect.Kind encodable?
@@ -544,5 +567,55 @@ func isSupported(k reflect.Kind) bool {
 		return false
 	default:
 		return true
+	}
+}
+
+// GuessSize guesses the size of the underlying
+// value of 'i'. If the underlying value is not
+// a simple builtin (or []byte), GuessSize defaults
+// to 512.
+func GuessSize(i interface{}) int {
+	if s, ok := i.(sizer); ok {
+		return s.Maxsize()
+	} else if e, ok := i.(Extension); ok {
+		return ExtensionPrefixSize + e.Len()
+	} else if i == nil {
+		return NilSize
+	}
+
+	switch i.(type) {
+	case float64:
+		return Float64Size
+	case float32:
+		return Float32Size
+	case uint8, uint16, uint32, uint64, uint:
+		return UintSize
+	case int8, int16, int32, int64, int:
+		return IntSize
+	case []byte:
+		return BytesPrefixSize + len(i.([]byte))
+	case string:
+		return StringPrefixSize + len(i.(string))
+	case complex64:
+		return Complex64Size
+	case complex128:
+		return Complex128Size
+	case bool:
+		return BoolSize
+	case map[string]interface{}:
+		s := MapHeaderSize
+		for key, val := range i.(map[string]interface{}) {
+			s += StringPrefixSize + len(key)
+			s += GuessSize(val)
+		}
+		return s
+	case map[string]string:
+		s := MapHeaderSize
+		for key, val := range i.(map[string]string) {
+			s += 2*StringPrefixSize + len(key) + len(val)
+		}
+		return s
+	default:
+		return 512
 	}
 }
