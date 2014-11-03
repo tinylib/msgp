@@ -1,7 +1,5 @@
 package msgp
 
-import ()
-
 const last4 = 0x0f
 const first4 = 0xf0
 const last5 = 0x1f

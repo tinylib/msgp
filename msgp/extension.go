@@ -1,7 +1,6 @@
 package msgp
 
 import (
-	"encoding"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -63,12 +62,12 @@ type Extension interface {
 	// of the data to be encoded
 	Len() int
 
-	// Extensions must satisfy the
-	// encoding.BinaryMarshaler and
-	// encoding.BinaryUnmarshaler
-	// interfaces
-	encoding.BinaryMarshaler
-	encoding.BinaryUnmarshaler
+	// MarshalBinaryTo should copy
+	// the data into the supplied slice,
+	// assuming that the slice has length Len()
+	MarshalBinaryTo([]byte) error
+
+	UnmarshalBinary([]byte) error
 }
 
 // RawExtension implements the Extension interface
@@ -79,10 +78,9 @@ type RawExtension struct {
 
 func (r *RawExtension) ExtensionType() int8 { return r.Type }
 func (r *RawExtension) Len() int            { return len(r.Data) }
-func (r *RawExtension) MarshalBinary() ([]byte, error) {
-	d := make([]byte, len(r.Data))
+func (r *RawExtension) MarshalBinaryTo(d []byte) error {
 	copy(d, r.Data)
-	return d, nil
+	return nil
 }
 
 func (r *RawExtension) UnmarshalBinary(b []byte) error {
@@ -96,12 +94,11 @@ func (r *RawExtension) UnmarshalBinary(b []byte) error {
 }
 
 func (mw *Writer) WriteExtension(e Extension) (int, error) {
-	bts, err := e.MarshalBinary()
-	if err != nil {
-		return 0, err
-	}
-	l := len(bts)
-	var write bool
+	l := e.Len()
+	var (
+		write bool
+		err   error
+	)
 	switch l {
 	case 0:
 		mw.scratch[0] = mext8
@@ -129,39 +126,43 @@ func (mw *Writer) WriteExtension(e Extension) (int, error) {
 		mw.scratch[1] = byte(e.ExtensionType())
 		write = true
 	}
-	if write {
-		var n int
-		n, err = mw.w.Write(mw.scratch[:2])
-		if err != nil {
-			return n, err
-		}
-		n, err = mw.w.Write(bts)
-		return n + 2, err
-	}
-
 	var nn int
-	switch {
-	case l < math.MaxUint8:
-		mw.scratch[0] = mext8
-		mw.scratch[1] = byte(uint8(l))
-		mw.scratch[2] = byte(e.ExtensionType())
-		nn, err = mw.w.Write(mw.scratch[:3])
-	case l < math.MaxUint16:
-		mw.scratch[0] = mext16
-		binary.BigEndian.PutUint16(mw.scratch[1:], uint16(l))
-		mw.scratch[3] = byte(e.ExtensionType())
-		nn, err = mw.w.Write(mw.scratch[:4])
-	default:
-		mw.scratch[0] = mext32
-		binary.BigEndian.PutUint32(mw.scratch[1:], uint32(l))
-		mw.scratch[5] = byte(e.ExtensionType())
-		nn, err = mw.w.Write(mw.scratch[:6])
+	if write {
+		nn, err = mw.w.Write(mw.scratch[:2])
+	} else {
+		switch {
+		case l < math.MaxUint8:
+			mw.scratch[0] = mext8
+			mw.scratch[1] = byte(uint8(l))
+			mw.scratch[2] = byte(e.ExtensionType())
+			nn, err = mw.w.Write(mw.scratch[:3])
+		case l < math.MaxUint16:
+			mw.scratch[0] = mext16
+			binary.BigEndian.PutUint16(mw.scratch[1:], uint16(l))
+			mw.scratch[3] = byte(e.ExtensionType())
+			nn, err = mw.w.Write(mw.scratch[:4])
+		default:
+			mw.scratch[0] = mext32
+			binary.BigEndian.PutUint32(mw.scratch[1:], uint32(l))
+			mw.scratch[5] = byte(e.ExtensionType())
+			nn, err = mw.w.Write(mw.scratch[:6])
+		}
 	}
 	if err != nil {
 		return nn, err
 	}
+	var b []byte
+	if e.Len() <= cap(mw.scratch) {
+		b = mw.scratch[0:e.Len()]
+	} else {
+		b = make([]byte, e.Len())
+	}
+	err = e.MarshalBinaryTo(b)
+	if err != nil {
+		return nn, err
+	}
 	n := nn
-	nn, err = mw.w.Write(bts)
+	nn, err = mw.w.Write(b)
 	return n + nn, err
 }
 
@@ -323,7 +324,7 @@ func (m *Reader) ReadExtension(e Extension) (n int, err error) {
 	}
 
 	var bts []byte
-	bts, nn, err = readN(m.r, nil, read)
+	bts, nn, err = readN(m.r, m.scratch, read)
 	n += nn
 	if err != nil {
 		return
@@ -333,12 +334,8 @@ func (m *Reader) ReadExtension(e Extension) (n int, err error) {
 }
 
 func AppendExtension(b []byte, e Extension) ([]byte, error) {
-	bts, err := e.MarshalBinary()
-	if err != nil {
-		return b, err
-	}
-	l := len(bts)
-	o, n := ensure(b, 6+l)
+	l := e.Len()
+	o, n := ensure(b, ExtensionPrefixSize+l)
 	switch l {
 	case 0:
 		o[n] = mext8
@@ -348,28 +345,23 @@ func AppendExtension(b []byte, e Extension) ([]byte, error) {
 	case 1:
 		o[n] = mfixext1
 		o[n+1] = byte(e.ExtensionType())
-		o[n+2] = bts[0]
-		return o[:n+3], nil
+		n += 2
 	case 2:
 		o[n] = mfixext2
 		o[n+1] = byte(e.ExtensionType())
-		copy(o[n+2:], bts)
-		return o[:n+4], nil
+		n += 2
 	case 4:
 		o[n] = mfixext4
 		o[n+1] = byte(e.ExtensionType())
-		copy(o[n+2:], bts)
-		return o[:n+6], nil
+		n += 2
 	case 8:
 		o[n] = mfixext8
 		o[n+1] = byte(e.ExtensionType())
-		copy(o[n+2:], bts)
-		return o[:n+10], nil
+		n += 2
 	case 16:
 		o[n] = mfixext16
 		o[n+1] = byte(e.ExtensionType())
-		copy(o[n+2:], bts)
-		return o[:n+18], nil
+		n += 2
 	}
 	switch {
 	case l < math.MaxUint8:
@@ -388,8 +380,7 @@ func AppendExtension(b []byte, e Extension) ([]byte, error) {
 		o[n+5] = byte(e.ExtensionType())
 		n += 6
 	}
-	x := copy(o[n:], bts)
-	return o[:n+x], nil
+	return o[:n+l], e.MarshalBinaryTo(o[n : n+l])
 }
 
 func ReadExtensionBytes(b []byte, e Extension) ([]byte, error) {
