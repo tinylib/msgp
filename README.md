@@ -46,44 +46,85 @@ type Person struct {
 }
 ```
 
-Running `msgp` on a file containing the above declaration would generate the following methods:
+Running `msgp` on a file containing the above declaration would generate methods 
+to fulfill the following interfaces (which are defined in the `/msgp` subdirectory):
 
-```go
-func (z *Person) Maxsize() int
+// Marshaler is the interface implemented
+// by types that know how to marshal themselves
+// as MessagePack
+type Marshaler interface {
+	// AppendMsg appends the marshalled
+	// form of the object to the provided
+	// byte slice, returning the extended
+	// slice and any errors encountered
+	AppendMsg([]byte) ([]byte, error)
 
-func (z *Person) MarshalMsg() ([]byte, error)
+	// MarshalMsg returns a new []byte
+	// containing the MessagePack-encoded
+	// form of the object
+	MarshalMsg() ([]byte, error)
+}
 
-func (z *Person) UnmarshalMsg(b []byte) ([]byte, error)
+// Encoder is the interface implemented
+// by types that know how to write themselves
+// as MessagePack
+type Encoder interface {
+	// EncodeMsg writes the object in MessagePack
+	// format to the writer, returning the number
+	// of bytes written and any errors encountered.
+	EncodeMsg(io.Writer) (int, error)
 
-func (z *Person) AppendMsg(b []byte) ([]byte, error)
+	// EncodeTo writes the object to a *Writer,
+	// returning the number of bytes written, and
+	// any errors encountered.
+	EncodeTo(*Writer) (int, error)
+}
 
-func (z *Person) EncodeTo(en *msgp.Writer) (n int, err error)
+// Unmarshaler is the interface fulfilled
+// byte objects that know how to unmarshal
+// themselves from MessagePack
+type Unmarshaler interface {
+	// UnmarshalMsg unmarshals the object
+	// from binary, returing any leftover
+	// bytes and any errors encountered
+	UnmarshalMsg([]byte) ([]byte, error)
+}
 
-func (z *Person) DecodeFrom(dc *msgp.Reader) (n int, err error)
+// Decoder is the interface fulfilled
+// by objects that know how to decode themselves
+// from MessagePack
+type Decoder interface {
+	// DecodeMsg decodes the object
+	// from an io.Reader, returning
+	// the number of bytes read and
+	// any errors encountered
+	DecodeMsg(io.Reader) (int, error)
 
-func (z *Person) EncodeMsg(w io.Writer) (n int, err error)
-
-func (z *Person) DecodeMsg(r io.Reader) (n int, err error)
-```
+	// DecodeFrom decodes the object
+	// using an existing *Reader,
+	// returning the number of bytes
+	// read and any errors encountered
+	DecodeFrom(*Reader) (int, error)
+}
 
 Each method is optimized for a certain use-case, depending on whether or not the user
 can afford to recycle `*msgp.Writer` and `*msgp.Reader` object, and whether or not
-the user is dealing with `io.Reader/io.Writer` or `[]byte`.
+the user is dealing with `io.Reader/io.Writer` or `[]byte`. Carefully-designed applications 
+can use these methods to do marshalling/unmarshalling with zero allocations.
 
-The `msgp/msgp` package has utility functions for transforming MessagePack to JSON directly,
+The `/msgp` package has utility functions for transforming MessagePack to JSON directly,
 both from `io.Reader`s and `[]byte`. There are also utilities for in-place manipulation of
 raw MessagePack.
 
 ### Features
 
- - Proper handling of pointers, nullables, and recursive types
- - Backwards-compatible decoding logic
- - Efficient and readable generated code
- - JSON interoperability
+ - Extremely fast generated code
+ - JSON interoperability (see `msgp.CopyToJSON() and msgp.UnmarshalAsJSON()`)
  - Support for embedded fields, anonymous structs, and multi-field inline declarations
  - Identifier resolution (see below)
  - Native support for Go's `time.Time`, `complex64`, and `complex128` types 
- - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods.
+ - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods
+ - Support for arbitrary type system extensions (see below)
 
 For example, this will work fine:
 ```go
@@ -139,12 +180,13 @@ type Thing struct {
 }
 ```
 
-If you want the decoding of `interface{}` values to include the possibility of being a
-user-defined extension type, you should call `msgp.RegisterExtension` during initialization.
+Users should use `msgp.RegisterExtension` to register type system extensions. Registering extensions 
+allows the `interface{}` decoders and the JSON translators to use the concrete type of your extension 
+when decoding/encoding.
 
 ### Status
 
-Alpha. I _will_ break your code.
+Alpha. I _will_ break stuff.
 
 Here are the known limitations/restrictions:
 
@@ -153,7 +195,7 @@ Here are the known limitations/restrictions:
  - Methods are only generated for `struct` definitions. Chances are that we will keep things this way.
  - Encoding of `interface{}` is limited to built-ins or types that have explicit encoding methods.
  - _Maps must have `string` keys._ This is intentional (as it preserves JSON interop.) Although non-string map keys are not explicitly forbidden by the MessagePack standard, many serializers impose this restriction. (This restriction also means *any* well-formed `struct` can be de-serialized into a `map[string]interface{}`.)
- - All variable-length objects (maps, strings, arrays) cannot have more than `(1<<32)-1` elements.
+ - All variable-length objects (maps, strings, arrays, extensions, etc.) cannot have more than `(1<<32)-1` elements.
 
 If the output compiles, then there's a pretty good chance things are fine. (Plus, we generate tests for you.) *Please, please, please* file an issue if you think the generator is writing broken code.
 

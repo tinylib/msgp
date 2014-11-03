@@ -43,35 +43,39 @@ type jsWriter interface {
 // writes it as JSON to 'dst' until 'src' returns EOF. It returns the
 // number of bytes written and any errors encountered.
 func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
-	return DecodeToJSON(dst, NewReader(src))
+	r := NewReader(src)
+	n, err = r.WriteToJSON(dst)
+	Done(r)
+	return
 }
 
-// DecodeToJSON reads from 'src' until EOF and writes the object
-// as JSON to 'dst'.
-func DecodeToJSON(dst io.Writer, src *Reader) (n int64, err error) {
-	var w jsWriter
+// WriteToJSON translates MessagePack from 'r' and writes it as
+// JSON to 'w' until the underlying reader returns io.EOF. It returns
+// the number of bytes written, and an error if it stopped before EOF.
+func (r *Reader) WriteToJSON(w io.Writer) (n int64, err error) {
+	var j jsWriter
 	var cast bool
-	if jsw, ok := dst.(jsWriter); ok {
-		w = jsw
+	if jsw, ok := w.(jsWriter); ok {
+		j = jsw
 		cast = true
 	} else {
-		w = bufio.NewWriterSize(dst, 256)
+		j = bufio.NewWriterSize(w, 256)
 	}
 	var nn int
 	for err == nil {
-		nn, err = rwNext(w, src)
+		nn, err = rwNext(j, r)
 		n += int64(nn)
 	}
 	if err != io.EOF {
 		if !cast {
-			w.(*bufio.Writer).Flush()
+			j.(*bufio.Writer).Flush()
 		}
 		return
 	} else {
 		err = nil
 	}
 	if !cast {
-		err = w.(*bufio.Writer).Flush()
+		err = j.(*bufio.Writer).Flush()
 	}
 	return
 }
@@ -375,6 +379,7 @@ func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
+
 	enc := base64.NewEncoder(base64.StdEncoding, dst)
 
 	nn, err = enc.Write(e.Data)
