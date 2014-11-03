@@ -77,14 +77,14 @@ func AppendNil(b []byte) []byte { return append(b, mnil) }
 func AppendFloat64(b []byte, f float64) []byte {
 	o, n := ensure(b, Float64Size)
 	o[n] = mfloat64
-	binary.BigEndian.PutUint64(o[n+1:], *(*uint64)(unsafe.Pointer(&f)))
+	copy(o[n+1:], (*(*[8]byte)(unsafe.Pointer(&f)))[:])
 	return o[:n+9]
 }
 
 func AppendFloat32(b []byte, f float32) []byte {
 	o, n := ensure(b, Float32Size)
 	o[n] = mfloat32
-	binary.BigEndian.PutUint32(o[n+1:], *(*uint32)(unsafe.Pointer(&f)))
+	copy(o[n+1:], (*(*[4]byte)(unsafe.Pointer(&f)))[:])
 	return o[:n+5]
 }
 
@@ -286,6 +286,14 @@ func AppendMapStrIntf(b []byte, m map[string]interface{}) ([]byte, error) {
 	return b, nil
 }
 
+// AppendIntf appends the concrete type of 'i' to the
+// provided []byte. 'i' must be one of the following:
+//  - A bool, float, string, []byte, int, uint, or complex
+//  - A map of supported types (with string keys)
+//  - An array or slice of supported types
+//  - A pointer to a supported type
+//  - A type that satisfies the msgp.Encoder interface
+//  - A type that satisfies the msgp.Extension interface
 func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 	if m, ok := i.(Marshaler); ok {
 		return m.AppendMsg(b)

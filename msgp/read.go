@@ -478,8 +478,7 @@ func (m *Reader) ReadFloat64() (f float64, n int, err error) {
 		err = fmt.Errorf("msgp: unexpected byte %x for float64; expected %x", m.leader[0], mfloat64)
 		return
 	}
-	bits := binary.BigEndian.Uint64(m.leader[1:])
-	f = *(*float64)(unsafe.Pointer(&bits))
+	f = *(*float64)(unsafe.Pointer(&m.leader[1]))
 	return
 }
 
@@ -496,8 +495,7 @@ func (m *Reader) ReadFloat32() (f float32, n int, err error) {
 		err = fmt.Errorf("msgp: unexpected byte %x for float32; expected %x", m.leader[0], mfloat64)
 		return
 	}
-	bits := binary.BigEndian.Uint32(m.leader[1:])
-	f = *(*float32)(unsafe.Pointer(&bits))
+	f = *(*float32)(unsafe.Pointer(&m.leader[1]))
 	return
 }
 

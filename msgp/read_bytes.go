@@ -125,8 +125,7 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 		return
 	}
 
-	bits := binary.BigEndian.Uint64(b[1:])
-	f = *(*float64)(unsafe.Pointer(&bits))
+	f = *(*float64)(unsafe.Pointer(&b[1]))
 	o = b[9:]
 	return
 }
@@ -142,8 +141,7 @@ func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 		return
 	}
 
-	bits := binary.BigEndian.Uint32(b[1:])
-	f = *(*float32)(unsafe.Pointer(&bits))
+	f = *(*float32)(unsafe.Pointer(&b[1]))
 	o = b[5:]
 	return
 }

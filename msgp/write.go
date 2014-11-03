@@ -131,15 +131,13 @@ func (mw *Writer) WriteNil() (n int, err error) {
 
 func (mw *Writer) WriteFloat64(f float64) (n int, err error) {
 	mw.scratch[0] = mfloat64
-	bits := *(*uint64)(unsafe.Pointer(&f))
-	binary.BigEndian.PutUint64(mw.scratch[1:], bits)
+	copy(mw.scratch[1:], (*(*[8]byte)(unsafe.Pointer(&f)))[:])
 	return mw.w.Write(mw.scratch[:9])
 }
 
 func (mw *Writer) WriteFloat32(f float32) (n int, err error) {
 	mw.scratch[0] = mfloat32
-	bits := *(*uint32)(unsafe.Pointer(&f))
-	binary.BigEndian.PutUint32(mw.scratch[1:], bits)
+	copy(mw.scratch[1:], (*(*[4]byte)(unsafe.Pointer(&f)))[:])
 	return mw.w.Write(mw.scratch[:5])
 }
 
@@ -187,7 +185,6 @@ func (mw *Writer) WriteInt64(i int64) (n int, err error) {
 
 }
 
-// Integer Utilities
 func (m *Writer) WriteInt8(i int8) (int, error)   { return m.WriteInt64(int64(i)) }
 func (m *Writer) WriteInt16(i int16) (int, error) { return m.WriteInt64(int64(i)) }
 func (m *Writer) WriteInt32(i int32) (int, error) { return m.WriteInt64(int64(i)) }
@@ -213,7 +210,6 @@ func (mw *Writer) WriteUint64(u uint64) (n int, err error) {
 	}
 }
 
-// Unsigned Integer Utilities
 func (m *Writer) WriteByte(u byte) (int, error)     { return m.WriteUint8(uint8(u)) }
 func (m *Writer) WriteUint8(u uint8) (int, error)   { return m.WriteUint64(uint64(u)) }
 func (m *Writer) WriteUint16(u uint16) (int, error) { return m.WriteUint64(uint64(u)) }
@@ -223,7 +219,7 @@ func (m *Writer) WriteUint(u uint) (int, error)     { return m.WriteUint64(uint6
 func (mw *Writer) WriteBytes(b []byte) (n int, err error) {
 	l := len(b)
 	if l > math.MaxUint32 {
-		panic("Cannot write bytes with length > MaxUint32")
+		panic("msgp: cannot write bytes with length > MaxUint32")
 	}
 	sz := uint32(l)
 	var nn int
@@ -267,7 +263,7 @@ func (mw *Writer) WriteString(s string) (n int, err error) {
 	var nn int
 	l := len(s)
 	if l > math.MaxUint32 {
-		panic("Cannot write string with length greater than MaxUint32")
+		panic("msgp: cannot write string with length greater than MaxUint32")
 	}
 	sz := uint32(l)
 	switch {
@@ -316,11 +312,6 @@ func (mw *Writer) WriteComplex128(f complex128) (n int, err error) {
 	return mw.w.Write(mw.scratch[:18])
 }
 
-// WriteExtension writes an extension type (tuple of (type, binary))
-//func WriteExtension(w io.Writer, typ byte, bts []byte) (n int, err error) {/
-//
-//}
-
 func (mw *Writer) WriteMapStrStr(mp map[string]string) (n int, err error) {
 	var nn int
 	nn, err = mw.WriteMapHeader(uint32(len(mp)))
@@ -328,7 +319,6 @@ func (mw *Writer) WriteMapStrStr(mp map[string]string) (n int, err error) {
 	if err != nil {
 		return
 	}
-
 	for key, val := range mp {
 		nn, err = mw.WriteString(key)
 		n += nn
@@ -383,6 +373,14 @@ func (mw *Writer) WriteTime(t time.Time) (n int, err error) {
 	return mw.w.Write(mw.scratch[:18])
 }
 
+// WriteIntf writes the concrete type of 'v'.
+// WriteIntf will error if 'v' is not one of the following:
+//  - A bool, float, string, []byte, int, uint, or complex
+//  - A map of supported types (with string keys)
+//  - An array or slice of supported types
+//  - A pointer to a supported type
+//  - A type that satisfies the msgp.Encoder interface
+//  - A type that satisfies the msgp.Extension interface
 func (mw *Writer) WriteIntf(v interface{}) (n int, err error) {
 	if enc, ok := v.(Encoder); ok {
 		return enc.EncodeTo(mw)
@@ -438,7 +436,7 @@ func (mw *Writer) WriteIntf(v interface{}) (n int, err error) {
 
 	val := reflect.ValueOf(v)
 	if !isSupported(val.Kind()) || !val.IsValid() {
-		return 0, fmt.Errorf("type %s not supported", val)
+		return 0, fmt.Errorf("msgp: type %s not supported", val)
 	}
 
 	switch val.Kind() {
@@ -452,12 +450,12 @@ func (mw *Writer) WriteIntf(v interface{}) (n int, err error) {
 	case reflect.Map:
 		return mw.writeMap(val)
 	}
-	return 0, fmt.Errorf("type %s not supported", val.Type())
+	return 0, fmt.Errorf("msgp: type %s not supported", val.Type())
 }
 
 func (mw *Writer) writeMap(v reflect.Value) (n int, err error) {
 	if v.Elem().Kind() != reflect.String {
-		return 0, errors.New("map keys must be strings")
+		return 0, errors.New("msgp: map keys must be strings")
 	}
 	ks := v.MapKeys()
 	var nn int
@@ -512,12 +510,12 @@ func (mw *Writer) writeStruct(v reflect.Value) (n int, err error) {
 	if enc, ok := v.Interface().(Encoder); ok {
 		return enc.EncodeTo(mw)
 	}
-	return 0, fmt.Errorf("unsupported type: %s", v.Type())
+	return 0, fmt.Errorf("msgp: unsupported type: %s", v.Type())
 }
 
 func (mw *Writer) writeVal(v reflect.Value) (n int, err error) {
 	if !isSupported(v.Kind()) {
-		return 0, fmt.Errorf("msgp/enc: type %q not supported", v.Type())
+		return 0, fmt.Errorf("msgp: msgp/enc: type %q not supported", v.Type())
 	}
 
 	// shortcut for nil values
@@ -559,7 +557,7 @@ func (mw *Writer) writeVal(v reflect.Value) (n int, err error) {
 		return mw.writeStruct(v)
 
 	}
-	return 0, fmt.Errorf("msgp/enc: type %q not supported", v.Type())
+	return 0, fmt.Errorf("msgp: msgp/enc: type %q not supported", v.Type())
 }
 
 // is the reflect.Kind encodable?

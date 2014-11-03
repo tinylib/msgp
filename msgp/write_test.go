@@ -2,7 +2,6 @@ package msgp
 
 import (
 	"bytes"
-	"encoding/binary"
 	"math"
 	"math/rand"
 	"testing"
@@ -138,10 +137,8 @@ func TestWriteFloat64(t *testing.T) {
 			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
 		}
 
-		bits := binary.BigEndian.Uint64(bts[1:])
-
-		if *(*float64)(unsafe.Pointer(&bits)) != flt {
-			t.Errorf("Value %f came out as %f", flt, *(*float64)(unsafe.Pointer(&bits)))
+		if *(*float64)(unsafe.Pointer(&bts[1])) != flt {
+			t.Errorf("Value %f came out as %f", flt, *(*float64)(unsafe.Pointer(&bts[1])))
 		}
 	}
 }
@@ -171,10 +168,8 @@ func TestWriteFloat32(t *testing.T) {
 			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
 		}
 
-		bits := binary.BigEndian.Uint32(bts[1:])
-
-		if *(*float32)(unsafe.Pointer(&bits)) != flt {
-			t.Errorf("Value %f came out as %f", flt, *(*float32)(unsafe.Pointer(&bits)))
+		if *(*float32)(unsafe.Pointer(&bts[1])) != flt {
+			t.Errorf("Value %f came out as %f", flt, *(*float32)(unsafe.Pointer(&bts[1])))
 		}
 	}
 }
