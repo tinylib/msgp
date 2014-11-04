@@ -426,7 +426,7 @@ func (m *Reader) ReadMapKey(scratch []byte) ([]byte, int, error) {
 	} else if k == kbytes {
 		return m.ReadBytes(scratch)
 	}
-	return nil, 0, errors.New("msgp: map key not convertible to string")
+	return nil, 0, fmt.Errorf("msgp: %q not convertible to map key (string)", k)
 }
 
 func (m *Reader) ReadArrayHeader() (sz uint32, n int, err error) {

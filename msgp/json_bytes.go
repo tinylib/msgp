@@ -113,7 +113,7 @@ func rwMapBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) 
 				return msg, scratch, err
 			}
 		}
-		msg, err = rwStringBytes(w, msg)
+		msg, err = rwMapKeyBytes(w, msg)
 		if err != nil {
 			return msg, scratch, err
 		}
@@ -128,6 +128,15 @@ func rwMapBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) 
 	}
 	err = w.WriteByte('}')
 	return msg, scratch, err
+}
+
+func rwMapKeyBytes(w jsWriter, msg []byte) ([]byte, error) {
+	str, msg, err := ReadMapKeyZC(msg)
+	if err != nil {
+		return msg, err
+	}
+	_, err = rwquoted(w, str)
+	return msg, err
 }
 
 func rwStringBytes(w jsWriter, msg []byte) ([]byte, error) {

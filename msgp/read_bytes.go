@@ -75,7 +75,7 @@ func ReadMapKeyZC(b []byte) ([]byte, []byte, error) {
 	} else if k == kbytes {
 		return ReadBytesZC(b)
 	}
-	return nil, b, errors.New("msgp: map key not convertible to string")
+	return nil, b, fmt.Errorf("msgp: %q not convertible to map key (string)", k)
 }
 
 func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
@@ -112,7 +112,7 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unexpected byte 0x%x for array", lead)
+		err = fmt.Errorf("msgp: unexpected byte %x for array", lead)
 		return
 	}
 }
@@ -122,7 +122,7 @@ func ReadNilBytes(b []byte) ([]byte, error) {
 		return nil, ErrShortBytes
 	}
 	if b[0] != mnil {
-		return b, fmt.Errorf("msgp: unexpected byte %x for Nil", b[0])
+		return b, fmt.Errorf("msgp: unexpected byte %x for null", b[0])
 	}
 	return b[1:], nil
 }

@@ -28,6 +28,33 @@ const (
 	knull
 )
 
+func (k kind) String() string {
+	switch k {
+	case kmap:
+		return "map"
+	case kbool:
+		return "bool"
+	case karray:
+		return "array"
+	case kint:
+		return "int"
+	case kuint:
+		return "uint"
+	case kfloat32, kfloat64:
+		return "float"
+	case kbytes:
+		return "bin"
+	case kstring:
+		return "string"
+	case kextension:
+		return "extension"
+	case knull:
+		return "null"
+	default:
+		return "<invalid type>"
+	}
+}
+
 var null = []byte("null")
 var hex = []byte("0123456789abcdef")
 
@@ -188,7 +215,7 @@ func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 			n += 1
 		}
 
-		src.scratch, _, err = src.ReadStringAsBytes(src.scratch)
+		src.scratch, _, err = src.ReadMapKey(src.scratch)
 		if err != nil {
 			return
 		}
