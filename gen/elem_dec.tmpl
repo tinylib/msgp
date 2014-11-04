@@ -84,7 +84,7 @@
 		return
 	}
 	for xplz:=uint32(0); xplz<isz; xplz++ {
-		field, nn, err = dc.ReadStringAsBytes(field)
+		field, nn, err = dc.ReadMapKey(field)
 		n += nn
 		if err != nil {
 			return

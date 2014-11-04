@@ -89,7 +89,7 @@
 		return
 	}
 	for xplz := uint32(0); xplz < isz; xplz++ {
-		field, bts, err = msgp.ReadStringZC(bts)
+		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
 			return
 		}

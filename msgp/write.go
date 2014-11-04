@@ -70,8 +70,8 @@ type Writer struct {
 	scratch [24]byte
 }
 
-// NewEncoder returns a MsgWriter, which can be
-// used by MsgEncoders to serialize themselves
+// NewWriter returns a Writer, which can be
+// used by Encoder to serialize themselves
 // to the provided io.Writer. It does no buffering.
 func NewWriter(w io.Writer) *Writer {
 	return &Writer{

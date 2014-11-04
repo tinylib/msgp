@@ -65,6 +65,19 @@ func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 	}
 }
 
+func ReadMapKeyZC(b []byte) ([]byte, []byte, error) {
+	if len(b) < 2 {
+		return nil, b, ErrShortBytes
+	}
+	k := getKind(b[0])
+	if k == kstring {
+		return ReadStringZC(b)
+	} else if k == kbytes {
+		return ReadBytesZC(b)
+	}
+	return nil, b, errors.New("msgp: map key not convertible to string")
+}
+
 func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 	if len(b) < 1 {
 		return 0, nil, ErrShortBytes
@@ -597,8 +610,21 @@ func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]int
 
 	for z := uint32(0); z < sz; z++ {
 		var key string
-		key, o, err = ReadStringBytes(o)
-		if err != nil {
+		switch getKind(o[0]) {
+		case kstring:
+			key, o, err = ReadStringBytes(o)
+			if err != nil {
+				return
+			}
+		case kbytes:
+			var bts []byte
+			bts, o, err = ReadBytesZC(o)
+			if err != nil {
+				return
+			}
+			key = string(bts)
+		default:
+			err = errors.New("msgp: map key not convertible to string")
 			return
 		}
 		var val interface{}

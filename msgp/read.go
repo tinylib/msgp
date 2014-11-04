@@ -416,6 +416,19 @@ func (m *Reader) ReadMapHeader() (sz uint32, n int, err error) {
 	}
 }
 
+func (m *Reader) ReadMapKey(scratch []byte) ([]byte, int, error) {
+	k, err := m.nextKind()
+	if err != nil {
+		return nil, 0, err
+	}
+	if k == kstring {
+		return m.ReadStringAsBytes(scratch)
+	} else if k == kbytes {
+		return m.ReadBytes(scratch)
+	}
+	return nil, 0, errors.New("msgp: map key not convertible to string")
+}
+
 func (m *Reader) ReadArrayHeader() (sz uint32, n int, err error) {
 	var lead byte
 	var nn int
@@ -889,20 +902,23 @@ func (m *Reader) ReadMapStrStr(mp map[string]string) (n int, err error) {
 	for key, _ := range mp {
 		delete(mp, key)
 	}
+	var key []byte
+	var val []byte
 	for i := uint32(0); i < sz; i++ {
-		var key string
-		var val string
-		key, nn, err = m.ReadString()
+		// we'll accept both 'str' and 'bin'
+		// for strings here, since some legacy
+		// encodings use 'bin' for strings
+		key, nn, err = m.ReadMapKey(key)
 		n += nn
 		if err != nil {
 			return
 		}
-		val, nn, err = m.ReadString()
+		val, nn, err = m.ReadMapKey(val)
 		n += nn
 		if err != nil {
 			return
 		}
-		mp[key] = val
+		mp[string(key)] = string(val)
 	}
 	return
 }
@@ -923,10 +939,10 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error) {
 	for key, _ := range mp {
 		delete(mp, key)
 	}
+	var scratch []byte
 	for i := uint32(0); i < sz; i++ {
-		var key string
 		var val interface{}
-		key, nn, err = m.ReadString()
+		scratch, nn, err = m.ReadMapKey(scratch)
 		n += nn
 		if err != nil {
 			return
@@ -936,7 +952,7 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (n int, err error) {
 		if err != nil {
 			return
 		}
-		mp[key] = val
+		mp[string(scratch)] = val
 	}
 	return
 }
