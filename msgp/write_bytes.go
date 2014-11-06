@@ -235,10 +235,7 @@ func AppendComplex64(b []byte, c complex64) []byte {
 	o, n := ensure(b, Complex64Size)
 	o[n] = mfixext8
 	o[n+1] = Complex64Extension
-	rl := real(c)
-	im := imag(c)
-	binary.BigEndian.PutUint32(o[n+2:], *(*uint32)(unsafe.Pointer(&rl)))
-	binary.BigEndian.PutUint32(o[n+6:], *(*uint32)(unsafe.Pointer(&im)))
+	copy(o[n+2:], (*(*[8]byte)(unsafe.Pointer(&c)))[:])
 	return o[:n+10]
 }
 
@@ -246,10 +243,7 @@ func AppendComplex128(b []byte, c complex128) []byte {
 	o, n := ensure(b, Complex64Size)
 	o[n] = mfixext16
 	o[n+1] = Complex128Extension
-	rl := real(c)
-	im := imag(c)
-	binary.BigEndian.PutUint64(o[n+2:], *(*uint64)(unsafe.Pointer(&rl)))
-	binary.BigEndian.PutUint64(o[n+10:], *(*uint64)(unsafe.Pointer(&im)))
+	copy(o[n+2:], (*(*[16]byte)(unsafe.Pointer(&c)))[:])
 	return o[:n+18]
 }
 

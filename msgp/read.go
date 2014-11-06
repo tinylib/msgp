@@ -856,9 +856,7 @@ func (m *Reader) ReadComplex64() (f complex64, n int, err error) {
 	if m.leader[1] != Complex64Extension {
 		err = fmt.Errorf("msgp: unexpected byte %x for complex64 extension", m.leader[1])
 	}
-	rlb := binary.BigEndian.Uint32(m.leader[2:])
-	imb := binary.BigEndian.Uint32(m.leader[6:])
-	f = complex(*(*float32)(unsafe.Pointer(&rlb)), *(*float32)(unsafe.Pointer(&imb)))
+	f = *(*complex64)(unsafe.Pointer(&m.leader[2]))
 	return
 }
 
@@ -879,9 +877,7 @@ func (m *Reader) ReadComplex128() (f complex128, n int, err error) {
 		err = fmt.Errorf("msgp: unexpected byte %x for complex128 extension", m.leader[1])
 		return
 	}
-	rlb := binary.BigEndian.Uint64(m.leader[2:])
-	imb := binary.BigEndian.Uint64(m.leader[10:])
-	f = complex(*(*float64)(unsafe.Pointer(&rlb)), *(*float64)(unsafe.Pointer(&imb)))
+	f = *(*complex128)(unsafe.Pointer(&m.leader[2]))
 	return
 }
 

@@ -355,7 +355,7 @@ func TestReadComplex128(t *testing.T) {
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		buf.Reset()
 		f := complex(rand.Float64()*math.MaxFloat64, rand.Float64()*math.MaxFloat64)
 

@@ -6,6 +6,37 @@ import (
 	"testing"
 )
 
+func TestRemove(t *testing.T) {
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+	w.WriteMapHeader(3)
+	w.WriteString("first")
+	w.WriteFloat64(-3.1)
+	w.WriteString("second")
+	w.WriteString("DELETE ME!!!")
+	w.WriteString("third")
+	w.WriteBytes([]byte("blah"))
+
+	raw := Remove("second", buf.Bytes())
+
+	m, _, err := ReadMapStrIntfBytes(raw, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m) != 2 {
+		t.Errorf("expected %d fields; found %d", 2, len(m))
+	}
+	if _, ok := m["first"]; !ok {
+		t.Errorf("field %q not found", "first")
+	}
+	if _, ok := m["third"]; !ok {
+		t.Errorf("field %q not found", "third")
+	}
+	if _, ok := m["second"]; ok {
+		t.Errorf("field %q (deleted field) still present", "second")
+	}
+}
+
 func TestLocate(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
@@ -66,11 +97,11 @@ func TestReplace(t *testing.T) {
 	NewWriter(&fbuf).WriteFloat64(4.0)
 
 	// replace 2.0 with 4.0 in field two
-	raw, err := Replace("thing_two", buf.Bytes(), fbuf.Bytes())
-	if err != nil {
-		t.Fatal(err)
+	raw := Replace("thing_two", buf.Bytes(), fbuf.Bytes())
+	if len(raw) == 0 {
+		t.Fatal("field not found")
 	}
-
+	var err error
 	m := make(map[string]interface{})
 	m, _, err = ReadMapStrIntfBytes(raw, m)
 	if err != nil {
@@ -86,10 +117,9 @@ func TestReplace(t *testing.T) {
 	// replace 2.0 with []byte("hi!")
 	fbuf.Reset()
 	NewWriter(&fbuf).WriteBytes([]byte("hi!"))
-	raw, err = Replace("thing_two", raw, fbuf.Bytes())
-	if err != nil {
-		t.Logf("%q", raw)
-		t.Fatal(err)
+	raw = Replace("thing_two", raw, fbuf.Bytes())
+	if len(raw) == 0 {
+		t.Fatal("field not found")
 	}
 
 	m, _, err = ReadMapStrIntfBytes(raw, m)
@@ -105,8 +135,8 @@ func TestReplace(t *testing.T) {
 	// larger-size replacement
 	fbuf.Reset()
 	NewWriter(&fbuf).WriteBytes([]byte("some even larger bytes than before"))
-	raw, err = Replace("some_bytes", raw, fbuf.Bytes())
-	if err != nil {
+	raw = Replace("some_bytes", raw, fbuf.Bytes())
+	if len(raw) == 0 {
 		t.Logf("%q", raw)
 		t.Fatal(err)
 	}

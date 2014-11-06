@@ -295,20 +295,14 @@ func (mw *Writer) WriteString(s string) (n int, err error) {
 func (mw *Writer) WriteComplex64(f complex64) (n int, err error) {
 	mw.scratch[0] = mfixext8
 	mw.scratch[1] = Complex64Extension
-	rl := real(f)
-	im := imag(f)
-	binary.BigEndian.PutUint32(mw.scratch[2:], *(*uint32)(unsafe.Pointer(&rl)))
-	binary.BigEndian.PutUint32(mw.scratch[6:], *(*uint32)(unsafe.Pointer(&im)))
+	copy(mw.scratch[2:], (*(*[8]byte)(unsafe.Pointer(&f)))[:])
 	return mw.w.Write(mw.scratch[:10])
 }
 
 func (mw *Writer) WriteComplex128(f complex128) (n int, err error) {
 	mw.scratch[0] = mfixext16
 	mw.scratch[1] = Complex128Extension
-	rl := real(f)
-	im := imag(f)
-	binary.BigEndian.PutUint64(mw.scratch[2:], *(*uint64)(unsafe.Pointer(&rl)))
-	binary.BigEndian.PutUint64(mw.scratch[10:], *(*uint64)(unsafe.Pointer(&im)))
+	copy(mw.scratch[2:], (*(*[16]byte)(unsafe.Pointer(&f)))[:])
 	return mw.w.Write(mw.scratch[:18])
 }
 

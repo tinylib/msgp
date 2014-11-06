@@ -537,11 +537,7 @@ func ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
 		err = fmt.Errorf("msgp: unexpected byte %x for complex128", b[1])
 		return
 	}
-
-	rbits := binary.BigEndian.Uint64(b[2:])
-	ibits := binary.BigEndian.Uint64(b[10:])
-
-	c = complex(*(*float64)(unsafe.Pointer(&rbits)), *(*float64)(unsafe.Pointer(&ibits)))
+	c = *(*complex128)(unsafe.Pointer(&b[2]))
 	o = b[18:]
 	return
 }
@@ -561,10 +557,7 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 		err = fmt.Errorf("msgp: unexpected byte %x for complex64", b[1])
 		return
 	}
-
-	rbits := binary.BigEndian.Uint32(b[2:])
-	ibits := binary.BigEndian.Uint32(b[6:])
-	c = complex(*(*float32)(unsafe.Pointer(&rbits)), *(*float32)(unsafe.Pointer(&ibits)))
+	c = *(*complex64)(unsafe.Pointer(&b[2]))
 	o = b[10:]
 	return
 }
@@ -609,6 +602,10 @@ func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]int
 	}
 
 	for z := uint32(0); z < sz; z++ {
+		if len(o) < 1 {
+			err = ErrShortBytes
+			return
+		}
 		var key string
 		switch getKind(o[0]) {
 		case kstring:

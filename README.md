@@ -28,7 +28,7 @@ The following command-line flags are supported:
  - `-o` - output file name (default is `{filename}_gen.go`)
  - `-file` - input file name (default is `$GOPATH/src/$GOPACKAGE/$GOFILE`, which are set by the `go generate` command)
  - `-pkg` - output package name (default is `$GOPACKAGE`)
- - `-encode` - satisfy the `msgp.Decoder` and `msgp.Encoder` interfaces (default is `true`)
+ - `-io` - satisfy the `msgp.Decoder` and `msgp.Encoder` interfaces (default is `true`)
  - `-marshal` - satisfy the `msgp.Marshaler` and `msgp.Unmarshaler` interfaces (default is `true`)
  - `-tests` - generate tests and benchmarks (default is `true`)
 
