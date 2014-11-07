@@ -60,7 +60,7 @@ func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unexpected byte %x for map", lead)
+		err = TypeError{Type: MapType, Prefix: lead}
 		return
 	}
 }
@@ -112,7 +112,7 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unexpected byte %x for array", lead)
+		err = TypeError{Type: ArrayType, Prefix: lead}
 		return
 	}
 }
@@ -122,7 +122,7 @@ func ReadNilBytes(b []byte) ([]byte, error) {
 		return nil, ErrShortBytes
 	}
 	if b[0] != mnil {
-		return b, fmt.Errorf("msgp: unexpected byte %x for null", b[0])
+		return b, TypeError{Type: NilType, Prefix: b[0]}
 	}
 	return b[1:], nil
 }
@@ -134,7 +134,7 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 	}
 
 	if b[0] != mfloat64 {
-		err = fmt.Errorf("msgp: unexpected byte %x for float64", b[0])
+		err = TypeError{Type: Float64Type, Prefix: b[0]}
 		return
 	}
 
@@ -150,7 +150,7 @@ func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 	}
 
 	if b[0] != mfloat32 {
-		err = fmt.Errorf("msgp: unexpected byte %x for float32", b[0])
+		err = TypeError{Type: Float32Type, Prefix: b[0]}
 		return
 	}
 
@@ -177,7 +177,7 @@ func ReadBoolBytes(b []byte) (v bool, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unexpected byte %x for bool", b[0])
+		err = TypeError{Type: BoolType, Prefix: b[0]}
 		return
 
 	}
@@ -252,7 +252,7 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unexpected byte %x for int64", lead)
+		err = TypeError{Type: IntType, Prefix: lead}
 		return
 	}
 }
@@ -344,7 +344,7 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unexpected byte %x for uint64", lead)
+		err = TypeError{Type: UintType, Prefix: lead}
 		return
 	}
 }
@@ -426,7 +426,7 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 		b = b[5:]
 
 	default:
-		err = fmt.Errorf("msgp: unexpected byte %x for []byte", lead)
+		err = TypeError{Type: BinType, Prefix: lead}
 		return
 	}
 
@@ -502,7 +502,7 @@ func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 			b = b[5:]
 
 		default:
-			err = fmt.Errorf("msgp: unexpected byte %x for string", lead)
+			err = TypeError{Type: StrType, Prefix: lead}
 			return
 		}
 	}
@@ -621,7 +621,7 @@ func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]int
 			}
 			key = string(bts)
 		default:
-			err = errors.New("msgp: map key not convertible to string")
+			err = TypeError{Type: StrType, Prefix: o[0]}
 			return
 		}
 		var val interface{}
@@ -733,7 +733,7 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unrecognized leading byte: %x", b[1])
+		err = InvalidPrefixError(b[0])
 		return
 	}
 }
@@ -931,7 +931,7 @@ func getSize(b []byte) (int, int, error) {
 		return 5, 2 * (int(binary.BigEndian.Uint32(b[1:]))), nil
 
 	default:
-		return 0, 0, fmt.Errorf("msgp: unknown leading byte %x", lead)
+		return 0, 0, InvalidPrefixError(lead)
 
 	}
 }

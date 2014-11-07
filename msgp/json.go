@@ -132,10 +132,13 @@ func rwNext(w jsWriter, src *Reader) (int, error) {
 	case kmap:
 		return rwMap(w, src)
 	default:
+		// we shouldn't get here; nextKind() errors if the type is not recognized
 		return 0, errors.New("msgp: bad encoding; unrecognized type prefix")
 	}
 }
 
+// next kinds returns the next "kind", or an error
+// if the type is not recognized or the reader errors
 func (m *Reader) nextKind() (kind, error) {
 	var lead []byte
 	var err error
@@ -183,7 +186,7 @@ func (m *Reader) nextKind() (kind, error) {
 	case mfalse, mtrue:
 		return kbool, nil
 	default:
-		return invalid, nil
+		return invalid, InvalidPrefixError(l)
 	}
 }
 

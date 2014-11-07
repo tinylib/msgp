@@ -3,40 +3,35 @@ package msgp
 import (
 	"bytes"
 	"encoding/json"
-	"reflect"
 	"testing"
+	"time"
 )
 
 func TestUnmarshalJSON(t *testing.T) {
 	var buf bytes.Buffer
 	enc := NewWriter(&buf)
-	enc.WriteMapHeader(6)
+	enc.WriteMapHeader(5)
 
 	enc.WriteString("thing_1")
 	enc.WriteString("a string object")
 
 	enc.WriteString("a_map")
 	enc.WriteMapHeader(2)
-	enc.WriteString("float_a")
-	enc.WriteFloat32(1.0)
+
+	// INNER
+	enc.WriteString("cmplx")
+	enc.WriteComplex64(complex(1.0, 1.0))
 	enc.WriteString("int_b")
 	enc.WriteInt64(-100)
 
 	enc.WriteString("an extension")
 	enc.WriteExtension(&RawExtension{1, []byte("blaaahhh")})
-	//enc.WriteString("hi")
 
 	enc.WriteString("some bytes")
 	enc.WriteBytes([]byte("here are some bytes"))
 
-	enc.WriteString("a bool")
-	enc.WriteBool(true)
-
-	enc.WriteString("a map")
-	enc.WriteMapStrStr(map[string]string{
-		"internal_one": "blah",
-		"internal_two": "blahhh...",
-	})
+	enc.WriteString("now")
+	enc.WriteTime(time.Now())
 
 	var js bytes.Buffer
 	_, err := UnmarshalAsJSON(&js, buf.Bytes())
@@ -51,8 +46,8 @@ func TestUnmarshalJSON(t *testing.T) {
 		t.Fatalf("Error unmarshaling: %s", err)
 	}
 
-	if len(mp) != 6 {
-		t.Errorf("map length should be %d, not %d", 6, len(mp))
+	if len(mp) != 5 {
+		t.Errorf("map length should be %d, not %d", 5, len(mp))
 	}
 
 	so, ok := mp["thing_1"]
@@ -60,18 +55,25 @@ func TestUnmarshalJSON(t *testing.T) {
 		t.Errorf("expected %q; got %q", "a string object", so)
 	}
 
-	in, ok := mp["a map"]
+	if _, ok := mp["now"]; !ok {
+		t.Error(`"now" field doesn't exist`)
+	}
+
+	c, ok := mp["a_map"]
 	if !ok {
-		t.Error("no key 'a map'")
-	}
-	if inm, ok := in.(map[string]interface{}); !ok {
-		t.Error("inner map not type-assertable to map[string]interface{}")
+		t.Error(`"a_map" field doesn't exist`)
 	} else {
-		inm1, ok := inm["internal_one"]
-		if !ok || !reflect.DeepEqual(inm1, "blah") {
-			t.Errorf("inner map field %q should be %q, not %q", "internal_one", "blah", inm1)
+		if m, ok := c.(map[string]interface{}); ok {
+			if _, ok := m["cmplx"]; !ok {
+				t.Error(`"a_map.cmplx" doesn't exist`)
+			}
+		} else {
+			t.Error(`can't type-assert "c" to map[string]interface{}`)
 		}
+
 	}
+
+	t.Logf("JSON: %s", js.Bytes())
 }
 
 func BenchmarkUnmarshalAsJSON(b *testing.B) {

@@ -3,9 +3,11 @@ package msgp
 import (
 	"bufio"
 	"encoding/base64"
-	"errors"
+	"encoding/json"
+	"fmt"
 	"io"
 	"strconv"
+	"time"
 )
 
 // UnmarshalAsJSON takes raw messagepack and writes
@@ -68,7 +70,7 @@ func writeNext(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	case kextension:
 		return rwExtensionBytes(w, msg, scratch)
 	default:
-		return msg, scratch, errors.New("msgp: bad encoding; invalid type")
+		return msg, scratch, fmt.Errorf("msgp: bad encdoing; unknown type prefix 0x%x", msg[0])
 	}
 }
 
@@ -236,11 +238,47 @@ func rwFloatBytes(w jsWriter, msg []byte, f64 bool, scratch []byte) ([]byte, []b
 }
 
 func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
-	r := RawExtension{}
+	if len(msg) < 2 {
+		return msg, scratch, ErrShortBytes
+	}
 	t, err := peekExtension(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
+
+	// if it's time.Time
+	if t == TimeExtension {
+		var tm time.Time
+		tm, msg, err = ReadTimeBytes(msg)
+		if err != nil {
+			return msg, scratch, err
+		}
+		bts, err := tm.MarshalJSON()
+		if err != nil {
+			return msg, scratch, err
+		}
+		_, err = w.Write(bts)
+		return msg, scratch, err
+	}
+
+	// if the extension is registered,
+	// use its canonical JSON form
+	if f, ok := extensionReg[t]; ok {
+		e := f()
+		msg, err = ReadExtensionBytes(msg, e)
+		if err != nil {
+			return msg, scratch, err
+		}
+		bts, err := json.Marshal(e)
+		if err != nil {
+			return msg, scratch, err
+		}
+		_, err = w.Write(bts)
+		return msg, scratch, err
+	}
+
+	// otherwise, write `{"type": <num>, "data": "<base64data>"}`
+	r := RawExtension{}
 	r.Type = t
 	msg, err = ReadExtensionBytes(msg, &r)
 	if err != nil {

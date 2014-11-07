@@ -34,6 +34,70 @@ func (a ArrayError) Error() string {
 	return fmt.Sprintf("wanted array of size %d; got %d", a.Wanted, a.Got)
 }
 
+type Type byte
+
+const (
+	InvalidType Type = iota
+	StrType
+	BinType
+	MapType
+	ArrayType
+	Float64Type
+	Float32Type
+	BoolType
+	IntType
+	UintType
+	NilType
+	ExtensionType
+)
+
+func (t Type) String() string {
+	switch t {
+	case StrType:
+		return "str"
+	case BinType:
+		return "bin"
+	case MapType:
+		return "map"
+	case ArrayType:
+		return "array"
+	case Float64Type:
+		return "float64"
+	case Float32Type:
+		return "float32"
+	case BoolType:
+		return "bool"
+	case UintType:
+		return "uint"
+	case IntType:
+		return "int"
+	case ExtensionType:
+		return "ext"
+	case NilType:
+		return "nil"
+	default:
+		return "<invalid>"
+	}
+}
+
+// TypeError represents a decoding type error
+type TypeError struct {
+	Type   Type
+	Prefix byte
+}
+
+func (t TypeError) Error() string {
+	return fmt.Sprintf("msgp: prefix 0x%x invalid for type %q", t.Prefix, t.Type)
+}
+
+// InvalidPrefixError is returned when a bad encoding
+// uses a prefix that is not recognized in the MessagePack standard
+type InvalidPrefixError byte
+
+func (i InvalidPrefixError) Error() string {
+	return fmt.Sprintf("msgp: unrecognized type prefix 0x%x", byte(i))
+}
+
 func init() {
 	readerPool.New = func() interface{} {
 		return &Reader{}
@@ -210,7 +274,8 @@ func (m *Reader) Skip() (n int, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unknown leading byte: 0x%x", byte(k))
+		// we shouldn't get here; nextKind() errors
+		err = errors.New("msgp: Skip() decode error")
 		return
 	}
 }
@@ -275,7 +340,7 @@ func (m *Reader) skipExtension() (n int, err error) {
 		read = int(binary.BigEndian.Uint32(m.leader[:]))
 
 	default:
-		err = fmt.Errorf("msgp: unexpected byte 0x%x for extension", lead)
+		err = TypeError{Type: ExtensionType, Prefix: lead}
 		return
 
 	}
@@ -320,7 +385,7 @@ func (m *Reader) skipBytes() (n int, err error) {
 		}
 		read = int(binary.BigEndian.Uint32(m.leader[:]))
 	default:
-		err = fmt.Errorf("msgp: bad byte %x for []byte", m.leader[0])
+		err = TypeError{Type: BinType, Prefix: m.leader[0]}
 		return
 	}
 	var cn int64
@@ -367,7 +432,7 @@ func (m *Reader) skipString() (n int, err error) {
 		if isfixstr(lead) {
 			read = int(rfixstr(lead))
 		} else {
-			err = fmt.Errorf("msgp: unexpected byte %x for string", lead)
+			err = TypeError{Type: StrType, Prefix: lead}
 			return
 		}
 	}
@@ -411,7 +476,7 @@ func (m *Reader) ReadMapHeader() (sz uint32, n int, err error) {
 		sz = binary.BigEndian.Uint32(m.leader[:])
 		return
 	default:
-		err = fmt.Errorf("msgp: unexpected byte 0x%x for map", lead)
+		err = TypeError{Type: MapType, Prefix: lead}
 		return
 	}
 }
@@ -462,7 +527,7 @@ func (m *Reader) ReadArrayHeader() (sz uint32, n int, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unexpected byte 0x%x for array", lead)
+		err = TypeError{Type: ArrayType, Prefix: lead}
 		return
 	}
 }
@@ -473,7 +538,7 @@ func (m *Reader) ReadNil() (int, error) {
 		return 0, err
 	}
 	if lead != mnil {
-		return 1, fmt.Errorf("msgp: unexpected byte %x for Nil", lead)
+		return 1, TypeError{Type: NilType, Prefix: lead}
 	}
 	return 1, nil
 }
@@ -484,11 +549,7 @@ func (m *Reader) ReadFloat64() (f float64, n int, err error) {
 		return
 	}
 	if m.leader[0] != mfloat64 {
-		if m.leader[0] == mnil {
-			err = ErrNil
-			return
-		}
-		err = fmt.Errorf("msgp: unexpected byte %x for float64; expected %x", m.leader[0], mfloat64)
+		err = TypeError{Type: Float64Type, Prefix: m.leader[0]}
 		return
 	}
 	f = *(*float64)(unsafe.Pointer(&m.leader[1]))
@@ -501,11 +562,7 @@ func (m *Reader) ReadFloat32() (f float32, n int, err error) {
 		return
 	}
 	if m.leader[0] != mfloat32 {
-		if m.leader[0] == mnil {
-			err = ErrNil
-			return
-		}
-		err = fmt.Errorf("msgp: unexpected byte %x for float32; expected %x", m.leader[0], mfloat64)
+		err = TypeError{Type: Float32Type, Prefix: m.leader[0]}
 		return
 	}
 	f = *(*float32)(unsafe.Pointer(&m.leader[1]))
@@ -523,7 +580,7 @@ func (m *Reader) ReadBool() (bool, int, error) {
 	case mfalse:
 		return false, 1, nil
 	default:
-		return false, 1, fmt.Errorf("msgp: unexpected byte %x for bool", lead)
+		return false, 1, TypeError{Type: BoolType, Prefix: lead}
 	}
 }
 
@@ -581,7 +638,7 @@ func (m *Reader) ReadInt64() (i int64, n int, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unknown leading byte 0x%x for int", lead)
+		err = TypeError{Type: IntType, Prefix: lead}
 		return
 	}
 }
@@ -632,7 +689,7 @@ func (m *Reader) ReadInt() (i int, n int, err error) {
 		i = int(sin)
 		return
 	}
-	panic("impossible")
+	panic("impossible Sizeof(int)")
 }
 
 func (m *Reader) ReadUint64() (u uint64, n int, err error) {
@@ -679,7 +736,7 @@ func (m *Reader) ReadUint64() (u uint64, n int, err error) {
 		return
 
 	default:
-		err = fmt.Errorf("msgp: unexpected byte %x for Uint", lead)
+		err = TypeError{Type: UintType, Prefix: lead}
 		return
 
 	}
@@ -729,7 +786,7 @@ func (m *Reader) ReadUint() (u uint, n int, err error) {
 		u = uint(l)
 		return
 	}
-	panic("impossible")
+	panic("impossible Sizeof(uint)")
 }
 
 func (m *Reader) ReadBytes(scratch []byte) (b []byte, n int, err error) {
@@ -764,7 +821,7 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, n int, err error) {
 		}
 		read = int(binary.BigEndian.Uint32(m.leader[:]))
 	default:
-		err = fmt.Errorf("msgp: bad byte %x for []byte", m.leader[0])
+		err = TypeError{Type: BinType, Prefix: lead}
 		return
 	}
 	b, nn, err = readN(m.r, scratch, read)
@@ -821,7 +878,7 @@ func (m *Reader) ReadStringAsBytes(scratch []byte) (b []byte, n int, err error) 
 		if isfixstr(lead) {
 			read = int(rfixstr(lead))
 		} else {
-			err = fmt.Errorf("msgp: unexpected byte %x for string", lead)
+			err = TypeError{Type: StrType, Prefix: lead}
 			return
 		}
 	}
@@ -847,11 +904,8 @@ func (m *Reader) ReadComplex64() (f complex64, n int, err error) {
 		return
 	}
 	if m.leader[0] != mfixext8 {
-		if m.leader[0] == mnil {
-			err = ErrNil
-			return
-		}
 		err = fmt.Errorf("msgp: unexpected byte %x for complex64", m.leader[0])
+		return
 	}
 	if m.leader[1] != Complex64Extension {
 		err = fmt.Errorf("msgp: unexpected byte %x for complex64 extension", m.leader[1])
@@ -866,10 +920,6 @@ func (m *Reader) ReadComplex128() (f complex128, n int, err error) {
 		return
 	}
 	if m.leader[0] != mfixext16 {
-		if m.leader[0] == mnil {
-			err = ErrNil
-			return
-		}
 		err = fmt.Errorf("msgp: unexpected byte %x for complex128", m.leader[0])
 		return
 	}
@@ -1076,7 +1126,8 @@ func (m *Reader) readInterface() (i interface{}, n int, err error) {
 		return
 
 	default:
-		return nil, 0, errors.New("msgp: bad encoding; unrecognized type prefix")
+		// we shouldn't get here; nextKind() will error
+		return nil, 0, errors.New("msgp: unrecognized type error")
 
 	}
 }
