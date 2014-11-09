@@ -15,10 +15,10 @@
 //  -o = output file name (default is {filename}_gen.go)
 //  -file = input file name (default is $GOPATH/src/$GOPACKAGE/$GOFILE, which are set by the `go generate` command)
 //  -pkg = output package name (default is $GOPACKAGE)
-//  -io = satisfy the `msgp.Decoder` and `msgp.Encoder` interfaces (default is true)
+//  -io = satisfy the `msgp.Decodable` and `msgp.Encodable` interfaces (default is true)
 //  -marshal = satisfy the `msgp.Marshaler` and `msgp.Unmarshaler` interfaces (default is true)
 //  -tests = generate tests and benchmarks (default is true)
 //
-// For more information, please read README.md
+// For more information, please read README.md, and the wiki at github.com/philhofer/msgp
 //
 package main

@@ -3,6 +3,7 @@ package msgp
 import (
 	"bufio"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io"
@@ -10,50 +11,6 @@ import (
 	"time"
 	"unicode/utf8"
 )
-
-type kind byte
-
-const (
-	invalid kind = iota
-	kmap
-	kbool
-	karray
-	kint
-	kuint
-	kfloat32
-	kfloat64
-	kextension
-	kbytes
-	kstring
-	knull
-)
-
-func (k kind) String() string {
-	switch k {
-	case kmap:
-		return "map"
-	case kbool:
-		return "bool"
-	case karray:
-		return "array"
-	case kint:
-		return "int"
-	case kuint:
-		return "uint"
-	case kfloat32, kfloat64:
-		return "float"
-	case kbytes:
-		return "bin"
-	case kstring:
-		return "string"
-	case kextension:
-		return "extension"
-	case knull:
-		return "null"
-	default:
-		return "<invalid type>"
-	}
-}
 
 var null = []byte("null")
 var hex = []byte("0123456789abcdef")
@@ -66,13 +23,13 @@ type jsWriter interface {
 	WriteString(string) (int, error)
 }
 
-// CopyToJson reads a single MessagePack-encoded message from 'src' and
+// CopyToJSON reads a single MessagePack-encoded message from 'src' and
 // writes it as JSON to 'dst' until 'src' returns EOF. It returns the
 // number of bytes written and any errors encountered.
 func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
 	r := NewReader(src)
 	n, err = r.WriteToJSON(dst)
-	Done(r)
+	FreeR(r)
 	return
 }
 
@@ -86,7 +43,7 @@ func (r *Reader) WriteToJSON(w io.Writer) (n int64, err error) {
 		j = jsw
 		cast = true
 	} else {
-		j = bufio.NewWriterSize(w, 256)
+		j = bufio.NewWriterSize(w, 512)
 	}
 	var nn int
 	for err == nil {
@@ -98,9 +55,8 @@ func (r *Reader) WriteToJSON(w io.Writer) (n int64, err error) {
 			j.(*bufio.Writer).Flush()
 		}
 		return
-	} else {
-		err = nil
 	}
+	err = nil
 	if !cast {
 		err = j.(*bufio.Writer).Flush()
 	}
@@ -108,85 +64,32 @@ func (r *Reader) WriteToJSON(w io.Writer) (n int64, err error) {
 }
 
 func rwNext(w jsWriter, src *Reader) (int, error) {
-	k, err := src.nextKind()
+	t, err := src.NextType()
 	if err != nil {
 		return 0, err
 	}
-	switch k {
-	case knull:
+	switch t {
+	case NilType:
 		return w.Write(null)
-	case kbool:
+	case BoolType:
 		return rwBool(w, src)
-	case kint, kuint:
-		return rwInt(w, src, k)
-	case kstring:
+	case IntType, UintType:
+		return rwInt(w, src, t)
+	case StrType:
 		return rwString(w, src)
-	case kbytes:
+	case BinType:
 		return rwBytes(w, src)
-	case kextension:
-		return rwExtension(w, src)
-	case karray:
+	case ExtensionType, Complex64Type, Complex128Type, TimeType:
+		return rwExtension(w, src, t)
+	case ArrayType:
 		return rwArray(w, src)
-	case kfloat32, kfloat64:
-		return rwFloat(w, src, k)
-	case kmap:
+	case Float32Type, Float64Type:
+		return rwFloat(w, src, t)
+	case MapType:
 		return rwMap(w, src)
 	default:
-		// we shouldn't get here; nextKind() errors if the type is not recognized
+		// we shouldn't get here; NextType() errors if the type is not recognized
 		return 0, errors.New("msgp: bad encoding; unrecognized type prefix")
-	}
-}
-
-// next kinds returns the next "kind", or an error
-// if the type is not recognized or the reader errors
-func (m *Reader) nextKind() (kind, error) {
-	var lead []byte
-	var err error
-	lead, err = m.r.Peek(1)
-	if err != nil {
-		return invalid, err
-	}
-	l := lead[0]
-	if isfixmap(l) {
-		return kmap, nil
-	}
-	if isfixint(l) {
-		return kint, nil
-	}
-	if isnfixint(l) {
-		return kint, nil
-	}
-	if isfixstr(l) {
-		return kstring, nil
-	}
-	if isfixarray(l) {
-		return karray, nil
-	}
-	switch l {
-	case mmap16, mmap32:
-		return kmap, nil
-	case marray16, marray32:
-		return karray, nil
-	case mfloat32:
-		return kfloat32, nil
-	case mfloat64:
-		return kfloat64, nil
-	case mint8, mint16, mint32, mint64:
-		return kint, nil
-	case muint8, muint16, muint32, muint64:
-		return kuint, nil
-	case mfixext1, mfixext2, mfixext4, mfixext8, mfixext16, mext8, mext16, mext32:
-		return kextension, nil
-	case mstr8, mstr16, mstr32:
-		return kstring, nil
-	case mbin8, mbin16, mbin32:
-		return kbytes, nil
-	case mnil:
-		return knull, nil
-	case mfalse, mtrue:
-		return kbool, nil
-	default:
-		return invalid, InvalidPrefixError(l)
 	}
 }
 
@@ -194,7 +97,7 @@ func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 	var comma bool
 	var sz uint32
 
-	sz, _, err = src.ReadMapHeader()
+	sz, err = src.ReadMapHeader()
 	if err != nil {
 		return
 	}
@@ -207,7 +110,7 @@ func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	n += 1
+	n++
 	var nn int
 	for i := uint32(0); i < sz; i++ {
 		if comma {
@@ -215,10 +118,10 @@ func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 			if err != nil {
 				return
 			}
-			n += 1
+			n++
 		}
 
-		src.scratch, _, err = src.ReadMapKey(src.scratch)
+		src.scratch, err = src.ReadMapKey(src.scratch)
 		if err != nil {
 			return
 		}
@@ -248,7 +151,7 @@ func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	n += 1
+	n++
 	return
 }
 
@@ -259,7 +162,7 @@ func rwArray(dst jsWriter, src *Reader) (n int, err error) {
 	}
 	var sz uint32
 	var nn int
-	sz, _, err = src.ReadArrayHeader()
+	sz, err = src.ReadArrayHeader()
 	if err != nil {
 		return
 	}
@@ -270,7 +173,7 @@ func rwArray(dst jsWriter, src *Reader) (n int, err error) {
 			if err != nil {
 				return
 			}
-			n += 1
+			n++
 		}
 		nn, err = rwNext(dst, src)
 		n += nn
@@ -286,21 +189,21 @@ func rwArray(dst jsWriter, src *Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	n += 1
+	n++
 	return
 }
 
-func rwFloat(dst jsWriter, src *Reader, k kind) (n int, err error) {
-	if k == kfloat64 {
+func rwFloat(dst jsWriter, src *Reader, t Type) (n int, err error) {
+	if t == Float64Type {
 		var f float64
-		f, _, err = src.ReadFloat64()
+		f, err = src.ReadFloat64()
 		if err != nil {
 			return
 		}
 		src.scratch = strconv.AppendFloat(src.scratch[0:0], f, 'f', -1, 64)
 	} else {
 		var f float32
-		f, _, err = src.ReadFloat32()
+		f, err = src.ReadFloat32()
 		if err != nil {
 			return
 		}
@@ -310,17 +213,17 @@ func rwFloat(dst jsWriter, src *Reader, k kind) (n int, err error) {
 	return dst.Write(src.scratch)
 }
 
-func rwInt(dst jsWriter, src *Reader, k kind) (n int, err error) {
-	if k == kint {
+func rwInt(dst jsWriter, src *Reader, t Type) (n int, err error) {
+	if t == IntType {
 		var i int64
-		i, _, err = src.ReadInt64()
+		i, err = src.ReadInt64()
 		if err != nil {
 			return
 		}
 		src.scratch = strconv.AppendInt(src.scratch[0:0], i, 10)
 	} else {
 		var u uint64
-		u, _, err = src.ReadUint64()
+		u, err = src.ReadUint64()
 		if err != nil {
 			return
 		}
@@ -330,7 +233,7 @@ func rwInt(dst jsWriter, src *Reader, k kind) (n int, err error) {
 }
 
 func rwBool(dst jsWriter, src *Reader) (int, error) {
-	b, _, err := src.ReadBool()
+	b, err := src.ReadBool()
 	if err != nil {
 		return 0, err
 	}
@@ -340,17 +243,12 @@ func rwBool(dst jsWriter, src *Reader) (int, error) {
 	return dst.WriteString("false")
 }
 
-func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
-	var t int8
-	t, err = src.peekExtensionType()
-	if err != nil {
-	}
-
+func rwExtension(dst jsWriter, src *Reader, t Type) (n int, err error) {
 	// time.Time is a json.Marshaler
 	if t == TimeExtension {
 		var t time.Time
 		var bts []byte
-		t, _, err = src.ReadTime()
+		t, err = src.ReadTime()
 		if err != nil {
 			return
 		}
@@ -361,12 +259,18 @@ func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
 		return dst.Write(bts)
 	}
 
+	var et int8
+	et, err = src.peekExtensionType()
+	if err != nil {
+		return 0, err
+	}
+
 	// registered extensions can override
 	// the JSON encoding
-	if j, ok := extensionReg[t]; ok {
+	if j, ok := extensionReg[et]; ok {
 		var bts []byte
 		e := j()
-		_, err = src.ReadExtension(e)
+		err = src.ReadExtension(e)
 		if err != nil {
 			return
 		}
@@ -378,8 +282,8 @@ func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
 	}
 
 	e := RawExtension{}
-	e.Type = t
-	_, err = src.ReadExtension(&e)
+	e.Type = et
+	err = src.ReadExtension(&e)
 	if err != nil {
 		return
 	}
@@ -389,7 +293,7 @@ func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	n += 1
+	n++
 
 	nn, err = dst.WriteString(`"type:"`)
 	n += nn
@@ -427,11 +331,59 @@ func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
 }
 
 func rwString(dst jsWriter, src *Reader) (n int, err error) {
-	src.scratch, _, err = src.ReadStringAsBytes(src.scratch)
+	var p []byte
+	p, err = src.r.Peek(1)
 	if err != nil {
 		return
 	}
-	return rwquoted(dst, src.scratch)
+	lead := p[0]
+	var read int
+	var off int
+	if isfixstr(lead) {
+		k := int(rfixstr(lead)) + 1
+		p, err = src.r.Peek(k)
+		if err != nil {
+			return
+		}
+		n, err = rwquoted(dst, p[1:])
+		src.r.Skip(k)
+		return
+	}
+
+	switch lead {
+	case mstr8:
+		p, err = src.r.Peek(2)
+		if err != nil {
+			return
+		}
+		read = int(uint8(p[1]))
+		off = 2
+	case mstr16:
+		p, err = src.r.Peek(3)
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint16(p[1:]))
+		off = 3
+	case mstr32:
+		p, err = src.r.Peek(5)
+		if err != nil {
+			return
+		}
+		read = int(binary.BigEndian.Uint32(p[1:]))
+		off = 5
+	default:
+		err = TypeError{Method: StrType, Encoded: getType(lead)}
+		return
+	}
+	k := read + off
+	p, err = src.r.Peek(k)
+	if err != nil {
+		return
+	}
+	n, err = rwquoted(dst, p[off:])
+	src.r.Skip(k)
+	return
 }
 
 func rwBytes(dst jsWriter, src *Reader) (n int, err error) {
@@ -440,8 +392,8 @@ func rwBytes(dst jsWriter, src *Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	n += 1
-	src.scratch, _, err = src.ReadBytes(src.scratch[0:0])
+	n++
+	src.scratch, err = src.ReadBytes(src.scratch[0:0])
 	if err != nil {
 		return
 	}
@@ -459,7 +411,7 @@ func rwBytes(dst jsWriter, src *Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	n += 1
+	n++
 	return
 }
 
@@ -470,7 +422,7 @@ func rwquoted(dst jsWriter, s []byte) (n int, err error) {
 	if err != nil {
 		return
 	}
-	n += 1
+	n++
 	start := 0
 	for i := 0; i < len(s); {
 		if b := s[i]; b < utf8.RuneSelf {

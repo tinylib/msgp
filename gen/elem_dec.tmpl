@@ -2,8 +2,7 @@
 
 {{define "PtrTempl"}}
 	if dc.IsNil() {
-		nn, err = dc.ReadNil()
-		n += nn
+		err = dc.ReadNil()
 		if err != nil {
 			return
 		}
@@ -18,8 +17,7 @@
 
 {{define "MapTempl"}}
 	var msz uint32
-	msz, nn, err = dc.ReadMapHeader()
-	n += nn
+	msz, err = dc.ReadMapHeader()
 	if err != nil {
 		return
 	}
@@ -33,8 +31,7 @@
 	for inx := uint32(0); inx < msz; inx++ {
 		var {{.Keyidx}} string 
 		var {{.Validx}} {{.Value.TypeName}} {{/* TODO: *real* initialization here... this could fail. */}}
-		{{.Keyidx}}, nn, err = dc.ReadString()
-		n += nn
+		{{.Keyidx}}, err = dc.ReadString()
 		if err != nil {
 			return
 		}
@@ -45,8 +42,7 @@
 
 {{define "SliceTempl"}}
 	var xsz uint32
-	xsz, nn, err = dc.ReadArrayHeader()
-	n += nn
+	xsz, err = dc.ReadArrayHeader()
 	if err != nil {
 		return
 	}
@@ -62,8 +58,7 @@
 
 {{define "ArrayTempl"}}
 	var asz uint32 
-	asz, nn, err = dc.ReadArrayHeader()
-	n += nn
+	asz, err = dc.ReadArrayHeader()
 	if err != nil {
 		return
 	}
@@ -78,14 +73,12 @@
 
 {{define "StructTempl"}}
 	var isz uint32
-	isz, nn, err = dc.ReadMapHeader()
-	n += nn
+	isz, err = dc.ReadMapHeader()
 	if err != nil {
 		return
 	}
 	for xplz:=uint32(0); xplz<isz; xplz++ {
-		field, nn, err = dc.ReadMapKey(field)
-		n += nn
+		field, err = dc.ReadMapKey(field)
 		if err != nil {
 			return
 		}
@@ -94,8 +87,7 @@
 		case "{{ .FieldTag}}":{{template "ElemTempl" .FieldElem}}
 		{{end}}
 		default:
-			nn, err = dc.Skip()
-			n += nn
+			err = dc.Skip()
 			if err != nil {
 				return
 			}
@@ -106,16 +98,15 @@
 {{define "BaseTempl"}}{{/* TODO: make this less gross */}}
 	{{if .Convert}}var tmp {{.BaseType}}{{end}}{{/* type lowering shim */}}
 	{{if eq (.Value) 1}}{{/* is []byte */}}
-	{{if .Convert}}tmp, nn, err = dc.ReadBytes([]byte({{.Varname}})){{else}}{{.Varname}}, nn, err = dc.ReadBytes({{.Varname}}){{end}}
+	{{if .Convert}}tmp, err = dc.ReadBytes([]byte({{.Varname}})){{else}}{{.Varname}}, err = dc.ReadBytes({{.Varname}}){{end}}
 	{{else if .IsIdent}}
-	nn, err = {{.Varname}}.DecodeFrom(dc)
+	err = {{.Varname}}.DecodeMsg(dc)
 	{{else if .IsExt}}
-	nn, err = dc.ReadExtension({{.Varname}})
+	err = dc.ReadExtension({{.Varname}})
 	{{else}}{{/* any other type */}}
-	{{if .Convert}}tmp, nn, err = dc.Read{{.BaseName}}(){{else}}{{.Varname}}, nn, err = dc.Read{{.BaseName}}(){{end}}
+	{{if .Convert}}tmp, err = dc.Read{{.BaseName}}(){{else}}{{.Varname}}, err = dc.Read{{.BaseName}}(){{end}}
 	{{end}}
 	{{if .Convert}}{{.Varname}} = {{.Ident}}(tmp){{end}}
-	n += nn
 	if err != nil {
 		return
 	}

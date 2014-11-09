@@ -48,14 +48,6 @@ func init() {
 func main() {
 	flag.Parse()
 
-	// we only need the "io" import if we're
-	// creating io.Writer/Reader-based methods,
-	// and we only need the "msgp" import for tests
-	// based on encoder/decoder methods
-	if encode {
-		injectImports = append(injectImports, "io")
-	}
-
 	// GOFILE and GOPACKAGE are
 	// set by `go generate`
 	if file == "" {

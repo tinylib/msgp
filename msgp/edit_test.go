@@ -16,6 +16,7 @@ func TestRemove(t *testing.T) {
 	w.WriteString("DELETE ME!!!")
 	w.WriteString("third")
 	w.WriteBytes([]byte("blah"))
+	w.Flush()
 
 	raw := Remove("second", buf.Bytes())
 
@@ -45,21 +46,29 @@ func TestLocate(t *testing.T) {
 	en.WriteString("value_one")
 	en.WriteString("thing_two")
 	en.WriteFloat64(2.0)
+	en.Flush()
 
 	field := Locate("thing_one", buf.Bytes())
 	if len(field) == 0 {
 		t.Fatal("field not found")
 	}
 
+	if !HasKey("thing_one", buf.Bytes()) {
+		t.Fatal("field not found")
+	}
+
 	var zbuf bytes.Buffer
-	NewWriter(&zbuf).WriteString("value_one")
+	w := NewWriter(&zbuf)
+	w.WriteString("value_one")
+	w.Flush()
 
 	if !bytes.Equal(zbuf.Bytes(), field) {
 		t.Errorf("got %q; wanted %q", field, zbuf.Bytes())
 	}
 
 	zbuf.Reset()
-	NewWriter(&zbuf).WriteFloat64(2.0)
+	w.WriteFloat64(2.0)
+	w.Flush()
 	field = Locate("thing_two", buf.Bytes())
 	if len(field) == 0 {
 		t.Fatal("field not found")
@@ -70,7 +79,7 @@ func TestLocate(t *testing.T) {
 
 	field = Locate("nope", buf.Bytes())
 	if len(field) != 0 {
-		t.Fatalf("wanted %q; got %q", ErrFieldNotFound, nil)
+		t.Fatalf("wanted a zero-length returned slice")
 	}
 
 }
@@ -91,10 +100,13 @@ func TestReplace(t *testing.T) {
 	en.WriteFloat64(2.0)
 	en.WriteString("some_bytes")
 	en.WriteBytes([]byte("here are some bytes"))
+	en.Flush()
 
 	// same-size replacement
 	var fbuf bytes.Buffer
-	NewWriter(&fbuf).WriteFloat64(4.0)
+	w := NewWriter(&fbuf)
+	w.WriteFloat64(4.0)
+	w.Flush()
 
 	// replace 2.0 with 4.0 in field two
 	raw := Replace("thing_two", buf.Bytes(), fbuf.Bytes())
@@ -116,7 +128,8 @@ func TestReplace(t *testing.T) {
 	// smaller-size replacement
 	// replace 2.0 with []byte("hi!")
 	fbuf.Reset()
-	NewWriter(&fbuf).WriteBytes([]byte("hi!"))
+	w.WriteBytes([]byte("hi!"))
+	w.Flush()
 	raw = Replace("thing_two", raw, fbuf.Bytes())
 	if len(raw) == 0 {
 		t.Fatal("field not found")
@@ -134,7 +147,8 @@ func TestReplace(t *testing.T) {
 
 	// larger-size replacement
 	fbuf.Reset()
-	NewWriter(&fbuf).WriteBytes([]byte("some even larger bytes than before"))
+	w.WriteBytes([]byte("some even larger bytes than before"))
+	w.Flush()
 	raw = Replace("some_bytes", raw, fbuf.Bytes())
 	if len(raw) == 0 {
 		t.Logf("%q", raw)
@@ -150,6 +164,16 @@ func TestReplace(t *testing.T) {
 	if !reflect.DeepEqual(m["some_bytes"], []byte("some even larger bytes than before")) {
 		t.Errorf("wanted %v; got %v", []byte("hello there!"), m["some_bytes"])
 	}
+
+	// identical in-place replacement
+	field := Locate("some_bytes", raw)
+	newraw := CopyReplace("some_bytes", raw, field)
+
+	if !bytes.Equal(newraw, raw) {
+		t.Logf("in: %q", raw)
+		t.Logf("out: %q", newraw)
+		t.Error("bytes not equal after copyreplace")
+	}
 }
 
 func BenchmarkLocate(b *testing.B) {
@@ -162,6 +186,7 @@ func BenchmarkLocate(b *testing.B) {
 	en.WriteFloat64(2.0)
 	en.WriteString("thing_three")
 	en.WriteBytes([]byte("hello!"))
+	en.Flush()
 
 	raw := buf.Bytes()
 	// bytes/s will be the number of bytes traversed per unit of time

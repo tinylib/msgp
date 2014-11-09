@@ -32,6 +32,8 @@ func ensure(b []byte, sz int) ([]byte, int) {
 	return o, n
 }
 
+// AppendMapHeader appends a map header with the
+// given size to the slice
 func AppendMapHeader(b []byte, sz uint32) []byte {
 	o, n := ensure(b, MapHeaderSize)
 	switch {
@@ -52,6 +54,8 @@ func AppendMapHeader(b []byte, sz uint32) []byte {
 	}
 }
 
+// AppendArrayHeader appends an array header with
+// the given size to the slice
 func AppendArrayHeader(b []byte, sz uint32) []byte {
 	o, n := ensure(b, ArrayHeaderSize)
 	switch {
@@ -72,8 +76,10 @@ func AppendArrayHeader(b []byte, sz uint32) []byte {
 	}
 }
 
+// AppendNil appends a 'nil' byte to the slice
 func AppendNil(b []byte) []byte { return append(b, mnil) }
 
+// AppendFloat64 appends a float64 to the slice
 func AppendFloat64(b []byte, f float64) []byte {
 	o, n := ensure(b, Float64Size)
 	o[n] = mfloat64
@@ -81,6 +87,7 @@ func AppendFloat64(b []byte, f float64) []byte {
 	return o[:n+9]
 }
 
+// AppendFloat32 appends a float32 to the slice
 func AppendFloat32(b []byte, f float32) []byte {
 	o, n := ensure(b, Float32Size)
 	o[n] = mfloat32
@@ -88,6 +95,7 @@ func AppendFloat32(b []byte, f float32) []byte {
 	return o[:n+5]
 }
 
+// AppendInt64 appends an int64 to the slice
 func AppendInt64(b []byte, i int64) []byte {
 	o, n := ensure(b, Int64Size)
 	switch {
@@ -132,13 +140,19 @@ func AppendInt64(b []byte, i int64) []byte {
 	}
 }
 
-// TODO: expand AppendIntXx and AppendUintXx into the proper code; we can remove some unnecessary branches
+// AppendInt appends an int to the slice
+func AppendInt(b []byte, i int) []byte { return AppendInt64(b, int64(i)) }
 
-func AppendInt(b []byte, i int) []byte     { return AppendInt64(b, int64(i)) }
-func AppendInt8(b []byte, i int8) []byte   { return AppendInt64(b, int64(i)) }
+// AppendInt8 appends an int8 to the slice
+func AppendInt8(b []byte, i int8) []byte { return AppendInt64(b, int64(i)) }
+
+// AppendInt16 appends an int16 to the slice
 func AppendInt16(b []byte, i int16) []byte { return AppendInt64(b, int64(i)) }
+
+// AppendInt32 appends an int32 to the slice
 func AppendInt32(b []byte, i int32) []byte { return AppendInt64(b, int64(i)) }
 
+// AppendUint64 appends a uint64 to the slice
 func AppendUint64(b []byte, u uint64) []byte {
 	o, n := ensure(b, Uint64Size)
 	switch {
@@ -169,11 +183,19 @@ func AppendUint64(b []byte, u uint64) []byte {
 	}
 }
 
-func AppendUint(b []byte, u uint) []byte     { return AppendUint64(b, uint64(u)) }
-func AppendUint8(b []byte, u uint8) []byte   { return AppendUint64(b, uint64(u)) }
+// AppendUint appends a uint to the slice
+func AppendUint(b []byte, u uint) []byte { return AppendUint64(b, uint64(u)) }
+
+// AppendUint8 appends a uint8 to the slice
+func AppendUint8(b []byte, u uint8) []byte { return AppendUint64(b, uint64(u)) }
+
+// AppendUint16 appends a uint16 to the slice
 func AppendUint16(b []byte, u uint16) []byte { return AppendUint64(b, uint64(u)) }
+
+// AppendUint32 appends a uint32 to the slice
 func AppendUint32(b []byte, u uint32) []byte { return AppendUint64(b, uint64(u)) }
 
+// AppendBytes appends bytes to the slice as MessagePack 'bin' data
 func AppendBytes(b []byte, bts []byte) []byte {
 	sz := uint32(len(bts))
 	o, n := ensure(b, BytesPrefixSize+len(bts))
@@ -197,6 +219,7 @@ func AppendBytes(b []byte, bts []byte) []byte {
 	return o[:n+j]
 }
 
+// AppendBool appends a bool to the slice
 func AppendBool(b []byte, t bool) []byte {
 	if t {
 		return append(b, mtrue)
@@ -204,6 +227,7 @@ func AppendBool(b []byte, t bool) []byte {
 	return append(b, mfalse)
 }
 
+// AppendString appends a string as a MessagePack 'str' to the slice
 func AppendString(b []byte, s string) []byte {
 	sz := uint32(len(s))
 	o, n := ensure(b, BytesPrefixSize+len(s))
@@ -231,6 +255,7 @@ func AppendString(b []byte, s string) []byte {
 	return o[:n+j]
 }
 
+// AppendComplex64 appends a complex64 to the slice as a MessagePack extension
 func AppendComplex64(b []byte, c complex64) []byte {
 	o, n := ensure(b, Complex64Size)
 	o[n] = mfixext8
@@ -239,14 +264,16 @@ func AppendComplex64(b []byte, c complex64) []byte {
 	return o[:n+10]
 }
 
+// AppendComplex128 appends a complex128 to the slice as a MessagePack extension
 func AppendComplex128(b []byte, c complex128) []byte {
-	o, n := ensure(b, Complex64Size)
+	o, n := ensure(b, Complex128Size)
 	o[n] = mfixext16
 	o[n+1] = Complex128Extension
 	copy(o[n+2:], (*(*[16]byte)(unsafe.Pointer(&c)))[:])
 	return o[:n+18]
 }
 
+// AppendTime appends a time.Time to the slice as a MessagePack extension
 func AppendTime(b []byte, t time.Time) []byte {
 	o, n := ensure(b, TimeSize)
 	bts, _ := t.MarshalBinary()
@@ -256,6 +283,8 @@ func AppendTime(b []byte, t time.Time) []byte {
 	return o[:n+18]
 }
 
+// AppendMapStrStr appends a map[string]string to the slice
+// as a MessagePack map with 'str'-type keys and values
 func AppendMapStrStr(b []byte, m map[string]string) []byte {
 	sz := uint32(len(m))
 	b = AppendMapHeader(b, sz)
@@ -266,6 +295,8 @@ func AppendMapStrStr(b []byte, m map[string]string) []byte {
 	return b
 }
 
+// AppendMapStrIntf appends a map[string]interface{} to the slice
+// as a MessagePack map with 'str'-type keys.
 func AppendMapStrIntf(b []byte, m map[string]interface{}) ([]byte, error) {
 	sz := uint32(len(m))
 	b = AppendMapHeader(b, sz)
@@ -282,15 +313,16 @@ func AppendMapStrIntf(b []byte, m map[string]interface{}) ([]byte, error) {
 
 // AppendIntf appends the concrete type of 'i' to the
 // provided []byte. 'i' must be one of the following:
+//  - 'nil'
 //  - A bool, float, string, []byte, int, uint, or complex
-//  - A map of supported types (with string keys)
-//  - An array or slice of supported types
-//  - A pointer to a supported type
-//  - A type that satisfies the msgp.Encoder interface
+//  - A map[string]T, where T is another supported type
+//  - A []T, where T is another supported type
+//  - A *T, where T is another supported type
+//  - A type that satisfieds the msgp.Marshaler interface
 //  - A type that satisfies the msgp.Extension interface
 func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 	if m, ok := i.(Marshaler); ok {
-		return m.AppendMsg(b)
+		return m.MarshalMsg(b)
 	}
 	if ext, ok := i.(Extension); ok {
 		return AppendExtension(b, ext)
@@ -371,6 +403,6 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 	// TODO: maybe some struct fiddling?
 
 	default:
-		return b, fmt.Errorf("msgp/enc: type %q not supported", v.Type())
+		return b, fmt.Errorf("msgp: type %q not supported", v.Type())
 	}
 }

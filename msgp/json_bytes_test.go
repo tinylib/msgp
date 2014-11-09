@@ -33,6 +33,8 @@ func TestUnmarshalJSON(t *testing.T) {
 	enc.WriteString("now")
 	enc.WriteTime(time.Now())
 
+	enc.Flush()
+
 	var js bytes.Buffer
 	_, err := UnmarshalAsJSON(&js, buf.Bytes())
 	if err != nil {
@@ -101,6 +103,8 @@ func BenchmarkUnmarshalAsJSON(b *testing.B) {
 		"internal_one": "blah",
 		"internal_two": "blahhh...",
 	})
+	enc.Flush()
+
 	var js bytes.Buffer
 	bts := buf.Bytes()
 	_, err := UnmarshalAsJSON(&js, bts)

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"strconv"
 	"time"
@@ -41,36 +40,36 @@ func writeNext(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	if len(msg) < 1 {
 		return nil, scratch, ErrShortBytes
 	}
-	k := getKind(msg[0])
+	t := getType(msg[0])
 	var err error
-	switch k {
-	case karray:
+	switch t {
+	case ArrayType:
 		return rwArrayBytes(w, msg, scratch)
-	case kmap:
+	case MapType:
 		return rwMapBytes(w, msg, scratch)
-	case kbool:
+	case BoolType:
 		msg, err = rwBoolBytes(w, msg)
 		return msg, scratch, err
-	case kint:
+	case IntType:
 		return rwIntBytes(w, msg, scratch)
-	case kuint:
+	case UintType:
 		return rwUintBytes(w, msg, scratch)
-	case kfloat32:
+	case Float32Type:
 		return rwFloatBytes(w, msg, false, scratch)
-	case kfloat64:
+	case Float64Type:
 		return rwFloatBytes(w, msg, true, scratch)
-	case knull:
+	case NilType:
 		msg, err = rwNullBytes(w, msg)
 		return msg, scratch, err
-	case kstring:
+	case StrType:
 		msg, err = rwStringBytes(w, msg)
 		return msg, scratch, err
-	case kbytes:
+	case BinType:
 		return rwBytesBytes(w, msg, scratch)
-	case kextension:
+	case ExtensionType:
 		return rwExtensionBytes(w, msg, scratch)
 	default:
-		return msg, scratch, fmt.Errorf("msgp: bad encdoing; unknown type prefix 0x%x", msg[0])
+		return msg, scratch, InvalidPrefixError(msg[0])
 	}
 }
 
@@ -238,16 +237,15 @@ func rwFloatBytes(w jsWriter, msg []byte, f64 bool, scratch []byte) ([]byte, []b
 }
 
 func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
-	if len(msg) < 2 {
-		return msg, scratch, ErrShortBytes
-	}
-	t, err := peekExtension(msg)
+	var err error
+	var et int8
+	et, err = peekExtension(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
 
 	// if it's time.Time
-	if t == TimeExtension {
+	if et == TimeExtension {
 		var tm time.Time
 		tm, msg, err = ReadTimeBytes(msg)
 		if err != nil {
@@ -263,7 +261,7 @@ func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, e
 
 	// if the extension is registered,
 	// use its canonical JSON form
-	if f, ok := extensionReg[t]; ok {
+	if f, ok := extensionReg[et]; ok {
 		e := f()
 		msg, err = ReadExtensionBytes(msg, e)
 		if err != nil {
@@ -279,7 +277,7 @@ func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, e
 
 	// otherwise, write `{"type": <num>, "data": "<base64data>"}`
 	r := RawExtension{}
-	r.Type = t
+	r.Type = et
 	msg, err = ReadExtensionBytes(msg, &r)
 	if err != nil {
 		return msg, scratch, err

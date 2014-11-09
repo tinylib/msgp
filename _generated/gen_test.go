@@ -21,18 +21,15 @@ func BenchmarkFastEncode(b *testing.B) {
 		Data: []byte("whaaaaargharbl"),
 	}
 	var buf bytes.Buffer
-	n, _ := v.EncodeMsg(&buf)
-	en := msgp.NewWriter(&buf)
-	b.SetBytes(int64(n))
+	msgp.Encode(&buf, v)
+	en := msgp.NewWriter(msgp.Nowhere)
+	b.SetBytes(int64(buf.Len()))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		buf.Reset()
-		v.EncodeTo(en)
+		v.EncodeMsg(en)
 	}
-
-	// should return ~500ns and 1 alloc
-	// anything else means a regression
+	en.Flush()
 }
 
 // benchmark decoding a small, "fast" type.
@@ -49,19 +46,16 @@ func BenchmarkFastDecode(b *testing.B) {
 	}
 
 	var buf bytes.Buffer
-	n, _ := v.EncodeMsg(&buf)
+	msgp.Encode(&buf, v)
 	rd := bytes.NewReader(buf.Bytes())
 	dc := msgp.NewReader(rd)
-	b.SetBytes(int64(n))
+	b.SetBytes(int64(buf.Len()))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		rd.Seek(0, 0) // reset
-		v.DecodeFrom(dc)
+		v.DecodeMsg(dc)
 	}
-
-	// should return ~700ns and 2 allocs
-	// anything else means a regression
 }
 
 // This covers the following cases:
@@ -92,14 +86,14 @@ func Test1EncodeDecode(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	_, err := tt.EncodeMsg(&buf)
+	err := msgp.Encode(&buf, tt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	tnew := new(TestType)
 
-	_, err = tnew.DecodeMsg(&buf)
+	err = msgp.Decode(&buf, tnew)
 	if err != nil {
 		t.Error(err)
 	}
@@ -113,7 +107,7 @@ func Test1EncodeDecode(t *testing.T) {
 	tanother := new(TestType)
 
 	buf.Reset()
-	tt.EncodeMsg(&buf)
+	msgp.Encode(&buf, tt)
 
 	var left []byte
 	left, err = tanother.UnmarshalMsg(buf.Bytes())

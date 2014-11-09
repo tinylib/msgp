@@ -46,16 +46,16 @@ func TestWriteMapHeader(t *testing.T) {
 
 	var buf bytes.Buffer
 	var err error
-	var n int
 	wr := NewWriter(&buf)
 	for _, test := range tests {
 		buf.Reset()
-		n, err = wr.WriteMapHeader(test.Sz)
+		err = wr.WriteMapHeader(test.Sz)
 		if err != nil {
 			t.Error(err)
 		}
-		if n != len(test.Outbytes) {
-			t.Errorf("expected to write %d bytes; wrote %d", len(test.Outbytes), n)
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
 		}
 		if !bytes.Equal(buf.Bytes(), test.Outbytes) {
 			t.Errorf("Expected bytes %x; got %x", test.Outbytes, buf.Bytes())
@@ -76,16 +76,16 @@ func TestWriteArrayHeader(t *testing.T) {
 
 	var buf bytes.Buffer
 	var err error
-	var n int
 	wr := NewWriter(&buf)
 	for _, test := range tests {
 		buf.Reset()
-		n, err = wr.WriteArrayHeader(test.Sz)
+		err = wr.WriteArrayHeader(test.Sz)
 		if err != nil {
 			t.Error(err)
 		}
-		if n != len(test.Outbytes) {
-			t.Errorf("expected to write %d bytes; wrote %d", len(test.Outbytes), n)
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
 		}
 		if !bytes.Equal(buf.Bytes(), test.Outbytes) {
 			t.Errorf("Expected bytes %x; got %x", test.Outbytes, buf.Bytes())
@@ -97,13 +97,13 @@ func TestWriteNil(t *testing.T) {
 	var buf bytes.Buffer
 	wr := NewWriter(&buf)
 
-	n, err := wr.WriteNil()
+	err := wr.WriteNil()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	if n != 1 {
-		t.Errorf("Expected 1 byte; wrote %d", n)
+	err = wr.Flush()
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	bts := buf.Bytes()
@@ -119,19 +119,16 @@ func TestWriteFloat64(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
 		flt := (rand.Float64() - 0.5) * math.MaxFloat64
-		n, err := wr.WriteFloat64(flt)
+		err := wr.WriteFloat64(flt)
 		if err != nil {
 			t.Errorf("Error with %f: %s", flt, err)
 		}
-
-		if n != 9 {
-			t.Errorf("Expected to encode %d bytes; wrote %d", 9, n)
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
 		}
 
 		bts := buf.Bytes()
-		if len(bts) != n {
-			t.Errorf("Claimed to write %d bytes; actually wrote %d", n, len(bts))
-		}
 
 		if bts[0] != mfloat64 {
 			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
@@ -150,19 +147,16 @@ func TestWriteFloat32(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		buf.Reset()
 		flt := (rand.Float32() - 0.5) * math.MaxFloat32
-		n, err := wr.WriteFloat32(flt)
+		err := wr.WriteFloat32(flt)
 		if err != nil {
 			t.Errorf("Error with %f: %s", flt, err)
 		}
-
-		if n != 5 {
-			t.Errorf("Expected to encode %d bytes; wrote %d", 9, n)
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
 		}
 
 		bts := buf.Bytes()
-		if len(bts) != n {
-			t.Errorf("Claimed to write %d bytes; actually wrote %d", n, len(bts))
-		}
 
 		if bts[0] != mfloat32 {
 			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
@@ -183,14 +177,17 @@ func TestWriteInt64(t *testing.T) {
 
 		num := (rand.Int63n(math.MaxInt64)) - (math.MaxInt64 / 2)
 
-		n, err := wr.WriteInt64(num)
+		err := wr.WriteInt64(num)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = wr.Flush()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		bts := buf.Bytes()
-		if n != len(bts) {
-			t.Errorf("Claimed to write %d bytes; actually wrote %d", n, len(bts))
+		if buf.Len() > 9 {
+			t.Errorf("buffer length should be <= 9; it's %d", buf.Len())
 		}
 	}
 }
@@ -204,14 +201,16 @@ func TestWriteUint64(t *testing.T) {
 
 		num := uint64(rand.Int63n(math.MaxInt64))
 
-		n, err := wr.WriteUint64(num)
+		err := wr.WriteUint64(num)
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		bts := buf.Bytes()
-		if n != len(bts) {
-			t.Errorf("Claimed to write %d bytes; actually wrote %d", n, len(bts))
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if buf.Len() > 9 {
+			t.Errorf("buffer length should be <= 9; it's %d", buf.Len())
 		}
 	}
 
@@ -226,13 +225,18 @@ func TestWriteBytes(t *testing.T) {
 		buf.Reset()
 		bts := RandBytes(size)
 
-		n, err := wr.WriteBytes(bts)
+		err := wr.WriteBytes(bts)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if n < size {
-			t.Errorf("Should have written more than %d bytes", size)
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if buf.Len() < len(bts) {
+			t.Errorf("somehow, %d bytes were encoded in %d bytes", len(bts), buf.Len())
 		}
 	}
 }

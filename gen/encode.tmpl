@@ -1,16 +1,6 @@
 
-// EncodeMsg encodes a {{.Value.Struct.Name}} as MessagePack to the supplied io.Writer, 
-// returning the number of bytes written and any errors encountered
-func ({{.Varname}} *{{.Value.Struct.Name}}) EncodeMsg(w io.Writer) (n int, err error) {
-	en := msgp.NewWriter(w)
-	return {{.Varname}}.EncodeTo(en)
-}
-
-// EncodeTo encodes a {{.Value.Struct.Name}} as MessagePack using the provided encoder, 
-// returning the number of bytes written and any errors encountered
-func ({{.Varname}} *{{.Value.Struct.Name}}) EncodeTo(en *msgp.Writer) (n int, err error) {
-	var nn int 
-	_ = nn
+// EncodeMsg implements the msgp.Encodable interface
+func ({{.Varname}} *{{.Value.Struct.Name}}) EncodeMsg(en *msgp.Writer) (err error) {
 	{{template "StructTempl" .Value.Struct}}
 	return
 }

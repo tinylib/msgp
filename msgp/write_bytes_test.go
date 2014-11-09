@@ -14,6 +14,7 @@ func TestAppendMapHeader(t *testing.T) {
 	for _, sz := range szs {
 		buf.Reset()
 		en.WriteMapHeader(sz)
+		en.Flush()
 		bts = AppendMapHeader(bts[0:0], sz)
 
 		if !bytes.Equal(buf.Bytes(), bts) {
@@ -31,6 +32,7 @@ func TestAppendArrayHeader(t *testing.T) {
 	for _, sz := range szs {
 		buf.Reset()
 		en.WriteArrayHeader(sz)
+		en.Flush()
 		bts = AppendArrayHeader(bts[0:0], sz)
 
 		if !bytes.Equal(buf.Bytes(), bts) {
@@ -54,6 +56,7 @@ func TestAppendFloat64(t *testing.T) {
 
 	var bts []byte
 	en.WriteFloat64(f)
+	en.Flush()
 	bts = AppendFloat64(bts[0:0], f)
 	if !bytes.Equal(buf.Bytes(), bts) {
 		t.Errorf("for float %f, encoder wrote %q; append wrote %q", f, buf.Bytes(), bts)
@@ -67,6 +70,7 @@ func TestAppendFloat32(t *testing.T) {
 
 	var bts []byte
 	en.WriteFloat32(f)
+	en.Flush()
 	bts = AppendFloat32(bts[0:0], f)
 	if !bytes.Equal(buf.Bytes(), bts) {
 		t.Errorf("for float %f, encoder wrote %q; append wrote %q", f, buf.Bytes(), bts)
@@ -82,6 +86,7 @@ func TestAppendInt64(t *testing.T) {
 	for _, i := range is {
 		buf.Reset()
 		en.WriteInt64(i)
+		en.Flush()
 		bts = AppendInt64(bts[0:0], i)
 		if !bytes.Equal(buf.Bytes(), bts) {
 			t.Errorf("for int64 %d, encoder wrote %q; append wrote %q", buf.Bytes(), bts)
@@ -98,6 +103,7 @@ func TestAppendUint64(t *testing.T) {
 	for _, u := range us {
 		buf.Reset()
 		en.WriteUint64(u)
+		en.Flush()
 		bts = AppendUint64(bts[0:0], u)
 		if !bytes.Equal(buf.Bytes(), bts) {
 			t.Errorf("for uint64 %d, encoder wrote %q; append wrote %q", buf.Bytes(), bts)
@@ -115,6 +121,7 @@ func TestAppendBytes(t *testing.T) {
 		buf.Reset()
 		b := RandBytes(sz)
 		en.WriteBytes(b)
+		en.Flush()
 		bts = AppendBytes(b[0:0], b)
 		if !bytes.Equal(buf.Bytes(), bts) {
 			t.Errorf("for bytes of length %d, encoder wrote %d bytes and append wrote %d bytes", sz, buf.Len(), len(bts))
@@ -132,6 +139,7 @@ func TestAppendString(t *testing.T) {
 		buf.Reset()
 		s := string(RandBytes(sz))
 		en.WriteString(s)
+		en.Flush()
 		bts = AppendString(bts[0:0], s)
 		if !bytes.Equal(buf.Bytes(), bts) {
 			t.Errorf("for string of length %d, encoder wrote %d bytes and append wrote %d bytes", sz, buf.Len(), len(bts))
@@ -148,6 +156,7 @@ func TestAppendBool(t *testing.T) {
 	for _, v := range vs {
 		buf.Reset()
 		en.WriteBool(v)
+		en.Flush()
 		bts = AppendBool(bts[0:0], v)
 		if !bytes.Equal(buf.Bytes(), bts) {
 			t.Errorf("for %t, encoder wrote %q and append wrote %q", v, buf.Bytes(), bts)

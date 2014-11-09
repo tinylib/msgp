@@ -12,7 +12,7 @@
 	{{if .Convert}}
 	o = msgp.Append{{.BaseName}}(o, {{.BaseType}}({{.Varname}}))
 	{{else if .IsIdent}}
-	o, err = {{.Varname}}.AppendMsg(o)
+	o, err = {{.Varname}}.MarshalMsg(o)
 	if err != nil {
 		return
 	}

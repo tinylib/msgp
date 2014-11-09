@@ -2,12 +2,7 @@ package msgp
 
 import (
 	"encoding/binary"
-	"errors"
 	"math"
-)
-
-var (
-	ErrFieldNotFound = errors.New("field not found")
 )
 
 // Locate returns a []byte pointing to the field
