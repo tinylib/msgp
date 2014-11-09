@@ -429,3 +429,34 @@ func TestSkip(t *testing.T) {
 	}
 
 }
+
+func BenchmarkSkip(b *testing.B) {
+	var buf bytes.Buffer
+	wr := NewWriter(&buf)
+
+	wr.WriteMapHeader(4)
+	wr.WriteString("key_1")
+	wr.WriteBytes([]byte("value_1"))
+	wr.WriteString("key_2")
+	wr.WriteFloat64(2.0)
+	wr.WriteString("key_3")
+	wr.WriteComplex128(3.0i)
+	wr.WriteString("key_4")
+	wr.WriteInt64(49080432189)
+
+	bts := buf.Bytes()
+	b.SetBytes(int64(len(bts)))
+
+	brd := bytes.NewReader(bts)
+	rd := NewReader(brd)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		brd.Seek(0, 0)
+		_, err := rd.Skip()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
