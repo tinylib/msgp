@@ -5,7 +5,7 @@ MessagePack Code Generator
 [![forthebadge](http://forthebadge.com/badges/certified-snoop-lion.svg)](http://forthebadge.com)
 
 This is a code generation tool for serializing Go `struct`s using the [MesssagePack](http://msgpack.org) standard. It is targeted 
-at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_by_processing_source).
+at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_by_processing_source). You can read more about MessagePack and Go [in the wiki](http://github.com/philhofer/msgp/wiki).
 
 ### Use
 
@@ -21,16 +21,7 @@ The `msgp` command will generate serialization methods for all exported struct
 definitions in the file. You will need to include that directive in every file that contains structs that 
 need code generation.
 
-#### Options
-
-The following command-line flags are supported:
-
- - `-o` - output file name (default is `{filename}_gen.go`)
- - `-file` - input file name (default is `$GOPATH/src/$GOPACKAGE/$GOFILE`, which are set by the `go generate` command)
- - `-pkg` - output package name (default is `$GOPACKAGE`)
- - `-io` - satisfy the `msgp.Decodable` and `msgp.Encodable` interfaces (default is `true`)
- - `-marshal` - satisfy the `msgp.Marshaler` and `msgp.Unmarshaler` interfaces (default is `true`)
- - `-tests` - generate tests and benchmarks (default is `true`)
+You can [read more about the code generation options here](http://github.com/philhofer/msgp/wiki/Using-the-Code-Generator).
 
 #### Use
 
@@ -87,52 +78,15 @@ assumed to be struct definitions in other files. (The parser will spit out warni
 #### Extensions
 
 MessagePack supports defining your own types through "extensions," which are just a tuple of
-the data "type" (`int8`) and the raw binary. Extensions should satisfy the `msgp.Extension` interface:
-
-```go
-// Extension is the interface fulfilled
-// by types that want to define their
-// own binary encoding.
-type Extension interface {
-	// ExtensionType should return
-	// a int8 that identifies the concrete
-	// type of the extension. (Types <0 are
-	// officially reserved by the MessagePack
-	// specifications.)
-	ExtensionType() int8
-
-	// Len should return the length
-	// of the data to be encoded
-	Len() int
-
-	// MarshalBinaryTo should copy
-	// the data into the supplied slice,
-	// assuming that the slice has length Len()
-	MarshalBinaryTo([]byte) error
-
-	UnmarshalBinary([]byte) error
-}
-```
-A simple implementation of `Extension` is the `msgp.RawExtension` type.
-
-In order to tell the generator to use the field as an extension, you must include the "extension"
-annotation in the struct tag:
-
-```go
-type Thing struct {
-	Blah msgp.RawExtension `msg:"blah,extension"`
-}
-```
-
-Users should use `msgp.RegisterExtension` to register type system extensions. Registering extensions 
-allows the `interface{}` decoders and the JSON translators to use the concrete type of your extension 
-when decoding/encoding.
+the data "type" (`int8`) and the raw binary. You [can examine a worked example in the wiki.](http://github.com/philhofer/msgp/wiki/Using-Extensions)
 
 ### Status
 
 Alpha. I _will_ break stuff.
 
-Here are the known limitations/restrictions:
+You can read more about how `msgp` maps MessagePack types onto Go types [in our wiki](http://github.com/philhofer/msgp/wiki).
+
+Here some of the known limitations/restrictions:
 
  - All fields of a struct that are not Go built-ins are assumed (optimistically) to have been seen by the code generator in another file. The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field. The generated code will fail to compile if you encounter this issue, so it shouldn't catch you by surprise.
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
