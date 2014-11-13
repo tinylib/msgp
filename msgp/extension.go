@@ -3,18 +3,17 @@ package msgp
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
 	"math"
 )
 
 const (
-	// Complex64 numbers are encoded as extension #3
+	// Complex64Extension is the extension number used for complex64
 	Complex64Extension = 3
 
-	// Complex128 numbers are encoded as extension #4
+	// Complex128Extension is the extension number used for complex128
 	Complex128Extension = 4
 
-	// time.Time values are encoded as extension #5
+	// TimeExtension is the extension number used for time.Time
 	TimeExtension = 5
 )
 
@@ -43,8 +42,21 @@ func RegisterExtension(typ int8, f func() Extension) {
 	extensionReg[typ] = f
 }
 
+// ExtensionTypeError is an error type returned
+// when there is a mis-match between an extension type
+// and the type encoded on the wire
+type ExtensionTypeError struct {
+	Got  int8
+	Want int8
+}
+
+// Error implements the error interface
+func (e ExtensionTypeError) Error() string {
+	return fmt.Sprintf("msgp: error decoding extension: wanted type %d; got type %d", e.Want, e.Got)
+}
+
 func errExt(got int8, wanted int8) error {
-	return fmt.Errorf("msgp: error decoding extension: wanted type %d; got type %d", wanted, got)
+	return ExtensionTypeError{Got: got, Want: wanted}
 }
 
 // Extension is the interface fulfilled
@@ -76,13 +88,21 @@ type RawExtension struct {
 	Data []byte
 }
 
+// ExtensionType implements Extension.ExtensionType, and returns r.Type
 func (r *RawExtension) ExtensionType() int8 { return r.Type }
-func (r *RawExtension) Len() int            { return len(r.Data) }
+
+// Len implements Extension.Len, and returns len(r.Data)
+func (r *RawExtension) Len() int { return len(r.Data) }
+
+// MarshalBinaryTo implements Extension.MarshalBinaryTo,
+// and returns a copy of r.Data
 func (r *RawExtension) MarshalBinaryTo(d []byte) error {
 	copy(d, r.Data)
 	return nil
 }
 
+// UnmarshalBinary implements Extension.UnmarshalBinary,
+// and sets r.Data to the contents of the provided slice
 func (r *RawExtension) UnmarshalBinary(b []byte) error {
 	if cap(r.Data) >= len(b) {
 		r.Data = r.Data[0:len(b)]
@@ -93,97 +113,94 @@ func (r *RawExtension) UnmarshalBinary(b []byte) error {
 	return nil
 }
 
-func (mw *Writer) WriteExtension(e Extension) (int, error) {
+// WriteExtension writes an extension type to the writer
+func (mw *Writer) WriteExtension(e Extension) error {
 	l := e.Len()
-	var (
-		write bool
-		err   error
-	)
+	var err error
 	switch l {
 	case 0:
-		mw.scratch[0] = mext8
-		mw.scratch[1] = 0
-		mw.scratch[2] = byte(e.ExtensionType())
-		return mw.w.Write(mw.scratch[:3])
+		o, err := mw.require(3)
+		if err != nil {
+			return err
+		}
+		mw.buf[o] = mext8
+		mw.buf[o+1] = 0
+		mw.buf[o+2] = byte(e.ExtensionType())
 	case 1:
-		mw.scratch[0] = mfixext1
-		mw.scratch[1] = byte(e.ExtensionType())
-		write = true
+		mw.buf = append(mw.buf, mfixext1, byte(e.ExtensionType()))
 	case 2:
-		mw.scratch[0] = mfixext2
-		mw.scratch[1] = byte(e.ExtensionType())
-		write = true
+		mw.buf = append(mw.buf, mfixext2, byte(e.ExtensionType()))
 	case 4:
-		mw.scratch[0] = mfixext4
-		mw.scratch[1] = byte(e.ExtensionType())
-		write = true
+		mw.buf = append(mw.buf, mfixext4, byte(e.ExtensionType()))
 	case 8:
-		mw.scratch[0] = mfixext8
-		mw.scratch[1] = byte(e.ExtensionType())
-		write = true
+		mw.buf = append(mw.buf, mfixext8, byte(e.ExtensionType()))
 	case 16:
-		mw.scratch[0] = mfixext16
-		mw.scratch[1] = byte(e.ExtensionType())
-		write = true
-	}
-	var nn int
-	if write {
-		nn, err = mw.w.Write(mw.scratch[:2])
-	} else {
+		mw.buf = append(mw.buf, mfixext16, byte(e.ExtensionType()))
+	default:
 		switch {
 		case l < math.MaxUint8:
-			mw.scratch[0] = mext8
-			mw.scratch[1] = byte(uint8(l))
-			mw.scratch[2] = byte(e.ExtensionType())
-			nn, err = mw.w.Write(mw.scratch[:3])
+			o, err := mw.require(3)
+			if err != nil {
+				return err
+			}
+			mw.buf[o] = mext8
+			mw.buf[o+1] = byte(uint8(l))
+			mw.buf[o+2] = byte(e.ExtensionType())
 		case l < math.MaxUint16:
-			mw.scratch[0] = mext16
-			binary.BigEndian.PutUint16(mw.scratch[1:], uint16(l))
-			mw.scratch[3] = byte(e.ExtensionType())
-			nn, err = mw.w.Write(mw.scratch[:4])
+			o, err := mw.require(4)
+			if err != nil {
+				return err
+			}
+			mw.buf[o] = mext16
+			binary.BigEndian.PutUint16(mw.buf[o+1:], uint16(l))
+			mw.buf[3] = byte(e.ExtensionType())
 		default:
-			mw.scratch[0] = mext32
-			binary.BigEndian.PutUint32(mw.scratch[1:], uint32(l))
-			mw.scratch[5] = byte(e.ExtensionType())
-			nn, err = mw.w.Write(mw.scratch[:6])
+			o, err := mw.require(6)
+			if err != nil {
+				return err
+			}
+			mw.buf[o] = mext32
+			binary.BigEndian.PutUint32(mw.buf[o+1:], uint32(l))
+			mw.buf[5] = byte(e.ExtensionType())
 		}
 	}
+	o, err := mw.require(l)
 	if err != nil {
-		return nn, err
+		return err
 	}
-	var b []byte
-	if e.Len() <= cap(mw.scratch) {
-		b = mw.scratch[0:e.Len()]
-	} else {
-		b = make([]byte, e.Len())
-	}
-	err = e.MarshalBinaryTo(b)
-	if err != nil {
-		return nn, err
-	}
-	n := nn
-	nn, err = mw.w.Write(b)
-	return n + nn, err
+	return e.MarshalBinaryTo(mw.buf[o:])
 }
 
 // peek at the extension type, assuming the next
 // kind to be read is Extension
 func (m *Reader) peekExtensionType() (int8, error) {
-	l, err := m.r.Peek(6)
+	p, err := m.r.Peek(2)
 	if err != nil {
 		return 0, err
 	}
-	switch l[0] {
+	switch p[0] {
 	case mfixext1, mfixext2, mfixext4, mfixext8, mfixext16:
-		return int8(l[1]), nil
+		return int8(p[1]), nil
 	case mext8:
-		return int8(l[2]), nil
+		p, err = m.r.Peek(3)
+		if err != nil {
+			return 0, err
+		}
+		return int8(p[2]), nil
 	case mext16:
-		return int8(l[3]), nil
+		p, err = m.r.Peek(4)
+		if err != nil {
+			return 0, err
+		}
+		return int8(p[3]), nil
 	case mext32:
-		return int8(l[5]), nil
+		p, err = m.r.Peek(6)
+		if err != nil {
+			return 0, err
+		}
+		return int8(p[5]), nil
 	default:
-		return 0, fmt.Errorf("unexpected leading byte %x for extension", l[0])
+		return 0, TypeError{Method: ExtensionType, Encoded: getType(p[0])}
 	}
 }
 
@@ -206,133 +223,152 @@ func peekExtension(b []byte) (int8, error) {
 		}
 		return int8(b[5]), nil
 	default:
-		return 0, fmt.Errorf("unexpected leading byte %x for extension", b[0])
+		return 0, InvalidPrefixError(b[0])
 	}
 }
 
-func (m *Reader) ReadExtension(e Extension) (n int, err error) {
-	var lead byte
-	var nn int
-	lead, err = m.r.ReadByte()
+// ReadExtension reads the next object from the reader
+// as an extension. ReadExtension will fail if the next
+// object in the stream is not an extension, or if
+// e.Type() is not the same as the wire type.
+func (m *Reader) ReadExtension(e Extension) (err error) {
+	var p []byte
+	p, err = m.r.Peek(2)
 	if err != nil {
 		return
 	}
-	n++
+	lead := p[0]
 	var read int
+	var off int
 	switch lead {
 	case mfixext1:
-		nn, err = io.ReadFull(m.r, m.leader[:2])
-		n += nn
+		if int8(p[1]) != e.ExtensionType() {
+			err = errExt(int8(p[1]), e.ExtensionType())
+			return
+		}
+		p, err = m.r.Peek(3)
 		if err != nil {
 			return
 		}
-		if int8(m.leader[0]) != e.ExtensionType() {
-			err = errExt(int8(m.leader[0]), e.ExtensionType())
-			return
+		err = e.UnmarshalBinary(p[2:])
+		if err == nil {
+			_, err = m.r.Skip(3)
 		}
-		err = e.UnmarshalBinary(m.leader[1:2])
 		return
 
 	case mfixext2:
-		nn, err = io.ReadFull(m.r, m.leader[:3])
-		n += nn
+		if int8(p[1]) != e.ExtensionType() {
+			err = errExt(int8(p[1]), e.ExtensionType())
+			return
+		}
+		p, err = m.r.Peek(4)
 		if err != nil {
 			return
 		}
-		if int8(m.leader[0]) != e.ExtensionType() {
-			err = errExt(int8(m.leader[0]), e.ExtensionType())
-			return
+		err = e.UnmarshalBinary(p[2:])
+		if err == nil {
+			_, err = m.r.Skip(4)
 		}
-		err = e.UnmarshalBinary(m.leader[1:3])
 		return
 
 	case mfixext4:
-		nn, err = io.ReadFull(m.r, m.leader[:5])
-		n += nn
+		if int8(p[1]) != e.ExtensionType() {
+			err = errExt(int8(p[1]), e.ExtensionType())
+			return
+		}
+		p, err = m.r.Peek(6)
 		if err != nil {
 			return
 		}
-		if int8(m.leader[0]) != e.ExtensionType() {
-			err = errExt(int8(m.leader[0]), e.ExtensionType())
-			return
+		err = e.UnmarshalBinary(p[2:])
+		if err == nil {
+			_, err = m.r.Skip(6)
 		}
-		err = e.UnmarshalBinary(m.leader[1:5])
 		return
 
 	case mfixext8:
-		nn, err = io.ReadFull(m.r, m.leader[:9])
-		n += nn
+		if int8(p[1]) != e.ExtensionType() {
+			err = errExt(int8(p[1]), e.ExtensionType())
+			return
+		}
+		p, err = m.r.Peek(10)
 		if err != nil {
 			return
 		}
-		if int8(m.leader[0]) != e.ExtensionType() {
-			err = errExt(int8(m.leader[0]), e.ExtensionType())
-			return
+		err = e.UnmarshalBinary(p[2:])
+		if err == nil {
+			_, err = m.r.Skip(10)
 		}
-		err = e.UnmarshalBinary(m.leader[1:9])
 		return
 
 	case mfixext16:
-		nn, err = io.ReadFull(m.r, m.leader[:17])
-		n += nn
+		if int8(p[1]) != e.ExtensionType() {
+			err = errExt(int8(p[1]), e.ExtensionType())
+			return
+		}
+		p, err = m.r.Peek(18)
 		if err != nil {
 			return
 		}
-		if int8(m.leader[0]) != e.ExtensionType() {
-			err = errExt(int8(m.leader[0]), e.ExtensionType())
-			return
+		err = e.UnmarshalBinary(p[2:])
+		if err == nil {
+			_, err = m.r.Skip(18)
 		}
-		err = e.UnmarshalBinary(m.leader[1:17])
 		return
 
 	case mext8:
-		nn, err = io.ReadFull(m.r, m.leader[:2])
-		n += nn
+		p, err = m.r.Peek(3)
 		if err != nil {
 			return
 		}
-		if int8(m.leader[1]) != e.ExtensionType() {
-			err = errExt(int8(m.leader[0]), e.ExtensionType())
+		if int8(p[2]) != e.ExtensionType() {
+			err = errExt(int8(p[2]), e.ExtensionType())
 			return
 		}
-		read = int(uint8(m.leader[0]))
+		read = int(uint8(p[1]))
+		off = 3
 
 	case mext16:
-		nn, err = io.ReadFull(m.r, m.leader[:3])
-		n += nn
+		p, err = m.r.Peek(4)
 		if err != nil {
 			return
 		}
-		if int8(m.leader[2]) != e.ExtensionType() {
-			err = errExt(int8(m.leader[2]), e.ExtensionType())
+		if int8(p[3]) != e.ExtensionType() {
+			err = errExt(int8(p[3]), e.ExtensionType())
 			return
 		}
-		read = int(binary.BigEndian.Uint16(m.leader[0:2]))
+		read = int(binary.BigEndian.Uint16(p[1:]))
+		off = 4
 
 	case mext32:
-		nn, err = io.ReadFull(m.r, m.leader[:5])
-		n += nn
+		p, err = m.r.Peek(6)
 		if err != nil {
 			return
 		}
-		if int8(m.leader[4]) != e.ExtensionType() {
-			err = errExt(int8(m.leader[4]), e.ExtensionType())
+		if int8(p[5]) != e.ExtensionType() {
+			err = errExt(int8(p[5]), e.ExtensionType())
 			return
 		}
-		read = int(binary.BigEndian.Uint32(m.leader[0:4]))
+		read = int(binary.BigEndian.Uint32(p[1:]))
+		off = 6
 
+	default:
+		err = TypeError{Method: ExtensionType, Encoded: getType(lead)}
+		return
 	}
 
-	var bts []byte
-	bts, nn, err = readN(m.r, m.scratch, read)
-	n += nn
+	p, err = m.r.Peek(read + off)
 	if err != nil {
 		return
 	}
-	err = e.UnmarshalBinary(bts)
+	err = e.UnmarshalBinary(p[off:])
+	if err == nil {
+		_, err = m.r.Skip(read + off)
+	}
 	return
 }
 
+// AppendExtension appends a MessagePack extension to the provided slice
 func AppendExtension(b []byte, e Extension) ([]byte, error) {
 	l := e.Len()
 	o, n := ensure(b, ExtensionPrefixSize+l)
@@ -383,6 +419,13 @@ func AppendExtension(b []byte, e Extension) ([]byte, error) {
 	return o[:n+l], e.MarshalBinaryTo(o[n : n+l])
 }
 
+// ReadExtensionBytes reads an extension from 'b' into 'e'
+// and returns any remaining bytes.
+// Possible errors:
+// - ErrShortBytes ('b' not long enough)
+// - ExtensionTypeErorr{} (wire type not the same as e.Type())
+// - TypeErorr{} (next object not an extension)
+// - An umarshal error returned from e.UnmarshalBinary
 func ReadExtensionBytes(b []byte, e Extension) ([]byte, error) {
 	l := len(b)
 	if l < 3 {
@@ -436,6 +479,8 @@ func ReadExtensionBytes(b []byte, e Extension) ([]byte, error) {
 		sz = int(binary.BigEndian.Uint32(b[1:]))
 		typ = int8(b[5])
 		off = 6
+	default:
+		return b, TypeError{Method: ExtensionType, Encoded: getType(lead)}
 	}
 
 	if typ != e.ExtensionType() {

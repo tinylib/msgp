@@ -28,7 +28,7 @@ The following command-line flags are supported:
  - `-o` - output file name (default is `{filename}_gen.go`)
  - `-file` - input file name (default is `$GOPATH/src/$GOPACKAGE/$GOFILE`, which are set by the `go generate` command)
  - `-pkg` - output package name (default is `$GOPACKAGE`)
- - `-io` - satisfy the `msgp.Decoder` and `msgp.Encoder` interfaces (default is `true`)
+ - `-io` - satisfy the `msgp.Decodable` and `msgp.Encodable` interfaces (default is `true`)
  - `-marshal` - satisfy the `msgp.Marshaler` and `msgp.Unmarshaler` interfaces (default is `true`)
  - `-tests` - generate tests and benchmarks (default is `true`)
 
@@ -46,77 +46,18 @@ type Person struct {
 }
 ```
 
-Running `msgp` on a file containing the above declaration would generate methods 
-to fulfill the following interfaces (which are defined in the `/msgp` subdirectory):
+By default, the code generator will satisfy `msgp.Sizer`, `msgp.Encodable`, `msgp.Decodable`, 
+`msgp.Marshaler`, and `msgp.Unmarshaler`. Carefully-designed applications can use these methods to do
+marshalling/unmarshalling with zero allocations.
 
-```go
-// Marshaler is the interface implemented
-// by types that know how to marshal themselves
-// as MessagePack
-type Marshaler interface {
-	// AppendMsg appends the marshalled
-	// form of the object to the provided
-	// byte slice, returning the extended
-	// slice and any errors encountered
-	AppendMsg([]byte) ([]byte, error)
+One of the unique features of this package is the implementation of `*Reader` and `*Writer`, which
+are both buffered. The fact that these objects can manipulate the contents of their buffers directly
+means that encoding and decoding from streams can be nearly as fast as marshalling and unmarshalling. 
+Additionally, the fact that these are buffered means that they can be directly applied to a `net.Conn`
+or `*os.File`, for example.
 
-	// MarshalMsg returns a new []byte
-	// containing the MessagePack-encoded
-	// form of the object
-	MarshalMsg() ([]byte, error)
-}
-
-// Encoder is the interface implemented
-// by types that know how to write themselves
-// as MessagePack
-type Encoder interface {
-	// EncodeMsg writes the object in MessagePack
-	// format to the writer, returning the number
-	// of bytes written and any errors encountered.
-	EncodeMsg(io.Writer) (int, error)
-
-	// EncodeTo writes the object to a *Writer,
-	// returning the number of bytes written, and
-	// any errors encountered.
-	EncodeTo(*Writer) (int, error)
-}
-
-// Unmarshaler is the interface fulfilled
-// byte objects that know how to unmarshal
-// themselves from MessagePack
-type Unmarshaler interface {
-	// UnmarshalMsg unmarshals the object
-	// from binary, returing any leftover
-	// bytes and any errors encountered
-	UnmarshalMsg([]byte) ([]byte, error)
-}
-
-// Decoder is the interface fulfilled
-// by objects that know how to decode themselves
-// from MessagePack
-type Decoder interface {
-	// DecodeMsg decodes the object
-	// from an io.Reader, returning
-	// the number of bytes read and
-	// any errors encountered
-	DecodeMsg(io.Reader) (int, error)
-
-	// DecodeFrom decodes the object
-	// using an existing *Reader,
-	// returning the number of bytes
-	// read and any errors encountered
-	DecodeFrom(*Reader) (int, error)
-}
-```
-
-Each method is optimized for a certain use-case, depending on whether or not the user
-can afford to recycle `*msgp.Writer` and `*msgp.Reader` object, and whether or not
-the user is dealing with `io.Reader/io.Writer` or `[]byte`. Carefully-designed applications 
-can use these methods to do marshalling/unmarshalling with zero allocations.
-
-The `/msgp` package has utility functions for transforming MessagePack to JSON directly,
-both from `io.Reader`s and `[]byte`. There are also utilities for in-place manipulation of
-raw MessagePack.
+There are also utility functions available for translating MessagePack into JSON without an intermediate
+de-serialization step.
 
 ### Features
 
@@ -128,7 +69,8 @@ raw MessagePack.
  - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods
  - Support for arbitrary type system extensions (see below)
 
-For example, this will work fine:
+Because of (limited) identifier resolution, the following
+struct declaration will work fine:
 ```go
 type MyInt int
 type Data []byte
@@ -137,9 +79,9 @@ type Struct struct {
 	Other  Data              `msg:"other"`
 }
 ```
-As long as the declarations of `MyInt` and `Data` are in the same file, the parser will figure out that 
+As long as the declarations of `MyInt` and `Data` are in the same file as `Struct`, the parser will figure out that 
 `MyInt` is really an `int`, and `Data` is really just a `[]byte`. Note that this only works for "base" types 
-(no slices or maps, although `[]byte` is supported as a special case.) Unresolved identifiers are (optimistically) 
+(no composite types, although `[]byte` is supported as a special case.) Unresolved identifiers are (optimistically) 
 assumed to be struct definitions in other files. (The parser will spit out warnings about unresolved identifiers.)
 
 #### Extensions

@@ -26,7 +26,8 @@ func TestReadWriteExtension(t *testing.T) {
 		buf.Reset()
 		e := randomExt()
 		en.WriteExtension(&e)
-		_, err := dc.ReadExtension(&e)
+		en.Flush()
+		err := dc.ReadExtension(&e)
 		if err != nil {
 			t.Errorf("error with extension (length %d): %s", len(buf.Bytes()), err)
 		}

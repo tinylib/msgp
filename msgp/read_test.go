@@ -2,6 +2,7 @@ package msgp
 
 import (
 	"bytes"
+	"io"
 	"math"
 	"math/rand"
 	"reflect"
@@ -40,18 +41,21 @@ func TestReadIntf(t *testing.T) {
 
 	var buf bytes.Buffer
 	var v interface{}
-	var err error
 	dec := NewReader(&buf)
 	enc := NewWriter(&buf)
 
 	for i, ts := range testCases {
 		buf.Reset()
-		_, err = enc.WriteIntf(ts)
+		err := enc.WriteIntf(ts)
 		if err != nil {
 			t.Errorf("Test case %d: %s", i, err)
 			continue
 		}
-		v, _, err = dec.ReadIntf()
+		err = enc.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+		v, err = dec.ReadIntf()
 		if err != nil {
 			t.Errorf("Test case: %d: %s", i, err)
 		}
@@ -73,24 +77,23 @@ func TestReadMapHeader(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	var n int
-	var nr int
 	var sz uint32
 	var err error
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 	for i, test := range tests {
 		buf.Reset()
-		n, err = wr.WriteMapHeader(test.Sz)
+		err = wr.WriteMapHeader(test.Sz)
 		if err != nil {
 			t.Fatal(err)
 		}
-		sz, nr, err = rd.ReadMapHeader()
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+		sz, err = rd.ReadMapHeader()
 		if err != nil {
 			t.Errorf("Test case %d: got error %s", i, err)
-		}
-		if nr != n {
-			t.Errorf("Test case %d: wrote %d bytes but read %d", i, n, nr)
 		}
 		if sz != test.Sz {
 			t.Errorf("Test case %d: wrote size %d; got size %d", i, test.Sz, sz)
@@ -109,24 +112,23 @@ func TestReadArrayHeader(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	var n int
-	var nr int
 	var sz uint32
 	var err error
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 	for i, test := range tests {
 		buf.Reset()
-		n, err = wr.WriteArrayHeader(test.Sz)
+		err = wr.WriteArrayHeader(test.Sz)
 		if err != nil {
 			t.Fatal(err)
 		}
-		sz, nr, err = rd.ReadArrayHeader()
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+		sz, err = rd.ReadArrayHeader()
 		if err != nil {
 			t.Errorf("Test case %d: got error %s", i, err)
-		}
-		if nr != n {
-			t.Errorf("Test case %d: wrote %d bytes but read %d", i, n, nr)
 		}
 		if sz != test.Sz {
 			t.Errorf("Test case %d: wrote size %d; got size %d", i, test.Sz, sz)
@@ -139,16 +141,11 @@ func TestReadNil(t *testing.T) {
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 
-	n, err := wr.WriteNil()
+	wr.WriteNil()
+	wr.Flush()
+	err := rd.ReadNil()
 	if err != nil {
 		t.Fatal(err)
-	}
-	nr, err := rd.ReadNil()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if n != nr {
-		t.Errorf("Wrote %d bytes; read %d", n, nr)
 	}
 }
 
@@ -157,22 +154,22 @@ func TestReadFloat64(t *testing.T) {
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100; i++ {
 		buf.Reset()
 
 		flt := (rand.Float64() - 0.5) * math.MaxFloat64
-		n, err := wr.WriteFloat64(flt)
+		err := wr.WriteFloat64(flt)
 		if err != nil {
 			t.Fatal(err)
 		}
-		out, nr, err := rd.ReadFloat64()
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := rd.ReadFloat64()
 		if err != nil {
 			t.Errorf("Error reading %f: %s", flt, err)
 			continue
-		}
-
-		if nr != n || n != 9 || nr != 9 {
-			t.Errorf("Wrote %d bytes but read %d", n, nr)
 		}
 
 		if out != flt {
@@ -190,18 +187,18 @@ func TestReadFloat32(t *testing.T) {
 		buf.Reset()
 
 		flt := (rand.Float32() - 0.5) * math.MaxFloat32
-		n, err := wr.WriteFloat32(flt)
+		err := wr.WriteFloat32(flt)
 		if err != nil {
 			t.Fatal(err)
 		}
-		out, nr, err := rd.ReadFloat32()
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := rd.ReadFloat32()
 		if err != nil {
 			t.Errorf("Error reading %f: %s", flt, err)
 			continue
-		}
-
-		if nr != n || nr != 5 || n != 5 {
-			t.Errorf("Wrote %d bytes but read %d", n, nr)
 		}
 
 		if out != flt {
@@ -220,13 +217,17 @@ func TestReadInt64(t *testing.T) {
 	for i, num := range ints {
 		buf.Reset()
 
-		n, err := wr.WriteInt64(num)
+		err := wr.WriteInt64(num)
 		if err != nil {
 			t.Fatal(err)
 		}
-		out, nr, err := rd.ReadInt64()
-		if nr != n {
-			t.Errorf("Test case %d: wrote %d bytes; read %d", i, n, nr)
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := rd.ReadInt64()
+		if err != nil {
+			t.Fatal(err)
 		}
 		if out != num {
 			t.Errorf("Test case %d: put %d in and got %d out", i, num, out)
@@ -244,14 +245,15 @@ func TestReadUint64(t *testing.T) {
 	for i, num := range ints {
 		buf.Reset()
 
-		n, err := wr.WriteUint64(num)
+		err := wr.WriteUint64(num)
 		if err != nil {
 			t.Fatal(err)
 		}
-		out, nr, err := rd.ReadUint64()
-		if nr != n {
-			t.Errorf("Test case %d: wrote %d bytes; read %d", i, n, nr)
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
 		}
+		out, err := rd.ReadUint64()
 		if out != num {
 			t.Errorf("Test case %d: put %d in and got %d out", i, num, out)
 		}
@@ -269,19 +271,19 @@ func TestReadBytes(t *testing.T) {
 		buf.Reset()
 		bts := RandBytes(size)
 
-		n, err := wr.WriteBytes(bts)
+		err := wr.WriteBytes(bts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = wr.Flush()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		out, nr, err := rd.ReadBytes(scratch)
+		out, err := rd.ReadBytes(scratch)
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 			continue
-		}
-
-		if n != nr {
-			t.Errorf("test case %d: wrote %d bytes; read %d bytes", i, n, nr)
 		}
 
 		if !bytes.Equal(bts, out) {
@@ -301,20 +303,19 @@ func TestReadString(t *testing.T) {
 		buf.Reset()
 		in := string(RandBytes(size))
 
-		n, err := wr.WriteString(in)
+		err := wr.WriteString(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = wr.Flush()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		out, nr, err := rd.ReadString()
+		out, err := rd.ReadString()
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
-
-		if n != nr {
-			t.Errorf("test case %d: wrote %d bytes; read %d bytes", i, n, nr)
-		}
-
 		if out != in {
 			t.Errorf("Test case %d: strings not equal.", i)
 		}
@@ -331,16 +332,16 @@ func TestReadComplex64(t *testing.T) {
 		buf.Reset()
 		f := complex(rand.Float32()*math.MaxFloat32, rand.Float32()*math.MaxFloat32)
 
-		n, _ := wr.WriteComplex64(f)
+		wr.WriteComplex64(f)
+		err := wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
 
-		out, nr, err := rd.ReadComplex64()
+		out, err := rd.ReadComplex64()
 		if err != nil {
 			t.Error(err)
 			continue
-		}
-
-		if nr != n {
-			t.Errorf("Wrote %d bytes; read %d bytes", n, nr)
 		}
 
 		if out != f {
@@ -359,18 +360,17 @@ func TestReadComplex128(t *testing.T) {
 		buf.Reset()
 		f := complex(rand.Float64()*math.MaxFloat64, rand.Float64()*math.MaxFloat64)
 
-		n, _ := wr.WriteComplex128(f)
+		wr.WriteComplex128(f)
+		err := wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
 
-		out, nr, err := rd.ReadComplex128()
+		out, err := rd.ReadComplex128()
 		if err != nil {
 			t.Error(err)
 			continue
 		}
-
-		if nr != n {
-			t.Errorf("Wrote %d bytes; read %d bytes", n, nr)
-		}
-
 		if out != f {
 			t.Errorf("Wrote %f; read %f", f, out)
 		}
@@ -384,19 +384,19 @@ func TestTime(t *testing.T) {
 	en := NewWriter(&buf)
 	dc := NewReader(&buf)
 
-	n, err := en.WriteTime(now)
+	err := en.WriteTime(now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = en.Flush()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	out, no, err := dc.ReadTime()
+	out, err := dc.ReadTime()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if no != n {
-		t.Errorf("Read %d bytes; wrote %d bytes", no, n)
-	}
-
 	if !now.Equal(out) {
 		t.Fatalf("%s in; %s out", now, out)
 	}
@@ -416,16 +416,17 @@ func TestSkip(t *testing.T) {
 	wr.WriteComplex128(3.0i)
 	wr.WriteString("key_4")
 	wr.WriteInt64(49080432189)
+	wr.Flush()
 
 	// this should skip the whole map
-	_, err := rd.Skip()
+	err := rd.Skip()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = rd.nextKind()
-	if err == nil {
-		t.Error("expected EOF; got no error")
+	_, err = rd.NextType()
+	if err != io.EOF {
+		t.Errorf("expected %q; got %q", io.EOF, err)
 	}
 
 }
@@ -443,6 +444,7 @@ func BenchmarkSkip(b *testing.B) {
 	wr.WriteComplex128(3.0i)
 	wr.WriteString("key_4")
 	wr.WriteInt64(49080432189)
+	wr.Flush()
 
 	bts := buf.Bytes()
 	b.SetBytes(int64(len(bts)))
@@ -454,7 +456,7 @@ func BenchmarkSkip(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		brd.Seek(0, 0)
-		_, err := rd.Skip()
+		err := rd.Skip()
 		if err != nil {
 			b.Fatal(err)
 		}

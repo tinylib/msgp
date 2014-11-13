@@ -2,8 +2,7 @@
 
 {{define "PtrTempl"}}
 	if {{.Varname}} == nil {
-		nn, err = en.WriteNil()
-		n += nn
+		err = en.WriteNil()
 		if err != nil {
 			return
 		}
@@ -14,28 +13,25 @@
 
 {{define "BaseTempl"}}
 	{{if .Convert}}
-	nn, err = en.Write{{.BaseName}}({{.BaseType}}({{.Varname}}))
+	err = en.Write{{.BaseName}}({{.BaseType}}({{.Varname}}))
 	{{else if .IsIdent}}
-	nn, err = {{.Varname}}.EncodeTo(en)
+	err = {{.Varname}}.EncodeMsg(en)
 	{{else}}
-	nn, err = en.Write{{.BaseName}}({{.Varname}})
+	err = en.Write{{.BaseName}}({{.Varname}})
 	{{end}}
-	n += nn
 	if err != nil {
 		return
 	}
 {{end}}
 
 {{define "MapTempl"}}
-	nn, err = en.WriteMapHeader(uint32(len({{.Varname}})))
-	n += nn
+	err = en.WriteMapHeader(uint32(len({{.Varname}})))
 	if err != nil {
 		return
 	}
 
 	for {{.Keyidx}}, {{.Validx}} := range {{.Varname}} {
-		nn, err = en.WriteString({{.Keyidx}})
-		n += nn
+		err = en.WriteString({{.Keyidx}})
 		if err != nil {
 			return
 		}
@@ -44,8 +40,7 @@
 {{end}}
 
 {{define "SliceTempl"}}
-	nn, err = en.WriteArrayHeader(uint32(len({{.Varname}})))
-	n += nn
+	err = en.WriteArrayHeader(uint32(len({{.Varname}})))
 	if err != nil {
 		return
 	}
@@ -55,8 +50,7 @@
 {{end}}
 
 {{define "ArrayTempl"}}
-	nn, err = en.WriteArrayHeader({{.Size}})
-	n += nn
+	err = en.WriteArrayHeader({{.Size}})
 	if err != nil {
 		return
 	}
@@ -66,14 +60,12 @@
 {{end}}
 
 {{define "StructTempl"}}
-	nn, err = en.WriteMapHeader({{len .Fields}})
-	n += nn
+	err = en.WriteMapHeader({{len .Fields}})
 	if err != nil {
 		return
 	}
 	{{range .Fields}}
-	nn, err = en.WriteString("{{.FieldTag}}")
-	n += nn
+	err = en.WriteString("{{.FieldTag}}")
 	if err != nil {
 		return
 	}

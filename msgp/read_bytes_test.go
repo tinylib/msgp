@@ -16,6 +16,7 @@ func TestReadMapHeaderBytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteMapHeader(v)
+		en.Flush()
 
 		out, left, err := ReadMapHeaderBytes(buf.Bytes())
 		if err != nil {
@@ -41,6 +42,7 @@ func TestReadArrayHeaderBytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteArrayHeader(v)
+		en.Flush()
 
 		out, left, err := ReadArrayHeaderBytes(buf.Bytes())
 		if err != nil {
@@ -61,6 +63,7 @@ func TestReadNilBytes(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 	en.WriteNil()
+	en.Flush()
 
 	left, err := ReadNilBytes(buf.Bytes())
 	if err != nil {
@@ -76,6 +79,7 @@ func TestReadFloat64Bytes(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 	en.WriteFloat64(3.14159)
+	en.Flush()
 
 	out, left, err := ReadFloat64Bytes(buf.Bytes())
 	if err != nil {
@@ -93,6 +97,7 @@ func TestReadFloat32Bytes(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 	en.WriteFloat32(3.1)
+	en.Flush()
 
 	out, left, err := ReadFloat32Bytes(buf.Bytes())
 	if err != nil {
@@ -115,6 +120,7 @@ func TestReadBoolBytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteBool(v)
+		en.Flush()
 		out, left, err := ReadBoolBytes(buf.Bytes())
 
 		if err != nil {
@@ -140,6 +146,7 @@ func TestReadInt64Bytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteInt64(v)
+		en.Flush()
 		out, left, err := ReadInt64Bytes(buf.Bytes())
 
 		if err != nil {
@@ -165,6 +172,7 @@ func TestReadUint64Bytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteUint64(v)
+		en.Flush()
 		out, left, err := ReadUint64Bytes(buf.Bytes())
 
 		if err != nil {
@@ -191,6 +199,7 @@ func TestReadBytesBytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteBytes(v)
+		en.Flush()
 		out, left, err := ReadBytesBytes(buf.Bytes(), scratch)
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
@@ -213,6 +222,7 @@ func TestReadZCBytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteBytes(v)
+		en.Flush()
 		out, left, err := ReadBytesZC(buf.Bytes())
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
@@ -235,6 +245,7 @@ func TestReadZCString(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteString(v)
+		en.Flush()
 
 		out, left, err := ReadStringZC(buf.Bytes())
 		if err != nil {
@@ -258,6 +269,7 @@ func TestReadStringBytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteString(v)
+		en.Flush()
 
 		out, left, err := ReadStringBytes(buf.Bytes())
 		if err != nil {
@@ -281,6 +293,7 @@ func TestReadComplex128Bytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteComplex128(v)
+		en.Flush()
 
 		out, left, err := ReadComplex128Bytes(buf.Bytes())
 		if err != nil {
@@ -304,6 +317,7 @@ func TestReadComplex64Bytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteComplex64(v)
+		en.Flush()
 
 		out, left, err := ReadComplex64Bytes(buf.Bytes())
 		if err != nil {
@@ -324,6 +338,7 @@ func TestReadTimeBytes(t *testing.T) {
 
 	now := time.Now()
 	en.WriteTime(now)
+	en.Flush()
 	out, left, err := ReadTimeBytes(buf.Bytes())
 	if err != nil {
 		t.Fatal(err)
@@ -355,6 +370,7 @@ func TestReadIntfBytes(t *testing.T) {
 	for i, v := range tests {
 		buf.Reset()
 		en.WriteIntf(v)
+		en.Flush()
 
 		out, left, err := ReadIntfBytes(buf.Bytes())
 		if err != nil {
@@ -392,6 +408,7 @@ func BenchmarkSkipBytes(b *testing.B) {
 
 	en.WriteString("ext")
 	en.WriteExtension(&RawExtension{55, []byte("raw data!!!")})
+	en.Flush()
 
 	bts := buf.Bytes()
 	b.SetBytes(int64(len(bts)))

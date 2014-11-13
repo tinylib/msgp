@@ -1,3 +1,27 @@
+// This package is the support library for the msgp code generator (http://github.com/philhofer/msgp).
+//
+// This package defines the utilites used by the msgp code generator for encoding and decoding MessagePack
+// from []byte and io.Reader/io.Writer types. Much of this package is devoted to helping the msgp code
+// generator implement the Marshaler/Unmarshaler and Encodable/Decodable interfaces for arbitrary
+// input times.
+//
+// This package defines four "families" of functions:
+// 	- AppendXxxx() appends an object to a []byte in MessagePack encoding.
+// 	- ReadXxxxBytes() reads an object from a []byte and returns the remaining bytes.
+// 	- (*Writer).WriteXxxx() writes an object to the buffered *Writer type.
+// 	- (*Reader).ReadXxxx() reads an object from a buffered *Reader type.
+//
+// Once a type has satisfied the `Encodable` and `Decodable` interfaces,
+// it can be written and read from arbitrary `io.Writer`s and `io.Reader`s using
+// 		msgp.Encode(io.Writer, msgp.Encodable)
+// and
+//		msgp.Decode(io.Reader, msgp.Decodable)
+//
+// There are also methods for converting MessagePack to JSON without
+// an explicit de-serialization step.
+//
+// For additional tips, tricks, and gotchas, please visit
+// the wiki at http://github.com/philhofer/msgp
 package msgp
 
 const last4 = 0x0f

@@ -32,6 +32,7 @@ func TestCopyJSON(t *testing.T) {
 		"internal_one": "blah",
 		"internal_two": "blahhh...",
 	})
+	enc.Flush()
 
 	var js bytes.Buffer
 	_, err := CopyToJSON(&js, &buf)
@@ -85,14 +86,16 @@ func BenchmarkCopyToJSON(b *testing.B) {
 
 	enc.WriteString("an array")
 	enc.WriteArrayHeader(2)
-	enc.WriteString("part_A")
-	enc.WriteString("part_B")
+	enc.WriteBool(true)
+	enc.WriteUint(2089)
 
 	enc.WriteString("a_second_map")
 	enc.WriteMapStrStr(map[string]string{
 		"internal_one": "blah",
 		"internal_two": "blahhh...",
 	})
+	enc.Flush()
+
 	var js bytes.Buffer
 	bts := buf.Bytes()
 	_, err := CopyToJSON(&js, &buf)
