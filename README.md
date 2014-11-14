@@ -7,7 +7,7 @@ MessagePack Code Generator
 This is a code generation tool for serializing Go `struct`s using the [MesssagePack](http://msgpack.org) standard. It is targeted 
 at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_by_processing_source). You can read more about MessagePack and Go [in the wiki](http://github.com/philhofer/msgp/wiki).
 
-### Use
+### Quickstart
 
 *** Note: `go generate` is a go 1.4+ feature. ***
 
@@ -23,7 +23,28 @@ need code generation.
 
 You can [read more about the code generation options here](http://github.com/philhofer/msgp/wiki/Using-the-Code-Generator).
 
-#### Use
+Once you have the appropriate methods generated, we can use the methods in `github.com/philhofer/msgp/msgp` to serialize and
+de-serialize the objects.
+
+For example, if we had generated methods for a `Person` struct:
+```go
+import (
+	"github.com/philhofer/msgp/msgp"
+	"os"
+)
+
+p := &Person{
+	Name: "Huck Finn",
+	Age: 14,
+}
+
+// write 'p' to standard out
+// (no need for buffering here; 
+// Encode does it for you)
+msgp.Encode(os.Stdout, p)
+```
+
+### Use
 
 Field names can be set in much the same way as the `encoding/json` package. For example:
 
