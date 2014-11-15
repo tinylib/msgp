@@ -207,7 +207,7 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 		return
 	}
 
-	f = *(*float64)(unsafe.Pointer(&b[1]))
+	copy((*(*[8]byte)(unsafe.Pointer(&f)))[:], b[1:])
 	o = b[9:]
 	return
 }
@@ -228,7 +228,7 @@ func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 		return
 	}
 
-	f = *(*float32)(unsafe.Pointer(&b[1]))
+	copy((*(*[4]byte)(unsafe.Pointer(&f)))[:], b[1:])
 	o = b[5:]
 	return
 }
@@ -685,7 +685,7 @@ func ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
 		err = errExt(int8(b[1]), Complex128Extension)
 		return
 	}
-	c = *(*complex128)(unsafe.Pointer(&b[2]))
+	copy((*(*[16]byte)(unsafe.Pointer(&c)))[:], b[2:])
 	o = b[18:]
 	return
 }
@@ -713,7 +713,7 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 		err = errExt(int8(b[1]), Complex64Extension)
 		return
 	}
-	c = *(*complex64)(unsafe.Pointer(&b[2]))
+	copy((*(*[8]byte)(unsafe.Pointer(&c)))[:], b[2:])
 	o = b[10:]
 	return
 }
