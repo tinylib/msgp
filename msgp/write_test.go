@@ -14,8 +14,8 @@ var (
 	tint32         = math.MaxInt16 + 100  // cannot be int16
 	tint64         = math.MaxInt32 + 100  // cannot be int32
 	tuint16 uint32 = 300                  // cannot be uint8
-	tuint32 uint32 = math.MaxUint16 + 100 // cannot be int16
-	tuint64 uint64 = math.MaxUint32 + 100 // cannot be int32
+	tuint32 uint32 = math.MaxUint16 + 100 // cannot be uint16
+	tuint64 uint64 = math.MaxUint32 + 100 // cannot be uint32
 )
 
 func RandBytes(sz int) []byte {

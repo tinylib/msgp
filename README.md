@@ -7,6 +7,12 @@ MessagePack Code Generator
 This is a code generation tool for serializing Go `struct`s using the [MesssagePack](http://msgpack.org) standard. It is targeted 
 at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_by_processing_source). You can read more about MessagePack and Go [in the wiki](http://github.com/philhofer/msgp/wiki).
 
+### Why
+
+The generated code is about five times faster than other reflection-based implementations of MessagePack, and an order of magnitude faster than `encoding/json`. Additionally, the memory footprint is much smaller (on both the stack and the heap.)
+
+Generated `msgp` code typically serializes/deserializes to `io.Writer`/`io.Readers`, respectively, in excess of 200MB/s.
+
 ### Quickstart
 
 *** Note: `go generate` is a go 1.4+ feature. ***

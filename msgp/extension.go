@@ -1,7 +1,6 @@
 package msgp
 
 import (
-	"encoding/binary"
 	"fmt"
 	"math"
 )
@@ -152,7 +151,7 @@ func (mw *Writer) WriteExtension(e Extension) error {
 				return err
 			}
 			mw.buf[o] = mext16
-			binary.BigEndian.PutUint16(mw.buf[o+1:], uint16(l))
+			big.PutUint16(mw.buf[o+1:], uint16(l))
 			mw.buf[3] = byte(e.ExtensionType())
 		default:
 			o, err := mw.require(6)
@@ -160,7 +159,7 @@ func (mw *Writer) WriteExtension(e Extension) error {
 				return err
 			}
 			mw.buf[o] = mext32
-			binary.BigEndian.PutUint32(mw.buf[o+1:], uint32(l))
+			big.PutUint32(mw.buf[o+1:], uint32(l))
 			mw.buf[5] = byte(e.ExtensionType())
 		}
 	}
@@ -337,7 +336,7 @@ func (m *Reader) ReadExtension(e Extension) (err error) {
 			err = errExt(int8(p[3]), e.ExtensionType())
 			return
 		}
-		read = int(binary.BigEndian.Uint16(p[1:]))
+		read = int(big.Uint16(p[1:]))
 		off = 4
 
 	case mext32:
@@ -349,7 +348,7 @@ func (m *Reader) ReadExtension(e Extension) (err error) {
 			err = errExt(int8(p[5]), e.ExtensionType())
 			return
 		}
-		read = int(binary.BigEndian.Uint32(p[1:]))
+		read = int(big.Uint32(p[1:]))
 		off = 6
 
 	default:
@@ -407,12 +406,12 @@ func AppendExtension(b []byte, e Extension) ([]byte, error) {
 		n += 3
 	case l < math.MaxUint16:
 		o[n] = mext16
-		binary.BigEndian.PutUint16(o[n+1:], uint16(l))
+		big.PutUint16(o[n+1:], uint16(l))
 		o[n+3] = byte(e.ExtensionType())
 		n += 4
 	default:
 		o[n] = mext32
-		binary.BigEndian.PutUint32(o[n+1:], uint32(l))
+		big.PutUint32(o[n+1:], uint32(l))
 		o[n+5] = byte(e.ExtensionType())
 		n += 6
 	}
@@ -469,14 +468,14 @@ func ReadExtensionBytes(b []byte, e Extension) ([]byte, error) {
 		if l < 4 {
 			return b, ErrShortBytes
 		}
-		sz = int(binary.BigEndian.Uint16(b[1:]))
+		sz = int(big.Uint16(b[1:]))
 		typ = int8(b[3])
 		off = 4
 	case mext32:
 		if l < 6 {
 			return b, ErrShortBytes
 		}
-		sz = int(binary.BigEndian.Uint32(b[1:]))
+		sz = int(big.Uint32(b[1:]))
 		typ = int8(b[5])
 		off = 6
 	default:

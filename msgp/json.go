@@ -3,7 +3,6 @@ package msgp
 import (
 	"bufio"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io"
@@ -363,14 +362,14 @@ func rwString(dst jsWriter, src *Reader) (n int, err error) {
 		if err != nil {
 			return
 		}
-		read = int(binary.BigEndian.Uint16(p[1:]))
+		read = int(big.Uint16(p[1:]))
 		off = 3
 	case mstr32:
 		p, err = src.r.Peek(5)
 		if err != nil {
 			return
 		}
-		read = int(binary.BigEndian.Uint32(p[1:]))
+		read = int(big.Uint32(p[1:]))
 		off = 5
 	default:
 		err = TypeError{Method: StrType, Encoded: getType(lead)}
