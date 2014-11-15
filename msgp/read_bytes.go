@@ -17,6 +17,8 @@ var (
 	ErrShortBytes = errors.New("msgp: too few bytes left to read object")
 )
 
+var big = binary.BigEndian
+
 // IsNil returns true if len(b)>0 and
 // the leading byte is a 'nil' MessagePack
 // byte; false otherwise
@@ -99,7 +101,7 @@ func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		sz = uint32(binary.BigEndian.Uint16(b[1:]))
+		sz = uint32(big.Uint16(b[1:]))
 		o = b[3:]
 		return
 
@@ -108,7 +110,7 @@ func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		sz = binary.BigEndian.Uint32(b[1:])
+		sz = big.Uint32(b[1:])
 		o = b[5:]
 		return
 
@@ -157,7 +159,7 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		sz = uint32(binary.BigEndian.Uint16(b[1:]))
+		sz = uint32(big.Uint16(b[1:]))
 		o = b[3:]
 		return
 
@@ -166,7 +168,7 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		sz = binary.BigEndian.Uint32(b[1:])
+		sz = big.Uint32(b[1:])
 		o = b[5:]
 		return
 
@@ -198,11 +200,23 @@ func ReadNilBytes(b []byte) ([]byte, error) {
 // - TypeError{} (not a float64)
 func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 	if len(b) < 9 {
+		if len(b) >= 5 && b[0] == mfloat32 {
+			var tf float32
+			tf, o, err = ReadFloat32Bytes(b)
+			f = float64(tf)
+			return
+		}
 		err = ErrShortBytes
 		return
 	}
 
 	if b[0] != mfloat64 {
+		if b[0] == mfloat32 {
+			var tf float32
+			tf, o, err = ReadFloat32Bytes(b)
+			f = float64(tf)
+			return
+		}
 		err = TypeError{Method: Float64Type, Encoded: getType(b[0])}
 		return
 	}
@@ -281,7 +295,7 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		i = int64(int8(b[1]))
+		i = int64(getMint8(b))
 		o = b[2:]
 		return
 
@@ -290,7 +304,7 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		i = int64((int16(b[1]) << 8) | int16(b[2]))
+		i = int64(getMint16(b))
 		o = b[3:]
 		return
 
@@ -299,7 +313,7 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		i = int64((int32(b[1]) << 24) | (int32(b[2]) << 16) | (int32(b[3]) << 8) | int32(b[4]))
+		i = int64(getMint32(b))
 		o = b[5:]
 		return
 
@@ -308,14 +322,7 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		i |= (int64(b[1]) << 56)
-		i |= (int64(b[2]) << 48)
-		i |= (int64(b[3]) << 40)
-		i |= (int64(b[4]) << 36)
-		i |= (int64(b[5]) << 24)
-		i |= (int64(b[6]) << 16)
-		i |= (int64(b[7]) << 8)
-		i |= (int64(b[8]))
+		i = getMint64(b)
 		o = b[9:]
 		return
 
@@ -409,7 +416,7 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		u = uint64(b[1])
+		u = uint64(getMuint8(b))
 		o = b[2:]
 		return
 
@@ -418,7 +425,7 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		u = uint64(binary.BigEndian.Uint16(b[1:]))
+		u = uint64(getMuint16(b))
 		o = b[3:]
 		return
 
@@ -427,7 +434,7 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		u = uint64(binary.BigEndian.Uint32(b[1:]))
+		u = uint64(getMuint32(b))
 		o = b[5:]
 		return
 
@@ -436,7 +443,7 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		u = binary.BigEndian.Uint64(b[1:])
+		u = getMuint64(b)
 		o = b[9:]
 		return
 
@@ -542,7 +549,7 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 			err = ErrShortBytes
 			return
 		}
-		read = int(binary.BigEndian.Uint16(b[1:]))
+		read = int(big.Uint16(b[1:]))
 		b = b[3:]
 
 	case mbin32:
@@ -550,7 +557,7 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 			err = ErrShortBytes
 			return
 		}
-		read = int(binary.BigEndian.Uint32(b[1:]))
+		read = int(big.Uint32(b[1:]))
 		b = b[5:]
 
 	default:
@@ -624,7 +631,7 @@ func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 				err = ErrShortBytes
 				return
 			}
-			read = int(binary.BigEndian.Uint16(b[1:]))
+			read = int(big.Uint16(b[1:]))
 			b = b[3:]
 
 		case mstr32:
@@ -632,7 +639,7 @@ func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 				err = ErrShortBytes
 				return
 			}
-			read = int(binary.BigEndian.Uint32(b[1:]))
+			read = int(big.Uint32(b[1:]))
 			b = b[5:]
 
 		default:
@@ -1033,13 +1040,13 @@ func getSize(b []byte) (int, int, error) {
 		if len(b) < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return int(binary.BigEndian.Uint16(b[1:])) + 3, 0, nil
+		return int(big.Uint16(b[1:])) + 3, 0, nil
 
 	case mbin32, mstr32:
 		if len(b) < 5 {
 			return 0, 0, ErrShortBytes
 		}
-		return int(binary.BigEndian.Uint32(b[1:])) + 5, 0, nil
+		return int(big.Uint32(b[1:])) + 5, 0, nil
 
 	// variable extensions
 	// require 1 extra byte
@@ -1054,13 +1061,13 @@ func getSize(b []byte) (int, int, error) {
 		if len(b) < 4 {
 			return 0, 0, ErrShortBytes
 		}
-		return int(binary.BigEndian.Uint16(b[1:])) + 4, 0, nil
+		return int(big.Uint16(b[1:])) + 4, 0, nil
 
 	case mext32:
 		if len(b) < 6 {
 			return 0, 0, ErrShortBytes
 		}
-		return int(binary.BigEndian.Uint32(b[1:])) + 6, 0, nil
+		return int(big.Uint32(b[1:])) + 6, 0, nil
 
 	// arrays skip lead byte,
 	// size byte, N objects
@@ -1068,13 +1075,13 @@ func getSize(b []byte) (int, int, error) {
 		if len(b) < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return 3, int(binary.BigEndian.Uint16(b[1:])), nil
+		return 3, int(big.Uint16(b[1:])), nil
 
 	case marray32:
 		if len(b) < 5 {
 			return 0, 0, ErrShortBytes
 		}
-		return 5, int(binary.BigEndian.Uint32(b[1:])), nil
+		return 5, int(big.Uint32(b[1:])), nil
 
 	// maps skip lead byte,
 	// size byte, 2N objects
@@ -1082,13 +1089,13 @@ func getSize(b []byte) (int, int, error) {
 		if len(b) < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return 3, 2 * (int(binary.BigEndian.Uint16(b[1:]))), nil
+		return 3, 2 * (int(big.Uint16(b[1:]))), nil
 
 	case mmap32:
 		if len(b) < 5 {
 			return 0, 0, ErrShortBytes
 		}
-		return 5, 2 * (int(binary.BigEndian.Uint32(b[1:]))), nil
+		return 5, 2 * (int(big.Uint32(b[1:]))), nil
 
 	default:
 		return 0, 0, InvalidPrefixError(lead)

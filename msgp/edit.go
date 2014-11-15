@@ -1,7 +1,6 @@
 package msgp
 
 import (
-	"encoding/binary"
 	"math"
 )
 
@@ -191,15 +190,15 @@ func resizeMap(raw []byte, delta int64) []byte {
 	var sz int64
 	switch raw[0] {
 	case mmap16:
-		sz = int64(binary.BigEndian.Uint16(raw[1:]))
+		sz = int64(big.Uint16(raw[1:]))
 		if sz+delta <= math.MaxUint16 {
-			binary.BigEndian.PutUint16(raw[1:], uint16(sz+delta))
+			big.PutUint16(raw[1:], uint16(sz+delta))
 			return raw
 		}
 		if cap(raw)-len(raw) >= 2 {
 			raw = raw[0 : len(raw)+2]
 			copy(raw[5:], raw[3:])
-			binary.BigEndian.PutUint32(raw[1:], uint32(sz+delta))
+			big.PutUint32(raw[1:], uint32(sz+delta))
 			return raw
 		}
 		n := make([]byte, 0, len(raw)+5)
@@ -207,8 +206,8 @@ func resizeMap(raw []byte, delta int64) []byte {
 		return append(n, raw[3:]...)
 
 	case mmap32:
-		sz = int64(binary.BigEndian.Uint32(raw[1:]))
-		binary.BigEndian.PutUint32(raw[1:], uint32(sz+delta))
+		sz = int64(big.Uint32(raw[1:]))
+		big.PutUint32(raw[1:], uint32(sz+delta))
 		return raw
 
 	default:
@@ -221,7 +220,7 @@ func resizeMap(raw []byte, delta int64) []byte {
 				raw = raw[0 : len(raw)+2]
 				copy(raw[3:], raw[1:])
 				raw[0] = mmap16
-				binary.BigEndian.PutUint16(raw[1:], uint16(sz+delta))
+				big.PutUint16(raw[1:], uint16(sz+delta))
 				return raw
 			}
 			n := make([]byte, 0, len(raw)+5)
@@ -232,7 +231,7 @@ func resizeMap(raw []byte, delta int64) []byte {
 			raw = raw[0 : len(raw)+4]
 			copy(raw[5:], raw[1:])
 			raw[0] = mmap32
-			binary.BigEndian.PutUint32(raw[1:], uint32(sz+delta))
+			big.PutUint32(raw[1:], uint32(sz+delta))
 			return raw
 		}
 		n := make([]byte, 0, len(raw)+5)

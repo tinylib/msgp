@@ -89,7 +89,7 @@ func TestAppendInt64(t *testing.T) {
 		en.Flush()
 		bts = AppendInt64(bts[0:0], i)
 		if !bytes.Equal(buf.Bytes(), bts) {
-			t.Errorf("for int64 %d, encoder wrote %q; append wrote %q", buf.Bytes(), bts)
+			t.Errorf("for int64 %d, encoder wrote %q; append wrote %q", i, buf.Bytes(), bts)
 		}
 	}
 }
@@ -106,7 +106,7 @@ func TestAppendUint64(t *testing.T) {
 		en.Flush()
 		bts = AppendUint64(bts[0:0], u)
 		if !bytes.Equal(buf.Bytes(), bts) {
-			t.Errorf("for uint64 %d, encoder wrote %q; append wrote %q", buf.Bytes(), bts)
+			t.Errorf("for uint64 %d, encoder wrote %q; append wrote %q", u, buf.Bytes(), bts)
 		}
 	}
 }

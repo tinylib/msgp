@@ -1,7 +1,6 @@
 package msgp
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/philhofer/fwd"
@@ -31,7 +30,9 @@ func (a ArrayError) Error() string {
 	return fmt.Sprintf("msgp: wanted array of size %d; got %d", a.Wanted, a.Got)
 }
 
-// Type is a MessagePack wire type
+// Type is a MessagePack wire type,
+// including this package's built-in
+// extension types.
 type Type byte
 
 // MessagePack Types
@@ -314,14 +315,14 @@ func getNextSize(r *fwd.Reader) (int, int, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return int(binary.BigEndian.Uint16(p[1:])) + 3, 0, nil
+		return int(big.Uint16(p[1:])) + 3, 0, nil
 
 	case mbin32, mstr32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return int(binary.BigEndian.Uint32(p[1:])) + 5, 0, nil
+		return int(big.Uint32(p[1:])) + 5, 0, nil
 
 	// variable extensions
 	// require 1 extra byte
@@ -338,14 +339,14 @@ func getNextSize(r *fwd.Reader) (int, int, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return int(binary.BigEndian.Uint16(p[1:])) + 4, 0, nil
+		return int(big.Uint16(p[1:])) + 4, 0, nil
 
 	case mext32:
 		p, err = r.Peek(6)
 		if err != nil {
 			return 0, 0, err
 		}
-		return int(binary.BigEndian.Uint32(p[1:])) + 6, 0, nil
+		return int(big.Uint32(p[1:])) + 6, 0, nil
 
 	// arrays skip lead byte,
 	// size byte, N objects
@@ -354,14 +355,14 @@ func getNextSize(r *fwd.Reader) (int, int, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return 3, int(binary.BigEndian.Uint16(p[1:])), nil
+		return 3, int(big.Uint16(p[1:])), nil
 
 	case marray32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return 5, int(binary.BigEndian.Uint32(p[1:])), nil
+		return 5, int(big.Uint32(p[1:])), nil
 
 	// maps skip lead byte,
 	// size byte, 2N objects
@@ -370,14 +371,14 @@ func getNextSize(r *fwd.Reader) (int, int, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return 3, 2 * (int(binary.BigEndian.Uint16(p[1:]))), nil
+		return 3, 2 * (int(big.Uint16(p[1:]))), nil
 
 	case mmap32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return 5, 2 * (int(binary.BigEndian.Uint32(p[1:]))), nil
+		return 5, 2 * (int(big.Uint32(p[1:]))), nil
 
 	default:
 		return 0, 0, InvalidPrefixError(lead)
@@ -435,7 +436,7 @@ func (m *Reader) ReadMapHeader() (sz uint32, err error) {
 		if err != nil {
 			return
 		}
-		usz := binary.BigEndian.Uint16(p[1:])
+		usz := big.Uint16(p[1:])
 		sz = uint32(usz)
 		_, err = m.r.Skip(3)
 		return
@@ -444,7 +445,7 @@ func (m *Reader) ReadMapHeader() (sz uint32, err error) {
 		if err != nil {
 			return
 		}
-		sz = binary.BigEndian.Uint32(p[1:])
+		sz = big.Uint32(p[1:])
 		_, err = m.r.Skip(5)
 		return
 	default:
@@ -489,7 +490,7 @@ func (m *Reader) ReadArrayHeader() (sz uint32, err error) {
 		if err != nil {
 			return
 		}
-		usz := binary.BigEndian.Uint16(p[1:])
+		usz := big.Uint16(p[1:])
 		sz = uint32(usz)
 		_, err = m.r.Skip(3)
 		return
@@ -499,7 +500,7 @@ func (m *Reader) ReadArrayHeader() (sz uint32, err error) {
 		if err != nil {
 			return
 		}
-		sz = binary.BigEndian.Uint32(p[1:])
+		sz = big.Uint32(p[1:])
 		_, err = m.r.Skip(5)
 		return
 
@@ -612,7 +613,7 @@ func (m *Reader) ReadInt64() (i int64, err error) {
 		if err != nil {
 			return
 		}
-		i = int64(int8(p[1]))
+		i = int64(getMint8(p))
 		_, err = m.r.Skip(2)
 		return
 
@@ -621,7 +622,7 @@ func (m *Reader) ReadInt64() (i int64, err error) {
 		if err != nil {
 			return
 		}
-		i = int64((int16(p[1]) << 8) | int16(p[2]))
+		i = int64(getMint16(p))
 		_, err = m.r.Skip(3)
 		return
 
@@ -630,7 +631,7 @@ func (m *Reader) ReadInt64() (i int64, err error) {
 		if err != nil {
 			return
 		}
-		i = int64((int32(p[1]) << 24) | (int32(p[2]) << 16) | (int32(p[3]) << 8) | (int32(p[4])))
+		i = int64(getMint32(p))
 		_, err = m.r.Skip(5)
 		return
 
@@ -639,14 +640,7 @@ func (m *Reader) ReadInt64() (i int64, err error) {
 		if err != nil {
 			return
 		}
-		i |= int64(p[1]) << 56
-		i |= int64(p[2]) << 48
-		i |= int64(p[3]) << 40
-		i |= int64(p[4]) << 32
-		i |= int64(p[5]) << 24
-		i |= int64(p[6]) << 16
-		i |= int64(p[7]) << 8
-		i |= int64(p[8])
+		i = getMint64(p)
 		_, err = m.r.Skip(9)
 		return
 
@@ -726,7 +720,7 @@ func (m *Reader) ReadUint64() (u uint64, err error) {
 		if err != nil {
 			return
 		}
-		u = uint64(p[1])
+		u = uint64(getMuint8(p))
 		_, err = m.r.Skip(2)
 		return
 
@@ -735,8 +729,7 @@ func (m *Reader) ReadUint64() (u uint64, err error) {
 		if err != nil {
 			return
 		}
-		usz := binary.BigEndian.Uint16(p[1:])
-		u = uint64(usz)
+		u = uint64(getMuint16(p))
 		_, err = m.r.Skip(3)
 		return
 
@@ -745,8 +738,7 @@ func (m *Reader) ReadUint64() (u uint64, err error) {
 		if err != nil {
 			return
 		}
-		usz := binary.BigEndian.Uint32(p[1:])
-		u = uint64(usz)
+		u = uint64(getMuint32(p))
 		_, err = m.r.Skip(5)
 		return
 
@@ -755,7 +747,7 @@ func (m *Reader) ReadUint64() (u uint64, err error) {
 		if err != nil {
 			return
 		}
-		u = binary.BigEndian.Uint64(p[1:])
+		u = getMuint64(p)
 		_, err = m.r.Skip(9)
 		return
 
@@ -838,14 +830,14 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, err error) {
 		if err != nil {
 			return
 		}
-		read = int(binary.BigEndian.Uint16(p[1:]))
+		read = int(big.Uint16(p[1:]))
 		off = 3
 	case mbin32:
 		p, err = m.r.Peek(5)
 		if err != nil {
 			return
 		}
-		read = int(binary.BigEndian.Uint32(p[1:]))
+		read = int(big.Uint32(p[1:]))
 		off = 5
 	default:
 		err = TypeError{Method: BinType, Encoded: getType(lead)}
@@ -910,14 +902,14 @@ func (m *Reader) ReadStringAsBytes(scratch []byte) (b []byte, err error) {
 		if err != nil {
 			return
 		}
-		read = int(binary.BigEndian.Uint16(p[1:]))
+		read = int(big.Uint16(p[1:]))
 		off = 3
 	case mstr32:
 		p, err = m.r.Peek(5)
 		if err != nil {
 			return
 		}
-		read = int(binary.BigEndian.Uint32(p[1:]))
+		read = int(big.Uint32(p[1:]))
 		off = 5
 	default:
 		err = TypeError{Method: StrType, Encoded: getType(lead)}
@@ -963,14 +955,14 @@ func (m *Reader) ReadString() (s string, err error) {
 		if err != nil {
 			return
 		}
-		read = int(binary.BigEndian.Uint16(p[1:]))
+		read = int(big.Uint16(p[1:]))
 		off = 3
 	case mstr32:
 		p, err = m.r.Peek(5)
 		if err != nil {
 			return
 		}
-		read = int(binary.BigEndian.Uint32(p[1:]))
+		read = int(big.Uint32(p[1:]))
 		off = 5
 	default:
 		err = TypeError{Method: StrType, Encoded: getType(lead)}

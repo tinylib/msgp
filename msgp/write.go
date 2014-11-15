@@ -1,7 +1,6 @@
 package msgp
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -314,7 +313,7 @@ func (mw *Writer) WriteMapHeader(sz uint32) error {
 			return err
 		}
 		mw.buf[o] = mmap32
-		binary.BigEndian.PutUint32(mw.buf[o+1:], sz)
+		big.PutUint32(mw.buf[o+1:], sz)
 		return nil
 	}
 }
@@ -332,7 +331,7 @@ func (mw *Writer) WriteArrayHeader(sz uint32) error {
 			return err
 		}
 		mw.buf[o] = marray16
-		binary.BigEndian.PutUint16(mw.buf[o+1:], uint16(sz))
+		big.PutUint16(mw.buf[o+1:], uint16(sz))
 		return nil
 	default:
 		o, err := mw.require(5)
@@ -340,7 +339,7 @@ func (mw *Writer) WriteArrayHeader(sz uint32) error {
 			return err
 		}
 		mw.buf[o] = marray32
-		binary.BigEndian.PutUint32(mw.buf[o+1:], sz)
+		big.PutUint32(mw.buf[o+1:], sz)
 		return nil
 	}
 }
@@ -394,9 +393,7 @@ func (mw *Writer) WriteInt64(i int64) error {
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = mint16
-		mw.buf[o+1] = byte(int16(i >> 8))
-		mw.buf[o+2] = byte(int16(i))
+		putMint16(mw.buf[o:], int16(i))
 		return nil
 
 	case a < math.MaxInt32:
@@ -404,11 +401,7 @@ func (mw *Writer) WriteInt64(i int64) error {
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = mint32
-		mw.buf[o+1] = byte(int32(i >> 24))
-		mw.buf[o+2] = byte(int32(i >> 16))
-		mw.buf[o+3] = byte(int32(i >> 8))
-		mw.buf[o+4] = byte(int32(i))
+		putMint32(mw.buf[o:], int32(i))
 		return nil
 
 	default:
@@ -416,15 +409,7 @@ func (mw *Writer) WriteInt64(i int64) error {
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = mint64
-		mw.buf[o+1] = byte(i >> 56)
-		mw.buf[o+2] = byte(i >> 48)
-		mw.buf[o+3] = byte(i >> 40)
-		mw.buf[o+4] = byte(i >> 32)
-		mw.buf[o+5] = byte(i >> 24)
-		mw.buf[o+6] = byte(i >> 16)
-		mw.buf[o+7] = byte(i >> 8)
-		mw.buf[o+8] = byte(i)
+		putMint64(mw.buf[o:], i)
 		return nil
 	}
 
@@ -456,24 +441,21 @@ func (mw *Writer) WriteUint64(u uint64) error {
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = muint16
-		binary.BigEndian.PutUint16(mw.buf[o+1:], uint16(u))
+		putMuint16(mw.buf[o:], uint16(u))
 		return nil
 	case u < math.MaxUint32:
 		o, err := mw.require(5)
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = muint32
-		binary.BigEndian.PutUint32(mw.buf[o+1:], uint32(u))
+		putMuint32(mw.buf[o:], uint32(u))
 		return nil
 	default:
 		o, err := mw.require(9)
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = muint64
-		binary.BigEndian.PutUint64(mw.buf[o+1:], u)
+		putMuint64(mw.buf[o:], u)
 		return nil
 	}
 }
@@ -507,18 +489,14 @@ func (mw *Writer) WriteBytes(b []byte) error {
 			return err
 		}
 		mw.buf[o] = mbin16
-		mw.buf[o+1] = byte(sz >> 8)
-		mw.buf[o+2] = byte(sz)
+		big.PutUint16(mw.buf[o+1:], uint16(sz))
 	default:
 		o, err := mw.require(5)
 		if err != nil {
 			return err
 		}
 		mw.buf[o] = mbin32
-		mw.buf[o+1] = byte(sz >> 24)
-		mw.buf[o+2] = byte(sz >> 16)
-		mw.buf[o+3] = byte(sz >> 8)
-		mw.buf[o+4] = byte(sz)
+		big.PutUint32(mw.buf[o+1:], sz)
 	}
 
 	// write body
@@ -553,14 +531,14 @@ func (mw *Writer) WriteString(s string) error {
 			return err
 		}
 		mw.buf[o] = mstr16
-		binary.BigEndian.PutUint16(mw.buf[o+1:], uint16(sz))
+		big.PutUint16(mw.buf[o+1:], uint16(sz))
 	default:
 		o, err := mw.require(5)
 		if err != nil {
 			return err
 		}
 		mw.buf[o] = mstr32
-		binary.BigEndian.PutUint32(mw.buf[o+1:], sz)
+		big.PutUint32(mw.buf[o+1:], sz)
 	}
 
 	// write body
