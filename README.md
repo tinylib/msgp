@@ -38,10 +38,12 @@ p := &Person{
 	Age: 14,
 }
 
-// write 'p' to standard out
-// (no need for buffering here; 
-// Encode does it for you)
-msgp.Encode(os.Stdout, p)
+func main() {
+	// write 'p' to standard out
+    // (no need for buffering here; 
+    // Encode does it for you)
+    msgp.Encode(os.Stdout, p)
+}
 ```
 
 ### Use
