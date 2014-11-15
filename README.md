@@ -81,25 +81,29 @@ de-serialization step.
  - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods
  - Support for arbitrary type system extensions (see below)
 
-Because of (limited) identifier resolution, the following
-struct declaration will work fine:
+Because of (limited) identifier resolution, the code generator will still yield the
+correct code for the following struct declaration:
 ```go
+const Eight = 8
 type MyInt int
 type Data []byte
+
 type Struct struct {
 	Which  map[string]*MyInt `msg:"which"`
 	Other  Data              `msg:"other"`
+	Nums   [Eight]float64    `msg:"nums"`
 }
 ```
 As long as the declarations of `MyInt` and `Data` are in the same file as `Struct`, the parser will figure out that 
-`MyInt` is really an `int`, and `Data` is really just a `[]byte`. Note that this only works for "base" types 
-(no composite types, although `[]byte` is supported as a special case.) Unresolved identifiers are (optimistically) 
+`MyInt` is really an `int`, and `Data` is really just a `[]byte`. The constant `Eight` does not have to be in the 
+same file as the struct definition, but it does have to be in the same package (as the generated code will simply
+use `Eight` as a literal under the assumption that the compiler will figure out what it is.) Note that this only works for "base" types (no composite types, although `[]byte` is supported as a special case.) Unresolved identifiers are (optimistically) 
 assumed to be struct definitions in other files. (The parser will spit out warnings about unresolved identifiers.)
 
 #### Extensions
 
 MessagePack supports defining your own types through "extensions," which are just a tuple of
-the data "type" (`int8`) and the raw binary. You [can examine a worked example in the wiki.](http://github.com/philhofer/msgp/wiki/Using-Extensions)
+the data "type" (`int8`) and the raw binary. You [can see a worked example in the wiki.](http://github.com/philhofer/msgp/wiki/Using-Extensions)
 
 ### Status
 
