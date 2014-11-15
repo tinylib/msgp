@@ -142,7 +142,7 @@ type Elem interface {
 type Array struct {
 	name  string // Varname
 	Index string // index variable name
-	Size  int    // array size
+	Size  string // array size
 	Els   Elem   // child
 }
 
@@ -167,9 +167,9 @@ ridx:
 	a.Els.SetVarname(fmt.Sprintf("%s[%s]", a.name, a.Index))
 }
 func (a *Array) Varname() string  { return a.name }
-func (a *Array) TypeName() string { return fmt.Sprintf("[%d]%s", a.Size, a.Els.TypeName()) }
+func (a *Array) TypeName() string { return fmt.Sprintf("[%s]%s", a.Size, a.Els.TypeName()) }
 func (a *Array) String() string {
-	return fmt.Sprintf("Array[%d]Of(%s - %s)", a.Size, a.Els.String(), a.Varname())
+	return fmt.Sprintf("Array[%s]Of(%s - %s)", a.Size, a.Els.String(), a.Varname())
 }
 
 // Map is a map[string]Elem

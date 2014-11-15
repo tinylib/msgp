@@ -58,10 +58,13 @@ type Embedded struct {
 	Other       string
 }
 
+const eight = 8
+
 type Things struct {
 	Cmplx complex64          `msg:"complex"` // test slices
 	Vals  []int32            `msg:"values"`
-	Arr   [8]float64         `msg:"arr"`            // test fixed array
+	Arr   [eight]float64     `msg:"arr"`            // test const array
+	Arr2  [4]float64         `msg:"arr2"`           // test basic lit array
 	Ext   *msgp.RawExtension `msg:"ext,extension"`  // test extension
 	Oext  msgp.RawExtension  `msg:"oext,extension"` // test extension reference
 }

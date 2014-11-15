@@ -10,7 +10,6 @@ import (
 	"go/token"
 	"os"
 	"reflect"
-	"strconv"
 	"strings"
 )
 
@@ -366,31 +365,18 @@ func parseExpr(e ast.Expr) gen.Elem {
 		if arr.Len != nil {
 			switch arr.Len.(type) {
 			case *ast.BasicLit:
-				l := arr.Len.(*ast.BasicLit)
-				switch l.Kind {
-				case token.INT:
-					size, err := strconv.Atoi(l.Value)
-					if err != nil {
-						return nil
-					}
-					return &gen.Array{
-						Size: size,
-						Els:  parseExpr(arr.Elt),
-					}
+				return &gen.Array{
+					Size: arr.Len.(*ast.BasicLit).Value,
+					Els:  parseExpr(arr.Elt),
 				}
 
 			case *ast.Ident:
-				size, err := strconv.Atoi(arr.Len.(*ast.Ident).String())
-				if err != nil {
-					return nil
-				}
 				return &gen.Array{
-					Size: size,
+					Size: arr.Len.(*ast.Ident).String(),
 					Els:  parseExpr(arr.Elt),
 				}
 
 			default:
-				// TODO: resolve constant expression
 				return nil
 			}
 		}
