@@ -4,14 +4,14 @@ MessagePack Code Generator
 [![forthebadge](http://forthebadge.com/badges/uses-badges.svg)](http://forthebadge.com)
 [![forthebadge](http://forthebadge.com/badges/certified-snoop-lion.svg)](http://forthebadge.com)
 
-This is a code generation tool for serializing Go `struct`s using the [MesssagePack](http://msgpack.org) standard. It is targeted 
-at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_by_processing_source). You can read more about MessagePack and Go [in the wiki](http://github.com/philhofer/msgp/wiki).
+This is a code generation tool and serialization library for [MesssagePack](http://msgpack.org). It is targeted at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_by_processing_source). You can read more about MessagePack [in the wiki](http://github.com/philhofer/msgp/wiki), or at [msgpack.org](http://msgp.org).
 
-### Why
+### Why?
 
-The generated code is about five times faster than other reflection-based implementations of MessagePack, and an order of magnitude faster than `encoding/json`. Additionally, the memory footprint is much smaller (on both the stack and the heap.)
-
-Generated `msgp` code typically serializes/deserializes to `io.Writer`/`io.Readers`, respectively, in excess of 200MB/s.
+- Use Go as your schema language
+- Speeeeeed (400MB/s on modern hardware)
+- [JSON interop](http://godoc.org/github.com/philhofer/msgp/msgp#CopyToJSON)
+- [User-defined types](http://github.com/philhofer/msgp/wiki/Using-Extensions)
 
 ### Quickstart
 
@@ -76,9 +76,6 @@ means that encoding and decoding from streams can be nearly as fast as marshalli
 Additionally, the fact that these are buffered means that they can be directly applied to a `net.Conn`
 or `*os.File`, for example.
 
-There are also utility functions available for translating MessagePack into JSON without an intermediate
-de-serialization step.
-
 ### Features
 
  - Extremely fast generated code
@@ -117,7 +114,7 @@ the data "type" (`int8`) and the raw binary. You [can see a worked example in th
 
 Alpha. I _will_ break stuff.
 
-You can read more about how `msgp` maps MessagePack types onto Go types [in our wiki](http://github.com/philhofer/msgp/wiki).
+You can read more about how `msgp` maps MessagePack types onto Go types [in the wiki](http://github.com/philhofer/msgp/wiki).
 
 Here some of the known limitations/restrictions:
 
@@ -125,7 +122,7 @@ Here some of the known limitations/restrictions:
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
  - Methods are only generated for `struct` definitions. Chances are that we will keep things this way.
  - Encoding of `interface{}` is limited to built-ins or types that have explicit encoding methods.
- - _Maps must have `string` keys._ This is intentional (as it preserves JSON interop.) Although non-string map keys are not explicitly forbidden by the MessagePack standard, many serializers impose this restriction. (This restriction also means *any* well-formed `struct` can be de-serialized into a `map[string]interface{}`.) The only exception to this rule is that the deserializers will allow you to read map keys encoded as `bin` types, due to the fact that some legacy encodings permitted this. (However, those values will still be cast to Go `string`s, and they will be converted to `str` types when re-encoded. It is the responsibility of the user to ensure that map keys are UTF-8 safe in this case.) The same rules hold true for JSON translation.
+ - _Maps must have `string` keys._ This is intentional (as it preserves JSON interop.) Although non-string map keys are not forbidden by the MessagePack standard, many serializers impose this restriction. (It also means *any* well-formed `struct` can be de-serialized into a `map[string]interface{}`.) The only exception to this rule is that the deserializers will allow you to read map keys encoded as `bin` types, due to the fact that some legacy encodings permitted this. (However, those values will still be cast to Go `string`s, and they will be converted to `str` types when re-encoded. It is the responsibility of the user to ensure that map keys are UTF-8 safe in this case.) The same rules hold true for JSON translation.
  - All variable-length objects (maps, strings, arrays, extensions, etc.) cannot have more than `(1<<32)-1` elements.
 
 If the output compiles, then there's a pretty good chance things are fine. (Plus, we generate tests for you.) *Please, please, please* file an issue if you think the generator is writing broken code.
