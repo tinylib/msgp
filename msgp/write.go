@@ -357,7 +357,7 @@ func (mw *Writer) WriteFloat64(f float64) error {
 		return err
 	}
 	mw.buf[o] = mfloat64
-	copy(mw.buf[o+1:], (*(*[8]byte)(unsafe.Pointer(&f)))[:])
+	memcpy8(unsafe.Pointer(&mw.buf[o+1]), unsafe.Pointer(&f))
 	return nil
 }
 
@@ -368,7 +368,7 @@ func (mw *Writer) WriteFloat32(f float32) error {
 		return err
 	}
 	mw.buf[o] = mfloat32
-	copy(mw.buf[o+1:], (*(*[4]byte)(unsafe.Pointer(&f)))[:])
+	memcpy4(unsafe.Pointer(&mw.buf[o+1]), unsafe.Pointer(&f))
 	return nil
 }
 
@@ -553,7 +553,7 @@ func (mw *Writer) WriteComplex64(f complex64) error {
 	}
 	mw.buf[o] = mfixext8
 	mw.buf[o+1] = Complex64Extension
-	copy(mw.buf[o+2:], (*(*[8]byte)(unsafe.Pointer(&f)))[:])
+	memcpy8(unsafe.Pointer(&mw.buf[o+2]), unsafe.Pointer(&f))
 	return nil
 }
 
@@ -565,7 +565,7 @@ func (mw *Writer) WriteComplex128(f complex128) error {
 	}
 	mw.buf[o] = mfixext16
 	mw.buf[o+1] = Complex128Extension
-	copy(mw.buf[o+2:], (*(*[16]byte)(unsafe.Pointer(&f)))[:])
+	memcpy16(unsafe.Pointer(&mw.buf[o+2]), unsafe.Pointer(&f))
 	return nil
 }
 
@@ -607,7 +607,7 @@ func (mw *Writer) WriteMapStrIntf(mp map[string]interface{}) (err error) {
 	return nil
 }
 
-// WriteIdent is a shim for e.EncodeTo
+// WriteIdent is a shim for e.EncodeMsg
 func (mw *Writer) WriteIdent(e Encodable) error {
 	return e.EncodeMsg(mw)
 }

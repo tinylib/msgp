@@ -221,7 +221,7 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 		return
 	}
 
-	copy((*(*[8]byte)(unsafe.Pointer(&f)))[:], b[1:])
+	memcpy8(unsafe.Pointer(&f), unsafe.Pointer(&b[1]))
 	o = b[9:]
 	return
 }
@@ -242,7 +242,7 @@ func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 		return
 	}
 
-	copy((*(*[4]byte)(unsafe.Pointer(&f)))[:], b[1:])
+	memcpy4(unsafe.Pointer(&f), unsafe.Pointer(&b[1]))
 	o = b[5:]
 	return
 }
@@ -583,8 +583,7 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 		v = make([]byte, read)
 	}
 
-	n := copy(v, b)
-	o = b[n:]
+	o = b[copy(v, b):]
 	return
 }
 
@@ -692,7 +691,7 @@ func ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
 		err = errExt(int8(b[1]), Complex128Extension)
 		return
 	}
-	copy((*(*[16]byte)(unsafe.Pointer(&c)))[:], b[2:])
+	memcpy16(unsafe.Pointer(&c), unsafe.Pointer(&b[2]))
 	o = b[18:]
 	return
 }
@@ -720,7 +719,7 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 		err = errExt(int8(b[1]), Complex64Extension)
 		return
 	}
-	copy((*(*[8]byte)(unsafe.Pointer(&c)))[:], b[2:])
+	memcpy8(unsafe.Pointer(&c), unsafe.Pointer(&b[2]))
 	o = b[10:]
 	return
 }

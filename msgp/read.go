@@ -547,7 +547,7 @@ func (m *Reader) ReadFloat64() (f float64, err error) {
 		err = TypeError{Method: Float64Type, Encoded: getType(p[0])}
 		return
 	}
-	copy((*(*[8]byte)(unsafe.Pointer(&f)))[:], p[1:])
+	memcpy8(unsafe.Pointer(&f), unsafe.Pointer(&p[1]))
 	_, err = m.r.Skip(9)
 	return
 }
@@ -563,7 +563,7 @@ func (m *Reader) ReadFloat32() (f float32, err error) {
 		err = TypeError{Method: Float32Type, Encoded: getType(p[0])}
 		return
 	}
-	copy((*(*[4]byte)(unsafe.Pointer(&f)))[:], p[1:])
+	memcpy4(unsafe.Pointer(&f), unsafe.Pointer(&p[1]))
 	_, err = m.r.Skip(5)
 	return
 }
@@ -994,7 +994,7 @@ func (m *Reader) ReadComplex64() (f complex64, err error) {
 		err = errExt(int8(p[1]), Complex64Extension)
 		return
 	}
-	copy((*(*[8]byte)(unsafe.Pointer(&f)))[:], p[2:])
+	memcpy8(unsafe.Pointer(&f), unsafe.Pointer(&p[2]))
 	_, err = m.r.Skip(10)
 	return
 }
@@ -1015,7 +1015,7 @@ func (m *Reader) ReadComplex128() (f complex128, err error) {
 		err = errExt(int8(p[1]), Complex128Extension)
 		return
 	}
-	copy((*(*[16]byte)(unsafe.Pointer(&f)))[:], p[2:])
+	memcpy16(unsafe.Pointer(&f), unsafe.Pointer(&p[2]))
 	_, err = m.r.Skip(18)
 	return
 }

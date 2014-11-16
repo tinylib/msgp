@@ -1,5 +1,7 @@
 package msgp
 
+import "unsafe"
+
 /* -----------------------------
 	integer encoding utilities
 	(inline-able)
@@ -135,4 +137,52 @@ func putMuint8(b []byte, u uint8) {
 func getMuint8(b []byte) (u uint8) {
 	u = uint8(b[1])
 	return
+}
+
+/* ---------------------------
+	memory-copying utilities
+	WARNING: gross code ahead
+   --------------------------- */
+
+// copy 4 unaligned bytes w/o branch
+func memcpy4(to unsafe.Pointer, from unsafe.Pointer) {
+	s, f := (*[4]byte)(to), (*[4]byte)(from)
+	s[0] = f[0]
+	s[1] = f[1]
+	s[2] = f[2]
+	s[3] = f[3]
+}
+
+// copy 8 unaligned bytes w/o branch
+func memcpy8(to unsafe.Pointer, from unsafe.Pointer) {
+	s, f := (*[8]byte)(to), (*[8]byte)(from)
+	s[0] = f[0]
+	s[1] = f[1]
+	s[2] = f[2]
+	s[3] = f[3]
+	s[4] = f[4]
+	s[5] = f[5]
+	s[6] = f[6]
+	s[7] = f[7]
+}
+
+// copy 16 unaligned bytes w/o branch
+func memcpy16(to unsafe.Pointer, from unsafe.Pointer) {
+	s, f := (*[16]byte)(to), (*[16]byte)(from)
+	s[0] = f[0]
+	s[1] = f[1]
+	s[2] = f[2]
+	s[3] = f[3]
+	s[4] = f[4]
+	s[5] = f[5]
+	s[6] = f[6]
+	s[7] = f[7]
+	s[8] = f[8]
+	s[9] = f[9]
+	s[10] = f[10]
+	s[11] = f[11]
+	s[12] = f[12]
+	s[13] = f[13]
+	s[14] = f[14]
+	s[15] = f[15]
 }

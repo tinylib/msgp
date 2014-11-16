@@ -8,27 +8,14 @@ import (
 	"unsafe"
 )
 
-// ensures 'sz' extra bytes; returns offset and 'ok'
-func grow(b []byte, sz int) ([]byte, int, bool) {
-	if cap(b)-len(b) >= sz {
-		return b[:len(b)+sz], len(b), true
-	}
-	return nil, 0, false
-}
-
-func realloc(b []byte, sz int) ([]byte, int) {
-	nsz := (2 * cap(b)) + sz
-	g := make([]byte, nsz)
-	n := copy(g, b)
-	return g[:n+sz], n
-}
-
+// ensure 'sz' extra bytes in 'b'
 func ensure(b []byte, sz int) ([]byte, int) {
-	o, n, ok := grow(b, sz)
-	if !ok {
-		return realloc(b, sz)
+	if cap(b)-len(b) >= sz {
+		return b[:len(b)+sz], len(b)
 	}
-	return o, n
+	o := make([]byte, (2*cap(b))+sz)
+	n := copy(o, b)
+	return o[:n+sz], n
 }
 
 // AppendMapHeader appends a map header with the
@@ -80,7 +67,7 @@ func AppendNil(b []byte) []byte { return append(b, mnil) }
 func AppendFloat64(b []byte, f float64) []byte {
 	o, n := ensure(b, Float64Size)
 	o[n] = mfloat64
-	copy(o[n+1:], (*(*[8]byte)(unsafe.Pointer(&f)))[:])
+	memcpy8(unsafe.Pointer(&o[n+1]), unsafe.Pointer(&f))
 	return o
 }
 
@@ -88,7 +75,7 @@ func AppendFloat64(b []byte, f float64) []byte {
 func AppendFloat32(b []byte, f float32) []byte {
 	o, n := ensure(b, Float32Size)
 	o[n] = mfloat32
-	copy(o[n+1:], (*(*[4]byte)(unsafe.Pointer(&f)))[:])
+	memcpy4(unsafe.Pointer(&o[n+1]), unsafe.Pointer(&f))
 	return o
 }
 
@@ -242,7 +229,7 @@ func AppendComplex64(b []byte, c complex64) []byte {
 	o, n := ensure(b, Complex64Size)
 	o[n] = mfixext8
 	o[n+1] = Complex64Extension
-	copy(o[n+2:], (*(*[8]byte)(unsafe.Pointer(&c)))[:])
+	memcpy8(unsafe.Pointer(&o[n+2]), unsafe.Pointer(&c))
 	return o
 }
 
@@ -251,7 +238,7 @@ func AppendComplex128(b []byte, c complex128) []byte {
 	o, n := ensure(b, Complex128Size)
 	o[n] = mfixext16
 	o[n+1] = Complex128Extension
-	copy(o[n+2:], (*(*[16]byte)(unsafe.Pointer(&c)))[:])
+	memcpy16(unsafe.Pointer(&o[n+2]), unsafe.Pointer(&c))
 	return o
 }
 
