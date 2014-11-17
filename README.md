@@ -2,7 +2,7 @@ MessagePack Code Generator
 =======
 
 [![forthebadge](http://forthebadge.com/badges/uses-badges.svg)](http://forthebadge.com)
-[![forthebadge](http://forthebadge.com/badges/certified-snoop-lion.svg)](http://forthebadge.com)
+[![forthebadge](http://forthebadge.com/badges/ages-12.svg)](http://forthebadge.com)
 
 This is a code generation tool and serialization library for [MesssagePack](http://msgpack.org). It is targeted at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_by_processing_source). You can read more about MessagePack [in the wiki](http://github.com/philhofer/msgp/wiki), or at [msgpack.org](http://msgp.org).
 
@@ -29,29 +29,6 @@ need code generation.
 
 You can [read more about the code generation options here](http://github.com/philhofer/msgp/wiki/Using-the-Code-Generator).
 
-Once you have the appropriate methods generated, we can use the methods in `github.com/philhofer/msgp/msgp` to serialize and
-de-serialize the objects.
-
-For example, if we had generated methods for a `Person` struct:
-```go
-import (
-	"github.com/philhofer/msgp/msgp"
-	"os"
-)
-
-p := &Person{
-	Name: "Huck Finn",
-	Age: 14,
-}
-
-func main() {
-	// write 'p' to standard out
-    // (no need for buffering here; 
-    // Encode does it for you)
-    msgp.Encode(os.Stdout, p)
-}
-```
-
 ### Use
 
 Field names can be set in much the same way as the `encoding/json` package. For example:
@@ -70,11 +47,10 @@ By default, the code generator will satisfy `msgp.Sizer`, `msgp.Encodable`, `msg
 `msgp.Marshaler`, and `msgp.Unmarshaler`. Carefully-designed applications can use these methods to do
 marshalling/unmarshalling with zero allocations.
 
-One of the unique features of this package is the implementation of `*Reader` and `*Writer`, which
-are both buffered. The fact that these objects can manipulate the contents of their buffers directly
-means that encoding and decoding from streams can be nearly as fast as marshalling and unmarshalling. 
-Additionally, the fact that these are buffered means that they can be directly applied to a `net.Conn`
-or `*os.File`, for example.
+While `msgp.Marshaler` and `msgp.Unmarshaler` are quite similar to the standard library's
+`json.Marshaler` and `json.Unmarshaler`, `msgp.Encodable` and `msgp.Decodable` are useful for 
+stream serialization. (`*msgp.Writer` and `*msgp.Reader` are essentially protocol-aware versions
+of `*bufio.Writer` and `*bufio.Reader`, respectively.)
 
 ### Features
 
@@ -84,7 +60,8 @@ or `*os.File`, for example.
  - Identifier resolution (see below)
  - Native support for Go's `time.Time`, `complex64`, and `complex128` types 
  - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods
- - Support for arbitrary type system extensions (see below)
+ - Support for arbitrary type system extensions
+ - Preprocessor directives
 
 Because of (limited) identifier resolution, the code generator will still yield the
 correct code for the following struct declaration:

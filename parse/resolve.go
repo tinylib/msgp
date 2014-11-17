@@ -5,75 +5,68 @@ import (
 )
 
 // findUnresolved finds identifiers and attempts
-// to match them with other known (custom) identifiers
-func findUnresolved(g gen.Elem) []string {
-	var out []string
+// to match them with other known (custom) identifiers.
+// any unrecognized identifiers left over after a second
+// pass are returned.
+func (fs *FileSet) findUnresolved(g gen.Elem) []string {
 
-	switch g.(type) {
-	case *gen.Ptr:
-		out = append(out, findUnresolved(g.(*gen.Ptr).Value)...)
-		return out
+	switch g.Type() {
+	case gen.PtrType:
+		return fs.findUnresolved(g.(*gen.Ptr).Value)
 
-	case *gen.Slice:
-		out = append(out, findUnresolved(g.(*gen.Slice).Els)...)
-		return out
+	case gen.SliceType:
+		return fs.findUnresolved(g.(*gen.Slice).Els)
 
-	case *gen.BaseElem:
-		base := g.(*gen.BaseElem).Value
-		if base == gen.IDENT {
-			id := g.(*gen.BaseElem).Ident
-			tp, ok := globalIdents[id]
-			if !ok {
-				out = append(out, g.(*gen.BaseElem).Ident)
-				return out
-			}
+	case gen.BaseType:
+		b := g.(*gen.BaseElem)
+		if b.Value == gen.IDENT { // type is unrecognized
+			id := b.Ident
+			if tp, ok := fs.Identities[id]; ok {
 
-			// determine if the identity satisfies
-			// is IDENT as a consequence of processing
-			_, ok = globalProcessed[g.(*gen.BaseElem).Ident]
-			if ok {
-				return out
-			}
-
-			// TYPE LOWERING
-			// this is where a type like `type Custom int`
-			// gets lowered to an `int` and explicitly
-			// converted in the generated code
-
-			if tp != gen.IDENT {
-				// Lower type one level
-				i := g.(*gen.BaseElem).Ident
-				*(g.(*gen.BaseElem)) = gen.BaseElem{
-					Value:   tp,
-					Ident:   i, // save identifier
-					Convert: true,
+				// skip types that the code generator has seen
+				_, ok = fs.processed[id]
+				if ok {
+					return nil
 				}
-			} else {
-				out = append(out, g.(*gen.BaseElem).Ident)
-			}
-		}
-		return out
 
-	case *gen.Struct:
-		nm := g.(*gen.Struct).Name
-		_, ok := globalIdents[nm]
+				// if we have found another identity
+				if tp != gen.IDENT {
+					// Lower type one level
+					i := b.Ident
+					*b = gen.BaseElem{
+						Value:   tp,   // "true" type
+						Ident:   i,    // identifier name
+						Convert: true, // requires explicit conversion
+					}
+					return nil
+				}
+			}
+			return []string{b.Ident}
+		}
+		return nil
+
+	case gen.StructType:
+		s := g.(*gen.Struct)
+
+		out := make([]string, 0, len(s.Fields))
+		nm := s.Name
+		_, ok := fs.Identities[nm]
 
 		// we have to check that the name is
-		// not empty; otherwise we flag anonymous structs
+		// not empty (b/c of anonymous embedded structs)
 		if !ok && nm != "" {
 			out = append(out, nm)
 		}
 
-		for _, field := range g.(*gen.Struct).Fields {
-			out = append(out, findUnresolved(field.FieldElem)...)
+		for _, field := range s.Fields {
+			out = append(out, fs.findUnresolved(field.FieldElem)...)
 		}
 		return out
 
-	case *gen.Map:
-		out = append(out, findUnresolved(g.(*gen.Map).Value)...)
-		return out
+	case gen.MapType:
+		return fs.findUnresolved(g.(*gen.Map).Value)
 
 	default:
-		return out
+		return nil
 	}
 }

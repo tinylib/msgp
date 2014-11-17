@@ -13,7 +13,7 @@ test-pkg: install
 	@go test -v ./_generated
 
 bench: install generate
-	@go test -v -bench . ./_generated
+	@go test -bench . ./_generated
 
 clean:
 	rm ./_generated/generated.go && rm ./_generated/generated_test.go

@@ -42,5 +42,14 @@
 {{end}}
 
 {{define "BaseTempl"}}
-{{if .IsIntf}}s += msgp.GuessSize({{.Varname}}){{else if .IsIdent}}s += {{.Varname}}.Msgsize(){{else if (or (eq .Value 1) (eq .Value 2))}}{{/* string or []byte */}}s += msgp.{{.BaseName}}PrefixSize + len({{.Varname}}){{else if .IsExt}}s += msgp.ExtensionSize({{.Varname}}){{else}}s += msgp.{{.BaseName}}Size{{end}}
+{{if .IsIntf}}s += msgp.GuessSize({{.Varname}})
+{{else if .IsIdent}}s += {{.Varname}}.Msgsize()
+{{else if (or (eq .Value 1) (eq .Value 2))}}{{/* string or []byte */}}
+{{if .Convert}}
+s += msgp.{{.BaseName}}PrefixSize + len({{.ToBase}}({{.Varname}}))
+{{else}}
+s += msgp.{{.BaseName}}PrefixSize + len({{.Varname}})
+{{end}}
+{{else if .IsExt}}s += msgp.ExtensionSize({{.Varname}})
+{{else}}s += msgp.{{.BaseName}}Size{{end}}
 {{end}}

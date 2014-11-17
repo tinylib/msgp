@@ -69,12 +69,61 @@ type Things struct {
 	Oext  msgp.RawExtension  `msg:"oext,extension"` // test extension reference
 }
 
+// test ignore directive (below)
+
+//msgp:ignore Empty
+
 type Empty struct{}
 
+type MyEnum byte
+
+const (
+	A MyEnum = iota
+	B
+	C
+	D
+	invalid
+)
+
+// test shim directive (below)
+
+//msgp:shim MyEnum as:string using:(MyEnum).String/myenumStr
+
+func (m MyEnum) String() string {
+	switch m {
+	case A:
+		return "A"
+	case B:
+		return "B"
+	case C:
+		return "C"
+	case D:
+		return "D"
+	default:
+		return "<invalid>"
+	}
+}
+
+func myenumStr(s string) MyEnum {
+	switch s {
+	case "A":
+		return A
+	case "B":
+		return B
+	case "C":
+		return C
+	case "D":
+		return D
+	default:
+		return invalid
+	}
+}
+
 type Custom struct {
-	Int map[string]CustomInt
-	Bts CustomBytes
-	Mp  map[string]*Embedded
+	Int  map[string]CustomInt `msg:"mapstrint"`
+	Bts  CustomBytes          `msg:"bts"`
+	Mp   map[string]*Embedded `msg:"mp"`
+	Enum MyEnum               `msg:"enum"` // test explicit enum shim
 }
 type CustomInt int
 type CustomBytes []byte

@@ -139,6 +139,32 @@ func getMuint8(b []byte) (u uint8) {
 	return
 }
 
+/* -----------------------------
+		prefix utilities
+   ----------------------------- */
+
+// write prefix and uint8
+func prefixu8(b []byte, pre byte, sz uint8) {
+	b[0] = pre
+	b[1] = byte(sz)
+}
+
+// write prefix and big-endian uint16
+func prefixu16(b []byte, pre byte, sz uint16) {
+	b[0] = pre
+	b[1] = byte(sz >> 8)
+	b[2] = byte(sz)
+}
+
+// write prefix and big-endian uint32
+func prefixu32(b []byte, pre byte, sz uint32) {
+	b[0] = pre
+	b[1] = byte(sz >> 24)
+	b[2] = byte(sz >> 16)
+	b[3] = byte(sz >> 8)
+	b[4] = byte(sz)
+}
+
 /* ---------------------------
 	memory-copying utilities
 	WARNING: gross code ahead

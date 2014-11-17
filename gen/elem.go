@@ -304,10 +304,12 @@ func (s StructField) String() string {
 }
 
 type BaseElem struct {
-	name    string
-	Value   Base
-	Ident   string // IDENT name if unresolved
-	Convert bool   // should we do an explicit conversion?
+	name         string
+	Value        Base
+	Ident        string // IDENT name if unresolved
+	Convert      bool   // should we do an explicit conversion?
+	ShimToBase   string // shim to base type
+	ShimFromBase string // shim from base type
 }
 
 func (s *BaseElem) Type() ElemType  { return BaseType }
@@ -332,6 +334,8 @@ func (s *BaseElem) SetVarname(a string) {
 			s.name = "&" + a
 		}
 		return
+
+		// if we're using a shim
 	}
 
 	s.name = a
@@ -346,6 +350,22 @@ func (s *BaseElem) TypeName() string {
 		return s.Ident
 	}
 	return s.BaseType()
+}
+
+// ToBase, used if Convert==true, is used as tmp = {{ToBase}}({{Varname}})
+func (s *BaseElem) ToBase() string {
+	if s.ShimToBase != "" {
+		return s.ShimToBase
+	}
+	return s.BaseType()
+}
+
+// FromBase, used if Convert==true, is used as {{Varname}} = {{FromBase}}(tmp)
+func (s *BaseElem) FromBase() string {
+	if s.ShimFromBase != "" {
+		return s.ShimFromBase
+	}
+	return s.Ident
 }
 
 // BaseName returns the string form of the
@@ -373,7 +393,7 @@ func (s *BaseElem) BaseType() string {
 	case Time:
 		return "time.Time"
 	case Ext:
-		return "enc.Extension"
+		return "msgp.Extension"
 
 	// everything else is base.String() with
 	// the first letter as lowercase

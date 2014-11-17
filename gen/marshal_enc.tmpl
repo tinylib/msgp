@@ -10,7 +10,7 @@
 
 {{define "BaseTempl"}}
 	{{if .Convert}}
-	o = msgp.Append{{.BaseName}}(o, {{.BaseType}}({{.Varname}}))
+	o = msgp.Append{{.BaseName}}(o, {{.ToBase}}({{.Varname}}))
 	{{else if .IsIdent}}
 	o, err = {{.Varname}}.MarshalMsg(o)
 	if err != nil {

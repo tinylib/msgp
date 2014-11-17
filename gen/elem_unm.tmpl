@@ -11,7 +11,7 @@
 	{{else}}{{/* any other type */}}
 	{{if .Convert}}tmp, bts, err = msgp.Read{{.BaseName}}Bytes(bts){{else}}{{.Varname}}, bts, err = msgp.Read{{.BaseName}}Bytes(bts){{end}}
 	{{end}}
-	{{if .Convert}}{{.Varname}} = {{.Ident}}(tmp){{end}}
+	{{if .Convert}}{{.Varname}} = {{.FromBase}}(tmp){{end}}
 	if err != nil {
 		return
 	}

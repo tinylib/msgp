@@ -13,7 +13,7 @@
 
 {{define "BaseTempl"}}
 	{{if .Convert}}
-	err = en.Write{{.BaseName}}({{.BaseType}}({{.Varname}}))
+	err = en.Write{{.BaseName}}({{.ToBase}}({{.Varname}}))
 	{{else if .IsIdent}}
 	err = {{.Varname}}.EncodeMsg(en)
 	{{else}}

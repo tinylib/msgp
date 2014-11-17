@@ -302,9 +302,7 @@ func (mw *Writer) WriteMapHeader(sz uint32) error {
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = mmap16
-		mw.buf[o+1] = byte(sz >> 8)
-		mw.buf[o+2] = byte(sz)
+		prefixu16(mw.buf[o:], mmap16, uint16(sz))
 		return nil
 
 	default:
@@ -312,8 +310,7 @@ func (mw *Writer) WriteMapHeader(sz uint32) error {
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = mmap32
-		big.PutUint32(mw.buf[o+1:], sz)
+		prefixu32(mw.buf[o:], mmap32, sz)
 		return nil
 	}
 }
@@ -330,16 +327,14 @@ func (mw *Writer) WriteArrayHeader(sz uint32) error {
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = marray16
-		big.PutUint16(mw.buf[o+1:], uint16(sz))
+		prefixu16(mw.buf[o:], marray16, uint16(sz))
 		return nil
 	default:
 		o, err := mw.require(5)
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = marray32
-		big.PutUint32(mw.buf[o+1:], sz)
+		prefixu32(mw.buf[o:], marray32, sz)
 		return nil
 	}
 }
@@ -488,15 +483,13 @@ func (mw *Writer) WriteBytes(b []byte) error {
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = mbin16
-		big.PutUint16(mw.buf[o+1:], uint16(sz))
+		prefixu16(mw.buf[o:], mbin16, uint16(sz))
 	default:
 		o, err := mw.require(5)
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = mbin32
-		big.PutUint32(mw.buf[o+1:], sz)
+		prefixu32(mw.buf[o:], mbin32, sz)
 	}
 
 	// write body
@@ -530,15 +523,13 @@ func (mw *Writer) WriteString(s string) error {
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = mstr16
-		big.PutUint16(mw.buf[o+1:], uint16(sz))
+		prefixu16(mw.buf[o:], mstr16, uint16(sz))
 	default:
 		o, err := mw.require(5)
 		if err != nil {
 			return err
 		}
-		mw.buf[o] = mstr32
-		big.PutUint32(mw.buf[o+1:], sz)
+		prefixu32(mw.buf[o:], mstr32, sz)
 	}
 
 	// write body
