@@ -61,7 +61,7 @@ of `*bufio.Writer` and `*bufio.Reader`, respectively.)
  - Native support for Go's `time.Time`, `complex64`, and `complex128` types 
  - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods
  - Support for arbitrary type system extensions
- - Preprocessor directives
+ - [Preprocessor directives](http://github.com/philhofer/msgp/wiki/Preprocessor-Directives)
 
 Because of (limited) identifier resolution, the code generator will still yield the
 correct code for the following struct declaration:
