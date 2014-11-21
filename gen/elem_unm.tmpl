@@ -1,7 +1,7 @@
 {{/* Gross switch */}}{{define "ElemTempl"}}{{if eq (.Type) 1 }}{{/*Ptr*/}}{{template "PtrTempl" .Ptr}}{{else if eq (.Type) 2 }}{{/*Slice*/}}{{template "SliceTempl" .Slice}}{{else if eq (.Type) 3 }}{{/*Struct*/}}{{template "StructTempl" .Struct}}{{else if eq (.Type) 4 }}{{/*Base*/}}{{template "BaseTempl" .Base}}{{else if eq (.Type) 5 }}{{template "MapTempl" .Map}}{{else if eq (.Type) 6 }}{{template "ArrayTempl" .Array}}{{end}}{{end}}
 
 {{define "BaseTempl"}}
-	{{if .Convert}}var tmp {{.BaseType}}{{end}}{{/* type lowering shim */}}
+	{{if .Convert}}{ var tmp {{.BaseType}}{{end}}{{/* type lowering shim; begin new block */}}
 	{{if eq (.Value) 1}}{{/* is []byte */}}
 	{{if .Convert}}tmp, bts, err = msgp.ReadBytesBytes(bts, []byte({{.Varname}})){{else}}{{.Varname}}, bts, err = msgp.ReadBytesBytes(bts, {{.Varname}}){{end}}
 	{{else if .IsIdent}}
@@ -11,7 +11,7 @@
 	{{else}}{{/* any other type */}}
 	{{if .Convert}}tmp, bts, err = msgp.Read{{.BaseName}}Bytes(bts){{else}}{{.Varname}}, bts, err = msgp.Read{{.BaseName}}Bytes(bts){{end}}
 	{{end}}
-	{{if .Convert}}{{.Varname}} = {{.FromBase}}(tmp){{end}}
+	{{if .Convert}}{{.Varname}} = {{.FromBase}}(tmp) }{{/* end block */}}{{end}}
 	if err != nil {
 		return
 	}
@@ -83,6 +83,20 @@
 {{end}}
 
 {{define "StructTempl"}}
+	{{if .AsTuple}}
+	{ {{/* tuples get a block to avoid clobbering 'ssz'*/}}
+		var ssz uint32
+		ssz, bts, err = msgp.ReadArrayHeaderBytes(bts)
+		if err != nil {
+			return
+		}
+		if ssz != {{len .Fields}} {
+			err = msgp.ArrayError{Wanted: {{len .Fields}}, Got: ssz}
+			return
+		}
+		{{range .Fields}}{{template "ElemTempl" .FieldElem}}{{end}}
+	}
+	{{else}}
 	var isz uint32
 	isz, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
@@ -104,4 +118,5 @@
 			}
 		}
 	}
+	{{end}}
 {{end}}

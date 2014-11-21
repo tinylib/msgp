@@ -36,9 +36,14 @@
 {{end}}
 
 {{define "StructTempl"}}
+	{{if .AsTuple}}
+	s += msgp.ArrayHeaderSize
+	{{range .Fields}}{{template "ElemTempl" .FieldElem}}{{end}}
+	{{else}}
 	s += msgp.MapHeaderSize
 	{{range .Fields}}s += msgp.StringPrefixSize + {{len .FieldTag}}
 	{{template "ElemTempl" .FieldElem}}{{end}}
+	{{end}}
 {{end}}
 
 {{define "BaseTempl"}}

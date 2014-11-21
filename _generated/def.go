@@ -29,6 +29,8 @@ type TestType struct {
 	Any   interface{} `msg:"any"`
 }
 
+//msgp:tuple TestBench
+
 type TestBench struct {
 	Name     string
 	BirthDay time.Time
@@ -36,9 +38,9 @@ type TestBench struct {
 	Siblings int
 	Spouse   bool
 	Money    float64
-	Tags     map[string]string
-	Aliases  []string
 }
+
+//msgp:tuple TestFast
 
 type TestFast struct {
 	Lat, Long, Alt float64 // test inline decl
@@ -120,10 +122,10 @@ func myenumStr(s string) MyEnum {
 }
 
 type Custom struct {
-	Int  map[string]CustomInt `msg:"mapstrint"`
-	Bts  CustomBytes          `msg:"bts"`
-	Mp   map[string]*Embedded `msg:"mp"`
-	Enum MyEnum               `msg:"enum"` // test explicit enum shim
+	Int   map[string]CustomInt `msg:"mapstrint"`
+	Bts   CustomBytes          `msg:"bts"`
+	Mp    map[string]*Embedded `msg:"mp"`
+	Enums []MyEnum             `msg:"enums"` // test explicit enum shim
 }
 type CustomInt int
 type CustomBytes []byte

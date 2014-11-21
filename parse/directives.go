@@ -14,6 +14,7 @@ import (
 var directives = map[string]func([]string, *FileSet) error{
 	"shim":   applyShim,
 	"ignore": ignore,
+	"tuple":  astuple,
 }
 
 type shim struct {
@@ -77,6 +78,22 @@ func ignore(text []string, f *FileSet) error {
 				// delete spec
 				f.Specs, f.Specs[i], f.Specs[len(f.Specs)-1] = f.Specs[:len(f.Specs)-1], f.Specs[len(f.Specs)-1], nil
 				infof("ignoring: %s...\n", name)
+			}
+		}
+	}
+	return nil
+}
+
+func astuple(text []string, f *FileSet) error {
+	if len(text) < 2 {
+		return nil
+	}
+	for _, item := range text[1:] {
+		name := strings.TrimSpace(item)
+		for _, dec := range f.Specs {
+			if dec != nil && dec.Name != nil && name == dec.Name.Name {
+				f.tuples[name] = set
+				infof("using type %s as tuple...\n", name)
 			}
 		}
 	}

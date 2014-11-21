@@ -28,6 +28,7 @@ type FileSet struct {
 
 	processed map[string]flag  // processed type decls
 	shims     map[string]*shim // shims
+	tuples    map[string]flag  // tuples
 }
 
 // File parses a file at the relative path
@@ -88,6 +89,7 @@ func File(name string) (*FileSet, error) {
 		Identities: make(map[string]gen.Base),
 		processed:  make(map[string]flag),
 		shims:      make(map[string]*shim),
+		tuples:     make(map[string]flag),
 	}
 
 	// get specs from each *ast.File
@@ -242,6 +244,11 @@ func (fs *FileSet) genElem(in *ast.TypeSpec) gen.Elem {
 		// mark type as processed
 		fs.processed[in.Name.Name] = set
 
+		// use as tuple if marked
+		if _, ok := fs.tuples[in.Name.Name]; ok {
+			p.Value.(*gen.Struct).AsTuple = true
+		}
+
 		if len(p.Value.(*gen.Struct).Fields) == 0 {
 			fmt.Printf(chalk.Red.Color(" has no exported fields \u2717\n")) // X
 			return nil
@@ -393,6 +400,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 			return &gen.BaseElem{
 				Value:        shm.tp,
 				Convert:      true,
+				Ident:        s,
 				ShimToBase:   shm.to,
 				ShimFromBase: shm.from,
 			}

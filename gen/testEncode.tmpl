@@ -25,6 +25,9 @@ func Test{{.Name}}EncodeDecode(t *testing.T) {
 
 func Benchmark{{.Name}}Encode(b *testing.B) {
 	v := new({{.Name}})
+	var buf bytes.Buffer 
+	msgp.Encode(&buf, v)
+	b.SetBytes(int64(buf.Len()))
 	en := msgp.NewWriter(msgp.Nowhere)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -38,12 +41,12 @@ func Benchmark{{.Name}}Decode(b *testing.B) {
 	v := new({{.Name}})
 	var buf bytes.Buffer
 	msgp.Encode(&buf, v)
-	rd := bytes.NewReader(buf.Bytes())
+	b.SetBytes(int64(buf.Len()))
+	rd := msgp.NewEndlessReader(buf.Bytes())
 	dc := msgp.NewReader(rd)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i:=0; i<b.N; i++ {
-		rd.Seek(0, 0)
 		err := v.DecodeMsg(dc)
 		if  err != nil {
 			b.Fatal(err)

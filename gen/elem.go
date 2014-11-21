@@ -273,8 +273,9 @@ func (s *Ptr) String() string {
 }
 
 type Struct struct {
-	Name   string
-	Fields []StructField
+	Name    string        // struct type name
+	Fields  []StructField // field list
+	AsTuple bool          // write as an array instead of a map
 }
 
 func (s *Struct) Type() ElemType  { return StructType }
