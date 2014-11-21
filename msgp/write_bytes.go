@@ -27,14 +27,12 @@ func AppendMapHeader(b []byte, sz uint32) []byte {
 
 	case sz < math.MaxUint16:
 		o, n := ensure(b, 3)
-		o[n] = mmap16
-		big.PutUint16(o[n+1:], uint16(sz))
+		prefixu16(o[n:], mmap16, uint16(sz))
 		return o
 
 	default:
 		o, n := ensure(b, 5)
-		o[n] = mmap32
-		big.PutUint32(o[n+1:], sz)
+		prefixu32(o[n:], mmap32, sz)
 		return o
 	}
 }
@@ -48,14 +46,12 @@ func AppendArrayHeader(b []byte, sz uint32) []byte {
 
 	case sz < math.MaxUint16:
 		o, n := ensure(b, 3)
-		o[n] = marray16
-		big.PutUint16(o[n+1:], uint16(sz))
+		prefixu16(o[n:], marray16, uint16(sz))
 		return o
 
 	default:
 		o, n := ensure(b, 5)
-		o[n] = marray32
-		big.PutUint32(o[n+1:], sz)
+		prefixu32(o[n:], marray32, sz)
 		return o
 	}
 }
@@ -158,6 +154,9 @@ func AppendUint(b []byte, u uint) []byte { return AppendUint64(b, uint64(u)) }
 // AppendUint8 appends a uint8 to the slice
 func AppendUint8(b []byte, u uint8) []byte { return AppendUint64(b, uint64(u)) }
 
+// AppendByte is analagous to AppendUint8
+func AppendByte(b []byte, u byte) []byte { return AppendUint8(b, uint8(u)) }
+
 // AppendUint16 appends a uint16 to the slice
 func AppendUint16(b []byte, u uint16) []byte { return AppendUint64(b, uint64(u)) }
 
@@ -170,22 +169,16 @@ func AppendBytes(b []byte, bts []byte) []byte {
 	o, n := ensure(b, BytesPrefixSize+len(bts))
 	switch {
 	case sz < math.MaxUint8:
-		o[n] = mbin8
-		o[n+1] = byte(uint8(sz))
+		prefixu8(o[n:], mbin8, uint8(sz))
 		n += 2
-
 	case sz < math.MaxUint16:
-		o[n] = mbin16
-		big.PutUint16(o[n+1:], uint16(sz))
+		prefixu16(o[n:], mbin16, uint16(sz))
 		n += 3
-
 	default:
-		o[n] = mbin32
-		big.PutUint32(o[n+1:], sz)
+		prefixu32(o[n:], mbin32, sz)
 		n += 5
 	}
-	j := copy(o[n:], bts)
-	return o[:n+j]
+	return o[:n+copy(o[n:], bts)]
 }
 
 // AppendBool appends a bool to the slice
@@ -204,24 +197,17 @@ func AppendString(b []byte, s string) []byte {
 	case sz < 32:
 		o[n] = wfixstr(uint8(sz))
 		n++
-
 	case sz < math.MaxUint8:
-		o[n] = mstr8
-		o[n+1] = byte(uint8(sz))
+		prefixu8(o[n:], mstr8, uint8(sz))
 		n += 2
-
 	case sz < math.MaxUint16:
-		o[n] = mstr16
-		big.PutUint16(o[n+1:], uint16(sz))
+		prefixu16(o[n:], mstr16, uint16(sz))
 		n += 3
-
 	default:
-		o[n] = mstr32
-		big.PutUint32(o[n+1:], sz)
+		prefixu32(o[n:], mstr32, sz)
 		n += 5
 	}
-	j := copy(o[n:], s)
-	return o[:n+j]
+	return o[:n+copy(o[n:], s)]
 }
 
 // AppendComplex64 appends a complex64 to the slice as a MessagePack extension

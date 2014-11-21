@@ -106,7 +106,7 @@
 	{{else}}{{/* any other type */}}
 	{{if .Convert}}tmp, err = dc.Read{{.BaseName}}(){{else}}{{.Varname}}, err = dc.Read{{.BaseName}}(){{end}}
 	{{end}}
-	{{if .Convert}}{{.Varname}} = {{.Ident}}(tmp){{end}}
+	{{if .Convert}}{{.Varname}} = {{.FromBase}}(tmp){{end}}
 	if err != nil {
 		return
 	}

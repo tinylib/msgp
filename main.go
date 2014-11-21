@@ -87,7 +87,6 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		return nil
 	}
 
-	// new file name is old file name + _gen.go
 	var isDir bool
 	if fInfo, err := os.Stat(gofile); err == nil && fInfo.IsDir() {
 		isDir = true
@@ -104,16 +103,21 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		return err
 	}
 
+	// use the parsed
+	// package name if it
+	// isn't set from $GOPACKAGE
 	if len(gopkg) == 0 {
 		gopkg = pkgName
 	}
 
+	// no need to continue if
+	// we don't need to generate anything
 	if len(elems) == 0 {
 		fmt.Println(chalk.Magenta.Color("No structs requiring code generation were found..."))
 		return nil
 	}
 
-	var newfile string
+	var newfile string // new file name
 	if out != "" {
 		newfile = out
 		if pre := strings.TrimPrefix(out, gofile); len(pre) > 0 &&
@@ -126,6 +130,7 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		if isDir {
 			gofile = filepath.Join(gofile, pkgName)
 		}
+		// new file name is old file name + _gen.go
 		newfile = strings.TrimSuffix(gofile, ".go") + "_gen.go"
 	}
 
@@ -181,9 +186,6 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		if !ok || p.Value.Type() != gen.StructType {
 			continue
 		}
-		// propogate names to
-		// child elements of struct
-		p.SetVarname("z")
 
 		if marshal {
 			// write MarshalMsg()
