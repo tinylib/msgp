@@ -60,6 +60,13 @@
 {{end}}
 
 {{define "StructTempl"}}
+	{{if .AsTuple}}
+	err = en.WriteArrayHeader({{len .Fields}})
+	if err != nil {
+		return
+	}
+	{{range .Fields}}{{template "ElemTempl" .FieldElem}}{{end}}
+	{{else}}
 	err = en.WriteMapHeader({{len .Fields}})
 	if err != nil {
 		return
@@ -70,4 +77,5 @@
 		return
 	}
 	{{template "ElemTempl" .FieldElem}}{{end}}
+	{{end}}
 {{end}}
