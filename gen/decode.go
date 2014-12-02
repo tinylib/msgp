@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"go/format"
 	"io"
-	"os"
+	"path/filepath"
+	"runtime"
 	"text/template"
 )
 
@@ -21,14 +22,8 @@ var (
 )
 
 func init() {
-	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		fmt.Println("msgp/gen: FATAL: GOPATH not set; can't locate templates")
-		os.Exit(1)
-	}
-
-	// TODO: there may be a better way to locate the template files...
-	prefix := gopath + "/src/github.com/philhofer/msgp/gen/"
+	_, prefix, _, _ := runtime.Caller(0)
+	prefix = filepath.Dir(prefix) + "/"
 
 	decTemplate = template.Must(template.ParseFiles(prefix+"decode.tmpl", prefix+"elem_dec.tmpl"))
 	encTemplate = template.Must(template.ParseFiles(prefix+"encode.tmpl", prefix+"elem_enc.tmpl"))
