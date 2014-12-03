@@ -1,3 +1,5 @@
-_generated/def_gen.go
-_generated/def_gen_test.go
+_generated/generated.go
+_generated/generated_test.go
+msgp/cover.out
+msgp/Makefile
 *~
