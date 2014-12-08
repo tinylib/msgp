@@ -17,12 +17,9 @@ const (
 )
 
 var (
-	extensionReg map[int8]func() Extension
-)
-
-func init() {
+	// global map of registered extension types
 	extensionReg = make(map[int8]func() Extension)
-}
+)
 
 // RegisterExtension registers extensions so that they
 // can be initialized and returned by methods that
@@ -37,7 +34,17 @@ func init() {
 //
 //  msgp.RegisterExtension(10, func() msgp.Extension { &MyExtension{} })
 //
+// RegisterExtension will panic if you call it multiple times
+// with the same 'typ' argument, or if you use a reserved
+// type (3, 4, or 5).
 func RegisterExtension(typ int8, f func() Extension) {
+	switch typ {
+	case 3, 4, 5:
+		panic(fmt.Sprint("msgp: forbidden extension type:", typ))
+	}
+	if _, ok := extensionReg[typ]; ok {
+		panic(fmt.Sprint("msgp: RegisterExtension() called with typ", typ, "more than once"))
+	}
 	extensionReg[typ] = f
 }
 
@@ -53,6 +60,9 @@ type ExtensionTypeError struct {
 func (e ExtensionTypeError) Error() string {
 	return fmt.Sprintf("msgp: error decoding extension: wanted type %d; got type %d", e.Want, e.Got)
 }
+
+// Resumable returns 'true' for ExtensionTypeErrors
+func (e ExtensionTypeError) Resumable() bool { return true }
 
 func errExt(got int8, wanted int8) error {
 	return ExtensionTypeError{Got: got, Want: wanted}
@@ -126,15 +136,40 @@ func (mw *Writer) WriteExtension(e Extension) error {
 		mw.buf[o+1] = 0
 		mw.buf[o+2] = byte(e.ExtensionType())
 	case 1:
-		mw.buf = append(mw.buf, mfixext1, byte(e.ExtensionType()))
+		o, err := mw.require(2)
+		if err != nil {
+			return err
+		}
+		mw.buf[o] = mfixext1
+		mw.buf[o+1] = byte(e.ExtensionType())
 	case 2:
-		mw.buf = append(mw.buf, mfixext2, byte(e.ExtensionType()))
+		o, err := mw.require(2)
+		if err != nil {
+			return err
+		}
+		mw.buf[o] = mfixext2
+		mw.buf[o+1] = byte(e.ExtensionType())
 	case 4:
-		mw.buf = append(mw.buf, mfixext4, byte(e.ExtensionType()))
+		o, err := mw.require(2)
+		if err != nil {
+			return err
+		}
+		mw.buf[o] = mfixext4
+		mw.buf[o+1] = byte(e.ExtensionType())
 	case 8:
-		mw.buf = append(mw.buf, mfixext8, byte(e.ExtensionType()))
+		o, err := mw.require(2)
+		if err != nil {
+			return err
+		}
+		mw.buf[o] = mfixext8
+		mw.buf[o+1] = byte(e.ExtensionType())
 	case 16:
-		mw.buf = append(mw.buf, mfixext16, byte(e.ExtensionType()))
+		o, err := mw.require(2)
+		if err != nil {
+			return err
+		}
+		mw.buf[o] = mfixext16
+		mw.buf[o+1] = byte(e.ExtensionType())
 	default:
 		switch {
 		case l < math.MaxUint8:
@@ -152,7 +187,7 @@ func (mw *Writer) WriteExtension(e Extension) error {
 			}
 			mw.buf[o] = mext16
 			big.PutUint16(mw.buf[o+1:], uint16(l))
-			mw.buf[3] = byte(e.ExtensionType())
+			mw.buf[o+3] = byte(e.ExtensionType())
 		default:
 			o, err := mw.require(6)
 			if err != nil {
@@ -160,7 +195,7 @@ func (mw *Writer) WriteExtension(e Extension) error {
 			}
 			mw.buf[o] = mext32
 			big.PutUint32(mw.buf[o+1:], uint32(l))
-			mw.buf[5] = byte(e.ExtensionType())
+			mw.buf[o+5] = byte(e.ExtensionType())
 		}
 	}
 	o, err := mw.require(l)
@@ -199,7 +234,7 @@ func (m *Reader) peekExtensionType() (int8, error) {
 		}
 		return int8(p[5]), nil
 	default:
-		return 0, TypeError{Method: ExtensionType, Encoded: getType(p[0])}
+		return 0, badPrefix(ExtensionType, p[0])
 	}
 }
 
@@ -352,7 +387,7 @@ func (m *Reader) ReadExtension(e Extension) (err error) {
 		off = 6
 
 	default:
-		err = TypeError{Method: ExtensionType, Encoded: getType(lead)}
+		err = badPrefix(ExtensionType, lead)
 		return
 	}
 
@@ -424,6 +459,7 @@ func AppendExtension(b []byte, e Extension) ([]byte, error) {
 // - ErrShortBytes ('b' not long enough)
 // - ExtensionTypeErorr{} (wire type not the same as e.Type())
 // - TypeErorr{} (next object not an extension)
+// - InvalidPrefixError
 // - An umarshal error returned from e.UnmarshalBinary
 func ReadExtensionBytes(b []byte, e Extension) ([]byte, error) {
 	l := len(b)
@@ -479,7 +515,7 @@ func ReadExtensionBytes(b []byte, e Extension) ([]byte, error) {
 		typ = int8(b[5])
 		off = 6
 	default:
-		return b, TypeError{Method: ExtensionType, Encoded: getType(lead)}
+		return b, badPrefix(ExtensionType, lead)
 	}
 
 	if typ != e.ExtensionType() {

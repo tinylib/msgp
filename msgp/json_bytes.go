@@ -132,11 +132,13 @@ func rwMapBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) 
 }
 
 func rwMapKeyBytes(w jsWriter, msg []byte) ([]byte, error) {
-	str, msg, err := ReadMapKeyZC(msg)
+	msg, err := rwStringBytes(w, msg)
 	if err != nil {
-		return msg, err
+		if tperr, ok := err.(TypeError); ok && tperr.Encoded == BinType {
+			msg, _, err = rwBytesBytes(w, msg, nil)
+			return msg, err
+		}
 	}
-	_, err = rwquoted(w, str)
 	return msg, err
 }
 

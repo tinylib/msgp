@@ -2,7 +2,6 @@ package msgp
 
 import (
 	"errors"
-	"fmt"
 	"github.com/philhofer/fwd"
 	"io"
 	"math"
@@ -12,23 +11,8 @@ import (
 	"unsafe"
 )
 
-var (
-	// where we keep old *Readers
-	readerPool sync.Pool
-)
-
-// ArrayError is an error returned
-// when decoding a fix-sized array
-// of the wrong size
-type ArrayError struct {
-	Wanted uint32
-	Got    uint32
-}
-
-// Error implements the error interface
-func (a ArrayError) Error() string {
-	return fmt.Sprintf("msgp: wanted array of size %d; got %d", a.Wanted, a.Got)
-}
+// where we keep old *Readers
+var readerPool = sync.Pool{New: func() interface{} { return &Reader{} }}
 
 // Type is a MessagePack wire type,
 // including this package's built-in
@@ -91,58 +75,16 @@ func (t Type) String() string {
 	}
 }
 
-// TypeError represents a decoding type error.
-// TypeErrors are returned when a particular
-// decoding method is unsuitable for decoding
-// a particular MessagePack value.
-type TypeError struct {
-	Method  Type // Type expected by method
-	Encoded Type // Type actually encoded
-}
-
-// Error implements the error interface
-func (t TypeError) Error() string {
-	return fmt.Sprintf("msgp: attempted to decode type %q with method for %q", t.Encoded, t.Method)
-}
-
-// InvalidPrefixError is returned when a bad encoding
-// uses a prefix that is not recognized in the MessagePack standard
-type InvalidPrefixError byte
-
-// Error implements the error interface
-func (i InvalidPrefixError) Error() string {
-	return fmt.Sprintf("msgp: unrecognized type prefix 0x%x", byte(i))
-}
-
-func init() {
-	readerPool.New = func() interface{} {
-		return &Reader{}
-	}
-}
-
-func popReader(r io.Reader) *Reader {
-	p := readerPool.Get().(*Reader)
-	if p.r == nil {
-		p.r = fwd.NewReaderSize(r, 512)
-		return p
-	}
-	p.Reset(r)
-	return p
-}
-
-func pushReader(m *Reader) {
-	if m != nil {
-		readerPool.Put(m)
-	}
-}
-
 // FreeR frees a reader for use
 // by other processes. It is not necessary
 // to call FreeR on a reader. However, maintaining
 // a reference to a *Reader after calling FreeR on
-// it will cause undefined behavior.
+// it will cause undefined behavior. Typically, this
+// function should only be used by the code generator.
 func FreeR(m *Reader) {
-	pushReader(m)
+	if m != nil {
+		readerPool.Put(m)
+	}
 }
 
 // Unmarshaler is the interface fulfilled
@@ -174,15 +116,19 @@ func Decode(r io.Reader, d Decodable) error {
 // reads from the provided reader. The
 // reader will be buffered.
 func NewReader(r io.Reader) *Reader {
-	return popReader(r)
+	p := readerPool.Get().(*Reader)
+	if p.r == nil {
+		p.r = fwd.NewReaderSize(r, 1024)
+		return p
+	}
+	p.Reset(r)
+	return p
 }
 
 // NewReaderSize returns a *Reader with a buffer of the given size.
 // (This is vastly preferable to passing the decoder a reader that is already buffered.)
 func NewReaderSize(r io.Reader, sz int) *Reader {
-	return &Reader{
-		r: fwd.NewReaderSize(r, sz),
-	}
+	return &Reader{r: fwd.NewReaderSize(r, sz)}
 }
 
 // Reader wraps an io.Reader and provides
@@ -193,20 +139,21 @@ type Reader struct {
 	scratch []byte // recycled []byte for temporary storage
 }
 
-// Read implements io.Reader
+// Read implements `io.Reader`
 func (m *Reader) Read(p []byte) (int, error) {
 	return m.r.Read(p)
 }
 
-// ReadFull implements io.ReadFull
+// ReadFull implements `io.ReadFull`
 func (m *Reader) ReadFull(p []byte) (int, error) {
 	return m.r.ReadFull(p)
 }
 
-// Reset resets the underlying reader
-func (m *Reader) Reset(r io.Reader) {
-	m.r.Reset(r)
-}
+// Reset resets the underlying reader.
+func (m *Reader) Reset(r io.Reader) { m.r.Reset(r) }
+
+// Buffered returns the number of bytes currently in the read buffer.
+func (m *Reader) Buffered() int { return m.r.Buffered() }
 
 // NextType returns the next object type to be decoded.
 func (m *Reader) NextType() (Type, error) {
@@ -239,15 +186,12 @@ func (m *Reader) NextType() (Type, error) {
 // the next byte is a null messagepack byte
 func (m *Reader) IsNil() bool {
 	p, err := m.r.Peek(1)
-	if err != nil {
-		return false
-	}
-	return p[0] == mnil
+	return err == nil && p[0] == mnil
 }
 
 // returns (obj size, obj elements, error)
 // only maps and arrays have non-zero obj elements
-func getNextSize(r *fwd.Reader) (int, int, error) {
+func getNextSize(r *fwd.Reader) (uint32, uint32, error) {
 	var (
 		p   []byte
 		err error
@@ -260,13 +204,13 @@ func getNextSize(r *fwd.Reader) (int, int, error) {
 
 	switch {
 	case isfixarray(lead):
-		return 1, int(rfixarray(lead)), nil
+		return 1, uint32(rfixarray(lead)), nil
 
 	case isfixmap(lead):
-		return 1, 2 * int(rfixmap(lead)), nil
+		return 1, 2 * uint32(rfixmap(lead)), nil
 
 	case isfixstr(lead):
-		return int(rfixstr(lead)) + 1, 0, nil
+		return uint32(rfixstr(lead)) + 1, 0, nil
 
 	case isfixint(lead):
 		return 1, 0, nil
@@ -308,21 +252,21 @@ func getNextSize(r *fwd.Reader) (int, int, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return int(uint8(p[1])) + 2, 0, nil
+		return uint32(uint8(p[1])) + 2, 0, nil
 
 	case mbin16, mstr16:
 		p, err = r.Peek(3)
 		if err != nil {
 			return 0, 0, err
 		}
-		return int(big.Uint16(p[1:])) + 3, 0, nil
+		return uint32(big.Uint16(p[1:])) + 3, 0, nil
 
 	case mbin32, mstr32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return int(big.Uint32(p[1:])) + 5, 0, nil
+		return big.Uint32(p[1:]) + 5, 0, nil
 
 	// variable extensions
 	// require 1 extra byte
@@ -332,21 +276,21 @@ func getNextSize(r *fwd.Reader) (int, int, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return int(uint8(p[1])) + 3, 0, nil
+		return uint32(uint8(p[1])) + 3, 0, nil
 
 	case mext16:
 		p, err = r.Peek(4)
 		if err != nil {
 			return 0, 0, err
 		}
-		return int(big.Uint16(p[1:])) + 4, 0, nil
+		return uint32(big.Uint16(p[1:])) + 4, 0, nil
 
 	case mext32:
 		p, err = r.Peek(6)
 		if err != nil {
 			return 0, 0, err
 		}
-		return int(big.Uint32(p[1:])) + 6, 0, nil
+		return big.Uint32(p[1:]) + 6, 0, nil
 
 	// arrays skip lead byte,
 	// size byte, N objects
@@ -355,14 +299,14 @@ func getNextSize(r *fwd.Reader) (int, int, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return 3, int(big.Uint16(p[1:])), nil
+		return 3, uint32(big.Uint16(p[1:])), nil
 
 	case marray32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return 5, int(big.Uint32(p[1:])), nil
+		return 5, big.Uint32(p[1:]), nil
 
 	// maps skip lead byte,
 	// size byte, 2N objects
@@ -371,14 +315,14 @@ func getNextSize(r *fwd.Reader) (int, int, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return 3, 2 * (int(big.Uint16(p[1:]))), nil
+		return 3, 2 * uint32(big.Uint16(p[1:])), nil
 
 	case mmap32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return 5, 2 * (int(big.Uint32(p[1:]))), nil
+		return 5, 2 * big.Uint32(p[1:]), nil
 
 	default:
 		return 0, 0, InvalidPrefixError(lead)
@@ -390,20 +334,41 @@ func getNextSize(r *fwd.Reader) (int, int, error) {
 // its type. If it is an array or map, the whole array
 // or map will be skipped.
 func (m *Reader) Skip() error {
-	v, o, err := getNextSize(m.r)
-	if err != nil {
-		return err
+	var (
+		v   uint32
+		o   uint32
+		err error
+		p   []byte
+	)
+
+	// we can use the faster
+	// method if we have enough
+	// buffered data
+	if m.r.Buffered() >= 5 {
+		p, err = m.r.Peek(5)
+		if err != nil {
+			return err
+		}
+		v, o, err = getSize(p)
+		if err != nil {
+			return err
+		}
+	} else {
+		v, o, err = getNextSize(m.r)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 'v' is always non-zero
 	// if err == nil
-	_, err = m.r.Skip(v)
+	_, err = m.r.Skip(int(v))
 	if err != nil {
 		return err
 	}
 
 	// for maps and slices, skip elements
-	for x := 0; x < o; x++ {
+	for x := uint32(0); x < o; x++ {
 		err = m.Skip()
 		if err != nil {
 			return err
@@ -432,24 +397,22 @@ func (m *Reader) ReadMapHeader() (sz uint32, err error) {
 	}
 	switch lead {
 	case mmap16:
-		p, err = m.r.Peek(3)
+		p, err = m.r.Next(3)
 		if err != nil {
 			return
 		}
 		usz := big.Uint16(p[1:])
 		sz = uint32(usz)
-		_, err = m.r.Skip(3)
 		return
 	case mmap32:
-		p, err = m.r.Peek(5)
+		p, err = m.r.Next(5)
 		if err != nil {
 			return
 		}
 		sz = big.Uint32(p[1:])
-		_, err = m.r.Skip(5)
 		return
 	default:
-		err = TypeError{Method: MapType, Encoded: getType(lead)}
+		err = badPrefix(MapType, lead)
 		return
 	}
 }
@@ -486,26 +449,23 @@ func (m *Reader) ReadArrayHeader() (sz uint32, err error) {
 	}
 	switch lead {
 	case marray16:
-		p, err = m.r.Peek(3)
+		p, err = m.r.Next(3)
 		if err != nil {
 			return
 		}
-		usz := big.Uint16(p[1:])
-		sz = uint32(usz)
-		_, err = m.r.Skip(3)
+		sz = uint32(big.Uint16(p[1:]))
 		return
 
 	case marray32:
-		p, err = m.r.Peek(5)
+		p, err = m.r.Next(5)
 		if err != nil {
 			return
 		}
 		sz = big.Uint32(p[1:])
-		_, err = m.r.Skip(5)
 		return
 
 	default:
-		err = TypeError{Method: ArrayType, Encoded: getType(lead)}
+		err = badPrefix(ArrayType, lead)
 		return
 	}
 }
@@ -517,7 +477,7 @@ func (m *Reader) ReadNil() error {
 		return err
 	}
 	if p[0] != mnil {
-		return TypeError{Method: NilType, Encoded: getType(p[0])}
+		return badPrefix(NilType, p[0])
 	}
 	_, err = m.r.Skip(1)
 	return err
@@ -544,7 +504,7 @@ func (m *Reader) ReadFloat64() (f float64, err error) {
 			ef, err := m.ReadFloat32()
 			return float64(ef), err
 		}
-		err = TypeError{Method: Float64Type, Encoded: getType(p[0])}
+		err = badPrefix(Float64Type, p[0])
 		return
 	}
 	memcpy8(unsafe.Pointer(&f), unsafe.Pointer(&p[1]))
@@ -560,7 +520,7 @@ func (m *Reader) ReadFloat32() (f float32, err error) {
 		return
 	}
 	if p[0] != mfloat32 {
-		err = TypeError{Method: Float32Type, Encoded: getType(p[0])}
+		err = badPrefix(Float32Type, p[0])
 		return
 	}
 	memcpy4(unsafe.Pointer(&f), unsafe.Pointer(&p[1]))
@@ -580,7 +540,7 @@ func (m *Reader) ReadBool() (b bool, err error) {
 		b = true
 	case mfalse:
 	default:
-		err = TypeError{Method: BoolType, Encoded: getType(p[0])}
+		err = badPrefix(BoolType, p[0])
 		return
 	}
 	_, err = m.r.Skip(1)
@@ -596,56 +556,52 @@ func (m *Reader) ReadInt64() (i int64, err error) {
 		return
 	}
 	lead = p[0]
+
 	if isfixint(lead) {
 		i = int64(rfixint(lead))
 		_, err = m.r.Skip(1)
 		return
-	}
-	// try to decode negative fixnum
-	if isnfixint(lead) {
+	} else if isnfixint(lead) {
 		i = int64(rnfixint(lead))
 		_, err = m.r.Skip(1)
 		return
 	}
+
 	switch lead {
 	case mint8:
-		p, err = m.r.Peek(2)
+		p, err = m.r.Next(2)
 		if err != nil {
 			return
 		}
 		i = int64(getMint8(p))
-		_, err = m.r.Skip(2)
 		return
 
 	case mint16:
-		p, err = m.r.Peek(3)
+		p, err = m.r.Next(3)
 		if err != nil {
 			return
 		}
 		i = int64(getMint16(p))
-		_, err = m.r.Skip(3)
 		return
 
 	case mint32:
-		p, err = m.r.Peek(5)
+		p, err = m.r.Next(5)
 		if err != nil {
 			return
 		}
 		i = int64(getMint32(p))
-		_, err = m.r.Skip(5)
 		return
 
 	case mint64:
-		p, err = m.r.Peek(9)
+		p, err = m.r.Next(9)
 		if err != nil {
 			return
 		}
 		i = getMint64(p)
-		_, err = m.r.Skip(9)
 		return
 
 	default:
-		err = TypeError{Method: IntType, Encoded: getType(lead)}
+		err = badPrefix(IntType, lead)
 		return
 	}
 }
@@ -716,43 +672,39 @@ func (m *Reader) ReadUint64() (u uint64, err error) {
 	}
 	switch lead {
 	case muint8:
-		p, err = m.r.Peek(2)
+		p, err = m.r.Next(2)
 		if err != nil {
 			return
 		}
 		u = uint64(getMuint8(p))
-		_, err = m.r.Skip(2)
 		return
 
 	case muint16:
-		p, err = m.r.Peek(3)
+		p, err = m.r.Next(3)
 		if err != nil {
 			return
 		}
 		u = uint64(getMuint16(p))
-		_, err = m.r.Skip(3)
 		return
 
 	case muint32:
-		p, err = m.r.Peek(5)
+		p, err = m.r.Next(5)
 		if err != nil {
 			return
 		}
 		u = uint64(getMuint32(p))
-		_, err = m.r.Skip(5)
 		return
 
 	case muint64:
-		p, err = m.r.Peek(9)
+		p, err = m.r.Next(9)
 		if err != nil {
 			return
 		}
 		u = getMuint64(p)
-		_, err = m.r.Skip(9)
 		return
 
 	default:
-		err = TypeError{Method: UintType, Encoded: getType(lead)}
+		err = badPrefix(UintType, lead)
 		return
 
 	}
@@ -819,52 +771,33 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, err error) {
 		return
 	}
 	lead = p[0]
-	var read int
-	var off int
+	var read int64
 	switch lead {
 	case mbin8:
-		read = int(p[1])
-		off = 2
+		read = int64(p[1])
+		m.r.Skip(2)
 	case mbin16:
-		p, err = m.r.Peek(3)
+		p, err = m.r.Next(3)
 		if err != nil {
 			return
 		}
-		read = int(big.Uint16(p[1:]))
-		off = 3
+		read = int64(big.Uint16(p[1:]))
 	case mbin32:
-		p, err = m.r.Peek(5)
+		p, err = m.r.Next(5)
 		if err != nil {
 			return
 		}
-		read = int(big.Uint32(p[1:]))
-		off = 5
+		read = int64(big.Uint32(p[1:]))
 	default:
-		err = TypeError{Method: BinType, Encoded: getType(lead)}
+		err = badPrefix(BinType, lead)
 		return
 	}
-	b, err = readN(m, scratch, off, read)
-	return
-}
-
-func readN(r *Reader, scratch []byte, off int, read int) (b []byte, err error) {
-	if read == 0 {
-		b = scratch[0:0]
-		_, err = r.r.Skip(off)
-		return
-	}
-	if read > cap(scratch) {
+	if int64(cap(scratch)) < read {
 		b = make([]byte, read)
 	} else {
 		b = scratch[0:read]
 	}
-	var p []byte
-	p, err = r.r.Peek(off + read)
-	if err != nil {
-		return nil, err
-	}
-	copy(b, p[off:])
-	_, err = r.r.Skip(off + read)
+	_, err = m.r.ReadFull(b)
 	return
 }
 
@@ -879,43 +812,44 @@ func (m *Reader) ReadStringAsBytes(scratch []byte) (b []byte, err error) {
 		return
 	}
 	lead = p[0]
-	var read int
-	var off int
+	var read int64
 
 	if isfixstr(lead) {
-		read = int(rfixstr(lead))
-		off = 1
-		b, err = readN(m, scratch, off, read)
-		return
+		read = int64(rfixstr(lead))
+		m.r.Skip(1)
+		goto fill
 	}
 
 	switch lead {
 	case mstr8:
-		p, err = m.r.Peek(2)
+		p, err = m.r.Next(2)
 		if err != nil {
 			return
 		}
-		read = int(uint8(p[1]))
-		off = 2
+		read = int64(uint8(p[1]))
 	case mstr16:
-		p, err = m.r.Peek(3)
+		p, err = m.r.Next(3)
 		if err != nil {
 			return
 		}
-		read = int(big.Uint16(p[1:]))
-		off = 3
+		read = int64(big.Uint16(p[1:]))
 	case mstr32:
-		p, err = m.r.Peek(5)
+		p, err = m.r.Next(5)
 		if err != nil {
 			return
 		}
-		read = int(big.Uint32(p[1:]))
-		off = 5
+		read = int64(big.Uint32(p[1:]))
 	default:
-		err = TypeError{Method: StrType, Encoded: getType(lead)}
+		err = badPrefix(StrType, lead)
 		return
 	}
-	b, err = readN(m, scratch, off, read)
+fill:
+	if int64(cap(scratch)) < read {
+		b = make([]byte, read)
+	} else {
+		b = scratch[0:read]
+	}
+	_, err = m.r.ReadFull(b)
 	return
 }
 
@@ -923,58 +857,59 @@ func (m *Reader) ReadStringAsBytes(scratch []byte) (b []byte, err error) {
 func (m *Reader) ReadString() (s string, err error) {
 	var p []byte
 	var lead byte
+	var read int64
 	p, err = m.r.Peek(1)
 	if err != nil {
 		return
 	}
 	lead = p[0]
-	var read int
-	var off int
 
 	if isfixstr(lead) {
-		k := int(rfixstr(lead)) + 1
-		p, err = m.r.Peek(k)
-		if err != nil {
-			return
-		}
-		s = string(p[1:])
-		_, err = m.r.Skip(k)
-		return
+		read = int64(rfixstr(lead))
+		m.r.Skip(1)
+		goto fill
 	}
 
 	switch lead {
 	case mstr8:
-		p, err = m.r.Peek(2)
+		p, err = m.r.Next(2)
 		if err != nil {
 			return
 		}
-		read = int(uint8(p[1]))
-		off = 2
+		read = int64(uint8(p[1]))
 	case mstr16:
-		p, err = m.r.Peek(3)
+		p, err = m.r.Next(3)
 		if err != nil {
 			return
 		}
-		read = int(big.Uint16(p[1:]))
-		off = 3
+		read = int64(big.Uint16(p[1:]))
 	case mstr32:
-		p, err = m.r.Peek(5)
+		p, err = m.r.Next(5)
 		if err != nil {
 			return
 		}
-		read = int(big.Uint32(p[1:]))
-		off = 5
+		read = int64(big.Uint32(p[1:]))
 	default:
-		err = TypeError{Method: StrType, Encoded: getType(lead)}
+		err = badPrefix(StrType, lead)
 		return
 	}
-	k := read + off
-	p, err = m.r.Peek(k)
+fill:
+	if read == 0 {
+		s, err = "", nil
+		return
+	}
+	// reading into the memory
+	// that will become the string
+	// itself has vastly superior
+	// worst-case performance, because
+	// the reader buffer doesn't have
+	// to be large enough to hold the string.
+	out := make([]byte, read)
+	_, err = m.r.ReadFull(out)
 	if err != nil {
 		return
 	}
-	s = string(p[off:])
-	_, err = m.r.Skip(k)
+	s = UnsafeString(out)
 	return
 }
 
@@ -986,8 +921,7 @@ func (m *Reader) ReadComplex64() (f complex64, err error) {
 		return
 	}
 	if p[0] != mfixext8 {
-		v := getType(p[0])
-		err = TypeError{Method: Complex64Type, Encoded: v}
+		err = badPrefix(Complex64Type, p[0])
 		return
 	}
 	if int8(p[1]) != Complex64Extension {
@@ -1007,8 +941,7 @@ func (m *Reader) ReadComplex128() (f complex128, err error) {
 		return
 	}
 	if p[0] != mfixext16 {
-		v := getType(p[0])
-		err = TypeError{Method: Complex128Type, Encoded: v}
+		err = badPrefix(Complex128Type, p[0])
 		return
 	}
 	if int8(p[1]) != Complex128Extension {
@@ -1055,8 +988,7 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 		return
 	}
 	if p[0] != mfixext16 {
-		v := getType(p[0])
-		err = TypeError{Method: TimeType, Encoded: v}
+		err = badPrefix(TimeType, p[0])
 		return
 	}
 	if int8(p[1]) != TimeExtension {

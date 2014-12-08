@@ -46,7 +46,7 @@
 	if err != nil {
 		return
 	}
-	if cap({{.Varname}}) > 0 && cap({{.Varname}}) >= int(xsz){
+	if cap({{.Varname}}) >= int(xsz){
 		{{.Varname}} = {{.Varname}}[0:int(xsz)]
 	} else {
 		{{.Varname}} = make({{.TypeName}}, int(xsz))
