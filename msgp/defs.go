@@ -2,8 +2,7 @@
 //
 // This package defines the utilites used by the msgp code generator for encoding and decoding MessagePack
 // from []byte and io.Reader/io.Writer types. Much of this package is devoted to helping the msgp code
-// generator implement the Marshaler/Unmarshaler and Encodable/Decodable interfaces for arbitrary
-// input times.
+// generator implement the Marshaler/Unmarshaler and Encodable/Decodable interfaces.
 //
 // This package defines four "families" of functions:
 // 	- AppendXxxx() appends an object to a []byte in MessagePack encoding.

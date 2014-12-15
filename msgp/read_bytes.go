@@ -672,23 +672,21 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 // - TypeError{} (object not a complex64)
 // - ExtensionTypeError{} (object an extension of the correct size, but not a time.Time)
 func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
-	if len(b) < 18 {
+	if len(b) < 15 {
 		err = ErrShortBytes
 		return
 	}
-
-	if b[0] != mfixext16 {
+	if b[0] != mext8 || b[1] != 12 {
 		err = badPrefix(TimeType, b[0])
 		return
 	}
-
-	if int8(b[1]) != TimeExtension {
+	if int8(b[2]) != TimeExtension {
 		err = errExt(int8(b[1]), TimeExtension)
 		return
 	}
-
-	err = t.UnmarshalBinary(b[2:17])
-	o = b[18:]
+	sec, nsec := getUnix(b[3:])
+	t = time.Unix(sec, int64(nsec)).Local()
+	o = b[15:]
 	return
 }
 
@@ -895,11 +893,11 @@ func Skip(b []byte) ([]byte, error) {
 	if err != nil {
 		return b, err
 	}
-	if uint32(len(b)) < sz {
+	if int64(len(b)) < sz {
 		return nil, ErrShortBytes
 	}
 	b = b[sz:]
-	for i := uint32(0); i < asz; i++ {
+	for i := int64(0); i < asz; i++ {
 		b, err = Skip(b)
 		if err != nil {
 			return b, err
@@ -909,7 +907,7 @@ func Skip(b []byte) ([]byte, error) {
 }
 
 // returns (skip N bytes, skip M objects, error)
-func getSize(b []byte) (uint32, uint32, error) {
+func getSize(b []byte) (int64, int64, error) {
 	l := len(b)
 	if l < 1 {
 		return 0, 0, ErrShortBytes
@@ -919,13 +917,13 @@ func getSize(b []byte) (uint32, uint32, error) {
 
 	switch {
 	case isfixarray(lead):
-		return 1, uint32(rfixarray(lead)), nil
+		return 1, int64(rfixarray(lead)), nil
 
 	case isfixmap(lead):
-		return 1, 2 * uint32(rfixmap(lead)), nil
+		return 1, 2 * int64(rfixmap(lead)), nil
 
 	case isfixstr(lead):
-		return uint32(rfixstr(lead)) + 1, 0, nil
+		return int64(rfixstr(lead)) + 1, 0, nil
 
 	case isfixint(lead):
 		return 1, 0, nil
@@ -966,19 +964,19 @@ func getSize(b []byte) (uint32, uint32, error) {
 		if l < 2 {
 			return 0, 0, ErrShortBytes
 		}
-		return uint32(uint8(b[1])) + 2, 0, nil
+		return int64(uint8(b[1])) + 2, 0, nil
 
 	case mbin16, mstr16:
 		if l < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return uint32(big.Uint16(b[1:])) + 3, 0, nil
+		return int64(big.Uint16(b[1:])) + 3, 0, nil
 
 	case mbin32, mstr32:
 		if l < 5 {
 			return 0, 0, ErrShortBytes
 		}
-		return big.Uint32(b[1:]) + 5, 0, nil
+		return int64(big.Uint32(b[1:])) + 5, 0, nil
 
 	// variable extensions
 	// require 1 extra byte
@@ -987,19 +985,19 @@ func getSize(b []byte) (uint32, uint32, error) {
 		if l < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return uint32(uint8(b[1])) + 3, 0, nil
+		return int64(uint8(b[1])) + 3, 0, nil
 
 	case mext16:
 		if l < 4 {
 			return 0, 0, ErrShortBytes
 		}
-		return uint32(big.Uint16(b[1:])) + 4, 0, nil
+		return int64(big.Uint16(b[1:])) + 4, 0, nil
 
 	case mext32:
 		if l < 6 {
 			return 0, 0, ErrShortBytes
 		}
-		return big.Uint32(b[1:]) + 6, 0, nil
+		return int64(big.Uint32(b[1:])) + 6, 0, nil
 
 	// arrays skip lead byte,
 	// size byte, N objects
@@ -1007,13 +1005,13 @@ func getSize(b []byte) (uint32, uint32, error) {
 		if l < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return 3, uint32(big.Uint16(b[1:])), nil
+		return 3, int64(big.Uint16(b[1:])), nil
 
 	case marray32:
 		if l < 5 {
 			return 0, 0, ErrShortBytes
 		}
-		return 5, big.Uint32(b[1:]), nil
+		return 5, int64(big.Uint32(b[1:])), nil
 
 	// maps skip lead byte,
 	// size byte, 2N objects
@@ -1021,13 +1019,13 @@ func getSize(b []byte) (uint32, uint32, error) {
 		if l < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return 3, 2 * uint32(big.Uint16(b[1:])), nil
+		return 3, 2 * int64(big.Uint16(b[1:])), nil
 
 	case mmap32:
 		if l < 5 {
 			return 0, 0, ErrShortBytes
 		}
-		return 5, 2 * big.Uint32(b[1:]), nil
+		return 5, 2 * int64(big.Uint32(b[1:])), nil
 
 	default:
 		return 0, 0, InvalidPrefixError(lead)

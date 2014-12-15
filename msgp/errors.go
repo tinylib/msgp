@@ -2,6 +2,7 @@ package msgp
 
 import (
 	"fmt"
+	"reflect"
 )
 
 var (
@@ -126,3 +127,16 @@ func (i InvalidPrefixError) Error() string {
 
 // Resumable returns 'false' for InvalidPrefixErrors
 func (i InvalidPrefixError) Resumable() bool { return false }
+
+// ErrUnsupportedType is returned
+// when a bad argument is supplied
+// to a function that takes `interface{}`.
+type ErrUnsupportedType struct {
+	T reflect.Type
+}
+
+// Error implements error
+func (e *ErrUnsupportedType) Error() string { return fmt.Sprintf("msgp: type %q not supported", e.T) }
+
+// Resumable returns 'true' for ErrUnsupportedType
+func (e *ErrUnsupportedType) Resumable() bool { return true }

@@ -36,12 +36,12 @@ func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
 // the number of bytes written, and an error if it stopped before EOF.
 func (r *Reader) WriteToJSON(w io.Writer) (n int64, err error) {
 	var j jsWriter
-	var cast bool
+	var bf *bufio.Writer
 	if jsw, ok := w.(jsWriter); ok {
 		j = jsw
-		cast = true
 	} else {
-		j = bufio.NewWriterSize(w, 512)
+		bf = bufio.NewWriterSize(w, 512)
+		j = bf
 	}
 	var nn int
 	for err == nil {
@@ -49,14 +49,14 @@ func (r *Reader) WriteToJSON(w io.Writer) (n int64, err error) {
 		n += int64(nn)
 	}
 	if err != io.EOF {
-		if !cast {
-			j.(*bufio.Writer).Flush()
+		if bf != nil {
+			bf.Flush()
 		}
 		return
 	}
 	err = nil
-	if !cast {
-		err = j.(*bufio.Writer).Flush()
+	if bf != nil {
+		err = bf.Flush()
 	}
 	return
 }
@@ -68,6 +68,7 @@ func rwNext(w jsWriter, src *Reader) (int, error) {
 	}
 	switch t {
 	case NilType:
+		src.r.Skip(1)
 		return w.Write(null)
 	case BoolType:
 		return rwBool(w, src)
@@ -167,7 +168,7 @@ func rwArray(dst jsWriter, src *Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
-	var comma bool
+	comma := false
 	for i := uint32(0); i < sz; i++ {
 		if comma {
 			err = dst.WriteByte(',')
@@ -181,9 +182,7 @@ func rwArray(dst jsWriter, src *Reader) (n int, err error) {
 		if err != nil {
 			return
 		}
-		if !comma {
-			comma = true
-		}
+		comma = true
 	}
 
 	err = dst.WriteByte(']')
@@ -406,6 +405,9 @@ func rwBytes(dst jsWriter, src *Reader) (n int, err error) {
 	return
 }
 
+// Below (c) The Go Authors, 2009-2014
+// Subject to the BSD-style license found at http://golang.org
+//
 // see: encoding/json/encode.go:(*encodeState).stringbytes()
 func rwquoted(dst jsWriter, s []byte) (n int, err error) {
 	var nn int

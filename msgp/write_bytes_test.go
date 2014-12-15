@@ -3,6 +3,7 @@ package msgp
 import (
 	"bytes"
 	"testing"
+	"time"
 )
 
 func TestAppendMapHeader(t *testing.T) {
@@ -274,5 +275,16 @@ func BenchmarkAppendBool(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		AppendBool(buf[0:0], vs[i%2])
+	}
+}
+
+func BenchmarkAppendTime(b *testing.B) {
+	t := time.Now()
+	b.SetBytes(15)
+	buf := make([]byte, 0, 15)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		AppendTime(buf[0:0], t)
 	}
 }

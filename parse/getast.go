@@ -193,19 +193,18 @@ func (fs *FileSet) getTypeSpecs(f *ast.File) {
 					fs.Specs = append(fs.Specs, ts)
 
 					// record identifier
-					switch ts.Type.(type) {
+					switch a := ts.Type.(type) {
 					case *ast.StructType:
 						fs.Identities[ts.Name.Name] = gen.IDENT
 
 					case *ast.Ident:
 						// we will resolve this later
-						fs.Identities[ts.Name.Name] = pullIdent(ts.Type.(*ast.Ident).Name)
+						fs.Identities[ts.Name.Name] = pullIdent(a.Name)
 
 					case *ast.ArrayType:
-						a := ts.Type.(*ast.ArrayType)
-						switch a.Elt.(type) {
+						switch k := a.Elt.(type) {
 						case *ast.Ident:
-							if a.Elt.(*ast.Ident).Name == "byte" && a.Len == nil {
+							if k.Name == "byte" && a.Len == nil {
 								fs.Identities[ts.Name.Name] = gen.Bytes
 							} else {
 								fs.Identities[ts.Name.Name] = gen.IDENT
@@ -343,11 +342,11 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 
 // extract embedded field name
 func embedded(f ast.Expr) string {
-	switch f.(type) {
+	switch f := f.(type) {
 	case *ast.Ident:
-		return f.(*ast.Ident).Name
+		return f.Name
 	case *ast.StarExpr:
-		return embedded(f.(*ast.StarExpr).X)
+		return embedded(f.X)
 	default:
 		// other possibilities (like selector expressions)
 		// are disallowed; we can't reasonably know
@@ -358,24 +357,20 @@ func embedded(f ast.Expr) string {
 
 // stringify a field type name
 func stringify(e ast.Expr) string {
-	switch e.(type) {
+	switch e := e.(type) {
 	case *ast.Ident:
-		return e.(*ast.Ident).Name
+		return e.Name
 	case *ast.StarExpr:
-		return "*" + stringify(e.(*ast.StarExpr).X)
+		return "*" + stringify(e.X)
 	case *ast.SelectorExpr:
-		s := e.(*ast.SelectorExpr)
-		return stringify(s.X) + "." + s.Sel.Name
+		return stringify(e.X) + "." + e.Sel.Name
 	case *ast.ArrayType:
-		a := e.(*ast.ArrayType)
-		if a.Len == nil {
-			return "[]" + stringify(a.Elt)
-		} else {
-			return fmt.Sprintf("[%s]%s", stringify(a.Len), stringify(a.Elt))
+		if e.Len == nil {
+			return "[]" + stringify(e.Elt)
 		}
+		return fmt.Sprintf("[%s]%s", stringify(e.Len), stringify(e.Elt))
 	case *ast.InterfaceType:
-		i := e.(*ast.InterfaceType)
-		if i.Methods == nil || i.Methods.NumFields() == 0 {
+		if e.Methods == nil || e.Methods.NumFields() == 0 {
 			return "interface{}"
 		}
 	}
@@ -407,12 +402,11 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		}
 	}
 
-	switch e.(type) {
+	switch e := e.(type) {
 
 	case *ast.MapType:
-		m := e.(*ast.MapType)
-		if k, ok := m.Key.(*ast.Ident); ok && k.Name == "string" {
-			if in := fs.parseExpr(m.Value); in != nil {
+		if k, ok := e.Key.(*ast.Ident); ok && k.Name == "string" {
+			if in := fs.parseExpr(e.Value); in != nil {
 				return &gen.Map{Value: in}
 			}
 		}
@@ -420,42 +414,41 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 
 	case *ast.Ident:
 		b := &gen.BaseElem{
-			Value: pullIdent(e.(*ast.Ident).Name),
+			Value: pullIdent(e.Name),
 		}
 		if b.Value == gen.IDENT {
-			b.Ident = (e.(*ast.Ident).Name)
+			b.Ident = (e.Name)
 		}
 		return b
 
 	case *ast.ArrayType:
-		arr := e.(*ast.ArrayType)
 
 		// special case for []byte
-		if arr.Len == nil {
-			if i, ok := arr.Elt.(*ast.Ident); ok && i.Name == "byte" {
+		if e.Len == nil {
+			if i, ok := e.Elt.(*ast.Ident); ok && i.Name == "byte" {
 				return &gen.BaseElem{Value: gen.Bytes}
 			}
 		}
 
 		// return early if we don't know
 		// what the slice element type is
-		els := fs.parseExpr(arr.Elt)
+		els := fs.parseExpr(e.Elt)
 		if els == nil {
 			return nil
 		}
 
 		// array and not a slice
-		if arr.Len != nil {
-			switch arr.Len.(type) {
+		if e.Len != nil {
+			switch s := e.Len.(type) {
 			case *ast.BasicLit:
 				return &gen.Array{
-					Size: arr.Len.(*ast.BasicLit).Value,
+					Size: s.Value,
 					Els:  els,
 				}
 
 			case *ast.Ident:
 				return &gen.Array{
-					Size: arr.Len.(*ast.Ident).String(),
+					Size: s.String(),
 					Els:  els,
 				}
 
@@ -466,27 +459,26 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		return &gen.Slice{Els: els}
 
 	case *ast.StarExpr:
-		if v := fs.parseExpr(e.(*ast.StarExpr).X); v != nil {
+		if v := fs.parseExpr(e.X); v != nil {
 			return &gen.Ptr{Value: v}
 		}
 		return nil
 
 	case *ast.StructType:
-		if fields := fs.parseFieldList(e.(*ast.StructType).Fields); len(fields) > 0 {
+		if fields := fs.parseFieldList(e.Fields); len(fields) > 0 {
 			return &gen.Struct{Fields: fields}
 		}
 		return nil
 
 	case *ast.SelectorExpr:
-		v := e.(*ast.SelectorExpr)
 		// special case for time.Time; others go to Ident
-		if im, ok := v.X.(*ast.Ident); ok {
-			if v.Sel.Name == "Time" && im.Name == "time" {
+		if im, ok := e.X.(*ast.Ident); ok {
+			if e.Sel.Name == "Time" && im.Name == "time" {
 				return &gen.BaseElem{Value: gen.Time}
 			} else {
 				return &gen.BaseElem{
 					Value: gen.IDENT,
-					Ident: im.Name + "." + v.Sel.Name,
+					Ident: im.Name + "." + e.Sel.Name,
 				}
 			}
 		}
@@ -494,7 +486,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 
 	case *ast.InterfaceType:
 		// support `interface{}`
-		if len(e.(*ast.InterfaceType).Methods.List) == 0 {
+		if len(e.Methods.List) == 0 {
 			return &gen.BaseElem{Value: gen.Intf}
 		}
 		return nil

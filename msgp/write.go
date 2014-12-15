@@ -633,27 +633,38 @@ func (mw *Writer) WriteMapStrIntf(mp map[string]interface{}) (err error) {
 	return nil
 }
 
-// WriteIdent is a shim for e.EncodeMsg
+// WriteIdent is a shim for e.EncodeMsg.
 func (mw *Writer) WriteIdent(e Encodable) error {
 	return e.EncodeMsg(mw)
 }
 
-// WriteTime writes a time.Time object to the wire
+// WriteTime writes a time.Time object to the wire.
+//
+// Time is encoded as Unix time, which means that
+// location (time zone) data is removed from the object.
+// The encoded object itself is 12 bytes: 8 bytes for
+// a big-endian 64-bit integer denoting seconds
+// elapsed since "zero" Unix time, followed by 4 bytes
+// for a big-endian 32-bit signed integer denoting
+// the nanosecond offset of the time. This encoding
+// is intended to ease portability accross languages.
+// (Note that this is *not* the standard time.Time
+// binary encoding, because its implementation relies
+// heavily on the internal representation used by the
+// time package.)
 func (mw *Writer) WriteTime(t time.Time) error {
-	var bts []byte
-	var err error
-	bts, err = t.MarshalBinary()
+	// this encoding is just a 12-byte
+	// unix UTC time
+
+	t = t.UTC()
+	o, err := mw.require(15)
 	if err != nil {
 		return err
 	}
-	o, err := mw.require(18)
-	if err != nil {
-		return err
-	}
-	mw.buf[o] = mfixext16                   // byte 0 is mfixext16
-	mw.buf[o+1] = byte(int8(TimeExtension)) // TimeExtension byte
-	copy(mw.buf[o+2:], bts)                 // time is 15 bytes
-	mw.buf[o+17] = 0                        // last byte is 0
+	mw.buf[o] = mext8
+	mw.buf[o+1] = 12
+	mw.buf[o+2] = TimeExtension
+	putUnix(mw.buf[o+3:], t.Unix(), int32(t.Nanosecond()))
 	return nil
 }
 
@@ -678,47 +689,47 @@ func (mw *Writer) WriteIntf(v interface{}) error {
 	if v == nil {
 		return mw.WriteNil()
 	}
-	switch v.(type) {
+	switch v := v.(type) {
 	case bool:
-		return mw.WriteBool(v.(bool))
+		return mw.WriteBool(v)
 	case float32:
-		return mw.WriteFloat32(v.(float32))
+		return mw.WriteFloat32(v)
 	case float64:
-		return mw.WriteFloat64(v.(float64))
+		return mw.WriteFloat64(v)
 	case complex64:
-		return mw.WriteComplex64(v.(complex64))
+		return mw.WriteComplex64(v)
 	case complex128:
-		return mw.WriteComplex128(v.(complex128))
+		return mw.WriteComplex128(v)
 	case uint8:
-		return mw.WriteUint8(v.(uint8))
+		return mw.WriteUint8(v)
 	case uint16:
-		return mw.WriteUint16(v.(uint16))
+		return mw.WriteUint16(v)
 	case uint32:
-		return mw.WriteUint32(v.(uint32))
+		return mw.WriteUint32(v)
 	case uint64:
-		return mw.WriteUint64(v.(uint64))
+		return mw.WriteUint64(v)
 	case uint:
-		return mw.WriteUint(v.(uint))
+		return mw.WriteUint(v)
 	case int8:
-		return mw.WriteInt8(v.(int8))
+		return mw.WriteInt8(v)
 	case int16:
-		return mw.WriteInt16(v.(int16))
+		return mw.WriteInt16(v)
 	case int32:
-		return mw.WriteInt32(v.(int32))
+		return mw.WriteInt32(v)
 	case int64:
-		return mw.WriteInt64(v.(int64))
+		return mw.WriteInt64(v)
 	case int:
-		return mw.WriteInt(v.(int))
+		return mw.WriteInt(v)
 	case string:
-		return mw.WriteString(v.(string))
+		return mw.WriteString(v)
 	case []byte:
-		return mw.WriteBytes(v.([]byte))
+		return mw.WriteBytes(v)
 	case map[string]string:
-		return mw.WriteMapStrStr(v.(map[string]string))
+		return mw.WriteMapStrStr(v)
 	case map[string]interface{}:
-		return mw.WriteMapStrIntf(v.(map[string]interface{}))
+		return mw.WriteMapStrIntf(v)
 	case time.Time:
-		return mw.WriteTime(v.(time.Time))
+		return mw.WriteTime(v)
 	}
 
 	val := reflect.ValueOf(v)
@@ -737,7 +748,7 @@ func (mw *Writer) WriteIntf(v interface{}) error {
 	case reflect.Map:
 		return mw.writeMap(val)
 	}
-	return fmt.Errorf("msgp: type %s not supported", val.Type())
+	return &ErrUnsupportedType{val.Type()}
 }
 
 func (mw *Writer) writeMap(v reflect.Value) (err error) {
@@ -863,7 +874,7 @@ func GuessSize(i interface{}) int {
 		return NilSize
 	}
 
-	switch i.(type) {
+	switch i := i.(type) {
 	case float64:
 		return Float64Size
 	case float32:
@@ -873,9 +884,9 @@ func GuessSize(i interface{}) int {
 	case int8, int16, int32, int64, int:
 		return IntSize
 	case []byte:
-		return BytesPrefixSize + len(i.([]byte))
+		return BytesPrefixSize + len(i)
 	case string:
-		return StringPrefixSize + len(i.(string))
+		return StringPrefixSize + len(i)
 	case complex64:
 		return Complex64Size
 	case complex128:
@@ -884,14 +895,14 @@ func GuessSize(i interface{}) int {
 		return BoolSize
 	case map[string]interface{}:
 		s := MapHeaderSize
-		for key, val := range i.(map[string]interface{}) {
+		for key, val := range i {
 			s += StringPrefixSize + len(key)
 			s += GuessSize(val)
 		}
 		return s
 	case map[string]string:
 		s := MapHeaderSize
-		for key, val := range i.(map[string]string) {
+		for key, val := range i {
 			s += 2*StringPrefixSize + len(key) + len(val)
 		}
 		return s

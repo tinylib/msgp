@@ -29,7 +29,6 @@
 	if err != nil {
 		return
 	}
-
 	for {{.Keyidx}}, {{.Validx}} := range {{.Varname}} {
 		err = en.WriteString({{.Keyidx}})
 		if err != nil {

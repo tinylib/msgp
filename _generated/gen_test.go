@@ -47,13 +47,11 @@ func BenchmarkFastDecode(b *testing.B) {
 
 	var buf bytes.Buffer
 	msgp.Encode(&buf, v)
-	rd := bytes.NewReader(buf.Bytes())
-	dc := msgp.NewReader(rd)
+	dc := msgp.NewReader(msgp.NewEndlessReader(buf.Bytes()))
 	b.SetBytes(int64(buf.Len()))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		rd.Seek(0, 0) // reset
 		v.DecodeMsg(dc)
 	}
 }
