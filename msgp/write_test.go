@@ -63,6 +63,17 @@ func TestWriteMapHeader(t *testing.T) {
 	}
 }
 
+func BenchmarkWriteMapHeader(b *testing.B) {
+	sizes := []uint32{0, 1, tuint16, tuint32}
+	wr := NewWriter(Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sz := sizes[i%len(sizes)]
+		wr.WriteMapHeader(sz)
+	}
+}
+
 func TestWriteArrayHeader(t *testing.T) {
 	tests := []struct {
 		Sz       uint32
@@ -90,6 +101,17 @@ func TestWriteArrayHeader(t *testing.T) {
 		if !bytes.Equal(buf.Bytes(), test.Outbytes) {
 			t.Errorf("Expected bytes %x; got %x", test.Outbytes, buf.Bytes())
 		}
+	}
+}
+
+func BenchmarkWriteArrayHeader(b *testing.B) {
+	sizes := []uint32{0, 1, tuint16, tuint32}
+	wr := NewWriter(Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sz := sizes[i%len(sizes)]
+		wr.WriteArrayHeader(sz)
 	}
 }
 
@@ -140,6 +162,17 @@ func TestWriteFloat64(t *testing.T) {
 	}
 }
 
+func BenchmarkWriteFloat64(b *testing.B) {
+	f := rand.Float64()
+	wr := NewWriter(Nowhere)
+	b.SetBytes(9)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		wr.WriteFloat64(f)
+	}
+}
+
 func TestWriteFloat32(t *testing.T) {
 	var buf bytes.Buffer
 	wr := NewWriter(&buf)
@@ -168,6 +201,17 @@ func TestWriteFloat32(t *testing.T) {
 	}
 }
 
+func BenchmarkWriteFloat32(b *testing.B) {
+	f := rand.Float32()
+	wr := NewWriter(Nowhere)
+	b.SetBytes(5)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		wr.WriteFloat32(f)
+	}
+}
+
 func TestWriteInt64(t *testing.T) {
 	var buf bytes.Buffer
 	wr := NewWriter(&buf)
@@ -192,6 +236,16 @@ func TestWriteInt64(t *testing.T) {
 	}
 }
 
+func BenchmarkWriteInt64(b *testing.B) {
+	wr := NewWriter(Nowhere)
+	b.SetBytes(9)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		wr.WriteInt64(int64(tint64))
+	}
+}
+
 func TestWriteUint64(t *testing.T) {
 	var buf bytes.Buffer
 	wr := NewWriter(&buf)
@@ -213,7 +267,16 @@ func TestWriteUint64(t *testing.T) {
 			t.Errorf("buffer length should be <= 9; it's %d", buf.Len())
 		}
 	}
+}
 
+func BenchmarkWriteUint64(b *testing.B) {
+	wr := NewWriter(Nowhere)
+	b.SetBytes(9)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		wr.WriteUint64(uint64(tuint64))
+	}
 }
 
 func TestWriteBytes(t *testing.T) {
@@ -240,3 +303,19 @@ func TestWriteBytes(t *testing.T) {
 		}
 	}
 }
+
+func benchwrBytes(size uint32, b *testing.B) {
+	bts := RandBytes(int(size))
+	wr := NewWriter(Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		wr.WriteBytes(bts)
+	}
+}
+
+func BenchmarkWrite16Bytes(b *testing.B) { benchwrBytes(16, b) }
+
+func BenchmarkWrite256Bytes(b *testing.B) { benchwrBytes(256, b) }
+
+func BenchmarkWrite2048Bytes(b *testing.B) { benchwrBytes(2048, b) }

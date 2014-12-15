@@ -101,6 +101,24 @@ func TestReadMapHeader(t *testing.T) {
 	}
 }
 
+func BenchmarkReadMapHeader(b *testing.B) {
+	sizes := []uint32{0, 1, tuint16, tuint32}
+	data := make([]byte, 0, len(sizes)*5)
+	for _, d := range sizes {
+		data = AppendMapHeader(data, d)
+	}
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(int64(len(data) / len(sizes)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := rd.ReadMapHeader()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestReadArrayHeader(t *testing.T) {
 	tests := []struct {
 		Sz uint32
@@ -136,6 +154,24 @@ func TestReadArrayHeader(t *testing.T) {
 	}
 }
 
+func BenchmarkReadArrayHeader(b *testing.B) {
+	sizes := []uint32{0, 1, tuint16, tuint32}
+	data := make([]byte, 0, len(sizes)*5)
+	for _, d := range sizes {
+		data = AppendArrayHeader(data, d)
+	}
+	rd := NewReader(NewEndlessReader(data))
+	b.ReportAllocs()
+	b.SetBytes(int64(len(data) / len(sizes)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := rd.ReadArrayHeader()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestReadNil(t *testing.T) {
 	var buf bytes.Buffer
 	wr := NewWriter(&buf)
@@ -146,6 +182,20 @@ func TestReadNil(t *testing.T) {
 	err := rd.ReadNil()
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func BenchmarkReadNil(b *testing.B) {
+	data := AppendNil(nil)
+	rd := NewReader(NewEndlessReader(data))
+	b.ReportAllocs()
+	b.SetBytes(1)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err := rd.ReadNil()
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -174,6 +224,24 @@ func TestReadFloat64(t *testing.T) {
 
 		if out != flt {
 			t.Errorf("Put in %f but got out %f", flt, out)
+		}
+	}
+}
+
+func BenchmarkReadFloat64(b *testing.B) {
+	fs := []float64{rand.Float64(), rand.Float64(), rand.Float64(), rand.Float64()}
+	data := make([]byte, 0, 9*len(fs))
+	for _, f := range fs {
+		data = AppendFloat64(data, f)
+	}
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(9)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := rd.ReadFloat64()
+		if err != nil {
+			b.Fatal(err)
 		}
 	}
 }
@@ -207,6 +275,24 @@ func TestReadFloat32(t *testing.T) {
 	}
 }
 
+func BenchmarkReadFloat32(b *testing.B) {
+	fs := []float32{rand.Float32(), rand.Float32(), rand.Float32(), rand.Float32()}
+	data := make([]byte, 0, 5*len(fs))
+	for _, f := range fs {
+		data = AppendFloat32(data, f)
+	}
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(5)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := rd.ReadFloat32()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestReadInt64(t *testing.T) {
 	var buf bytes.Buffer
 	wr := NewWriter(&buf)
@@ -235,6 +321,24 @@ func TestReadInt64(t *testing.T) {
 	}
 }
 
+func BenchmarkReadInt64(b *testing.B) {
+	is := []int64{0, 1, 65000, rand.Int63()}
+	data := make([]byte, 0, 9*len(is))
+	for _, n := range is {
+		data = AppendInt64(data, n)
+	}
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(int64(len(data) / len(is)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := rd.ReadInt64()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestReadUint64(t *testing.T) {
 	var buf bytes.Buffer
 	wr := NewWriter(&buf)
@@ -256,6 +360,24 @@ func TestReadUint64(t *testing.T) {
 		out, err := rd.ReadUint64()
 		if out != num {
 			t.Errorf("Test case %d: put %d in and got %d out", i, num, out)
+		}
+	}
+}
+
+func BenchmarkReadUint64(b *testing.B) {
+	us := []uint64{0, 1, 10000, uint64(rand.Uint32() * 4)}
+	data := make([]byte, 0, 9*len(us))
+	for _, n := range us {
+		data = AppendUint64(data, n)
+	}
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(int64(len(data) / len(us)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := rd.ReadUint64()
+		if err != nil {
+			b.Fatal(err)
 		}
 	}
 }
@@ -287,10 +409,44 @@ func TestReadBytes(t *testing.T) {
 		}
 
 		if !bytes.Equal(bts, out) {
-			t.Errorf("Test case %d: Bytes not equal.", i)
+			t.Errorf("test case %d: Bytes not equal.", i)
 		}
 
 	}
+}
+
+func benchBytes(size uint32, b *testing.B) {
+	data := make([]byte, 0, size+5)
+	data = AppendBytes(data, RandBytes(int(size)))
+
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	var scratch []byte
+	var err error
+	for i := 0; i < b.N; i++ {
+		scratch, err = rd.ReadBytes(scratch)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkRead16Bytes(b *testing.B) {
+	benchBytes(16, b)
+}
+
+func BenchmarkRead256Bytes(b *testing.B) {
+	benchBytes(256, b)
+}
+
+// This particular case creates
+// an object larger than the default
+// read buffer size, so it's a decent
+// indicator of worst-case performance.
+func BenchmarkRead2048Bytes(b *testing.B) {
+	benchBytes(2048, b)
 }
 
 func TestReadString(t *testing.T) {
@@ -298,7 +454,7 @@ func TestReadString(t *testing.T) {
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 
-	sizes := []int{0, 1, 225, int(tuint32)}
+	sizes := []int{0, 1, 225, int(math.MaxUint16 + 5)}
 	for i, size := range sizes {
 		buf.Reset()
 		in := string(RandBytes(size))
@@ -317,10 +473,61 @@ func TestReadString(t *testing.T) {
 			t.Errorf("test case %d: %s", i, err)
 		}
 		if out != in {
-			t.Errorf("Test case %d: strings not equal.", i)
+			t.Errorf("test case %d: strings not equal.", i)
+			t.Errorf("string (len = %d) in; string (len = %d) out", size, len(out))
 		}
 
 	}
+}
+
+func benchString(size uint32, b *testing.B) {
+	str := string(RandBytes(int(size)))
+	data := make([]byte, 0, len(str)+5)
+	data = AppendString(data, str)
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := rd.ReadString()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func benchStringAsBytes(size uint32, b *testing.B) {
+	str := string(RandBytes(int(size)))
+	data := make([]byte, 0, len(str)+5)
+	data = AppendString(data, str)
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	var scratch []byte
+	var err error
+	for i := 0; i < b.N; i++ {
+		scratch, err = rd.ReadStringAsBytes(scratch)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkRead16StringAsBytes(b *testing.B) {
+	benchStringAsBytes(16, b)
+}
+
+func BenchmarkRead256StringAsBytes(b *testing.B) {
+	benchStringAsBytes(256, b)
+}
+
+func BenchmarkRead16String(b *testing.B) {
+	benchString(16, b)
+}
+
+func BenchmarkRead256String(b *testing.B) {
+	benchString(256, b)
 }
 
 func TestReadComplex64(t *testing.T) {
@@ -351,6 +558,21 @@ func TestReadComplex64(t *testing.T) {
 	}
 }
 
+func BenchmarkReadComplex64(b *testing.B) {
+	f := complex(rand.Float32(), rand.Float32())
+	data := AppendComplex64(nil, f)
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := rd.ReadComplex64()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestReadComplex128(t *testing.T) {
 	var buf bytes.Buffer
 	wr := NewWriter(&buf)
@@ -378,6 +600,21 @@ func TestReadComplex128(t *testing.T) {
 	}
 }
 
+func BenchmarkReadComplex128(b *testing.B) {
+	f := complex(rand.Float64(), rand.Float64())
+	data := AppendComplex128(nil, f)
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := rd.ReadComplex128()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestTime(t *testing.T) {
 	var buf bytes.Buffer
 	now := time.Now()
@@ -399,6 +636,21 @@ func TestTime(t *testing.T) {
 	}
 	if !now.Equal(out) {
 		t.Fatalf("%s in; %s out", now, out)
+	}
+}
+
+func BenchmarkReadTime(b *testing.B) {
+	t := time.Now()
+	data := AppendTime(nil, t)
+	rd := NewReader(NewEndlessReader(data))
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := rd.ReadTime()
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -433,29 +685,35 @@ func TestSkip(t *testing.T) {
 
 func BenchmarkSkip(b *testing.B) {
 	var buf bytes.Buffer
-	wr := NewWriter(&buf)
+	en := NewWriter(&buf)
+	en.WriteMapHeader(6)
 
-	wr.WriteMapHeader(4)
-	wr.WriteString("key_1")
-	wr.WriteBytes([]byte("value_1"))
-	wr.WriteString("key_2")
-	wr.WriteFloat64(2.0)
-	wr.WriteString("key_3")
-	wr.WriteComplex128(3.0i)
-	wr.WriteString("key_4")
-	wr.WriteInt64(49080432189)
-	wr.Flush()
+	en.WriteString("thing_one")
+	en.WriteString("value_one")
+
+	en.WriteString("thing_two")
+	en.WriteFloat64(3.14159)
+
+	en.WriteString("some_bytes")
+	en.WriteBytes([]byte("nkl4321rqw908vxzpojnlk2314rqew098-s09123rdscasd"))
+
+	en.WriteString("the_time")
+	en.WriteTime(time.Now())
+
+	en.WriteString("what?")
+	en.WriteBool(true)
+
+	en.WriteString("ext")
+	en.WriteExtension(&RawExtension{55, []byte("raw data!!!")})
+	en.Flush()
 
 	bts := buf.Bytes()
 	b.SetBytes(int64(len(bts)))
-
-	brd := bytes.NewReader(bts)
-	rd := NewReader(brd)
-
 	b.ReportAllocs()
 	b.ResetTimer()
+
+	rd := NewReader(NewEndlessReader(bts))
 	for i := 0; i < b.N; i++ {
-		brd.Seek(0, 0)
 		err := rd.Skip()
 		if err != nil {
 			b.Fatal(err)

@@ -12,10 +12,12 @@ This is a code generation tool and serialization library for [MesssagePack](http
 - Speeeeeed (400MB/s on modern hardware)
 - [JSON interop](http://godoc.org/github.com/philhofer/msgp/msgp#CopyToJSON)
 - [User-defined types](http://github.com/philhofer/msgp/wiki/Using-Extensions)
+- Type safety
+- Encoding flexibility
 
 ### Quickstart
 
-*** Note: `go generate` is a go 1.4+ feature. ***
+Note: you need at least go 1.3 to compile this package, and at least go 1.4 to use `go generate`.
 
 In a source file, include the following directive:
 
@@ -89,7 +91,7 @@ the data "type" (`int8`) and the raw binary. You [can see a worked example in th
 
 ### Status
 
-Alpha. I _will_ break stuff.
+Alpha. I _will_ break stuff. There is an open milestone for Beta stability (targeted for January.)
 
 You can read more about how `msgp` maps MessagePack types onto Go types [in the wiki](http://github.com/philhofer/msgp/wiki).
 
@@ -108,5 +110,4 @@ If the output compiles, then there's a pretty good chance things are fine. (Plus
 
 If you like benchmarks, we're the [fastest and lowest-memory-footprint round-trip serializer for Go in this test.](https://github.com/alecthomas/go_serialization_benchmarks)
 
-Speed is the core impetus for this project; there are already a number of reflection-based libraries that exist 
-for MessagePack serialization. (Type safety and generated tests are an added bonus.)
+As one might expect, the generated methods that deal with `[]byte` are faster, but the `io.Reader/Writer` methods are generally more memory-efficient for large (> 2KB) objects. As always, benchmark for your particular use case.

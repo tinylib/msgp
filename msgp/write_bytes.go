@@ -8,14 +8,29 @@ import (
 	"unsafe"
 )
 
-// ensure 'sz' extra bytes in 'b'
+// ErrUnsupportedType is returned
+// when a bad argument is supplied
+// to a function that takes `interface{}`.
+type ErrUnsupportedType struct {
+	T reflect.Type
+}
+
+// Error implements error
+func (e *ErrUnsupportedType) Error() string { return fmt.Sprintf("msgp: type %q not supported", e.T) }
+
+// Resumable returns 'true' for ErrUnsupportedType
+func (e *ErrUnsupportedType) Resumable() bool { return true }
+
+// ensure 'sz' extra bytes in 'b' btw len(b) and cap(b)
 func ensure(b []byte, sz int) ([]byte, int) {
-	if cap(b)-len(b) >= sz {
-		return b[:len(b)+sz], len(b)
+	l := len(b)
+	c := cap(b)
+	if c-l < sz {
+		o := make([]byte, (2*c)+sz) // exponential growth
+		n := copy(o, b)
+		return o[:n+sz], n
 	}
-	o := make([]byte, (2*cap(b))+sz)
-	n := copy(o, b)
-	return o[:n+sz], n
+	return b[:l+sz], l
 }
 
 // AppendMapHeader appends a map header with the
@@ -270,7 +285,7 @@ func AppendMapStrIntf(b []byte, m map[string]interface{}) ([]byte, error) {
 // provided []byte. 'i' must be one of the following:
 //  - 'nil'
 //  - A bool, float, string, []byte, int, uint, or complex
-//  - A map[string]T, where T is another supported type
+//  - A map[string]interface{} or map[string]string
 //  - A []T, where T is another supported type
 //  - A *T, where T is another supported type
 //  - A type that satisfieds the msgp.Marshaler interface
@@ -355,9 +370,7 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 		}
 		return b, nil
 
-	// TODO: maybe some struct fiddling?
-
 	default:
-		return b, fmt.Errorf("msgp: type %q not supported", v.Type())
+		return b, &ErrUnsupportedType{T: v.Type()}
 	}
 }

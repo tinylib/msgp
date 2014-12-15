@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"io"
 	"strconv"
 	"time"
@@ -88,7 +87,7 @@ func rwNext(w jsWriter, src *Reader) (int, error) {
 		return rwMap(w, src)
 	default:
 		// we shouldn't get here; NextType() errors if the type is not recognized
-		return 0, errors.New("msgp: bad encoding; unrecognized type prefix")
+		return 0, fatal
 	}
 }
 
@@ -120,15 +119,18 @@ func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 			n++
 		}
 
-		src.scratch, err = src.ReadMapKey(src.scratch)
-		if err != nil {
-			return
-		}
-
-		nn, err = rwquoted(dst, src.scratch)
+		nn, err = rwString(dst, src)
 		n += nn
 		if err != nil {
-			return
+			if tperr, ok := err.(TypeError); ok && tperr.Encoded == BinType {
+				nn, err = rwBytes(dst, src)
+				n += nn
+				if err != nil {
+					return
+				}
+			} else {
+				return
+			}
 		}
 
 		err = dst.WriteByte(':')
@@ -208,7 +210,6 @@ func rwFloat(dst jsWriter, src *Reader, t Type) (n int, err error) {
 		}
 		src.scratch = strconv.AppendFloat(src.scratch[0:0], float64(f), 'f', -1, 32)
 	}
-
 	return dst.Write(src.scratch)
 }
 
@@ -337,51 +338,42 @@ func rwString(dst jsWriter, src *Reader) (n int, err error) {
 	}
 	lead := p[0]
 	var read int
-	var off int
+
 	if isfixstr(lead) {
-		k := int(rfixstr(lead)) + 1
-		p, err = src.r.Peek(k)
-		if err != nil {
-			return
-		}
-		n, err = rwquoted(dst, p[1:])
-		src.r.Skip(k)
-		return
+		read = int(rfixstr(lead))
+		src.r.Skip(1)
+		goto write
 	}
 
 	switch lead {
 	case mstr8:
-		p, err = src.r.Peek(2)
+		p, err = src.r.Next(2)
 		if err != nil {
 			return
 		}
 		read = int(uint8(p[1]))
-		off = 2
 	case mstr16:
-		p, err = src.r.Peek(3)
+		p, err = src.r.Next(3)
 		if err != nil {
 			return
 		}
 		read = int(big.Uint16(p[1:]))
-		off = 3
 	case mstr32:
-		p, err = src.r.Peek(5)
+		p, err = src.r.Next(5)
 		if err != nil {
 			return
 		}
 		read = int(big.Uint32(p[1:]))
-		off = 5
 	default:
-		err = TypeError{Method: StrType, Encoded: getType(lead)}
+		err = badPrefix(StrType, lead)
 		return
 	}
-	k := read + off
-	p, err = src.r.Peek(k)
+write:
+	p, err = src.r.Next(read)
 	if err != nil {
 		return
 	}
-	n, err = rwquoted(dst, p[off:])
-	src.r.Skip(k)
+	n, err = rwquoted(dst, p)
 	return
 }
 
