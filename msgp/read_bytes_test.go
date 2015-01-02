@@ -435,6 +435,16 @@ func TestReadTimeBytes(t *testing.T) {
 	}
 }
 
+func BenchmarkReadTimeBytes(b *testing.B) {
+	data := AppendTime(nil, time.Now())
+	b.SetBytes(15)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ReadTimeBytes(data)
+	}
+}
+
 func TestReadIntfBytes(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
@@ -452,7 +462,9 @@ func TestReadIntfBytes(t *testing.T) {
 
 	for i, v := range tests {
 		buf.Reset()
-		en.WriteIntf(v)
+		if err := en.WriteIntf(v); err != nil {
+			t.Fatal(err)
+		}
 		en.Flush()
 
 		out, left, err := ReadIntfBytes(buf.Bytes())
@@ -463,7 +475,7 @@ func TestReadIntfBytes(t *testing.T) {
 			t.Errorf("expected 0 bytes left; found %d", len(left))
 		}
 		if !reflect.DeepEqual(v, out) {
-			t.Errorf("%v in; %v out", v, out)
+			t.Errorf("ReadIntf(): %v in; %v out", v, out)
 		}
 	}
 

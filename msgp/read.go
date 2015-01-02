@@ -191,7 +191,7 @@ func (m *Reader) IsNil() bool {
 
 // returns (obj size, obj elements, error)
 // only maps and arrays have non-zero obj elements
-func getNextSize(r *fwd.Reader) (uint32, uint32, error) {
+func getNextSize(r *fwd.Reader) (int64, int64, error) {
 	var (
 		p   []byte
 		err error
@@ -204,13 +204,13 @@ func getNextSize(r *fwd.Reader) (uint32, uint32, error) {
 
 	switch {
 	case isfixarray(lead):
-		return 1, uint32(rfixarray(lead)), nil
+		return 1, int64(rfixarray(lead)), nil
 
 	case isfixmap(lead):
-		return 1, 2 * uint32(rfixmap(lead)), nil
+		return 1, 2 * int64(rfixmap(lead)), nil
 
 	case isfixstr(lead):
-		return uint32(rfixstr(lead)) + 1, 0, nil
+		return int64(rfixstr(lead)) + 1, 0, nil
 
 	case isfixint(lead):
 		return 1, 0, nil
@@ -252,21 +252,21 @@ func getNextSize(r *fwd.Reader) (uint32, uint32, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return uint32(uint8(p[1])) + 2, 0, nil
+		return int64(uint8(p[1])) + 2, 0, nil
 
 	case mbin16, mstr16:
 		p, err = r.Peek(3)
 		if err != nil {
 			return 0, 0, err
 		}
-		return uint32(big.Uint16(p[1:])) + 3, 0, nil
+		return int64(big.Uint16(p[1:])) + 3, 0, nil
 
 	case mbin32, mstr32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return big.Uint32(p[1:]) + 5, 0, nil
+		return int64(big.Uint32(p[1:])) + 5, 0, nil
 
 	// variable extensions
 	// require 1 extra byte
@@ -276,21 +276,21 @@ func getNextSize(r *fwd.Reader) (uint32, uint32, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return uint32(uint8(p[1])) + 3, 0, nil
+		return int64(uint8(p[1])) + 3, 0, nil
 
 	case mext16:
 		p, err = r.Peek(4)
 		if err != nil {
 			return 0, 0, err
 		}
-		return uint32(big.Uint16(p[1:])) + 4, 0, nil
+		return int64(big.Uint16(p[1:])) + 4, 0, nil
 
 	case mext32:
 		p, err = r.Peek(6)
 		if err != nil {
 			return 0, 0, err
 		}
-		return big.Uint32(p[1:]) + 6, 0, nil
+		return int64(big.Uint32(p[1:])) + 6, 0, nil
 
 	// arrays skip lead byte,
 	// size byte, N objects
@@ -299,14 +299,14 @@ func getNextSize(r *fwd.Reader) (uint32, uint32, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return 3, uint32(big.Uint16(p[1:])), nil
+		return 3, int64(big.Uint16(p[1:])), nil
 
 	case marray32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return 5, big.Uint32(p[1:]), nil
+		return 5, int64(big.Uint32(p[1:])), nil
 
 	// maps skip lead byte,
 	// size byte, 2N objects
@@ -315,14 +315,14 @@ func getNextSize(r *fwd.Reader) (uint32, uint32, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return 3, 2 * uint32(big.Uint16(p[1:])), nil
+		return 3, 2 * int64(big.Uint16(p[1:])), nil
 
 	case mmap32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return 5, 2 * big.Uint32(p[1:]), nil
+		return 5, 2 * int64(big.Uint32(p[1:])), nil
 
 	default:
 		return 0, 0, InvalidPrefixError(lead)
@@ -335,8 +335,8 @@ func getNextSize(r *fwd.Reader) (uint32, uint32, error) {
 // or map will be skipped.
 func (m *Reader) Skip() error {
 	var (
-		v   uint32
-		o   uint32
+		v   int64
+		o   int64
 		err error
 		p   []byte
 	)
@@ -368,7 +368,7 @@ func (m *Reader) Skip() error {
 	}
 
 	// for maps and slices, skip elements
-	for x := uint32(0); x < o; x++ {
+	for x := int64(0); x < o; x++ {
 		err = m.Skip()
 		if err != nil {
 			return err
@@ -981,24 +981,24 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (err error) {
 }
 
 // ReadTime reads a time.Time object from the reader.
+// The returned time's location will be set to time.Local.
 func (m *Reader) ReadTime() (t time.Time, err error) {
 	var p []byte
-	p, err = m.r.Peek(18)
+	p, err = m.r.Peek(15)
 	if err != nil {
 		return
 	}
-	if p[0] != mfixext16 {
+	if p[0] != mext8 || p[1] != 12 {
 		err = badPrefix(TimeType, p[0])
 		return
 	}
-	if int8(p[1]) != TimeExtension {
-		err = errExt(int8(p[1]), TimeExtension)
+	if int8(p[2]) != TimeExtension {
+		err = errExt(int8(p[2]), TimeExtension)
 		return
 	}
-	err = t.UnmarshalBinary(p[2:17]) // wants 15 bytes; last byte is 0
-	if err == nil {
-		_, err = m.r.Skip(18)
-	}
+	sec, nsec := getUnix(p[3:])
+	t = time.Unix(sec, int64(nsec)).Local()
+	_, err = m.r.Skip(15)
 	return
 }
 

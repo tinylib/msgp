@@ -12,13 +12,13 @@ func (fs *FileSet) findUnresolved(g gen.Elem) []string {
 
 	switch g.Type() {
 	case gen.PtrType:
-		return fs.findUnresolved(g.(*gen.Ptr).Value)
+		return fs.findUnresolved(g.Ptr().Value)
 
 	case gen.SliceType:
-		return fs.findUnresolved(g.(*gen.Slice).Els)
+		return fs.findUnresolved(g.Slice().Els)
 
 	case gen.BaseType:
-		b := g.(*gen.BaseElem)
+		b := g.Base()
 		if b.Value == gen.IDENT { // type is unrecognized
 			id := b.Ident
 			if tp, ok := fs.Identities[id]; ok {
@@ -46,7 +46,7 @@ func (fs *FileSet) findUnresolved(g gen.Elem) []string {
 		return nil
 
 	case gen.StructType:
-		s := g.(*gen.Struct)
+		s := g.Struct()
 
 		out := make([]string, 0, len(s.Fields))
 		nm := s.Name
@@ -64,7 +64,7 @@ func (fs *FileSet) findUnresolved(g gen.Elem) []string {
 		return out
 
 	case gen.MapType:
-		return fs.findUnresolved(g.(*gen.Map).Value)
+		return fs.findUnresolved(g.Map().Value)
 
 	default:
 		return nil

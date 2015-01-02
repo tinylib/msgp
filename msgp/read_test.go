@@ -634,8 +634,15 @@ func TestTime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// check for equivalence
 	if !now.Equal(out) {
 		t.Fatalf("%s in; %s out", now, out)
+	}
+
+	// check for time.Local zone
+	if now != out {
+		t.Error("returned time.Time not set to time.Local")
 	}
 }
 

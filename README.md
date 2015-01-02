@@ -91,7 +91,7 @@ the data "type" (`int8`) and the raw binary. You [can see a worked example in th
 
 ### Status
 
-Alpha. I _will_ break stuff. There is an open milestone for Beta stability (targeted for January.)
+Alpha. I _will_ break stuff. There is an open milestone for Beta stability (targeted for January.) Only the `/msgp` sub-directory will have a stability guarantee.
 
 You can read more about how `msgp` maps MessagePack types onto Go types [in the wiki](http://github.com/philhofer/msgp/wiki).
 

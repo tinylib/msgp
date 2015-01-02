@@ -24,7 +24,7 @@ const (
 	Complex64Size  = 10
 	Complex128Size = 18
 
-	TimeSize = 18
+	TimeSize = 15
 	BoolSize = 1
 	NilSize  = 1
 

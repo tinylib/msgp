@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"testing"
+	"time"
 	"unsafe"
 )
 
@@ -319,3 +320,39 @@ func BenchmarkWrite16Bytes(b *testing.B) { benchwrBytes(16, b) }
 func BenchmarkWrite256Bytes(b *testing.B) { benchwrBytes(256, b) }
 
 func BenchmarkWrite2048Bytes(b *testing.B) { benchwrBytes(2048, b) }
+
+func TestWriteTime(t *testing.T) {
+	var buf bytes.Buffer
+	wr := NewWriter(&buf)
+	tm := time.Now()
+	err := wr.WriteTime(tm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = wr.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if buf.Len() != 15 {
+		t.Errorf("expected time.Time to be %d bytes; got %d", 15, buf.Len())
+	}
+
+	newt, err := NewReader(&buf).ReadTime()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !newt.Equal(tm) {
+		t.Errorf("in/out not equal; %s in and %s out", tm, newt)
+	}
+}
+
+func BenchmarkWriteTime(b *testing.B) {
+	t := time.Now()
+	wr := NewWriter(Nowhere)
+	b.SetBytes(15)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		wr.WriteTime(t)
+	}
+}

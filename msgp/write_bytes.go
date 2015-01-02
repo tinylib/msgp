@@ -1,25 +1,11 @@
 package msgp
 
 import (
-	"fmt"
 	"math"
 	"reflect"
 	"time"
 	"unsafe"
 )
-
-// ErrUnsupportedType is returned
-// when a bad argument is supplied
-// to a function that takes `interface{}`.
-type ErrUnsupportedType struct {
-	T reflect.Type
-}
-
-// Error implements error
-func (e *ErrUnsupportedType) Error() string { return fmt.Sprintf("msgp: type %q not supported", e.T) }
-
-// Resumable returns 'true' for ErrUnsupportedType
-func (e *ErrUnsupportedType) Resumable() bool { return true }
 
 // ensure 'sz' extra bytes in 'b' btw len(b) and cap(b)
 func ensure(b []byte, sz int) ([]byte, int) {
@@ -180,17 +166,21 @@ func AppendUint32(b []byte, u uint32) []byte { return AppendUint64(b, uint64(u))
 
 // AppendBytes appends bytes to the slice as MessagePack 'bin' data
 func AppendBytes(b []byte, bts []byte) []byte {
-	sz := uint32(len(bts))
-	o, n := ensure(b, BytesPrefixSize+len(bts))
+	sz := len(bts)
+	var o []byte
+	var n int
 	switch {
 	case sz < math.MaxUint8:
+		o, n = ensure(b, 2+sz)
 		prefixu8(o[n:], mbin8, uint8(sz))
 		n += 2
 	case sz < math.MaxUint16:
+		o, n = ensure(b, 3+sz)
 		prefixu16(o[n:], mbin16, uint16(sz))
 		n += 3
 	default:
-		prefixu32(o[n:], mbin32, sz)
+		o, n = ensure(b, 5+sz)
+		prefixu32(o[n:], mbin32, uint32(sz))
 		n += 5
 	}
 	return o[:n+copy(o[n:], bts)]
@@ -206,20 +196,25 @@ func AppendBool(b []byte, t bool) []byte {
 
 // AppendString appends a string as a MessagePack 'str' to the slice
 func AppendString(b []byte, s string) []byte {
-	sz := uint32(len(s))
-	o, n := ensure(b, BytesPrefixSize+len(s))
+	sz := len(s)
+	var n int
+	var o []byte
 	switch {
 	case sz < 32:
+		o, n = ensure(b, 1+sz)
 		o[n] = wfixstr(uint8(sz))
 		n++
 	case sz < math.MaxUint8:
+		o, n = ensure(b, 2+sz)
 		prefixu8(o[n:], mstr8, uint8(sz))
 		n += 2
 	case sz < math.MaxUint16:
+		o, n = ensure(b, 3+sz)
 		prefixu16(o[n:], mstr16, uint16(sz))
 		n += 3
 	default:
-		prefixu32(o[n:], mstr32, sz)
+		o, n = ensure(b, 5+sz)
+		prefixu32(o[n:], mstr32, uint32(sz))
 		n += 5
 	}
 	return o[:n+copy(o[n:], s)]
@@ -246,10 +241,11 @@ func AppendComplex128(b []byte, c complex128) []byte {
 // AppendTime appends a time.Time to the slice as a MessagePack extension
 func AppendTime(b []byte, t time.Time) []byte {
 	o, n := ensure(b, TimeSize)
-	bts, _ := t.MarshalBinary()
-	o[n] = mfixext16
-	o[n+1] = TimeExtension
-	copy(o[n+2:], bts)
+	t = t.UTC()
+	o[n] = mext8
+	o[n+1] = 12
+	o[n+2] = TimeExtension
+	putUnix(o[n+3:], t.Unix(), int32(t.Nanosecond()))
 	return o
 }
 
@@ -304,50 +300,51 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 
 	// all the concrete types
 	// for which we have methods
-	switch i.(type) {
+	switch i := i.(type) {
 	case bool:
-		return AppendBool(b, i.(bool)), nil
+		return AppendBool(b, i), nil
 	case float32:
-		return AppendFloat32(b, i.(float32)), nil
+		return AppendFloat32(b, i), nil
 	case float64:
-		return AppendFloat64(b, i.(float64)), nil
+		return AppendFloat64(b, i), nil
 	case complex64:
-		return AppendComplex64(b, i.(complex64)), nil
+		return AppendComplex64(b, i), nil
 	case complex128:
-		return AppendComplex128(b, i.(complex128)), nil
+		return AppendComplex128(b, i), nil
 	case string:
-		return AppendString(b, i.(string)), nil
+		return AppendString(b, i), nil
 	case []byte:
-		return AppendBytes(b, i.([]byte)), nil
+		return AppendBytes(b, i), nil
 	case int8:
-		return AppendInt8(b, i.(int8)), nil
+		return AppendInt8(b, i), nil
 	case int16:
-		return AppendInt16(b, i.(int16)), nil
+		return AppendInt16(b, i), nil
 	case int32:
-		return AppendInt32(b, i.(int32)), nil
+		return AppendInt32(b, i), nil
 	case int64:
-		return AppendInt64(b, i.(int64)), nil
+		return AppendInt64(b, i), nil
 	case int:
-		return AppendInt64(b, int64(i.(int))), nil
+		return AppendInt64(b, int64(i)), nil
 	case uint:
-		return AppendUint64(b, uint64(i.(uint))), nil
+		return AppendUint64(b, uint64(i)), nil
 	case uint8:
-		return AppendUint8(b, i.(uint8)), nil
+		return AppendUint8(b, i), nil
 	case uint16:
-		return AppendUint16(b, i.(uint16)), nil
+		return AppendUint16(b, i), nil
 	case uint32:
-		return AppendUint32(b, i.(uint32)), nil
+		return AppendUint32(b, i), nil
 	case uint64:
-		return AppendUint64(b, i.(uint64)), nil
+		return AppendUint64(b, i), nil
+	case time.Time:
+		return AppendTime(b, i), nil
 	case map[string]interface{}:
-		return AppendMapStrIntf(b, i.(map[string]interface{}))
+		return AppendMapStrIntf(b, i)
 	case map[string]string:
-		return AppendMapStrStr(b, i.(map[string]string)), nil
+		return AppendMapStrStr(b, i), nil
 	case []interface{}:
-		j := i.([]interface{})
-		b = AppendArrayHeader(b, uint32(len(j)))
+		b = AppendArrayHeader(b, uint32(len(i)))
 		var err error
-		for _, k := range j {
+		for _, k := range i {
 			b, err = AppendIntf(b, k)
 			if err != nil {
 				return b, err

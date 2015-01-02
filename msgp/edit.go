@@ -185,7 +185,7 @@ func locateKV(raw []byte, key string) (start int, end int) {
 	return 0, 0
 }
 
-// delta is delta on map size; extra is extra space in slice
+// delta is delta on map size
 func resizeMap(raw []byte, delta int64) []byte {
 	var sz int64
 	switch raw[0] {

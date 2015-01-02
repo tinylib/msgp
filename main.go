@@ -24,12 +24,12 @@ var (
 	tests   bool   // write test file
 
 	// marshal/unmarshal imports
-	injectImports []string = []string{
+	injectImports = []string{
 		"github.com/philhofer/msgp/msgp",
 	}
 
 	// testing imports
-	testImport []string = []string{
+	testImport = []string{
 		"testing",
 		"bytes",
 		"github.com/philhofer/msgp/msgp",
@@ -52,14 +52,13 @@ func main() {
 	// set by `go generate`
 	if file == "" {
 		file = os.Getenv("GOFILE")
+		if file == "" {
+			fmt.Println(chalk.Red.Color("No file to parse."))
+			os.Exit(1)
+		}
 	}
 	if pkg == "" {
 		pkg = os.Getenv("GOPACKAGE")
-	}
-
-	if file == "" {
-		fmt.Println(chalk.Red.Color("No file to parse."))
-		os.Exit(1)
 	}
 
 	if !encode && !marshal {
@@ -67,11 +66,70 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := DoAll(pkg, file, marshal, encode, tests)
-	if err != nil {
+	if err := DoAll(pkg, file, marshal, encode, tests); err != nil {
 		fmt.Println(chalk.Red.Color(err.Error()))
 		os.Exit(1)
 	}
+}
+
+func isDirectory(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
+}
+
+func newFilename(old string, pkg string, isDir bool) string {
+	if out != "" {
+		if pre := strings.TrimPrefix(out, old); len(pre) > 0 &&
+			!strings.HasSuffix(out, ".go") {
+			return filepath.Join(old, out)
+		}
+		return out
+	}
+	if isDir {
+		old = filepath.Join(old, pkg)
+	}
+	// new file name is old file name + _gen.go
+	return strings.TrimSuffix(old, ".go") + "_gen.go"
+}
+
+func writeMarshal(els []gen.Elem, dst *bufio.Writer, tst *bufio.Writer, buf *bytes.Buffer) error {
+	for _, el := range els {
+		p, ok := el.(*gen.Ptr)
+		if !ok || p.Value.Type() != gen.StructType {
+			continue
+		}
+		err := gen.WriteMarshalUnmarshal(dst, p, buf)
+		if err != nil {
+			return err
+		}
+		if tst != nil {
+			err = gen.WriteMarshalUnmarshalTests(tst, p.Value.Struct(), buf)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func writeEncode(els []gen.Elem, dst *bufio.Writer, tst *bufio.Writer, buf *bytes.Buffer) error {
+	for _, el := range els {
+		p, ok := el.(*gen.Ptr)
+		if !ok || p.Value.Type() != gen.StructType {
+			continue
+		}
+		err := gen.WriteEncodeDecode(dst, p, buf)
+		if err != nil {
+			return err
+		}
+		if tst != nil {
+			err = gen.WriteEncodeDecodeTests(tst, p.Value.Struct(), buf)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // DoAll writes all methods using the associated file and package.
@@ -87,10 +145,7 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		return nil
 	}
 
-	var isDir bool
-	if fInfo, err := os.Stat(gofile); err == nil && fInfo.IsDir() {
-		isDir = true
-	}
+	isDir := isDirectory(gofile)
 
 	if isDir {
 		fmt.Printf(chalk.Magenta.Color("========= %s =========\n"), filepath.Clean(gofile))
@@ -106,7 +161,8 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 	// use the parsed
 	// package name if it
 	// isn't set from $GOPACKAGE
-	if len(gopkg) == 0 {
+	// or -pkg
+	if gopkg == "" {
 		gopkg = pkgName
 	}
 
@@ -117,22 +173,7 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		return nil
 	}
 
-	var newfile string // new file name
-	if out != "" {
-		newfile = out
-		if pre := strings.TrimPrefix(out, gofile); len(pre) > 0 &&
-			!strings.HasSuffix(out, ".go") {
-			newfile = filepath.Join(gofile, out)
-		}
-	} else {
-		// small sanity check if gofile == . or dir
-		// let's just stat it again, not too costly
-		if isDir {
-			gofile = filepath.Join(gofile, pkgName)
-		}
-		// new file name is old file name + _gen.go
-		newfile = strings.TrimSuffix(gofile, ".go") + "_gen.go"
-	}
+	newfile := newFilename(gofile, pkgName, isDir)
 
 	// GENERATED FILES
 
@@ -179,45 +220,15 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		}
 	}
 
-	//////////////////
 	var buf bytes.Buffer
-	for _, el := range elems {
-		p, ok := el.(*gen.Ptr)
-		if !ok || p.Value.Type() != gen.StructType {
-			continue
+	if encode {
+		if err := writeEncode(elems, outwr, testwr, &buf); err != nil {
+			return err
 		}
-
-		if marshal {
-			// write MarshalMsg()
-			err = gen.WriteMarshalUnmarshal(outwr, p, &buf)
-			if err != nil {
-				outwr.Flush()
-				return err
-			}
-
-			if tests {
-				err = gen.WriteMarshalUnmarshalTests(testwr, p.Value.Struct(), &buf)
-				if err != nil {
-					testwr.Flush()
-					return err
-				}
-			}
-		}
-
-		if encode {
-			err = gen.WriteEncodeDecode(outwr, p, &buf)
-			if err != nil {
-				outwr.Flush()
-				return err
-			}
-
-			if tests {
-				err = gen.WriteEncodeDecodeTests(testwr, p.Value.Struct(), &buf)
-				if err != nil {
-					testwr.Flush()
-					return err
-				}
-			}
+	}
+	if marshal {
+		if err := writeMarshal(elems, outwr, testwr, &buf); err != nil {
+			return err
 		}
 	}
 
@@ -233,9 +244,8 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		if err != nil {
 			return err
 		}
-
+		fmt.Print(chalk.Green.Color("\u2713\n"))
 	}
-	fmt.Print(chalk.Green.Color("\u2713\n"))
 	return nil
 }
 

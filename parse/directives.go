@@ -7,11 +7,15 @@ import (
 	"strings"
 )
 
+const linePrefix = "//msgp:"
+
+type directive func([]string, *FileSet) error
+
 // map of all recognized directives
 //
 // to add a directive, define a func([]string, *FileSet) error
 // and then add it to this list.
-var directives = map[string]func([]string, *FileSet) error{
+var directives = map[string]directive{
 	"shim":   applyShim,
 	"ignore": ignore,
 	"tuple":  astuple,
@@ -28,8 +32,8 @@ func yieldComments(c []*ast.CommentGroup) []string {
 	var out []string
 	for _, cg := range c {
 		for _, line := range cg.List {
-			if strings.HasPrefix(line.Text, "//msgp:") {
-				out = append(out, strings.TrimPrefix(line.Text, "//msgp:"))
+			if strings.HasPrefix(line.Text, linePrefix) {
+				out = append(out, strings.TrimPrefix(line.Text, linePrefix))
 			}
 		}
 	}
@@ -84,6 +88,7 @@ func ignore(text []string, f *FileSet) error {
 	return nil
 }
 
+//msgp:tuple {TypeA} {TypeB}...
 func astuple(text []string, f *FileSet) error {
 	if len(text) < 2 {
 		return nil
