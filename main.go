@@ -5,13 +5,16 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"github.com/philhofer/msgp/gen"
-	"github.com/philhofer/msgp/parse"
-	"github.com/ttacon/chalk"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/philhofer/msgp/gen"
+	"github.com/philhofer/msgp/parse"
+	"github.com/ttacon/chalk"
+	"golang.org/x/tools/imports"
 )
 
 var (
@@ -201,10 +204,13 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 
 	///////////////////
 	// TESTING FILE  //
-	var testfile string
+	var (
+		testfile string
+		tfl      *os.File
+	)
 	if tests {
 		testfile = strings.TrimSuffix(newfile, ".go") + "_test.go"
-		tfl, err := os.Create(testfile)
+		tfl, err = os.Create(testfile)
 		if err != nil {
 			return err
 		}
@@ -237,6 +243,12 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 	if err != nil {
 		return err
 	}
+
+	err = processFileImports(file, newfile)
+	if err != nil {
+		return err
+	}
+
 	fmt.Print(chalk.Green.Color("\u2713\n"))
 	if tests {
 		fmt.Printf(chalk.Magenta.Color("TESTS =====> %s "), testfile)
@@ -244,9 +256,33 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		if err != nil {
 			return err
 		}
+		err = processFileImports(tfl, testfile)
+		if err != nil {
+			return err
+		}
 		fmt.Print(chalk.Green.Color("\u2713\n"))
 	}
 	return nil
+}
+
+func processFileImports(f *os.File, fName string) error {
+	fStat, err := f.Stat()
+	if err != nil {
+		return err
+	}
+
+	toProcess, err := ioutil.ReadFile(fName)
+	if err != nil {
+		return err
+	}
+
+	toProcess, err = imports.Process(fName, toProcess, nil)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(fName, toProcess, fStat.Mode())
+	return err
 }
 
 func writePkgHeader(w io.Writer, name string) error {
