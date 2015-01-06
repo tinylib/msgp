@@ -108,6 +108,6 @@ If the output compiles, then there's a pretty good chance things are fine. (Plus
 
 ### Performance
 
-If you like benchmarks, we're the [fastest and lowest-memory-footprint round-trip serializer for Go in this test.](https://github.com/alecthomas/go_serialization_benchmarks)
+If you like benchmarks, see [here.](https://github.com/alecthomas/go_serialization_benchmarks) In general, you pay a performance penalty using this code generator over the gogoprotobuf (protocol buffers) generator, but you get substantially better JSON interop and dedicated `io.Reader/Writer` methods, along with the ability to use Go as your schema language.
 
 As one might expect, the generated methods that deal with `[]byte` are faster, but the `io.Reader/Writer` methods are generally more memory-efficient for large (> 2KB) objects. As always, benchmark for your particular use case.
