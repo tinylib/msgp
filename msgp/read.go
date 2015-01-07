@@ -11,6 +11,12 @@ import (
 	"unsafe"
 )
 
+var _int int
+var _uint uint
+
+const smallint = (unsafe.Sizeof(_int) == 4)   // int32
+const smalluint = (unsafe.Sizeof(_uint) == 4) // uint32
+
 // where we keep old *Readers
 var readerPool = sync.Pool{New: func() interface{} { return &Reader{} }}
 
@@ -191,7 +197,10 @@ func (m *Reader) IsNil() bool {
 
 // returns (obj size, obj elements, error)
 // only maps and arrays have non-zero obj elements
-func getNextSize(r *fwd.Reader) (int64, int64, error) {
+//
+// use uintptr b/c it's guaranteed to be large enough
+// to hold whatever we can fit in memory.
+func getNextSize(r *fwd.Reader) (uintptr, uintptr, error) {
 	var (
 		p   []byte
 		err error
@@ -204,13 +213,13 @@ func getNextSize(r *fwd.Reader) (int64, int64, error) {
 
 	switch {
 	case isfixarray(lead):
-		return 1, int64(rfixarray(lead)), nil
+		return 1, uintptr(rfixarray(lead)), nil
 
 	case isfixmap(lead):
-		return 1, 2 * int64(rfixmap(lead)), nil
+		return 1, 2 * uintptr(rfixmap(lead)), nil
 
 	case isfixstr(lead):
-		return int64(rfixstr(lead)) + 1, 0, nil
+		return uintptr(rfixstr(lead)) + 1, 0, nil
 
 	case isfixint(lead):
 		return 1, 0, nil
@@ -252,21 +261,21 @@ func getNextSize(r *fwd.Reader) (int64, int64, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return int64(uint8(p[1])) + 2, 0, nil
+		return uintptr(uint8(p[1])) + 2, 0, nil
 
 	case mbin16, mstr16:
 		p, err = r.Peek(3)
 		if err != nil {
 			return 0, 0, err
 		}
-		return int64(big.Uint16(p[1:])) + 3, 0, nil
+		return uintptr(big.Uint16(p[1:])) + 3, 0, nil
 
 	case mbin32, mstr32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return int64(big.Uint32(p[1:])) + 5, 0, nil
+		return uintptr(big.Uint32(p[1:])) + 5, 0, nil
 
 	// variable extensions
 	// require 1 extra byte
@@ -276,21 +285,21 @@ func getNextSize(r *fwd.Reader) (int64, int64, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return int64(uint8(p[1])) + 3, 0, nil
+		return uintptr(uint8(p[1])) + 3, 0, nil
 
 	case mext16:
 		p, err = r.Peek(4)
 		if err != nil {
 			return 0, 0, err
 		}
-		return int64(big.Uint16(p[1:])) + 4, 0, nil
+		return uintptr(big.Uint16(p[1:])) + 4, 0, nil
 
 	case mext32:
 		p, err = r.Peek(6)
 		if err != nil {
 			return 0, 0, err
 		}
-		return int64(big.Uint32(p[1:])) + 6, 0, nil
+		return uintptr(big.Uint32(p[1:])) + 6, 0, nil
 
 	// arrays skip lead byte,
 	// size byte, N objects
@@ -299,14 +308,14 @@ func getNextSize(r *fwd.Reader) (int64, int64, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return 3, int64(big.Uint16(p[1:])), nil
+		return 3, uintptr(big.Uint16(p[1:])), nil
 
 	case marray32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return 5, int64(big.Uint32(p[1:])), nil
+		return 5, uintptr(big.Uint32(p[1:])), nil
 
 	// maps skip lead byte,
 	// size byte, 2N objects
@@ -315,14 +324,14 @@ func getNextSize(r *fwd.Reader) (int64, int64, error) {
 		if err != nil {
 			return 0, 0, err
 		}
-		return 3, 2 * int64(big.Uint16(p[1:])), nil
+		return 3, 2 * uintptr(big.Uint16(p[1:])), nil
 
 	case mmap32:
 		p, err = r.Peek(5)
 		if err != nil {
 			return 0, 0, err
 		}
-		return 5, 2 * int64(big.Uint32(p[1:])), nil
+		return 5, 2 * uintptr(big.Uint32(p[1:])), nil
 
 	default:
 		return 0, 0, InvalidPrefixError(lead)
@@ -335,8 +344,8 @@ func getNextSize(r *fwd.Reader) (int64, int64, error) {
 // or map will be skipped.
 func (m *Reader) Skip() error {
 	var (
-		v   int64
-		o   int64
+		v   uintptr
+		o   uintptr
 		err error
 		p   []byte
 	)
@@ -368,7 +377,7 @@ func (m *Reader) Skip() error {
 	}
 
 	// for maps and slices, skip elements
-	for x := int64(0); x < o; x++ {
+	for x := uintptr(0); x < o; x++ {
 		err = m.Skip()
 		if err != nil {
 			return err
@@ -644,7 +653,7 @@ func (m *Reader) ReadInt8() (i int8, err error) {
 
 // ReadInt reads an int from the reader
 func (m *Reader) ReadInt() (i int, err error) {
-	if unsafe.Sizeof(i) == 4 {
+	if smallint {
 		var in int32
 		in, err = m.ReadInt32()
 		i = int(in)
@@ -748,7 +757,7 @@ func (m *Reader) ReadUint8() (u uint8, err error) {
 
 // ReadUint reads a uint from the reader
 func (m *Reader) ReadUint() (u uint, err error) {
-	if unsafe.Sizeof(u) == 4 {
+	if smalluint {
 		var un uint32
 		un, err = m.ReadUint32()
 		u = uint(un)

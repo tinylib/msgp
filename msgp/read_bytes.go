@@ -893,11 +893,11 @@ func Skip(b []byte) ([]byte, error) {
 	if err != nil {
 		return b, err
 	}
-	if int64(len(b)) < sz {
+	if uintptr(len(b)) < sz {
 		return nil, ErrShortBytes
 	}
 	b = b[sz:]
-	for i := int64(0); i < asz; i++ {
+	for i := uintptr(0); i < asz; i++ {
 		b, err = Skip(b)
 		if err != nil {
 			return b, err
@@ -907,7 +907,7 @@ func Skip(b []byte) ([]byte, error) {
 }
 
 // returns (skip N bytes, skip M objects, error)
-func getSize(b []byte) (int64, int64, error) {
+func getSize(b []byte) (uintptr, uintptr, error) {
 	l := len(b)
 	if l < 1 {
 		return 0, 0, ErrShortBytes
@@ -917,13 +917,13 @@ func getSize(b []byte) (int64, int64, error) {
 
 	switch {
 	case isfixarray(lead):
-		return 1, int64(rfixarray(lead)), nil
+		return 1, uintptr(rfixarray(lead)), nil
 
 	case isfixmap(lead):
-		return 1, 2 * int64(rfixmap(lead)), nil
+		return 1, 2 * uintptr(rfixmap(lead)), nil
 
 	case isfixstr(lead):
-		return int64(rfixstr(lead)) + 1, 0, nil
+		return uintptr(rfixstr(lead)) + 1, 0, nil
 
 	case isfixint(lead):
 		return 1, 0, nil
@@ -964,19 +964,19 @@ func getSize(b []byte) (int64, int64, error) {
 		if l < 2 {
 			return 0, 0, ErrShortBytes
 		}
-		return int64(uint8(b[1])) + 2, 0, nil
+		return uintptr(uint8(b[1])) + 2, 0, nil
 
 	case mbin16, mstr16:
 		if l < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return int64(big.Uint16(b[1:])) + 3, 0, nil
+		return uintptr(big.Uint16(b[1:])) + 3, 0, nil
 
 	case mbin32, mstr32:
 		if l < 5 {
 			return 0, 0, ErrShortBytes
 		}
-		return int64(big.Uint32(b[1:])) + 5, 0, nil
+		return uintptr(big.Uint32(b[1:])) + 5, 0, nil
 
 	// variable extensions
 	// require 1 extra byte
@@ -985,19 +985,19 @@ func getSize(b []byte) (int64, int64, error) {
 		if l < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return int64(uint8(b[1])) + 3, 0, nil
+		return uintptr(uint8(b[1])) + 3, 0, nil
 
 	case mext16:
 		if l < 4 {
 			return 0, 0, ErrShortBytes
 		}
-		return int64(big.Uint16(b[1:])) + 4, 0, nil
+		return uintptr(big.Uint16(b[1:])) + 4, 0, nil
 
 	case mext32:
 		if l < 6 {
 			return 0, 0, ErrShortBytes
 		}
-		return int64(big.Uint32(b[1:])) + 6, 0, nil
+		return uintptr(big.Uint32(b[1:])) + 6, 0, nil
 
 	// arrays skip lead byte,
 	// size byte, N objects
@@ -1005,13 +1005,13 @@ func getSize(b []byte) (int64, int64, error) {
 		if l < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return 3, int64(big.Uint16(b[1:])), nil
+		return 3, uintptr(big.Uint16(b[1:])), nil
 
 	case marray32:
 		if l < 5 {
 			return 0, 0, ErrShortBytes
 		}
-		return 5, int64(big.Uint32(b[1:])), nil
+		return 5, uintptr(big.Uint32(b[1:])), nil
 
 	// maps skip lead byte,
 	// size byte, 2N objects
@@ -1019,13 +1019,13 @@ func getSize(b []byte) (int64, int64, error) {
 		if l < 3 {
 			return 0, 0, ErrShortBytes
 		}
-		return 3, 2 * int64(big.Uint16(b[1:])), nil
+		return 3, 2 * uintptr(big.Uint16(b[1:])), nil
 
 	case mmap32:
 		if l < 5 {
 			return 0, 0, ErrShortBytes
 		}
-		return 5, 2 * int64(big.Uint32(b[1:])), nil
+		return 5, 2 * uintptr(big.Uint32(b[1:])), nil
 
 	default:
 		return 0, 0, InvalidPrefixError(lead)
