@@ -165,7 +165,7 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 		return
 	}
 
-	memcpy8(unsafe.Pointer(&f), unsafe.Pointer(&b[1]))
+	f = math.Float64frombits(getMuint64(b))
 	o = b[9:]
 	return
 }
@@ -186,7 +186,7 @@ func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 		return
 	}
 
-	memcpy4(unsafe.Pointer(&f), unsafe.Pointer(&b[1]))
+	f = math.Float32frombits(getMuint32(b))
 	o = b[5:]
 	return
 }
@@ -634,7 +634,8 @@ func ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
 		err = errExt(int8(b[1]), Complex128Extension)
 		return
 	}
-	memcpy16(unsafe.Pointer(&c), unsafe.Pointer(&b[2]))
+	c = complex(math.Float64frombits(big.Uint64(b[2:])),
+		math.Float64frombits(big.Uint64(b[10:])))
 	o = b[18:]
 	return
 }
@@ -659,7 +660,8 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 		err = errExt(int8(b[1]), Complex64Extension)
 		return
 	}
-	memcpy8(unsafe.Pointer(&c), unsafe.Pointer(&b[2]))
+	c = complex(math.Float32frombits(big.Uint32(b[2:])),
+		math.Float32frombits(big.Uint32(b[6:])))
 	o = b[10:]
 	return
 }
@@ -681,7 +683,7 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 		return
 	}
 	if int8(b[2]) != TimeExtension {
-		err = errExt(int8(b[1]), TimeExtension)
+		err = errExt(int8(b[2]), TimeExtension)
 		return
 	}
 	sec, nsec := getUnix(b[3:])

@@ -124,10 +124,10 @@ func Decode(r io.Reader, d Decodable) error {
 func NewReader(r io.Reader) *Reader {
 	p := readerPool.Get().(*Reader)
 	if p.r == nil {
-		p.r = fwd.NewReaderSize(r, 1024)
-		return p
+		p.r = fwd.NewReader(r)
+	} else {
+		p.r.Reset(r)
 	}
-	p.Reset(r)
 	return p
 }
 
@@ -516,7 +516,7 @@ func (m *Reader) ReadFloat64() (f float64, err error) {
 		err = badPrefix(Float64Type, p[0])
 		return
 	}
-	memcpy8(unsafe.Pointer(&f), unsafe.Pointer(&p[1]))
+	f = math.Float64frombits(getMuint64(p))
 	_, err = m.r.Skip(9)
 	return
 }
@@ -532,7 +532,7 @@ func (m *Reader) ReadFloat32() (f float32, err error) {
 		err = badPrefix(Float32Type, p[0])
 		return
 	}
-	memcpy4(unsafe.Pointer(&f), unsafe.Pointer(&p[1]))
+	f = math.Float32frombits(getMuint32(p))
 	_, err = m.r.Skip(5)
 	return
 }
@@ -937,7 +937,8 @@ func (m *Reader) ReadComplex64() (f complex64, err error) {
 		err = errExt(int8(p[1]), Complex64Extension)
 		return
 	}
-	memcpy8(unsafe.Pointer(&f), unsafe.Pointer(&p[2]))
+	f = complex(math.Float32frombits(big.Uint32(p[2:])),
+		math.Float32frombits(big.Uint32(p[6:])))
 	_, err = m.r.Skip(10)
 	return
 }
@@ -957,7 +958,8 @@ func (m *Reader) ReadComplex128() (f complex128, err error) {
 		err = errExt(int8(p[1]), Complex128Extension)
 		return
 	}
-	memcpy16(unsafe.Pointer(&f), unsafe.Pointer(&p[2]))
+	f = complex(math.Float64frombits(big.Uint64(p[2:])),
+		math.Float64frombits(big.Uint64(p[10:])))
 	_, err = m.r.Skip(18)
 	return
 }

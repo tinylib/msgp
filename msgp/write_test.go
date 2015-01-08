@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"testing"
 	"time"
-	"unsafe"
 )
 
 var (
@@ -156,10 +155,6 @@ func TestWriteFloat64(t *testing.T) {
 		if bts[0] != mfloat64 {
 			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
 		}
-
-		if *(*float64)(unsafe.Pointer(&bts[1])) != flt {
-			t.Errorf("Value %f came out as %f", flt, *(*float64)(unsafe.Pointer(&bts[1])))
-		}
 	}
 }
 
@@ -194,10 +189,6 @@ func TestWriteFloat32(t *testing.T) {
 
 		if bts[0] != mfloat32 {
 			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
-		}
-
-		if *(*float32)(unsafe.Pointer(&bts[1])) != flt {
-			t.Errorf("Value %f came out as %f", flt, *(*float32)(unsafe.Pointer(&bts[1])))
 		}
 	}
 }

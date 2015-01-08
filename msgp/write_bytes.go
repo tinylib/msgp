@@ -4,7 +4,6 @@ import (
 	"math"
 	"reflect"
 	"time"
-	"unsafe"
 )
 
 // ensure 'sz' extra bytes in 'b' btw len(b) and cap(b)
@@ -63,16 +62,14 @@ func AppendNil(b []byte) []byte { return append(b, mnil) }
 // AppendFloat64 appends a float64 to the slice
 func AppendFloat64(b []byte, f float64) []byte {
 	o, n := ensure(b, Float64Size)
-	o[n] = mfloat64
-	memcpy8(unsafe.Pointer(&o[n+1]), unsafe.Pointer(&f))
+	prefixu64(o[n:], mfloat64, math.Float64bits(f))
 	return o
 }
 
 // AppendFloat32 appends a float32 to the slice
 func AppendFloat32(b []byte, f float32) []byte {
 	o, n := ensure(b, Float32Size)
-	o[n] = mfloat32
-	memcpy4(unsafe.Pointer(&o[n+1]), unsafe.Pointer(&f))
+	prefixu32(o[n:], mfloat32, math.Float32bits(f))
 	return o
 }
 
@@ -225,7 +222,8 @@ func AppendComplex64(b []byte, c complex64) []byte {
 	o, n := ensure(b, Complex64Size)
 	o[n] = mfixext8
 	o[n+1] = Complex64Extension
-	memcpy8(unsafe.Pointer(&o[n+2]), unsafe.Pointer(&c))
+	big.PutUint32(o[n+2:], math.Float32bits(real(c)))
+	big.PutUint32(o[n+6:], math.Float32bits(imag(c)))
 	return o
 }
 
@@ -234,7 +232,8 @@ func AppendComplex128(b []byte, c complex128) []byte {
 	o, n := ensure(b, Complex128Size)
 	o[n] = mfixext16
 	o[n+1] = Complex128Extension
-	memcpy16(unsafe.Pointer(&o[n+2]), unsafe.Pointer(&c))
+	big.PutUint64(o[n+2:], math.Float64bits(real(c)))
+	big.PutUint64(o[n+10:], math.Float64bits(imag(c)))
 	return o
 }
 

@@ -257,7 +257,7 @@ func peekExtension(b []byte) (int8, error) {
 		}
 		return int8(b[5]), nil
 	default:
-		return 0, InvalidPrefixError(b[0])
+		return 0, badPrefix(ExtensionType, b[0])
 	}
 }
 

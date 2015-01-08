@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"sync"
 	"time"
-	"unsafe"
 )
 
 func abs(i int64) int64 {
@@ -281,10 +280,9 @@ func (mw *Writer) Encode(m Marshaler) error {
 				mw.buf = make([]byte, 0, sz)
 			}
 		}
-	} else if mw.avail() < 3*cap(mw.buf)/4 {
-		// flush if more than 3/4 full
-		err := mw.flush()
-		if err != nil {
+	} else if mw.avail() > (cap(mw.buf) / 2) {
+		// flush if we're more than half full
+		if err := mw.flush(); err != nil {
 			return err
 		}
 	}
@@ -365,8 +363,7 @@ func (mw *Writer) WriteFloat64(f float64) error {
 	if err != nil {
 		return err
 	}
-	mw.buf[o] = mfloat64
-	memcpy8(unsafe.Pointer(&mw.buf[o+1]), unsafe.Pointer(&f))
+	prefixu64(mw.buf[o:], mfloat64, math.Float64bits(f))
 	return nil
 }
 
@@ -376,8 +373,7 @@ func (mw *Writer) WriteFloat32(f float32) error {
 	if err != nil {
 		return err
 	}
-	mw.buf[o] = mfloat32
-	memcpy4(unsafe.Pointer(&mw.buf[o+1]), unsafe.Pointer(&f))
+	prefixu32(mw.buf[o:], mfloat32, math.Float32bits(f))
 	return nil
 }
 
@@ -579,7 +575,8 @@ func (mw *Writer) WriteComplex64(f complex64) error {
 	}
 	mw.buf[o] = mfixext8
 	mw.buf[o+1] = Complex64Extension
-	memcpy8(unsafe.Pointer(&mw.buf[o+2]), unsafe.Pointer(&f))
+	big.PutUint32(mw.buf[o+2:], math.Float32bits(real(f)))
+	big.PutUint32(mw.buf[o+6:], math.Float32bits(imag(f)))
 	return nil
 }
 
@@ -591,7 +588,8 @@ func (mw *Writer) WriteComplex128(f complex128) error {
 	}
 	mw.buf[o] = mfixext16
 	mw.buf[o+1] = Complex128Extension
-	memcpy16(unsafe.Pointer(&mw.buf[o+2]), unsafe.Pointer(&f))
+	big.PutUint64(mw.buf[o+2:], math.Float64bits(real(f)))
+	big.PutUint64(mw.buf[o+10:], math.Float64bits(imag(f)))
 	return nil
 }
 
@@ -896,8 +894,7 @@ func GuessSize(i interface{}) int {
 	case map[string]interface{}:
 		s := MapHeaderSize
 		for key, val := range i {
-			s += StringPrefixSize + len(key)
-			s += GuessSize(val)
+			s += StringPrefixSize + len(key) + GuessSize(val)
 		}
 		return s
 	case map[string]string:
