@@ -37,7 +37,7 @@ func (e errShort) Resumable() bool { return true }
 
 type errFatal struct{}
 
-func (f errFatal) Error() string   { return "msgp: fatal decoding error" }
+func (f errFatal) Error() string   { return "msgp: fatal decoding error (unreachable code)" }
 func (f errFatal) Resumable() bool { return false }
 
 // ArrayError is an error returned
@@ -108,7 +108,7 @@ func (t TypeError) Resumable() bool { return true }
 // TypeError depending on whether or not
 // the prefix is recognized
 func badPrefix(want Type, lead byte) error {
-	t := getType(lead)
+	t := sizes[lead].typ
 	if t == InvalidType {
 		return InvalidPrefixError(lead)
 	}

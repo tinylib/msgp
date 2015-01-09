@@ -1,7 +1,6 @@
 package msgp
 
 import (
-	"errors"
 	"github.com/philhofer/fwd"
 	"io"
 	"math"
@@ -12,10 +11,13 @@ import (
 )
 
 var _int int
-var _uint uint
 
-const smallint = (unsafe.Sizeof(_int) == 4)   // int32
-const smalluint = (unsafe.Sizeof(_uint) == 4) // uint32
+const (
+	// spec says int and uint are always
+	// the same size, but that int/uint
+	// size may not be machine word size
+	smallint = unsafe.Sizeof(_int) == 4
+)
 
 // where we keep old *Readers
 var readerPool = sync.Pool{New: func() interface{} { return &Reader{} }}
@@ -26,6 +28,9 @@ var readerPool = sync.Pool{New: func() interface{} { return &Reader{} }}
 type Type byte
 
 // MessagePack Types
+//
+// The zero value of Type
+// is InvalidType.
 const (
 	InvalidType Type = iota
 
@@ -49,6 +54,8 @@ const (
 	Complex64Type
 	Complex128Type
 	TimeType
+
+	_maxtype
 )
 
 // String implements fmt.Stringer
@@ -143,6 +150,8 @@ func NewReaderSize(r io.Reader, sz int) *Reader {
 type Reader struct {
 	r       *fwd.Reader
 	scratch []byte // recycled []byte for temporary storage
+
+	// TODO: remove 'scratch' - it's only used for JSON now
 }
 
 // Read implements `io.Reader`
@@ -161,6 +170,9 @@ func (m *Reader) Reset(r io.Reader) { m.r.Reset(r) }
 // Buffered returns the number of bytes currently in the read buffer.
 func (m *Reader) Buffered() int { return m.r.Buffered() }
 
+// BufferSize returns the capacity of the read buffer.
+func (m *Reader) BufferSize() int { return m.r.BufferSize() }
+
 // NextType returns the next object type to be decoded.
 func (m *Reader) NextType() (Type, error) {
 	p, err := m.r.Peek(1)
@@ -169,7 +181,7 @@ func (m *Reader) NextType() (Type, error) {
 	}
 	t := getType(p[0])
 	if t == InvalidType {
-		return InvalidType, InvalidPrefixError(p[0])
+		return t, InvalidPrefixError(p[0])
 	}
 	if t == ExtensionType {
 		v, err := m.peekExtensionType()
@@ -201,141 +213,40 @@ func (m *Reader) IsNil() bool {
 // use uintptr b/c it's guaranteed to be large enough
 // to hold whatever we can fit in memory.
 func getNextSize(r *fwd.Reader) (uintptr, uintptr, error) {
-	var (
-		p   []byte
-		err error
-	)
-	p, err = r.Peek(1)
+	b, err := r.Peek(1)
 	if err != nil {
 		return 0, 0, err
 	}
-	lead := p[0]
-
-	switch {
-	case isfixarray(lead):
-		return 1, uintptr(rfixarray(lead)), nil
-
-	case isfixmap(lead):
-		return 1, 2 * uintptr(rfixmap(lead)), nil
-
-	case isfixstr(lead):
-		return uintptr(rfixstr(lead)) + 1, 0, nil
-
-	case isfixint(lead):
-		return 1, 0, nil
-
-	case isnfixint(lead):
-		return 1, 0, nil
-	}
-
-	switch lead {
-
-	// the following objects
-	// are always the same
-	// number of bytes (including
-	// the leading byte)
-	case mnil, mfalse, mtrue:
-		return 1, 0, nil
-	case mint64, muint64, mfloat64:
-		return 9, 0, nil
-	case mint32, muint32, mfloat32:
-		return 5, 0, nil
-	case mint8, muint8:
-		return 2, 0, nil
-	case mfixext1:
-		return 3, 0, nil
-	case mfixext2:
-		return 4, 0, nil
-	case mfixext4:
-		return 6, 0, nil
-	case mfixext8:
-		return 10, 0, nil
-	case mfixext16:
-		return 18, 0, nil
-
-	// the following objects
-	// need to be skipped N bytes
-	// plus the lead byte and size bytes
-	case mbin8, mstr8:
-		p, err = r.Peek(2)
-		if err != nil {
-			return 0, 0, err
-		}
-		return uintptr(uint8(p[1])) + 2, 0, nil
-
-	case mbin16, mstr16:
-		p, err = r.Peek(3)
-		if err != nil {
-			return 0, 0, err
-		}
-		return uintptr(big.Uint16(p[1:])) + 3, 0, nil
-
-	case mbin32, mstr32:
-		p, err = r.Peek(5)
-		if err != nil {
-			return 0, 0, err
-		}
-		return uintptr(big.Uint32(p[1:])) + 5, 0, nil
-
-	// variable extensions
-	// require 1 extra byte
-	// to skip
-	case mext8:
-		p, err = r.Peek(3)
-		if err != nil {
-			return 0, 0, err
-		}
-		return uintptr(uint8(p[1])) + 3, 0, nil
-
-	case mext16:
-		p, err = r.Peek(4)
-		if err != nil {
-			return 0, 0, err
-		}
-		return uintptr(big.Uint16(p[1:])) + 4, 0, nil
-
-	case mext32:
-		p, err = r.Peek(6)
-		if err != nil {
-			return 0, 0, err
-		}
-		return uintptr(big.Uint32(p[1:])) + 6, 0, nil
-
-	// arrays skip lead byte,
-	// size byte, N objects
-	case marray16:
-		p, err = r.Peek(3)
-		if err != nil {
-			return 0, 0, err
-		}
-		return 3, uintptr(big.Uint16(p[1:])), nil
-
-	case marray32:
-		p, err = r.Peek(5)
-		if err != nil {
-			return 0, 0, err
-		}
-		return 5, uintptr(big.Uint32(p[1:])), nil
-
-	// maps skip lead byte,
-	// size byte, 2N objects
-	case mmap16:
-		p, err = r.Peek(3)
-		if err != nil {
-			return 0, 0, err
-		}
-		return 3, 2 * uintptr(big.Uint16(p[1:])), nil
-
-	case mmap32:
-		p, err = r.Peek(5)
-		if err != nil {
-			return 0, 0, err
-		}
-		return 5, 2 * uintptr(big.Uint32(p[1:])), nil
-
-	default:
+	lead := b[0]
+	spec := &sizes[lead]
+	size, mode := spec.size, spec.extra
+	if size == 0 {
 		return 0, 0, InvalidPrefixError(lead)
-
+	}
+	if mode >= 0 {
+		return uintptr(size), uintptr(mode), nil
+	}
+	b, err = r.Peek(int(size))
+	if err != nil {
+		return 0, 0, err
+	}
+	switch mode {
+	case extra8:
+		return uintptr(size) + uintptr(b[1]), 0, nil
+	case extra16:
+		return uintptr(size) + uintptr(big.Uint16(b[1:])), 0, nil
+	case extra32:
+		return uintptr(size) + uintptr(big.Uint32(b[1:])), 0, nil
+	case map16v:
+		return uintptr(size), 2 * uintptr(big.Uint16(b[1:])), nil
+	case map32v:
+		return uintptr(size), 2 * uintptr(big.Uint32(b[1:])), nil
+	case array16v:
+		return uintptr(size), uintptr(big.Uint16(b[1:])), nil
+	case array32v:
+		return uintptr(size), uintptr(big.Uint32(b[1:])), nil
+	default:
+		return 0, 0, fatal
 	}
 }
 
@@ -344,8 +255,8 @@ func getNextSize(r *fwd.Reader) (uintptr, uintptr, error) {
 // or map will be skipped.
 func (m *Reader) Skip() error {
 	var (
-		v   uintptr
-		o   uintptr
+		v   uintptr // bytes
+		o   uintptr // objects
 		err error
 		p   []byte
 	)
@@ -410,8 +321,7 @@ func (m *Reader) ReadMapHeader() (sz uint32, err error) {
 		if err != nil {
 			return
 		}
-		usz := big.Uint16(p[1:])
-		sz = uint32(usz)
+		sz = uint32(big.Uint16(p[1:]))
 		return
 	case mmap32:
 		p, err = m.r.Next(5)
@@ -438,6 +348,55 @@ func (m *Reader) ReadMapKey(scratch []byte) ([]byte, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// MapKeyPtr returns a []byte pointing to the contents
+// of a valid map key. The key cannot be empty, and it
+// must be shorter than the total buffer size of the
+// *Reader. Additionally, the returned slice is only
+// valid until the next *Reader method call. Users
+// should exercise extreme care when using this
+// method; writing into the returned slice may
+// corrupt future reads.
+func (m *Reader) ReadMapKeyPtr() ([]byte, error) {
+	p, err := m.r.Peek(1)
+	if err != nil {
+		return nil, err
+	}
+	lead := p[0]
+	var read int
+	if isfixstr(lead) {
+		read = int(rfixstr(lead))
+		m.r.Skip(1)
+		goto fill
+	}
+	switch lead {
+	case mstr8, mbin8:
+		p, err = m.r.Next(2)
+		if err != nil {
+			return nil, err
+		}
+		read = int(p[1])
+	case mstr16, mbin16:
+		p, err = m.r.Next(3)
+		if err != nil {
+			return nil, err
+		}
+		read = int(big.Uint16(p[1:]))
+	case mstr32, mbin32:
+		p, err = m.r.Next(5)
+		if err != nil {
+			return nil, err
+		}
+		read = int(big.Uint32(p[1:]))
+	default:
+		return nil, badPrefix(StrType, lead)
+	}
+fill:
+	if read == 0 {
+		return nil, ErrShortBytes
+	}
+	return m.r.Next(read)
 }
 
 // ReadArrayHeader reads the next object as an
@@ -757,7 +716,7 @@ func (m *Reader) ReadUint8() (u uint8, err error) {
 
 // ReadUint reads a uint from the reader
 func (m *Reader) ReadUint() (u uint, err error) {
-	if smalluint {
+	if smallint {
 		var un uint32
 		un, err = m.ReadUint32()
 		u = uint(un)
@@ -913,6 +872,17 @@ fill:
 	// worst-case performance, because
 	// the reader buffer doesn't have
 	// to be large enough to hold the string.
+	// the idea here is to make it more
+	// difficult for someone malicious
+	// to cause the system to run out of
+	// memory by sending very large strings.
+	//
+	// NOTE: this works because the argument
+	// passed to (*fwd.Reader).ReadFull escapes
+	// to the heap; its argument may, in turn,
+	// be passed to the underlying reader, and
+	// thus escape analysis *must* conclude that
+	// 'out' escapes.
 	out := make([]byte, read)
 	_, err = m.r.ReadFull(out)
 	if err != nil {
@@ -975,10 +945,10 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (err error) {
 	for key := range mp {
 		delete(mp, key)
 	}
-	var scratch []byte
 	for i := uint32(0); i < sz; i++ {
+		var key string
 		var val interface{}
-		scratch, err = m.ReadMapKey(scratch)
+		key, err = m.ReadString()
 		if err != nil {
 			return
 		}
@@ -986,7 +956,7 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (err error) {
 		if err != nil {
 			return
 		}
-		mp[string(scratch)] = val
+		mp[key] = val
 	}
 	return
 }
@@ -1117,24 +1087,22 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 		return
 
 	default:
-		// we shouldn't get here; NextType() will error
-		return nil, errors.New("msgp: unrecognized type error")
-
+		return nil, fatal // unreachable
 	}
 }
 
 // UnsafeString returns the byte slice as a volatile string
-// THIS SHOULD ONLY BE USED BY THE CODE GENERATOR
-// THIS IS EVIL CODE
-// YOU HAVE BEEN WARNED
+// THIS SHOULD ONLY BE USED BY THE CODE GENERATOR.
+// THIS IS EVIL CODE.
+// YOU HAVE BEEN WARNED.
 func UnsafeString(b []byte) string {
 	return *(*string)(unsafe.Pointer(&reflect.StringHeader{Data: uintptr(unsafe.Pointer(&b[0])), Len: len(b)}))
 }
 
 // UnsafeBytes returns the string as a byte slice
-// THIS SHOULD ONLY BE USED BY THE CODE GENERATOR
-// THIS IS EVIL CODE
-// YOU HAVE BEEN WARNED
+// THIS SHOULD ONLY BE USED BY THE CODE GENERATOR.
+// THIS IS EVIL CODE.
+// YOU HAVE BEEN WARNED.
 func UnsafeBytes(s string) []byte {
 	return *(*[]byte)(unsafe.Pointer(&reflect.SliceHeader{
 		Len:  len(s),

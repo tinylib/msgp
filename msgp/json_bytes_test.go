@@ -25,7 +25,7 @@ func TestUnmarshalJSON(t *testing.T) {
 	enc.WriteInt64(-100)
 
 	enc.WriteString("an extension")
-	enc.WriteExtension(&RawExtension{1, []byte("blaaahhh")})
+	enc.WriteExtension(&RawExtension{Type: 1, Data: []byte("blaaahhh")})
 
 	enc.WriteString("some bytes")
 	enc.WriteBytes([]byte("here are some bytes"))

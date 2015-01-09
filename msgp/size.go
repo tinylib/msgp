@@ -36,6 +36,10 @@ const (
 	ExtensionPrefixSize = 6
 )
 
+// TODO: remove the following, and just
+// generate the appropriate code, rather
+// than calling a function that can't be inlined.
+
 // ExtensionSize is a shim for computing the size of an extension
 func ExtensionSize(e Extension) int {
 	return ExtensionPrefixSize + e.Len()

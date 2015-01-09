@@ -6,12 +6,39 @@ import (
 	"encoding/json"
 	"io"
 	"strconv"
-	"time"
 	"unicode/utf8"
 )
 
-var null = []byte("null")
-var hex = []byte("0123456789abcdef")
+var (
+	null = []byte("null")
+	hex  = []byte("0123456789abcdef")
+)
+
+var defuns [_maxtype]func(jsWriter, *Reader) (int, error)
+
+// note: there is an initialization loop if
+// this isn't set up during init()
+func init() {
+	// since none of these functions are inline-able,
+	// there is not much of a penalty to executing
+	// them dynamically.
+	defuns = [_maxtype]func(jsWriter, *Reader) (int, error){
+		StrType:        rwString,
+		BinType:        rwBytes,
+		MapType:        rwMap,
+		ArrayType:      rwArray,
+		Float64Type:    rwFloat64,
+		Float32Type:    rwFloat32,
+		BoolType:       rwBool,
+		IntType:        rwInt,
+		UintType:       rwUint,
+		NilType:        rwNil,
+		ExtensionType:  rwExtension,
+		Complex64Type:  rwExtension,
+		Complex128Type: rwExtension,
+		TimeType:       rwTime,
+	}
+}
 
 // this is the interface
 // used to write json
@@ -66,35 +93,13 @@ func rwNext(w jsWriter, src *Reader) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	switch t {
-	case NilType:
-		src.r.Skip(1)
-		return w.Write(null)
-	case BoolType:
-		return rwBool(w, src)
-	case IntType, UintType:
-		return rwInt(w, src, t)
-	case StrType:
-		return rwString(w, src)
-	case BinType:
-		return rwBytes(w, src)
-	case ExtensionType, Complex64Type, Complex128Type, TimeType:
-		return rwExtension(w, src, t)
-	case ArrayType:
-		return rwArray(w, src)
-	case Float32Type, Float64Type:
-		return rwFloat(w, src, t)
-	case MapType:
-		return rwMap(w, src)
-	default:
-		// we shouldn't get here; NextType() errors if the type is not recognized
-		return 0, fatal
-	}
+	return defuns[t](w, src)
 }
 
 func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 	var comma bool
 	var sz uint32
+	var field []byte
 
 	sz, err = src.ReadMapHeader()
 	if err != nil {
@@ -120,18 +125,14 @@ func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 			n++
 		}
 
-		nn, err = rwString(dst, src)
+		field, err = src.ReadMapKeyPtr()
+		if err != nil {
+			return
+		}
+		nn, err = rwquoted(dst, field)
 		n += nn
 		if err != nil {
-			if tperr, ok := err.(TypeError); ok && tperr.Encoded == BinType {
-				nn, err = rwBytes(dst, src)
-				n += nn
-				if err != nil {
-					return
-				}
-			} else {
-				return
-			}
+			return
 		}
 
 		err = dst.WriteByte(':')
@@ -193,41 +194,47 @@ func rwArray(dst jsWriter, src *Reader) (n int, err error) {
 	return
 }
 
-func rwFloat(dst jsWriter, src *Reader, t Type) (n int, err error) {
-	if t == Float64Type {
-		var f float64
-		f, err = src.ReadFloat64()
-		if err != nil {
-			return
-		}
-		src.scratch = strconv.AppendFloat(src.scratch[0:0], f, 'f', -1, 64)
-	} else {
-		var f float32
-		f, err = src.ReadFloat32()
-		if err != nil {
-			return
-		}
-		src.scratch = strconv.AppendFloat(src.scratch[0:0], float64(f), 'f', -1, 32)
+func rwNil(dst jsWriter, src *Reader) (int, error) {
+	err := src.ReadNil()
+	if err != nil {
+		return 0, err
 	}
+	return dst.Write(null)
+}
+
+func rwFloat32(dst jsWriter, src *Reader) (int, error) {
+	f, err := src.ReadFloat32()
+	if err != nil {
+		return 0, err
+	}
+	src.scratch = strconv.AppendFloat(src.scratch[:0], float64(f), 'f', -1, 64)
 	return dst.Write(src.scratch)
 }
 
-func rwInt(dst jsWriter, src *Reader, t Type) (n int, err error) {
-	if t == IntType {
-		var i int64
-		i, err = src.ReadInt64()
-		if err != nil {
-			return
-		}
-		src.scratch = strconv.AppendInt(src.scratch[0:0], i, 10)
-	} else {
-		var u uint64
-		u, err = src.ReadUint64()
-		if err != nil {
-			return
-		}
-		src.scratch = strconv.AppendUint(src.scratch[0:0], u, 10)
+func rwFloat64(dst jsWriter, src *Reader) (int, error) {
+	f, err := src.ReadFloat64()
+	if err != nil {
+		return 0, err
 	}
+	src.scratch = strconv.AppendFloat(src.scratch[:0], f, 'f', -1, 32)
+	return dst.Write(src.scratch)
+}
+
+func rwInt(dst jsWriter, src *Reader) (int, error) {
+	i, err := src.ReadInt64()
+	if err != nil {
+		return 0, err
+	}
+	src.scratch = strconv.AppendInt(src.scratch[:0], i, 10)
+	return dst.Write(src.scratch)
+}
+
+func rwUint(dst jsWriter, src *Reader) (int, error) {
+	u, err := src.ReadUint64()
+	if err != nil {
+		return 0, err
+	}
+	src.scratch = strconv.AppendUint(src.scratch[:0], u, 10)
 	return dst.Write(src.scratch)
 }
 
@@ -242,24 +249,20 @@ func rwBool(dst jsWriter, src *Reader) (int, error) {
 	return dst.WriteString("false")
 }
 
-func rwExtension(dst jsWriter, src *Reader, t Type) (n int, err error) {
-	// time.Time is a json.Marshaler
-	if t == TimeExtension {
-		var t time.Time
-		var bts []byte
-		t, err = src.ReadTime()
-		if err != nil {
-			return
-		}
-		bts, err = t.MarshalJSON()
-		if err != nil {
-			return
-		}
-		return dst.Write(bts)
+func rwTime(dst jsWriter, src *Reader) (int, error) {
+	t, err := src.ReadTime()
+	if err != nil {
+		return 0, err
 	}
+	bts, err := t.MarshalJSON()
+	if err != nil {
+		return 0, err
+	}
+	return dst.Write(bts)
+}
 
-	var et int8
-	et, err = src.peekExtensionType()
+func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
+	et, err := src.peekExtensionType()
 	if err != nil {
 		return 0, err
 	}

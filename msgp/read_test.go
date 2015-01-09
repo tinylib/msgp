@@ -683,9 +683,10 @@ func TestSkip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = rd.NextType()
+	tp, err := rd.NextType()
 	if err != io.EOF {
 		t.Errorf("expected %q; got %q", io.EOF, err)
+		t.Errorf("returned type %q", tp)
 	}
 
 }
@@ -711,7 +712,7 @@ func BenchmarkSkip(b *testing.B) {
 	en.WriteBool(true)
 
 	en.WriteString("ext")
-	en.WriteExtension(&RawExtension{55, []byte("raw data!!!")})
+	en.WriteExtension(&RawExtension{Type: 55, Data: []byte("raw data!!!")})
 	en.Flush()
 
 	bts := buf.Bytes()
