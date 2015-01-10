@@ -4,16 +4,46 @@ import (
 	"encoding/binary"
 	"math"
 	"time"
-	"unsafe"
 )
 
 var big = binary.BigEndian
+
+// NextType returns the type of the next
+// object in the slice. If the length
+// of the input is zero, it returns
+// InvalidType.
+func NextType(b []byte) Type {
+	if len(b) == 0 {
+		return InvalidType
+	}
+	spec := sizes[b[0]]
+	t := spec.typ
+	if t == ExtensionType && len(b) > int(spec.size) {
+		var tp int8
+		if spec.extra == constsize {
+			tp = int8(b[1])
+		} else {
+			tp = int8(b[spec.size-1])
+		}
+		switch tp {
+		case TimeExtension:
+			return TimeType
+		case Complex128Extension:
+			return Complex128Type
+		case Complex64Extension:
+			return Complex64Type
+		default:
+			return ExtensionType
+		}
+	}
+	return t
+}
 
 // IsNil returns true if len(b)>0 and
 // the leading byte is a 'nil' MessagePack
 // byte; false otherwise
 func IsNil(b []byte) bool {
-	if len(b) > 0 && b[0] == mnil {
+	if len(b) != 0 && b[0] == mnil {
 		return true
 	}
 	return false
@@ -325,15 +355,12 @@ func ReadInt8Bytes(b []byte) (int8, []byte, error) {
 // - TypeError{} (not a int)
 // - IntOverflow{} (value doesn't fit in int; 32-bit platforms only)
 func ReadIntBytes(b []byte) (int, []byte, error) {
-	var v int
-	i, o, err := ReadInt64Bytes(b)
-	if unsafe.Sizeof(v) == 4 {
-		if i > math.MaxInt32 || i < math.MinInt32 {
-			return 0, o, IntOverflow{Value: i, FailedBitsize: 32}
-		}
+	if smallint {
+		i, b, err := ReadInt32Bytes(b)
+		return int(i), b, err
 	}
-	v = int(i)
-	return v, o, err
+	i, b, err := ReadInt64Bytes(b)
+	return int(i), b, err
 }
 
 // ReadUint64Bytes tries to read a uint64
@@ -446,13 +473,12 @@ func ReadUint8Bytes(b []byte) (uint8, []byte, error) {
 // - TypeError{} (not a uint)
 // - UintOverflow{} (value too large for uint; 32-bit platforms only)
 func ReadUintBytes(b []byte) (uint, []byte, error) {
-	var l uint
-	v, o, err := ReadUint64Bytes(b)
-	if unsafe.Sizeof(l) == 4 && v > math.MaxUint32 {
-		return 0, nil, UintOverflow{Value: v, FailedBitsize: 32}
+	if smallint {
+		u, b, err := ReadUint32Bytes(b)
+		return uint(u), b, err
 	}
-	l = uint(v)
-	return l, o, err
+	u, b, err := ReadUint64Bytes(b)
+	return uint(u), b, err
 }
 
 // ReadByteBytes is analagous to ReadUint8Bytes
@@ -718,8 +744,8 @@ func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]int
 			err = ErrShortBytes
 			return
 		}
-		var key string
-		key, o, err = ReadStringBytes(o)
+		var key []byte
+		key, o, err = ReadMapKeyZC(o)
 		if err != nil {
 			return
 		}
@@ -728,7 +754,7 @@ func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]int
 		if err != nil {
 			return
 		}
-		v[key] = val
+		v[string(key)] = val
 	}
 	return
 }
@@ -742,7 +768,7 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		return
 	}
 
-	k := getType(b[0])
+	k := NextType(b)
 
 	switch k {
 	case MapType:
@@ -785,25 +811,22 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		i, o, err = ReadBoolBytes(b)
 		return
 
+	case TimeType:
+		i, o, err = ReadTimeBytes(b)
+		return
+
+	case Complex64Type:
+		i, o, err = ReadComplex64Bytes(b)
+		return
+
+	case Complex128Type:
+		i, o, err = ReadComplex128Bytes(b)
+		return
+
 	case ExtensionType:
-		if len(b) < 3 {
-			err = ErrShortBytes
-			return
-		}
 		var t int8
 		t, err = peekExtension(b)
 		if err != nil {
-			return
-		}
-		switch t {
-		case TimeExtension:
-			i, o, err = ReadTimeBytes(b)
-			return
-		case Complex128Extension:
-			i, o, err = ReadComplex128Bytes(b)
-			return
-		case Complex64Extension:
-			i, o, err = ReadComplex64Bytes(b)
 			return
 		}
 		// use a user-defined extension,
@@ -840,49 +863,6 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 	}
 }
 
-func getType(v byte) Type {
-
-	// fixed encoding
-	switch {
-	case isfixmap(v):
-		return MapType
-	case isfixarray(v):
-		return ArrayType
-	case isfixint(v), isnfixint(v):
-		return IntType
-	case isfixstr(v):
-		return StrType
-	}
-
-	// var encoding
-	switch v {
-	case mmap16, mmap32:
-		return MapType
-	case marray16, marray32:
-		return ArrayType
-	case mfloat32:
-		return Float32Type
-	case mfloat64:
-		return Float64Type
-	case mint8, mint16, mint32, mint64:
-		return IntType
-	case muint8, muint16, muint32, muint64:
-		return UintType
-	case mfixext1, mfixext2, mfixext4, mfixext8, mfixext16, mext8, mext16, mext32:
-		return ExtensionType
-	case mstr8, mstr16, mstr32:
-		return StrType
-	case mbin8, mbin16, mbin32:
-		return BinType
-	case mnil:
-		return NilType
-	case mfalse, mtrue:
-		return BoolType
-	default:
-		return InvalidType
-	}
-}
-
 // Skip skips the next object in 'b' and
 // returns the remaining bytes. If the object
 // is a map or array, all of its elements
@@ -896,7 +876,7 @@ func Skip(b []byte) ([]byte, error) {
 		return b, err
 	}
 	if uintptr(len(b)) < sz {
-		return nil, ErrShortBytes
+		return b, ErrShortBytes
 	}
 	b = b[sz:]
 	for i := uintptr(0); i < asz; i++ {
@@ -911,126 +891,37 @@ func Skip(b []byte) ([]byte, error) {
 // returns (skip N bytes, skip M objects, error)
 func getSize(b []byte) (uintptr, uintptr, error) {
 	l := len(b)
-	if l < 1 {
+	if l == 0 {
 		return 0, 0, ErrShortBytes
 	}
-
 	lead := b[0]
-
-	switch {
-	case isfixarray(lead):
-		return 1, uintptr(rfixarray(lead)), nil
-
-	case isfixmap(lead):
-		return 1, 2 * uintptr(rfixmap(lead)), nil
-
-	case isfixstr(lead):
-		return uintptr(rfixstr(lead)) + 1, 0, nil
-
-	case isfixint(lead):
-		return 1, 0, nil
-
-	case isnfixint(lead):
-		return 1, 0, nil
-	}
-
-	switch lead {
-
-	// the following objects
-	// are always the same
-	// number of bytes (including
-	// the leading byte)
-	case mnil, mfalse, mtrue:
-		return 1, 0, nil
-	case mint64, muint64, mfloat64:
-		return 9, 0, nil
-	case mint32, muint32, mfloat32:
-		return 5, 0, nil
-	case mint8, muint8:
-		return 2, 0, nil
-	case mfixext1:
-		return 3, 0, nil
-	case mfixext2:
-		return 4, 0, nil
-	case mfixext4:
-		return 6, 0, nil
-	case mfixext8:
-		return 10, 0, nil
-	case mfixext16:
-		return 18, 0, nil
-
-	// the following objects
-	// need to be skipped N bytes
-	// plus the lead byte and size bytes
-	case mbin8, mstr8:
-		if l < 2 {
-			return 0, 0, ErrShortBytes
-		}
-		return uintptr(uint8(b[1])) + 2, 0, nil
-
-	case mbin16, mstr16:
-		if l < 3 {
-			return 0, 0, ErrShortBytes
-		}
-		return uintptr(big.Uint16(b[1:])) + 3, 0, nil
-
-	case mbin32, mstr32:
-		if l < 5 {
-			return 0, 0, ErrShortBytes
-		}
-		return uintptr(big.Uint32(b[1:])) + 5, 0, nil
-
-	// variable extensions
-	// require 1 extra byte
-	// to skip
-	case mext8:
-		if l < 3 {
-			return 0, 0, ErrShortBytes
-		}
-		return uintptr(uint8(b[1])) + 3, 0, nil
-
-	case mext16:
-		if l < 4 {
-			return 0, 0, ErrShortBytes
-		}
-		return uintptr(big.Uint16(b[1:])) + 4, 0, nil
-
-	case mext32:
-		if l < 6 {
-			return 0, 0, ErrShortBytes
-		}
-		return uintptr(big.Uint32(b[1:])) + 6, 0, nil
-
-	// arrays skip lead byte,
-	// size byte, N objects
-	case marray16:
-		if l < 3 {
-			return 0, 0, ErrShortBytes
-		}
-		return 3, uintptr(big.Uint16(b[1:])), nil
-
-	case marray32:
-		if l < 5 {
-			return 0, 0, ErrShortBytes
-		}
-		return 5, uintptr(big.Uint32(b[1:])), nil
-
-	// maps skip lead byte,
-	// size byte, 2N objects
-	case mmap16:
-		if l < 3 {
-			return 0, 0, ErrShortBytes
-		}
-		return 3, 2 * uintptr(big.Uint16(b[1:])), nil
-
-	case mmap32:
-		if l < 5 {
-			return 0, 0, ErrShortBytes
-		}
-		return 5, 2 * uintptr(big.Uint32(b[1:])), nil
-
-	default:
+	spec := &sizes[lead] // get type information
+	size, mode := spec.size, spec.extra
+	if size == 0 {
 		return 0, 0, InvalidPrefixError(lead)
-
+	}
+	if mode >= 0 { // fixed composites
+		return uintptr(size), uintptr(mode), nil
+	}
+	if l < int(size) {
+		return 0, 0, ErrShortBytes
+	}
+	switch mode {
+	case extra8:
+		return uintptr(size) + uintptr(b[1]), 0, nil
+	case extra16:
+		return uintptr(size) + uintptr(big.Uint16(b[1:])), 0, nil
+	case extra32:
+		return uintptr(size) + uintptr(big.Uint32(b[1:])), 0, nil
+	case map16v:
+		return uintptr(size), 2 * uintptr(big.Uint16(b[1:])), nil
+	case map32v:
+		return uintptr(size), 2 * uintptr(big.Uint32(b[1:])), nil
+	case array16v:
+		return uintptr(size), uintptr(big.Uint16(b[1:])), nil
+	case array32v:
+		return uintptr(size), uintptr(big.Uint32(b[1:])), nil
+	default:
+		return 0, 0, fatal
 	}
 }

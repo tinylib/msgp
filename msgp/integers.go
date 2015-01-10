@@ -6,8 +6,8 @@ package msgp
 
 	TODO(philhofer): there are faster,
 	albeit non-portable solutions
-	to the code below. assembler ends
-	up being slow b/c of no inlining
+	to the code below. implement
+	byteswap?
    ---------------------------------- */
 
 func putMint64(b []byte, i int64) {

@@ -16,10 +16,8 @@ const (
 	TimeExtension = 5
 )
 
-var (
-	// global map of registered extension types
-	extensionReg = make(map[int8]func() Extension)
-)
+// our extensions live here
+var extensionReg = make(map[int8]func() Extension)
 
 // RegisterExtension registers extensions so that they
 // can be initialized and returned by methods that
@@ -39,7 +37,7 @@ var (
 // type (3, 4, or 5).
 func RegisterExtension(typ int8, f func() Extension) {
 	switch typ {
-	case 3, 4, 5:
+	case Complex64Extension, Complex128Extension, TimeExtension:
 		panic(fmt.Sprint("msgp: forbidden extension type:", typ))
 	}
 	if _, ok := extensionReg[typ]; ok {
@@ -93,8 +91,8 @@ type Extension interface {
 
 // RawExtension implements the Extension interface
 type RawExtension struct {
-	Type int8
 	Data []byte
+	Type int8
 }
 
 // ExtensionType implements Extension.ExtensionType, and returns r.Type
@@ -212,53 +210,41 @@ func (m *Reader) peekExtensionType() (int8, error) {
 	if err != nil {
 		return 0, err
 	}
-	switch p[0] {
-	case mfixext1, mfixext2, mfixext4, mfixext8, mfixext16:
-		return int8(p[1]), nil
-	case mext8:
-		p, err = m.r.Peek(3)
-		if err != nil {
-			return 0, err
-		}
-		return int8(p[2]), nil
-	case mext16:
-		p, err = m.r.Peek(4)
-		if err != nil {
-			return 0, err
-		}
-		return int8(p[3]), nil
-	case mext32:
-		p, err = m.r.Peek(6)
-		if err != nil {
-			return 0, err
-		}
-		return int8(p[5]), nil
-	default:
+	spec := sizes[p[0]]
+	if spec.typ != ExtensionType {
 		return 0, badPrefix(ExtensionType, p[0])
 	}
+	if spec.extra == constsize {
+		return int8(p[1]), nil
+	}
+	size := spec.size
+	p, err = m.r.Peek(int(size))
+	if err != nil {
+		return 0, err
+	}
+	return int8(p[size-1]), nil
 }
 
 // peekExtension peeks at the extension encoding type
-// (must guarantee at least 3 bytes in 'b')
+// (must guarantee at least 1 byte in 'b')
 func peekExtension(b []byte) (int8, error) {
-	switch b[0] {
-	case mfixext1, mfixext2, mfixext4, mfixext8, mfixext16:
-		return int8(b[1]), nil
-	case mext8:
-		return int8(b[2]), nil
-	case mext16:
-		if len(b) < 4 {
-			return 0, ErrShortBytes
-		}
-		return int8(b[3]), nil
-	case mext32:
-		if len(b) < 5 {
-			return 0, ErrShortBytes
-		}
-		return int8(b[5]), nil
-	default:
+	spec := sizes[b[0]]
+	size := spec.size
+	if spec.typ != ExtensionType {
 		return 0, badPrefix(ExtensionType, b[0])
 	}
+	if len(b) < int(size) {
+		return 0, ErrShortBytes
+	}
+	// for fixed extensions,
+	// the type information is in
+	// the second byte
+	if spec.extra == constsize {
+		return int8(b[1]), nil
+	}
+	// otherwise, it's in the last
+	// part of the prefix
+	return int8(b[size-1]), nil
 }
 
 // ReadExtension reads the next object from the reader

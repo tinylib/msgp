@@ -9,6 +9,27 @@ import (
 	"time"
 )
 
+var unfuns [_maxtype]func(jsWriter, []byte, []byte) ([]byte, []byte, error)
+
+func init() {
+	unfuns = [_maxtype]func(jsWriter, []byte, []byte) ([]byte, []byte, error){
+		StrType:        rwStringBytes,
+		BinType:        rwBytesBytes,
+		MapType:        rwMapBytes,
+		ArrayType:      rwArrayBytes,
+		Float64Type:    rwFloat64Bytes,
+		Float32Type:    rwFloat32Bytes,
+		BoolType:       rwBoolBytes,
+		IntType:        rwIntBytes,
+		UintType:       rwUintBytes,
+		NilType:        rwNullBytes,
+		ExtensionType:  rwExtensionBytes,
+		Complex64Type:  rwExtensionBytes,
+		Complex128Type: rwExtensionBytes,
+		TimeType:       rwTimeBytes,
+	}
+}
+
 // UnmarshalAsJSON takes raw messagepack and writes
 // it as JSON to 'w'. If an error is returned, the
 // bytes not translated will also be returned. If
@@ -38,39 +59,22 @@ func UnmarshalAsJSON(w io.Writer, msg []byte) ([]byte, error) {
 
 func writeNext(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	if len(msg) < 1 {
-		return nil, scratch, ErrShortBytes
+		return msg, scratch, ErrShortBytes
 	}
 	t := getType(msg[0])
-	var err error
-	switch t {
-	case ArrayType:
-		return rwArrayBytes(w, msg, scratch)
-	case MapType:
-		return rwMapBytes(w, msg, scratch)
-	case BoolType:
-		msg, err = rwBoolBytes(w, msg)
-		return msg, scratch, err
-	case IntType:
-		return rwIntBytes(w, msg, scratch)
-	case UintType:
-		return rwUintBytes(w, msg, scratch)
-	case Float32Type:
-		return rwFloatBytes(w, msg, false, scratch)
-	case Float64Type:
-		return rwFloatBytes(w, msg, true, scratch)
-	case NilType:
-		msg, err = rwNullBytes(w, msg)
-		return msg, scratch, err
-	case StrType:
-		msg, err = rwStringBytes(w, msg)
-		return msg, scratch, err
-	case BinType:
-		return rwBytesBytes(w, msg, scratch)
-	case ExtensionType:
-		return rwExtensionBytes(w, msg, scratch)
-	default:
+	if t == InvalidType {
 		return msg, scratch, InvalidPrefixError(msg[0])
 	}
+	if t == ExtensionType {
+		et, err := peekExtension(msg)
+		if err != nil {
+			return nil, scratch, err
+		}
+		if et == TimeExtension {
+			t = TimeType
+		}
+	}
+	return unfuns[t](w, msg, scratch)
 }
 
 func rwArrayBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
@@ -114,7 +118,7 @@ func rwMapBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) 
 				return msg, scratch, err
 			}
 		}
-		msg, err = rwMapKeyBytes(w, msg)
+		msg, scratch, err = rwMapKeyBytes(w, msg, scratch)
 		if err != nil {
 			return msg, scratch, err
 		}
@@ -131,24 +135,23 @@ func rwMapBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) 
 	return msg, scratch, err
 }
 
-func rwMapKeyBytes(w jsWriter, msg []byte) ([]byte, error) {
-	msg, err := rwStringBytes(w, msg)
+func rwMapKeyBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
+	msg, scratch, err := rwStringBytes(w, msg, scratch)
 	if err != nil {
 		if tperr, ok := err.(TypeError); ok && tperr.Encoded == BinType {
-			msg, _, err = rwBytesBytes(w, msg, nil)
-			return msg, err
+			return rwBytesBytes(w, msg, scratch)
 		}
 	}
-	return msg, err
+	return msg, scratch, err
 }
 
-func rwStringBytes(w jsWriter, msg []byte) ([]byte, error) {
+func rwStringBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	str, msg, err := ReadStringZC(msg)
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
 	_, err = rwquoted(w, str)
-	return msg, err
+	return msg, scratch, err
 }
 
 func rwBytesBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
@@ -175,26 +178,26 @@ func rwBytesBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error
 	return msg, scratch, err
 }
 
-func rwNullBytes(w jsWriter, msg []byte) ([]byte, error) {
+func rwNullBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	msg, err := ReadNilBytes(msg)
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
 	_, err = w.Write(null)
-	return msg, err
+	return msg, scratch, err
 }
 
-func rwBoolBytes(w jsWriter, msg []byte) ([]byte, error) {
+func rwBoolBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	b, msg, err := ReadBoolBytes(msg)
 	if err != nil {
-		return msg, err
+		return msg, scratch, err
 	}
 	if b {
 		_, err = w.WriteString("true")
-		return msg, err
+		return msg, scratch, err
 	}
 	_, err = w.WriteString("false")
-	return msg, err
+	return msg, scratch, err
 }
 
 func rwIntBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
@@ -235,6 +238,45 @@ func rwFloatBytes(w jsWriter, msg []byte, f64 bool, scratch []byte) ([]byte, []b
 	}
 	scratch = strconv.AppendFloat(scratch, f, 'f', -1, sz)
 	_, err = w.Write(scratch)
+	return msg, scratch, err
+}
+
+func rwFloat32Bytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
+	var f float32
+	var err error
+	f, msg, err = ReadFloat32Bytes(msg)
+	if err != nil {
+		return msg, scratch, err
+	}
+	scratch = strconv.AppendFloat(scratch[:0], float64(f), 'f', -1, 32)
+	_, err = w.Write(scratch)
+	return msg, scratch, err
+}
+
+func rwFloat64Bytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
+	var f float64
+	var err error
+	f, msg, err = ReadFloat64Bytes(msg)
+	if err != nil {
+		return msg, scratch, err
+	}
+	scratch = strconv.AppendFloat(scratch[:0], f, 'f', -1, 64)
+	_, err = w.Write(scratch)
+	return msg, scratch, err
+}
+
+func rwTimeBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
+	var t time.Time
+	var err error
+	t, msg, err = ReadTimeBytes(msg)
+	if err != nil {
+		return msg, scratch, err
+	}
+	bts, err := t.MarshalJSON()
+	if err != nil {
+		return msg, scratch, err
+	}
+	_, err = w.Write(bts)
 	return msg, scratch, err
 }
 

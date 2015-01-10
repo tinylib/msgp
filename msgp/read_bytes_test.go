@@ -502,7 +502,7 @@ func BenchmarkSkipBytes(b *testing.B) {
 	en.WriteBool(true)
 
 	en.WriteString("ext")
-	en.WriteExtension(&RawExtension{55, []byte("raw data!!!")})
+	en.WriteExtension(&RawExtension{Type: 55, Data: []byte("raw data!!!")})
 	en.Flush()
 
 	bts := buf.Bytes()

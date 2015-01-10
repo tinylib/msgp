@@ -92,7 +92,7 @@
 		return
 	}
 	for xplz:=uint32(0); xplz<isz; xplz++ {
-		field, err = dc.ReadMapKey(field)
+		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
 			return
 		}
