@@ -24,9 +24,10 @@ type TestType struct {
 		ValueA string `msg:"value_a"`
 		ValueB []byte `msg:"value_b"`
 	} `msg:"object"`
-	Child *TestType   `msg:"child"`
-	Time  time.Time   `msg:"time"`
-	Any   interface{} `msg:"any"`
+	Child    *TestType   `msg:"child"`
+	Time     time.Time   `msg:"time"`
+	Any      interface{} `msg:"any"`
+	Appended msgp.Raw    `msg:"appended"`
 }
 
 //msgp:tuple TestBench

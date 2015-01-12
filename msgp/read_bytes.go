@@ -49,6 +49,92 @@ func IsNil(b []byte) bool {
 	return false
 }
 
+// Raw is raw MessagePack.
+// Raw allows you to read and write
+// data without interpreting its contents.
+type Raw []byte
+
+// MarshalMsg implements msgp.Marshaler.
+// It appends the raw contents of 'raw'
+// to the provided byte slice. If 'raw'
+// is 0 bytes, 'nil' will be appended instead.
+func (r Raw) MarshalMsg(b []byte) ([]byte, error) {
+	i := len(r)
+	if i == 0 {
+		return AppendNil(b), nil
+	}
+	o, l := ensure(b, i)
+	copy(o[l:], []byte(r))
+	return o, nil
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler.
+// It sets the contents of *Raw to be the next
+// object in the provided byte slice.
+func (r *Raw) UnmarshalMsg(b []byte) ([]byte, error) {
+	l := len(b)
+	out, err := Skip(b)
+	if err != nil {
+		return b, err
+	}
+	rlen := l - len(out)
+	if cap(*r) < rlen {
+		*r = make(Raw, rlen)
+	} else {
+		*r = (*r)[0:rlen]
+	}
+	copy(*r, b[:rlen])
+	return out, nil
+}
+
+// EncodeMsg implements msgp.Encodable.
+// It writes the raw bytes to the writer.
+// If r is empty, it writes 'nil' instead.
+func (r Raw) EncodeMsg(w *Writer) error {
+	if len(r) == 0 {
+		return w.WriteNil()
+	}
+	_, err := w.Write([]byte(r))
+	return err
+}
+
+// DecodeMsg implements msgp.Decodable.
+// It sets the value of *Raw to be the
+// next object on the wire.
+func (r *Raw) DecodeMsg(f *Reader) error {
+	*r = (*r)[:0]
+	return appendNext(f, (*[]byte)(r))
+}
+
+// MsgSize implements msgp.Sizer
+func (r Raw) Msgsize() int {
+	l := len(r)
+	if l == 0 {
+		return 1 // for 'nil'
+	}
+	return l
+}
+
+func appendNext(f *Reader, d *[]byte) error {
+	amt, o, err := getNextSize(f.r)
+	if err != nil {
+		return err
+	}
+	var i int
+	*d, i = ensure(*d, int(amt))
+	_, err = f.r.ReadFull((*d)[i:])
+	if err != nil {
+		return err
+	}
+	for u := uintptr(0); u < o; u++ {
+		err = appendNext(f, d)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ReadMapHeaderBytes reads a map header size
 // from 'b' and returns the remaining bytes.
 // Possible errors:
