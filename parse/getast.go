@@ -471,10 +471,18 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		return nil
 
 	case *ast.SelectorExpr:
-		// special case for time.Time; others go to Ident
+		// special case for time.Time and msgp.Raw
 		if im, ok := e.X.(*ast.Ident); ok {
 			if e.Sel.Name == "Time" && im.Name == "time" {
 				return &gen.BaseElem{Value: gen.Time}
+
+			} else if e.Sel.Name == "Raw" && im.Name == "msgp" {
+				fs.Identities["msgp.Raw"] = gen.IDENT
+				fs.processed["msgp.Raw"] = set
+				return &gen.BaseElem{
+					Value: gen.IDENT,
+					Ident: "msgp.Raw",
+				}
 			} else {
 				return &gen.BaseElem{
 					Value: gen.IDENT,

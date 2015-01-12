@@ -56,13 +56,16 @@ type Raw []byte
 
 // MarshalMsg implements msgp.Marshaler.
 // It appends the raw contents of 'raw'
-// to the provided byte slice.
+// to the provided byte slice. If 'raw'
+// is 0 bytes, 'nil' will be appended instead.
 func (r Raw) MarshalMsg(b []byte) ([]byte, error) {
-	o := Require(b, len(r))
-	i := len(o)
-	o = o[:i+len(r)]
-	copy(o[i:], []byte(r))
-	return r, nil
+	i := len(r)
+	if i == 0 {
+		return AppendNil(b), nil
+	}
+	o, l := ensure(b, i)
+	copy(o[l:], []byte(r))
+	return o, nil
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler.
@@ -86,7 +89,11 @@ func (r *Raw) UnmarshalMsg(b []byte) ([]byte, error) {
 
 // EncodeMsg implements msgp.Encodable.
 // It writes the raw bytes to the writer.
+// If r is empty, it writes 'nil' instead.
 func (r Raw) EncodeMsg(w *Writer) error {
+	if len(r) == 0 {
+		return w.WriteNil()
+	}
 	_, err := w.Write([]byte(r))
 	return err
 }
@@ -101,7 +108,11 @@ func (r *Raw) DecodeMsg(f *Reader) error {
 
 // MsgSize implements msgp.Sizer
 func (r Raw) Msgsize() int {
-	return len(r)
+	l := len(r)
+	if l == 0 {
+		return 1 // for 'nil'
+	}
+	return l
 }
 
 func appendNext(f *Reader, d *[]byte) error {
