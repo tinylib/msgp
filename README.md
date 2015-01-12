@@ -1,4 +1,4 @@
-MessagePack Code Generator
+MessagePack Code Generator [![Build Status](https://travis-ci.org/tinylib/msgp.svg?branch=master)](https://travis-ci.org/tinylib/msgp)
 =======
 
 [![forthebadge](http://forthebadge.com/badges/uses-badges.svg)](http://forthebadge.com)
