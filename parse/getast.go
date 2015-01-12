@@ -2,7 +2,7 @@ package parse
 
 import (
 	"fmt"
-	"github.com/philhofer/msgp/gen"
+	"github.com/tinylib/msgp/gen"
 	"github.com/ttacon/chalk"
 	"go/ast"
 	"go/parser"

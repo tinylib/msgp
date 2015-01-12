@@ -1,7 +1,7 @@
 package parse
 
 import (
-	"github.com/philhofer/msgp/gen"
+	"github.com/tinylib/msgp/gen"
 )
 
 // findUnresolved finds identifiers and attempts

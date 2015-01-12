@@ -2,7 +2,7 @@ package parse
 
 import (
 	"fmt"
-	"github.com/philhofer/msgp/gen"
+	"github.com/tinylib/msgp/gen"
 	"go/ast"
 	"strings"
 )

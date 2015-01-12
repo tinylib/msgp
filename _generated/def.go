@@ -1,7 +1,7 @@
 package _generated
 
 import (
-	"github.com/philhofer/msgp/msgp"
+	"github.com/tinylib/msgp/msgp"
 	"time"
 )
 

@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/philhofer/msgp/gen"
-	"github.com/philhofer/msgp/parse"
+	"github.com/tinylib/msgp/gen"
+	"github.com/tinylib/msgp/parse"
 	"github.com/ttacon/chalk"
 	"golang.org/x/tools/imports"
 )
@@ -28,14 +28,14 @@ var (
 
 	// marshal/unmarshal imports
 	injectImports = []string{
-		"github.com/philhofer/msgp/msgp",
+		"github.com/tinylib/msgp/msgp",
 	}
 
 	// testing imports
 	testImport = []string{
 		"testing",
 		"bytes",
-		"github.com/philhofer/msgp/msgp",
+		"github.com/tinylib/msgp/msgp",
 	}
 )
 
@@ -291,7 +291,7 @@ func writePkgHeader(w io.Writer, name string) error {
 		return err
 	}
 
-	_, err = io.WriteString(w, "// NOTE: THIS FILE WAS PRODUCED BY THE\n// MSGP CODE GENERATION TOOL (github.com/philhofer/msgp)\n// DO NOT EDIT\n\n")
+	_, err = io.WriteString(w, "// NOTE: THIS FILE WAS PRODUCED BY THE\n// MSGP CODE GENERATION TOOL (github.com/tinylib/msgp)\n// DO NOT EDIT\n\n")
 	return err
 }
 

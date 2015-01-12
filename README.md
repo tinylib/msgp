@@ -4,14 +4,14 @@ MessagePack Code Generator
 [![forthebadge](http://forthebadge.com/badges/uses-badges.svg)](http://forthebadge.com)
 [![forthebadge](http://forthebadge.com/badges/ages-12.svg)](http://forthebadge.com)
 
-This is a code generation tool and serialization library for [MesssagePack](http://msgpack.org). It is targeted at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_by_processing_source). You can read more about MessagePack [in the wiki](http://github.com/philhofer/msgp/wiki), or at [msgpack.org](http://msgp.org).
+This is a code generation tool and serialization library for [MesssagePack](http://msgpack.org). It is targeted at the `go generate` [tool](http://tip.golang.org/cmd/go/#hdr-Generate_Go_files_by_processing_source). You can read more about MessagePack [in the wiki](http://github.com/tinylib/msgp/wiki), or at [msgpack.org](http://msgp.org).
 
 ### Why?
 
 - Use Go as your schema language
 - Speeeeeed (400MB/s on modern hardware)
-- [JSON interop](http://godoc.org/github.com/philhofer/msgp/msgp#CopyToJSON)
-- [User-defined types](http://github.com/philhofer/msgp/wiki/Using-Extensions)
+- [JSON interop](http://godoc.org/github.com/tinylib/msgp/msgp#CopyToJSON)
+- [User-defined types](http://github.com/tinylib/msgp/wiki/Using-Extensions)
 - Type safety
 - Encoding flexibility
 
@@ -29,7 +29,7 @@ The `msgp` command will generate serialization methods for all exported struct
 definitions in the file. You will need to include that directive in every file that contains structs that 
 need code generation.
 
-You can [read more about the code generation options here](http://github.com/philhofer/msgp/wiki/Using-the-Code-Generator).
+You can [read more about the code generation options here](http://github.com/tinylib/msgp/wiki/Using-the-Code-Generator).
 
 ### Use
 
@@ -63,7 +63,7 @@ of `*bufio.Writer` and `*bufio.Reader`, respectively.)
  - Native support for Go's `time.Time`, `complex64`, and `complex128` types 
  - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods
  - Support for arbitrary type system extensions
- - [Preprocessor directives](http://github.com/philhofer/msgp/wiki/Preprocessor-Directives)
+ - [Preprocessor directives](http://github.com/tinylib/msgp/wiki/Preprocessor-Directives)
 
 Because of (limited) identifier resolution, the code generator will still yield the
 correct code for the following struct declaration:
@@ -87,13 +87,13 @@ assumed to be struct definitions in other files. (The parser will spit out warni
 #### Extensions
 
 MessagePack supports defining your own types through "extensions," which are just a tuple of
-the data "type" (`int8`) and the raw binary. You [can see a worked example in the wiki.](http://github.com/philhofer/msgp/wiki/Using-Extensions)
+the data "type" (`int8`) and the raw binary. You [can see a worked example in the wiki.](http://github.com/tinylib/msgp/wiki/Using-Extensions)
 
 ### Status
 
 Alpha. I _will_ break stuff. There is an open milestone for Beta stability (targeted for January.) Only the `/msgp` sub-directory will have a stability guarantee.
 
-You can read more about how `msgp` maps MessagePack types onto Go types [in the wiki](http://github.com/philhofer/msgp/wiki).
+You can read more about how `msgp` maps MessagePack types onto Go types [in the wiki](http://github.com/tinylib/msgp/wiki).
 
 Here some of the known limitations/restrictions:
 

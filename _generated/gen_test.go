@@ -2,7 +2,7 @@ package _generated
 
 import (
 	"bytes"
-	"github.com/philhofer/msgp/msgp"
+	"github.com/tinylib/msgp/msgp"
 	"reflect"
 	"testing"
 	"time"
