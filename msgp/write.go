@@ -90,7 +90,7 @@ type Marshaler interface {
 
 // Encodable is the interface implemented
 // by types that know how to write themselves
-// as MessagePack
+// as MessagePack using a *msgp.Writer.
 type Encodable interface {
 	EncodeMsg(*Writer) error
 }
@@ -103,7 +103,7 @@ type Encodable interface {
 // to the underlying writer.
 type Writer struct {
 	w   io.Writer
-	buf []byte // buffered data; [0:len(buf)] is valid
+	buf []byte
 }
 
 // NewWriter returns a new *Writer.
@@ -296,7 +296,7 @@ func (mw *Writer) Encode(m Marshaler) error {
 	return nil
 }
 
-// Reset changes the underlying writer used by the MsgWriter
+// Reset changes the underlying writer used by the Writer
 func (mw *Writer) Reset(w io.Writer) {
 	mw.w = w
 	mw.buf = mw.buf[0:0]
@@ -651,9 +651,6 @@ func (mw *Writer) WriteIdent(e Encodable) error {
 // heavily on the internal representation used by the
 // time package.)
 func (mw *Writer) WriteTime(t time.Time) error {
-	// this encoding is just a 12-byte
-	// unix UTC time
-
 	t = t.UTC()
 	o, err := mw.require(15)
 	if err != nil {
@@ -675,19 +672,22 @@ func (mw *Writer) WriteTime(t time.Time) error {
 //  - A type that satisfies the msgp.Encodable interface
 //  - A type that satisfies the msgp.Extension interface
 func (mw *Writer) WriteIntf(v interface{}) error {
-	if enc, ok := v.(Encodable); ok {
-		return enc.EncodeMsg(mw)
-	}
-	if mar, ok := v.(Marshaler); ok {
-		return mw.Encode(mar)
-	}
-	if ext, ok := v.(Extension); ok {
-		return mw.WriteExtension(ext)
-	}
 	if v == nil {
 		return mw.WriteNil()
 	}
 	switch v := v.(type) {
+
+	// preferred interfaces
+
+	case Encodable:
+		return v.EncodeMsg(mw)
+	case Marshaler:
+		return mw.Encode(v)
+	case Extension:
+		return mw.WriteExtension(v)
+
+	// concrete types
+
 	case bool:
 		return mw.WriteBool(v)
 	case float32:

@@ -149,9 +149,7 @@ func NewReaderSize(r io.Reader, sz int) *Reader {
 // from it. Readers are buffered.
 type Reader struct {
 	r       *fwd.Reader
-	scratch []byte // recycled []byte for temporary storage
-
-	// TODO: remove 'scratch' - it's only used for JSON now
+	scratch []byte
 }
 
 // Read implements `io.Reader`

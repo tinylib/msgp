@@ -9,12 +9,12 @@ var (
 	// ErrShortBytes is returned when the
 	// slice being decoded is too short to
 	// contain the contents of the message
-	ErrShortBytes = errShort{}
+	ErrShortBytes error = errShort{}
 
 	// this error is only returned
 	// if we reach code that should
 	// be unreachable
-	fatal = errFatal{}
+	fatal error = errFatal{}
 )
 
 // Error is the interface satisfied
@@ -33,7 +33,7 @@ type Error interface {
 type errShort struct{}
 
 func (e errShort) Error() string   { return "msgp: too few bytes left to read object" }
-func (e errShort) Resumable() bool { return true }
+func (e errShort) Resumable() bool { return false }
 
 type errFatal struct{}
 
@@ -58,7 +58,7 @@ func (a ArrayError) Resumable() bool { return true }
 
 // IntOverflow is returned when a call
 // would downcast an integer to a type
-// with too few bits to hold its value
+// with too few bits to hold its value.
 type IntOverflow struct {
 	Value         int64 // the value of the integer
 	FailedBitsize int   // the bit size that the int64 could not fit into
