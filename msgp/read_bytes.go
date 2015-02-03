@@ -126,11 +126,12 @@ func appendNext(f *Reader, d *[]byte) error {
 	if err != nil {
 		return err
 	}
-	for u := uintptr(0); u < o; u++ {
+	for o > 0 {
 		err = appendNext(f, d)
 		if err != nil {
 			return err
 		}
+		o--
 	}
 	return nil
 }
@@ -965,11 +966,12 @@ func Skip(b []byte) ([]byte, error) {
 		return b, ErrShortBytes
 	}
 	b = b[sz:]
-	for i := uintptr(0); i < asz; i++ {
+	for asz > 0 {
 		b, err = Skip(b)
 		if err != nil {
 			return b, err
 		}
+		asz--
 	}
 	return b, nil
 }
