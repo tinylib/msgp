@@ -9,7 +9,7 @@ test: install generate
 	@go test -v ./_generated
 
 test-pkg: install
-	@export GOFILE=./_generated/ && msgp -o ./_generated/generated.go
+	@msgp -o ./_generated/generated.go -file ./_generated
 	@go test -v ./_generated
 
 bench: install generate

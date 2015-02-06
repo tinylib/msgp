@@ -1,9 +1,0 @@
-
-// UnmarshalMsg unmarshals a {{.Value.Struct.Name}} from MessagePack, returning any extra bytes
-// and any errors encountered
-func ({{.Varname}} *{{ .Value.Struct.Name}}) UnmarshalMsg(bts []byte) (o []byte, err error) {
-	{{if not .Value.Struct.AsTuple}}var field []byte; _ = field{{end}}
-	{{template "StructTempl" .Value.Struct}}
-	o = bts 
-	return
-}

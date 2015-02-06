@@ -22,7 +22,7 @@ var directives = map[string]directive{
 }
 
 type shim struct {
-	tp   gen.Base
+	tp   gen.Primitive
 	to   string // toShim function name
 	from string // fromShim function name
 }

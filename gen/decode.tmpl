@@ -1,7 +1,0 @@
-
-// DecodeMsg implements the msgp.Decodable interface
-func ({{.Varname}} *{{.Value.Struct.Name}}) DecodeMsg(dc *msgp.Reader) (err error) {
-	{{if not .Value.Struct.AsTuple}}var field []byte; _ = field{{end}}
-	{{template "StructTempl" .Value.Struct}}
-	return
-}

@@ -1,6 +1,0 @@
-
-// Msgsize implements the msgp.Sizer interface
-func ({{.Varname}} *{{ .Value.Struct.Name}}) Msgsize() (s int) {
-	{{template "StructTempl" .Value.Struct}}
-	return
-}

@@ -21,10 +21,10 @@ var set = flag{}
 // parsed file. The same FileSet will always
 // generate the same element (gen.Elem) set.
 type FileSet struct {
-	Package    string              // package name
-	Specs      []*ast.TypeSpec     // type specs in file
-	Directives []string            // preprocessor directives
-	Identities map[string]gen.Base // alias types (e.g. type Flag uint32)
+	Package    string                   // package name
+	Specs      []*ast.TypeSpec          // type specs in file
+	Directives []string                 // preprocessor directives
+	Identities map[string]gen.Primitive // alias types (e.g. type Flag uint32)
 
 	processed map[string]flag  // processed type decls
 	shims     map[string]*shim // shims
@@ -86,7 +86,7 @@ func File(name string) (*FileSet, error) {
 		Package:    pkg,
 		Specs:      make([]*ast.TypeSpec, 0, 8), // pre-allocate some space
 		Directives: comments,
-		Identities: make(map[string]gen.Base),
+		Identities: make(map[string]gen.Primitive),
 		processed:  make(map[string]flag),
 		shims:      make(map[string]*shim),
 		tuples:     make(map[string]flag),
@@ -322,16 +322,16 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 
 	// validate extension
 	if extension {
-		switch ex.Type() {
-		case gen.PtrType:
-			if ex.Ptr().Value.Type() == gen.BaseType {
-				ex.Ptr().Value.Base().Value = gen.Ext
+		switch ex := ex.(type) {
+		case *gen.Ptr:
+			if b, ok := ex.Value.(*gen.BaseElem); ok {
+				b.Value = gen.Ext
 			} else {
 				warnf(" (\u26a0 field %q couldn't be cast as an extension)", sf[0].FieldName)
 				return nil
 			}
-		case gen.BaseType:
-			ex.Base().Value = gen.Ext
+		case *gen.BaseElem:
+			ex.Value = gen.Ext
 		default:
 			warnf(" (\u26a0 field %q couldn't be cast as an extension)", sf[0].FieldName)
 			return nil
@@ -452,7 +452,13 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 					Els:  els,
 				}
 
-			default: // TODO: support *ast.SelectorExpr; requires custom import(s)
+			case *ast.SelectorExpr:
+				return &gen.Array{
+					Size: stringify(s),
+					Els:  els,
+				}
+
+			default:
 				return nil
 			}
 		}
@@ -505,7 +511,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 }
 
 // convert an identity to a base type
-func pullIdent(name string) gen.Base {
+func pullIdent(name string) gen.Primitive {
 	switch name {
 	case "string":
 		return gen.String
