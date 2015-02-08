@@ -1,7 +1,0 @@
-
-// MarshalMsg implements the msgp.Marshaler interface
-func ({{ .Varname}} *{{ .Value.Struct.Name}}) MarshalMsg(b []byte) (o []byte, err error) {
-	o = msgp.Require(b, {{.Varname}}.Msgsize())
-	{{template "StructTempl" .Value.Struct}}
-	return
-}

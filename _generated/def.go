@@ -64,12 +64,12 @@ type Embedded struct {
 const eight = 8
 
 type Things struct {
-	Cmplx complex64          `msg:"complex"` // test slices
-	Vals  []int32            `msg:"values"`
-	Arr   [eight]float64     `msg:"arr"`            // test const array
-	Arr2  [4]float64         `msg:"arr2"`           // test basic lit array
-	Ext   *msgp.RawExtension `msg:"ext,extension"`  // test extension
-	Oext  msgp.RawExtension  `msg:"oext,extension"` // test extension reference
+	Cmplx complex64                         `msg:"complex"` // test slices
+	Vals  []int32                           `msg:"values"`
+	Arr   [msgp.ExtensionPrefixSize]float64 `msg:"arr"`            // test const array and *ast.SelectorExpr as array size
+	Arr2  [4]float64                        `msg:"arr2"`           // test basic lit array
+	Ext   *msgp.RawExtension                `msg:"ext,extension"`  // test extension
+	Oext  msgp.RawExtension                 `msg:"oext,extension"` // test extension reference
 }
 
 // test ignore directive (below)

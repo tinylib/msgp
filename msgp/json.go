@@ -20,8 +20,8 @@ var defuns [_maxtype]func(jsWriter, *Reader) (int, error)
 // this isn't set up during init()
 func init() {
 	// since none of these functions are inline-able,
-	// there is not much of a penalty to executing
-	// them dynamically.
+	// there is not much of a penalty to the indirect
+	// call. however, this is best expressed as a jump-table...
 	defuns = [_maxtype]func(jsWriter, *Reader) (int, error){
 		StrType:        rwString,
 		BinType:        rwBytes,

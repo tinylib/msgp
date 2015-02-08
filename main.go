@@ -2,13 +2,13 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
@@ -19,12 +19,12 @@ import (
 
 var (
 	// command line flags
-	out     string // output file
-	file    string // input file (or directory)
-	pkg     string // output package name
-	encode  bool   // write io.Writer/io.Reader-based methods
-	marshal bool   // write []byte-based methods
-	tests   bool   // write test file
+	out     = flag.String("o", "", "output file")
+	file    = flag.String("file", "", "input file")
+	pkg     = flag.String("pkg", "", "output package")
+	encode  = flag.Bool("io", true, "create Encode and Decode methods")
+	marshal = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
+	tests   = flag.Bool("tests", true, "create tests and benchmarks")
 
 	// marshal/unmarshal imports
 	injectImports = []string{
@@ -39,37 +39,35 @@ var (
 	}
 )
 
-func init() {
-	flag.StringVar(&out, "o", "", "output file")
-	flag.StringVar(&file, "file", "", "input file")
-	flag.StringVar(&pkg, "pkg", "", "output package")
-	flag.BoolVar(&encode, "io", true, "create Encode and Decode methods")
-	flag.BoolVar(&marshal, "marshal", true, "create Marshal and Unmarshal methods")
-	flag.BoolVar(&tests, "tests", true, "create tests and benchmarks")
-}
-
 func main() {
 	flag.Parse()
 
 	// GOFILE and GOPACKAGE are
 	// set by `go generate`
-	if file == "" {
-		file = os.Getenv("GOFILE")
-		if file == "" {
+	if *file == "" {
+		*file = os.Getenv("GOFILE")
+		if *file == "" {
 			fmt.Println(chalk.Red.Color("No file to parse."))
 			os.Exit(1)
 		}
 	}
-	if pkg == "" {
-		pkg = os.Getenv("GOPACKAGE")
+
+	if *pkg == "" {
+		*pkg = os.Getenv("GOPACKAGE")
 	}
 
-	if !encode && !marshal {
-		fmt.Println(chalk.Red.Color("No methods to generate; -io=false AND -marshal=false"))
+	if !(*encode) && !(*marshal) {
+		fmt.Println(chalk.Red.Color("No methods to generate; -io=false && -marshal=false"))
 		os.Exit(1)
 	}
 
-	if err := DoAll(pkg, file, marshal, encode, tests); err != nil {
+	// test file generation can run at
+	// the same time as method generation
+	if *tests && runtime.NumCPU() > 1 {
+		runtime.GOMAXPROCS(2)
+	}
+
+	if err := DoAll(*pkg, *file, *marshal, *encode, *tests); err != nil {
 		fmt.Println(chalk.Red.Color(err.Error()))
 		os.Exit(1)
 	}
@@ -81,12 +79,12 @@ func isDirectory(path string) bool {
 }
 
 func newFilename(old string, pkg string, isDir bool) string {
-	if out != "" {
-		if pre := strings.TrimPrefix(out, old); len(pre) > 0 &&
-			!strings.HasSuffix(out, ".go") {
-			return filepath.Join(old, out)
+	if *out != "" {
+		if pre := strings.TrimPrefix(*out, old); len(pre) > 0 &&
+			!strings.HasSuffix(*out, ".go") {
+			return filepath.Join(old, *out)
 		}
-		return out
+		return *out
 	}
 	if isDir {
 		old = filepath.Join(old, pkg)
@@ -95,19 +93,18 @@ func newFilename(old string, pkg string, isDir bool) string {
 	return strings.TrimSuffix(old, ".go") + "_gen.go"
 }
 
-func writeMarshal(els []gen.Elem, dst *bufio.Writer, tst *bufio.Writer, buf *bytes.Buffer) error {
+func generate(els []gen.Elem, dst *bufio.Writer, ms ...gen.Method) error {
+	gs := make([]gen.Generator, len(ms))
+	for i := range gs {
+		gs[i] = gen.New(ms[i], dst)
+	}
 	for _, el := range els {
 		p, ok := el.(*gen.Ptr)
-		if !ok || p.Value.Type() != gen.StructType {
+		if !ok {
 			continue
 		}
-		err := gen.WriteMarshalUnmarshal(dst, p, buf)
-		if err != nil {
-			return err
-		}
-		if tst != nil {
-			err = gen.WriteMarshalUnmarshalTests(tst, p.Value.Struct(), buf)
-			if err != nil {
+		for _, g := range gs {
+			if err := g.Execute(p); err != nil {
 				return err
 			}
 		}
@@ -115,46 +112,55 @@ func writeMarshal(els []gen.Elem, dst *bufio.Writer, tst *bufio.Writer, buf *byt
 	return nil
 }
 
-func writeEncode(els []gen.Elem, dst *bufio.Writer, tst *bufio.Writer, buf *bytes.Buffer) error {
-	for _, el := range els {
-		p, ok := el.(*gen.Ptr)
-		if !ok || p.Value.Type() != gen.StructType {
-			continue
-		}
-		err := gen.WriteEncodeDecode(dst, p, buf)
+func makeTests(newfile string, pkg string, elems []gen.Elem, marshal bool, encode bool) error {
+	testfile := strings.TrimSuffix(newfile, ".go") + "_test.go"
+	tfl, err := os.Create(testfile)
+	if err != nil {
+		return err
+	}
+	defer tfl.Close()
+	testwr := bufio.NewWriter(tfl)
+	err = writePkgHeader(testwr, pkg)
+	if err != nil {
+		return err
+	}
+	err = writeImportHeader(testwr, testImport...)
+	if err != nil {
+		return err
+	}
+	if encode {
+		err = generate(elems, testwr, gen.EncodeTest)
 		if err != nil {
 			return err
 		}
-		if tst != nil {
-			err = gen.WriteEncodeDecodeTests(tst, p.Value.Struct(), buf)
-			if err != nil {
-				return err
-			}
+	}
+	if marshal {
+		err = generate(elems, testwr, gen.MarshalTest)
+		if err != nil {
+			return err
 		}
 	}
+	err = testwr.Flush()
+	if err != nil {
+		return err
+	}
+	err = processFileImports(tfl, testfile)
+	if err != nil {
+		return err
+	}
+	fmt.Printf(chalk.Magenta.Color("TESTS  ======> %s \u2713\n"), testfile)
 	return nil
 }
 
 // DoAll writes all methods using the associated file and package.
 // (The package is only relevant for writing the new file's package declaration.)
 func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) error {
-	var (
-		testwr *bufio.Writer // location to write tests, if applicable
-		outwr  *bufio.Writer // location to write methods
-	)
-
 	// ...nothing to do!
 	if !marshal && !encode {
 		return nil
 	}
 
-	isDir := isDirectory(gofile)
-
-	if isDir {
-		fmt.Printf(chalk.Magenta.Color("========= %s =========\n"), filepath.Clean(gofile))
-	} else {
-		fmt.Printf(chalk.Magenta.Color("========= %s =========\n"), gofile)
-	}
+	fmt.Printf(chalk.Magenta.Color("========= %s =========\n"), filepath.Clean(gofile))
 
 	elems, pkgName, err := parse.GetElems(gofile)
 	if err != nil {
@@ -176,19 +182,24 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		return nil
 	}
 
-	newfile := newFilename(gofile, pkgName, isDir)
+	newfile := newFilename(gofile, pkgName, isDirectory(gofile))
 
-	// GENERATED FILES
+	// test file is generated in a separate goroutine
+	var testc chan error
+	if tests {
+		testc = make(chan error, 1)
+		go func(c chan error) {
+			c <- makeTests(newfile, gopkg, elems, marshal, encode)
+		}(testc)
+	}
 
-	//////////////////
-	/// MAIN FILE ////
 	file, err := os.Create(newfile)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	outwr = bufio.NewWriter(file)
+	outwr := bufio.NewWriter(file)
 
 	err = writePkgHeader(outwr, gopkg)
 	if err != nil {
@@ -200,69 +211,33 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 		return err
 	}
 
-	///////////////////
-
-	///////////////////
-	// TESTING FILE  //
-	var (
-		testfile string
-		tfl      *os.File
-	)
-	if tests {
-		testfile = strings.TrimSuffix(newfile, ".go") + "_test.go"
-		tfl, err = os.Create(testfile)
-		if err != nil {
-			return err
-		}
-		defer tfl.Close()
-		testwr = bufio.NewWriter(tfl)
-		err = writePkgHeader(testwr, gopkg)
-		if err != nil {
-			return err
-		}
-		err = writeImportHeader(testwr, testImport...)
-		if err != nil {
-			return err
-		}
-	}
-
-	var buf bytes.Buffer
 	if encode {
-		if err := writeEncode(elems, outwr, testwr, &buf); err != nil {
+		err = generate(elems, outwr, gen.Encode, gen.Decode)
+		if err != nil {
 			return err
 		}
 	}
 	if marshal {
-		if err := writeMarshal(elems, outwr, testwr, &buf); err != nil {
+		err = generate(elems, outwr, gen.Marshal, gen.Unmarshal, gen.Size)
+		if err != nil {
 			return err
 		}
 	}
-
-	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s "), newfile)
 	err = outwr.Flush()
 	if err != nil {
 		return err
 	}
-
 	err = processFileImports(file, newfile)
 	if err != nil {
 		return err
 	}
 
-	fmt.Print(chalk.Green.Color("\u2713\n"))
+	fmt.Printf(chalk.Magenta.Color("OUTPUT ======> %s \u2713\n"), newfile)
+
 	if tests {
-		fmt.Printf(chalk.Magenta.Color("TESTS =====> %s "), testfile)
-		err = testwr.Flush()
-		if err != nil {
-			return err
-		}
-		err = processFileImports(tfl, testfile)
-		if err != nil {
-			return err
-		}
-		fmt.Print(chalk.Green.Color("\u2713\n"))
+		err = <-testc
 	}
-	return nil
+	return err
 }
 
 func processFileImports(f *os.File, fName string) error {
@@ -271,22 +246,22 @@ func processFileImports(f *os.File, fName string) error {
 		return err
 	}
 
-	toProcess, err := ioutil.ReadFile(fName)
+	data, err := ioutil.ReadFile(fName)
 	if err != nil {
 		return err
 	}
 
-	toProcess, err = imports.Process(fName, toProcess, nil)
+	data, err = imports.Process(fName, data, nil)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(fName, toProcess, fStat.Mode())
+	err = ioutil.WriteFile(fName, data, fStat.Mode())
 	return err
 }
 
 func writePkgHeader(w io.Writer, name string) error {
-	_, err := io.WriteString(w, fmt.Sprintf("package %s\n\n", name))
+	_, err := fmt.Fprintln(w, "package", name, "\n")
 	if err != nil {
 		return err
 	}

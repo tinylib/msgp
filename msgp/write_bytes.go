@@ -286,13 +286,6 @@ func AppendMapStrIntf(b []byte, m map[string]interface{}) ([]byte, error) {
 //  - A type that satisfieds the msgp.Marshaler interface
 //  - A type that satisfies the msgp.Extension interface
 func AppendIntf(b []byte, i interface{}) ([]byte, error) {
-	if m, ok := i.(Marshaler); ok {
-		return m.MarshalMsg(b)
-	}
-	if ext, ok := i.(Extension); ok {
-		return AppendExtension(b, ext)
-	}
-
 	if i == nil {
 		return AppendNil(b), nil
 	}
@@ -300,6 +293,10 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 	// all the concrete types
 	// for which we have methods
 	switch i := i.(type) {
+	case Marshaler:
+		return i.MarshalMsg(b)
+	case Extension:
+		return AppendExtension(b, i)
 	case bool:
 		return AppendBool(b, i), nil
 	case float32:

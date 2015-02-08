@@ -20,15 +20,17 @@ func randIdx() string {
 	return string(bts)
 }
 
-// This code defines the template
-// syntax tree. If the input were:
+// This code defines the type declaration tree.
+//
+// Consider the following:
 //
 // type Marshaler struct {
 // 	  Thing1 *float64 `msg:"thing1"`
 // 	  Body   []byte   `msg:"body"`
 // }
 //
-// then the AST parsing of *Marshaler should produce:
+// A parser using this generator as a backend
+// should parse the above into:
 //
 // var val Elem = &Ptr{
 // 	name: "z",
@@ -60,13 +62,13 @@ func randIdx() string {
 
 // Base is one of the
 // base types
-type Base int
+type Primitive uint8
 
 // this is effectively the
 // list of currently available
 // ReadXxxx / WriteXxxx methods.
 const (
-	Invalid Base = iota
+	Invalid Primitive = iota
 	Bytes
 	String
 	Float32
@@ -92,42 +94,20 @@ const (
 	IDENT // IDENT means an unrecognized identifier
 )
 
-// ElemType is one of Ptr, Map
-// Slice, Struct, or Base
-type ElemType int
-
-const (
-	InvalidType ElemType = iota
-	PtrType              // pointer-to-object
-	SliceType            // slice-of-object
-	StructType           // struct-of-objects
-	BaseType             // object
-	MapType              // map[string]object
-	ArrayType            // [Size]object
-)
-
-// Elem is Base, Slice, Stuct, Map, or Ptr
+// Elem is a go type capable of being
+// serialized into MessagePack. It is
+// implemented by *Ptr, *Struct, *Array,
+// *Slice, *Map, and *BaseElem
 type Elem interface {
-	Type() ElemType // Returns element type
-
-	// We need the following
-	// because objects cannot
-	// be type-asserted in templates.
-	// Yes, this is gross.
-	Ptr() *Ptr
-	Slice() *Slice
-	Struct() *Struct
-	Base() *BaseElem
-	Map() *Map
-	Array() *Array
-
 	// SetVarname sets this nodes
 	// variable name and recursively
-	// sets the names of all its children
+	// sets the names of all its children.
+	// In general, this should only be
+	// called on the parent of the tree.
 	SetVarname(s string)
 
-	// Varname is the variable
-	// name of the node
+	// Varname returns the variable
+	// name of the element.
 	Varname() string
 
 	// TypeName is the canonical
@@ -135,8 +115,7 @@ type Elem interface {
 	// e.g. "string", "int", "map[string]float64"
 	TypeName() string
 
-	// fmt.Stringer for debugging
-	String() string
+	hidden()
 }
 
 type Array struct {
@@ -146,13 +125,6 @@ type Array struct {
 	Els   Elem   // child
 }
 
-func (a *Array) Type() ElemType  { return ArrayType }
-func (a *Array) Ptr() *Ptr       { return nil }
-func (a *Array) Slice() *Slice   { return nil }
-func (a *Array) Struct() *Struct { return nil }
-func (a *Array) Base() *BaseElem { return nil }
-func (a *Array) Map() *Map       { return nil }
-func (a *Array) Array() *Array   { return a }
 func (a *Array) SetVarname(s string) {
 	a.name = s
 ridx:
@@ -166,27 +138,20 @@ ridx:
 
 	a.Els.SetVarname(fmt.Sprintf("%s[%s]", a.name, a.Index))
 }
-func (a *Array) Varname() string  { return a.name }
+func (a *Array) Varname() string { return a.name }
+
 func (a *Array) TypeName() string { return fmt.Sprintf("[%s]%s", a.Size, a.Els.TypeName()) }
-func (a *Array) String() string {
-	return fmt.Sprintf("Array[%s]Of(%s - %s)", a.Size, a.Els.String(), a.Varname())
-}
+
+func (a *Array) hidden() {}
 
 // Map is a map[string]Elem
 type Map struct {
-	name   string
+	name   string // varname
 	Keyidx string // key variable name
 	Validx string // value variable name
-	Value  Elem
+	Value  Elem   // value element
 }
 
-func (m *Map) Type() ElemType  { return MapType }
-func (m *Map) Ptr() *Ptr       { return nil }
-func (m *Map) Slice() *Slice   { return nil }
-func (m *Map) Struct() *Struct { return nil }
-func (m *Map) Base() *BaseElem { return nil }
-func (m *Map) Map() *Map       { return m }
-func (m *Map) Array() *Array   { return nil }
 func (m *Map) SetVarname(s string) {
 	m.name = s
 ridx:
@@ -200,11 +165,12 @@ ridx:
 
 	m.Value.SetVarname(m.Validx)
 }
-func (m *Map) Varname() string  { return m.name }
+
+func (m *Map) Varname() string { return m.name }
+
 func (m *Map) TypeName() string { return fmt.Sprintf("map[string]%s", m.Value.TypeName()) }
-func (m *Map) String() string {
-	return fmt.Sprintf("MapOf([string]%s - %s)", m.Value.String(), m.Varname())
-}
+
+func (m *Map) hidden() {}
 
 type Slice struct {
 	name  string
@@ -212,87 +178,72 @@ type Slice struct {
 	Els   Elem // The type of each element
 }
 
-func (s *Slice) Type() ElemType  { return SliceType }
-func (s *Slice) Ptr() *Ptr       { return nil }
-func (s *Slice) Slice() *Slice   { return s }
-func (s *Slice) Struct() *Struct { return nil }
-func (s *Slice) Base() *BaseElem { return nil }
-func (s *Slice) Map() *Map       { return nil }
-func (s *Slice) Array() *Array   { return nil }
 func (s *Slice) SetVarname(a string) {
 	s.name = a
 	s.Index = randIdx()
 	s.Els.SetVarname(fmt.Sprintf("%s[%s]", s.name, s.Index))
 }
-func (s *Slice) Varname() string  { return s.name }
+
+func (s *Slice) Varname() string { return s.name }
+
 func (s *Slice) TypeName() string { return "[]" + s.Els.TypeName() }
-func (s *Slice) String() string {
-	return fmt.Sprintf("SliceOf(%s - %s)", s.Els.String(), s.Varname())
-}
+
+func (s *Slice) hidden() {}
 
 type Ptr struct {
 	name  string
 	Value Elem
 }
 
-func (s *Ptr) Type() ElemType  { return PtrType }
-func (s *Ptr) Ptr() *Ptr       { return s }
-func (s *Ptr) Slice() *Slice   { return nil }
-func (s *Ptr) Struct() *Struct { return nil }
-func (s *Ptr) Base() *BaseElem { return nil }
-func (s *Ptr) Map() *Map       { return nil }
-func (s *Ptr) Array() *Array   { return nil }
 func (s *Ptr) SetVarname(a string) {
 	s.name = a
 
 	// struct fields are dereferenced
 	// automatically...
-	switch s.Value.Type() {
-	case StructType:
+	switch x := s.Value.(type) {
+	case *Struct:
 		// struct fields are automatically dereferenced
-		s.Value.SetVarname(a)
+		x.SetVarname(a)
 		return
 
-	case BaseType:
+	case *BaseElem:
 		// identities and extensions have pointer receivers
-		if s.Value.Base().IsIdent() {
-			s.Value.SetVarname(a)
-			return
+		if x.Value == IDENT {
+			x.SetVarname(a)
+		} else {
+			x.SetVarname("*" + a)
 		}
+		return
 
-		fallthrough
 	default:
 		s.Value.SetVarname("*" + a)
 		return
 	}
 }
-func (s *Ptr) Varname() string  { return s.name }
+
+func (s *Ptr) Varname() string { return s.name }
+
 func (s *Ptr) TypeName() string { return "*" + s.Value.TypeName() }
-func (s *Ptr) String() string {
-	return fmt.Sprintf("PointerTo(%s - %s)", s.Value.String(), s.Varname())
-}
+
+func (s *Ptr) hidden() {}
 
 type Struct struct {
+	vname   string        // varname
 	Name    string        // struct type name
 	Fields  []StructField // field list
 	AsTuple bool          // write as an array instead of a map
 }
 
-func (s *Struct) Type() ElemType  { return StructType }
-func (s *Struct) Ptr() *Ptr       { return nil }
-func (s *Struct) Slice() *Slice   { return nil }
-func (s *Struct) Struct() *Struct { return s }
-func (s *Struct) Base() *BaseElem { return nil }
-func (s *Struct) Map() *Map       { return nil }
-func (s *Struct) Array() *Array   { return nil }
-func (s *Struct) Varname() string { return "" } // structs are special
+func (s *Struct) Varname() string { return s.vname }
+
 func (s *Struct) SetVarname(a string) {
+	s.vname = a
 	writeStructFields(s.Fields, a)
 }
+
 func (s *Struct) TypeName() string { return s.Name }
-func (s *Struct) String() string {
-	return fmt.Sprintf("%s{%s}", s.Name, s.Fields)
-}
+
+func (s *Struct) hidden() {}
 
 type StructField struct {
 	FieldTag  string
@@ -300,49 +251,37 @@ type StructField struct {
 	FieldElem Elem
 }
 
-func (s StructField) String() string {
-	return fmt.Sprintf("\n\t%s: %s %q, ", s.FieldName, s.FieldElem, s.FieldTag)
-}
-
+// BaseElem is an element that
+// can be represented by a primitive
+// MessagePack type.
 type BaseElem struct {
-	name         string
-	Value        Base
-	Ident        string // IDENT name if unresolved
-	Convert      bool   // should we do an explicit conversion?
-	ShimToBase   string // shim to base type
-	ShimFromBase string // shim from base type
+	name         string    // varname
+	Ident        string    // IDENT name if unresolved, or empty
+	ShimToBase   string    // shim to base type, or empty
+	ShimFromBase string    // shim from base type, or empty
+	Value        Primitive // Type of element
+	Convert      bool      // should we do an explicit conversion?
 }
 
-func (s *BaseElem) Type() ElemType  { return BaseType }
-func (s *BaseElem) Ptr() *Ptr       { return nil }
-func (s *BaseElem) Slice() *Slice   { return nil }
-func (s *BaseElem) Struct() *Struct { return nil }
-func (s *BaseElem) Map() *Map       { return nil }
-func (s *BaseElem) Base() *BaseElem { return s }
-func (s *BaseElem) Array() *Array   { return nil }
-func (s *BaseElem) Varname() string { return s.name }
-func (s *BaseElem) SetVarname(a string) {
+func (s *BaseElem) hidden() {}
 
-	// extensions are assumed
-	// to have pointer receivers, so
-	// we need to *not* dereference it
-	// (if it's a pointer) OR we need
-	// to take a reference
+func (s *BaseElem) Varname() string { return s.name }
+
+func (s *BaseElem) SetVarname(a string) {
+	// extensions whose parents
+	// are not pointers need to
+	// be explicitly referenced
 	if s.Value == Ext {
 		if strings.HasPrefix(a, "*") {
-			s.name = strings.TrimPrefix(a, "*")
+			s.name = a[1:]
 		} else {
 			s.name = "&" + a
 		}
 		return
-
-		// if we're using a shim
 	}
 
 	s.name = a
 }
-
-func (s *BaseElem) String() string { return fmt.Sprintf("(%s - %s)", s.BaseName(), s.Varname()) }
 
 // TypeName returns the syntactically correct Go
 // type name for the base element.
@@ -403,16 +342,7 @@ func (s *BaseElem) BaseType() string {
 	}
 }
 
-// is this an interface{} ?
-func (s *BaseElem) IsIntf() bool { return s.Value == Intf }
-
-// is this an extension?
-func (s *BaseElem) IsExt() bool { return s.Value == Ext }
-
-// is this an external identity?
-func (s *BaseElem) IsIdent() bool { return s.Value == IDENT }
-
-func (k Base) String() string {
+func (k Primitive) String() string {
 	switch k {
 	case String:
 		return "String"

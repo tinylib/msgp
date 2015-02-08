@@ -10,17 +10,19 @@ import (
 // pass are returned.
 func (fs *FileSet) findUnresolved(g gen.Elem) []string {
 
-	switch g.Type() {
-	case gen.PtrType:
-		return fs.findUnresolved(g.Ptr().Value)
+	switch g := g.(type) {
+	case *gen.Ptr:
+		return fs.findUnresolved(g.Value)
 
-	case gen.SliceType:
-		return fs.findUnresolved(g.Slice().Els)
+	case *gen.Slice:
+		return fs.findUnresolved(g.Els)
 
-	case gen.BaseType:
-		b := g.Base()
-		if b.Value == gen.IDENT { // type is unrecognized
-			id := b.Ident
+	case *gen.Array:
+		return fs.findUnresolved(g.Els)
+
+	case *gen.BaseElem:
+		if g.Value == gen.IDENT { // type is unrecognized
+			id := g.Ident
 			if tp, ok := fs.Identities[id]; ok {
 
 				// skip types that the code generator has seen
@@ -32,8 +34,8 @@ func (fs *FileSet) findUnresolved(g gen.Elem) []string {
 				// if we have found another identity
 				if tp != gen.IDENT {
 					// Lower type one level
-					i := b.Ident
-					*b = gen.BaseElem{
+					i := g.Ident
+					*g = gen.BaseElem{
 						Value:   tp,   // "true" type
 						Ident:   i,    // identifier name
 						Convert: true, // requires explicit conversion
@@ -41,15 +43,13 @@ func (fs *FileSet) findUnresolved(g gen.Elem) []string {
 					return nil
 				}
 			}
-			return []string{b.Ident}
+			return []string{g.Ident}
 		}
 		return nil
 
-	case gen.StructType:
-		s := g.Struct()
-
-		out := make([]string, 0, len(s.Fields))
-		nm := s.Name
+	case *gen.Struct:
+		var out []string
+		nm := g.Name
 		_, ok := fs.Identities[nm]
 
 		// we have to check that the name is
@@ -58,13 +58,15 @@ func (fs *FileSet) findUnresolved(g gen.Elem) []string {
 			out = append(out, nm)
 		}
 
-		for _, field := range s.Fields {
-			out = append(out, fs.findUnresolved(field.FieldElem)...)
+		for _, field := range g.Fields {
+			if u := fs.findUnresolved(field.FieldElem); len(u) > 0 {
+				out = append(out, u...)
+			}
 		}
 		return out
 
-	case gen.MapType:
-		return fs.findUnresolved(g.Map().Value)
+	case *gen.Map:
+		return fs.findUnresolved(g.Value)
 
 	default:
 		return nil

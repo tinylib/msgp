@@ -1,6 +1,0 @@
-
-// EncodeMsg implements the msgp.Encodable interface
-func ({{.Varname}} *{{.Value.Struct.Name}}) EncodeMsg(en *msgp.Writer) (err error) {
-	{{template "StructTempl" .Value.Struct}}
-	return
-}
