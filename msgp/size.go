@@ -16,6 +16,7 @@ const (
 	Int16Size      = 3
 	Int32Size      = 5
 	Uint8Size      = 2
+	ByteSize       = Uint8Size
 	Uint16Size     = 3
 	Uint32Size     = 5
 	Uint64Size     = Int64Size

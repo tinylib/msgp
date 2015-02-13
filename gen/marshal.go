@@ -87,6 +87,12 @@ func (m *marshalGen) gArray(a *Array) {
 	if !m.p.ok() {
 		return
 	}
+
+	if be, ok := a.Els.(*BaseElem); ok && be.Value == Byte {
+		m.rawAppend("Bytes", "%s[:]", a.Varname())
+		return
+	}
+
 	m.rawAppend(arrayHeader, literalFmt, a.Size)
 	m.p.rangeBlock(a.Index, a.Varname(), m, a.Els)
 }

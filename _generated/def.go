@@ -17,6 +17,11 @@ import (
 // a struct definition is
 // by adding it to this file.
 
+type X struct {
+	Values [32]byte
+	Others [32]int32
+}
+
 type TestType struct {
 	F   *float64          `msg:"float"`
 	Els map[string]string `msg:"elements"`
