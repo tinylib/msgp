@@ -33,7 +33,7 @@ var sizes = [256]bytespec{
 	mstr8:     {size: 2, extra: extra8, typ: StrType},
 	mstr16:    {size: 3, extra: extra16, typ: StrType},
 	mstr32:    {size: 5, extra: extra32, typ: StrType},
-	marray16:  {size: 2, extra: array16v, typ: ArrayType},
+	marray16:  {size: 3, extra: array16v, typ: ArrayType},
 	marray32:  {size: 5, extra: array32v, typ: ArrayType},
 	mmap16:    {size: 2, extra: map16v, typ: MapType},
 	mmap32:    {size: 5, extra: map32v, typ: MapType},

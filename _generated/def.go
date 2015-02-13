@@ -19,6 +19,7 @@ import (
 
 type X struct {
 	Values [32]byte
+	Others [32]int32
 }
 
 type TestType struct {

@@ -164,16 +164,19 @@ func (d *decodeGen) gArray(a *Array) {
 	if !d.p.ok() {
 		return
 	}
+	// if we have [const]byte, just do a read as 'bin'
+	// and then check that the output slice has the correct length
+	if be, ok := a.Els.(*BaseElem); ok && (be.Value == Byte || be.Value == Uint8) {
+		d.p.declare("tscrtch", "[]byte")
+		d.p.printf("\ntscrtch, err = dc.ReadBytes(%s[:])", a.Varname())
+		d.p.print(errcheck)
+		d.p.arrayCheck(a.Size, "uint32(len(tscrtch))")
+		return
+	}
+
 	d.p.declare(arraySizeVar, u32)
 	d.assignAndCheck(arraySizeVar, arrayHeader)
 	d.p.arrayCheck(a.Size, arraySizeVar)
-
-	// if we have [const]byte, just do ReadFull
-	if be, ok := a.Els.(*BaseElem); ok && (be.Value == Byte || be.Value == Uint8) {
-		d.p.printf("\n_, err = dc.ReadFull(%s[:])", a.Varname())
-		d.p.print(errcheck)
-		return
-	}
 
 	d.p.rangeBlock(a.Index, a.Varname(), d, a.Els)
 }

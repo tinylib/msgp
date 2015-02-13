@@ -118,6 +118,15 @@ func (u *unmarshalGen) gArray(a *Array) {
 	if !u.p.ok() {
 		return
 	}
+
+	if be, ok := a.Els.(*BaseElem); ok && be.Value == Byte {
+		u.p.declare("tscrtch", "[]byte")
+		u.p.printf("\ntscrtch, bts, err = msgp.ReadBytesBytes(bts, %s[:])", a.Varname())
+		u.p.print(errcheck)
+		u.p.arrayCheck(a.Size, "uint32(len(tscrtch))")
+		return
+	}
+
 	u.p.declare(arraySizeVar, u32)
 	u.assignAndCheck(arraySizeVar, arrayHeader)
 	u.p.arrayCheck(a.Size, arraySizeVar)
