@@ -167,6 +167,14 @@ func (d *decodeGen) gArray(a *Array) {
 	d.p.declare(arraySizeVar, u32)
 	d.assignAndCheck(arraySizeVar, arrayHeader)
 	d.p.arrayCheck(a.Size, arraySizeVar)
+
+	// if we have [const]byte, just do ReadFull
+	if be, ok := a.Els.(*BaseElem); ok && (be.Value == Byte || be.Value == Uint8) {
+		d.p.printf("\n_, err = dc.ReadFull(%s[:])", a.Varname())
+		d.p.print(errcheck)
+		return
+	}
+
 	d.p.rangeBlock(a.Index, a.Varname(), d, a.Els)
 }
 
