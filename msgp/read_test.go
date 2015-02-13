@@ -107,7 +107,7 @@ func BenchmarkReadMapHeader(b *testing.B) {
 	for _, d := range sizes {
 		data = AppendMapHeader(data, d)
 	}
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(int64(len(data) / len(sizes)))
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -160,7 +160,7 @@ func BenchmarkReadArrayHeader(b *testing.B) {
 	for _, d := range sizes {
 		data = AppendArrayHeader(data, d)
 	}
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.ReportAllocs()
 	b.SetBytes(int64(len(data) / len(sizes)))
 	b.ResetTimer()
@@ -187,7 +187,7 @@ func TestReadNil(t *testing.T) {
 
 func BenchmarkReadNil(b *testing.B) {
 	data := AppendNil(nil)
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.ReportAllocs()
 	b.SetBytes(1)
 	b.ResetTimer()
@@ -234,7 +234,7 @@ func BenchmarkReadFloat64(b *testing.B) {
 	for _, f := range fs {
 		data = AppendFloat64(data, f)
 	}
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(9)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -281,7 +281,7 @@ func BenchmarkReadFloat32(b *testing.B) {
 	for _, f := range fs {
 		data = AppendFloat32(data, f)
 	}
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(5)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -327,7 +327,7 @@ func BenchmarkReadInt64(b *testing.B) {
 	for _, n := range is {
 		data = AppendInt64(data, n)
 	}
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(int64(len(data) / len(is)))
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -370,7 +370,7 @@ func BenchmarkReadUint64(b *testing.B) {
 	for _, n := range us {
 		data = AppendUint64(data, n)
 	}
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(int64(len(data) / len(us)))
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -419,7 +419,7 @@ func benchBytes(size uint32, b *testing.B) {
 	data := make([]byte, 0, size+5)
 	data = AppendBytes(data, RandBytes(int(size)))
 
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(int64(len(data)))
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -484,7 +484,7 @@ func benchString(size uint32, b *testing.B) {
 	str := string(RandBytes(int(size)))
 	data := make([]byte, 0, len(str)+5)
 	data = AppendString(data, str)
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(int64(len(data)))
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -500,7 +500,7 @@ func benchStringAsBytes(size uint32, b *testing.B) {
 	str := string(RandBytes(int(size)))
 	data := make([]byte, 0, len(str)+5)
 	data = AppendString(data, str)
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(int64(len(data)))
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -561,7 +561,7 @@ func TestReadComplex64(t *testing.T) {
 func BenchmarkReadComplex64(b *testing.B) {
 	f := complex(rand.Float32(), rand.Float32())
 	data := AppendComplex64(nil, f)
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(int64(len(data)))
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -603,7 +603,7 @@ func TestReadComplex128(t *testing.T) {
 func BenchmarkReadComplex128(b *testing.B) {
 	f := complex(rand.Float64(), rand.Float64())
 	data := AppendComplex128(nil, f)
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(int64(len(data)))
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -649,7 +649,7 @@ func TestTime(t *testing.T) {
 func BenchmarkReadTime(b *testing.B) {
 	t := time.Now()
 	data := AppendTime(nil, t)
-	rd := NewReader(NewEndlessReader(data))
+	rd := NewReader(NewEndlessReader(data, b))
 	b.SetBytes(int64(len(data)))
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -720,7 +720,7 @@ func BenchmarkSkip(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	rd := NewReader(NewEndlessReader(bts))
+	rd := NewReader(NewEndlessReader(bts, b))
 	for i := 0; i < b.N; i++ {
 		err := rd.Skip()
 		if err != nil {
