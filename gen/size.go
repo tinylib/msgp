@@ -100,12 +100,11 @@ func (s *sizeGen) gSlice(sl *Slice) {
 	}
 	s.addConstant(builtinSize(arrayHeader))
 
-	if b, ok := sl.Els.(*BaseElem); ok && fixedSize(b.Value) {
-		// for something like float64, we can write (len(a)*msgp.Float64Size)
-		s.addConstant(fmt.Sprintf("(%s * %s)", sizeExpr(b), lenExpr(sl)))
+	if str, ok := computeSize(sl); ok {
+		s.addConstant(str)
 		return
-
 	}
+
 	// add inside the range block, and immediately after
 	s.state = add
 	s.p.rangeBlock(sl.Index, sl.Varname(), s, sl.Els)
@@ -116,11 +115,14 @@ func (s *sizeGen) gArray(a *Array) {
 	if !s.p.ok() {
 		return
 	}
+
 	s.addConstant(builtinSize(arrayHeader))
-	if b, ok := a.Els.(*BaseElem); ok && fixedSize(b.Value) {
-		s.addConstant(fmt.Sprintf("(%s * (%s))", a.Size, sizeExpr(b)))
+
+	if str, ok := computeSize(a); ok {
+		s.addConstant(str)
 		return
 	}
+
 	s.state = add
 	s.p.rangeBlock(a.Index, a.Varname(), s, a.Els)
 	s.state = add
@@ -149,6 +151,26 @@ func (s *sizeGen) gBase(b *BaseElem) {
 
 func lenExpr(sl *Slice) string {
 	return "len(" + sl.Varname() + ")"
+}
+
+// is the size of the object computable
+// through a length expression?
+func computeSize(e Elem) (string, bool) {
+	switch e := e.(type) {
+	case *BaseElem:
+		if fixedSize(e.Value) {
+			return sizeExpr(e), true
+		}
+	case *Array:
+		if str, ok := computeSize(e.Els); ok {
+			return fmt.Sprintf("(%s * (%s))", e.Size, str), true
+		}
+	case *Slice:
+		if str, ok := computeSize(e.Els); ok {
+			return fmt.Sprintf("(%s * (%s))", lenExpr(e), str), true
+		}
+	}
+	return "", false
 }
 
 // is a given primitive always the same (max)
