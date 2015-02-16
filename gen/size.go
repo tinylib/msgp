@@ -98,10 +98,14 @@ func (s *sizeGen) gSlice(sl *Slice) {
 	if !s.p.ok() {
 		return
 	}
+
 	s.addConstant(builtinSize(arrayHeader))
 
-	if str, ok := computeSize(sl); ok {
-		s.addConstant(str)
+	// if the slice's element is a fixed size
+	// (e.g. float64, [32]int, etc.), then
+	// print the length times the element size directly
+	if str, ok := fixedsizeExpr(sl.Els); ok {
+		s.addConstant(fmt.Sprintf("(%s * (%s))", lenExpr(sl), str))
 		return
 	}
 
@@ -118,7 +122,10 @@ func (s *sizeGen) gArray(a *Array) {
 
 	s.addConstant(builtinSize(arrayHeader))
 
-	if str, ok := computeSize(a); ok {
+	// if the array's children are a fixed
+	// size, we can compile an expression
+	// that always represents the array's wire size
+	if str, ok := fixedsizeExpr(a); ok {
 		s.addConstant(str)
 		return
 	}
@@ -146,31 +153,12 @@ func (s *sizeGen) gBase(b *BaseElem) {
 	if !s.p.ok() {
 		return
 	}
-	s.addConstant(sizeExpr(b))
+	s.addConstant(basesizeExpr(b))
 }
 
+// returns "len(slice)"
 func lenExpr(sl *Slice) string {
 	return "len(" + sl.Varname() + ")"
-}
-
-// is the size of the object computable
-// through a length expression?
-func computeSize(e Elem) (string, bool) {
-	switch e := e.(type) {
-	case *BaseElem:
-		if fixedSize(e.Value) {
-			return sizeExpr(e), true
-		}
-	case *Array:
-		if str, ok := computeSize(e.Els); ok {
-			return fmt.Sprintf("(%s * (%s))", e.Size, str), true
-		}
-	case *Slice:
-		if str, ok := computeSize(e.Els); ok {
-			return fmt.Sprintf("(%s * (%s))", lenExpr(e), str), true
-		}
-	}
-	return "", false
 }
 
 // is a given primitive always the same (max)
@@ -184,7 +172,7 @@ func fixedSize(p Primitive) bool {
 	}
 }
 
-// strip reference from extension
+// strip reference from string
 func stripRef(s string) string {
 	if s[0] == '&' {
 		return s[1:]
@@ -192,8 +180,25 @@ func stripRef(s string) string {
 	return s
 }
 
+// return a fixed-size expression, if possible.
+// only possible for *BaseElem and *Array.
+// returns (expr, ok)
+func fixedsizeExpr(e Elem) (string, bool) {
+	switch e := e.(type) {
+	case *Array:
+		if str, ok := fixedsizeExpr(e.Els); ok {
+			return fmt.Sprintf("(%s * (%s))", e.Size, str), true
+		}
+	case *BaseElem:
+		if fixedSize(e.Value) {
+			return builtinSize(e.BaseName()), true
+		}
+	}
+	return "", false
+}
+
 // print size expression of a variable name
-func sizeExpr(b *BaseElem) string {
+func basesizeExpr(b *BaseElem) string {
 	vname := b.Varname()
 	if b.Convert {
 		vname = tobaseConvert(b)
