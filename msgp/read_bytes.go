@@ -654,6 +654,56 @@ func ReadBytesZC(b []byte) (v []byte, o []byte, err error) {
 	return readBytesBytes(b, nil, true)
 }
 
+func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
+	l := len(b)
+	if l < 1 {
+		err = ErrShortBytes
+		return
+	}
+
+	lead := b[0]
+	var read uint32
+	var skip int
+	switch lead {
+	case mbin8:
+		if l < 2 {
+			err = ErrShortBytes
+			return
+		}
+
+		read = uint32(b[1])
+		skip = 2
+
+	case mbin16:
+		if l < 3 {
+			err = ErrShortBytes
+			return
+		}
+		read = uint32(big.Uint16(b[1:]))
+		skip = 3
+
+	case mbin32:
+		if l < 5 {
+			err = ErrShortBytes
+			return
+		}
+		read = uint32(big.Uint32(b[1:]))
+		skip = 5
+
+	default:
+		err = badPrefix(BinType, lead)
+		return
+	}
+
+	if read != uint32(len(into)) {
+		err = ArrayError{Wanted: uint32(len(into)), Got: read}
+		return
+	}
+
+	o = b[skip+copy(into, b[skip:]):]
+	return
+}
+
 // ReadStringZC reads a messagepack string field
 // without copying. The returned []byte points
 // to the same memory as the input slice.

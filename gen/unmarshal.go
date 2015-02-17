@@ -119,11 +119,11 @@ func (u *unmarshalGen) gArray(a *Array) {
 		return
 	}
 
+	// special case for [const]byte objects
+	// see decode.go for symmetry
 	if be, ok := a.Els.(*BaseElem); ok && be.Value == Byte {
-		u.p.declare("tscrtch", "[]byte")
-		u.p.printf("\ntscrtch, bts, err = msgp.ReadBytesBytes(bts, %s[:])", a.Varname())
+		u.p.printf("\nbts, err = msgp.ReadExactBytes(bts, %s[:])", a.Varname())
 		u.p.print(errcheck)
-		u.p.arrayCheck(a.Size, "uint32(len(tscrtch))")
 		return
 	}
 

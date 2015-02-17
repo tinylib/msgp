@@ -767,6 +767,47 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, err error) {
 	return
 }
 
+// ReadExactBytes reads a MessagePack 'bin'-encoded
+// object off of the wire into the provided slice. An
+// ArrayError will be returned if the object is not
+// exactly the length of the input slice.
+func (m *Reader) ReadExactBytes(into []byte) error {
+	p, err := m.r.Peek(2)
+	if err != nil {
+		return err
+	}
+	lead := p[0]
+	var read int64 // bytes to read
+	var skip int   // prefix size to skip
+	switch lead {
+	case mbin8:
+		read = int64(p[1])
+		skip = 2
+	case mbin16:
+		p, err = m.r.Peek(3)
+		if err != nil {
+			return err
+		}
+		read = int64(big.Uint16(p[1:]))
+		skip = 3
+	case mbin32:
+		p, err = m.r.Peek(5)
+		if err != nil {
+			return err
+		}
+		read = int64(big.Uint32(p[1:]))
+		skip = 5
+	default:
+		return badPrefix(BinType, lead)
+	}
+	if read != int64(len(into)) {
+		return ArrayError{Wanted: uint32(len(into)), Got: uint32(read)}
+	}
+	m.r.Skip(skip)
+	_, err = m.r.ReadFull(into)
+	return err
+}
+
 // ReadStringAsBytes reads a MessagePack 'str' (utf-8) string
 // and returns its value as bytes. It may use 'scratch' for storage
 // if it is non-nil.
