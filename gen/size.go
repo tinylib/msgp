@@ -51,16 +51,16 @@ func (s *sizeGen) addConstant(sz string) {
 	panic("unknown size state")
 }
 
-func (s *sizeGen) Execute(p *Ptr) error {
+func (s *sizeGen) Execute(p Elem) error {
 	if !s.p.ok() {
 		return s.p.err
 	}
-	st := p.Value.(*Struct)
 
-	s.p.printf("\nfunc (%s *%s) Msgsize() (s int) {", p.Varname(), st.Name)
+	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", p.Varname(), methodReceiver(p))
 	s.state = assign
-	s.gStruct(st)
+	next(s, p)
 	s.p.nakedReturn()
+	unsetReceiver(p)
 	return s.p.err
 }
 

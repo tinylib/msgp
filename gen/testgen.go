@@ -10,22 +10,37 @@ var (
 	encodeTestTempl  = template.New("EncodeTest")
 )
 
+// TODO(philhofer):
+// for simplicity's sake, right now
+// we can only generate tests for types
+// that can be initialized with the
+// "Type{}" syntax.
+// we should support all the types.
+
 type mtestGen struct{ io.Writer }
 
-func (m mtestGen) Execute(p *Ptr) error {
-	return marshalTestTempl.Execute(m.Writer, p.Value.(*Struct))
+func (m mtestGen) Execute(p Elem) error {
+	switch p.(type) {
+	case *Struct, *Array, *Slice, *Map:
+		return marshalTestTempl.Execute(m.Writer, p)
+	}
+	return nil
 }
 
 type etestGen struct{ io.Writer }
 
-func (e etestGen) Execute(p *Ptr) error {
-	return encodeTestTempl.Execute(e.Writer, p.Value.(*Struct))
+func (e etestGen) Execute(p Elem) error {
+	switch p.(type) {
+	case *Struct, *Array, *Slice, *Map:
+		return encodeTestTempl.Execute(e.Writer, p)
+	}
+	return nil
 }
 
 func init() {
 	template.Must(marshalTestTempl.Parse(`
-func Test{{.Name}}MarshalUnmarshal(t *testing.T) {
-	v := new({{.Name}})
+func Test{{.TypeName}}MarshalUnmarshal(t *testing.T) {
+	v := {{.TypeName}}{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -47,8 +62,8 @@ func Test{{.Name}}MarshalUnmarshal(t *testing.T) {
 	}
 }
 
-func Benchmark{{.Name}}MarshalMsg(b *testing.B) {
-	v := new({{.Name}})
+func Benchmark{{.TypeName}}MarshalMsg(b *testing.B) {
+	v := {{.TypeName}}{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i:=0; i<b.N; i++ {
@@ -56,8 +71,8 @@ func Benchmark{{.Name}}MarshalMsg(b *testing.B) {
 	}
 }
 
-func Benchmark{{.Name}}AppendMsg(b *testing.B) {
-	v := new({{.Name}})
+func Benchmark{{.TypeName}}AppendMsg(b *testing.B) {
+	v := {{.TypeName}}{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -68,8 +83,8 @@ func Benchmark{{.Name}}AppendMsg(b *testing.B) {
 	}
 }
 
-func Benchmark{{.Name}}Unmarshal(b *testing.B) {
-	v := new({{.Name}})
+func Benchmark{{.TypeName}}Unmarshal(b *testing.B) {
+	v := {{.TypeName}}{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -83,8 +98,8 @@ func Benchmark{{.Name}}Unmarshal(b *testing.B) {
 }`))
 
 	template.Must(encodeTestTempl.Parse(`
-func Test{{.Name}}EncodeDecode(t *testing.T) {
-	v := {{.Name}}{}
+func Test{{.TypeName}}EncodeDecode(t *testing.T) {
+	v := {{.TypeName}}{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
@@ -93,7 +108,7 @@ func Test{{.Name}}EncodeDecode(t *testing.T) {
 		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
 	}
 
-	vn := {{.Name}}{}
+	vn := {{.TypeName}}{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -107,8 +122,8 @@ func Test{{.Name}}EncodeDecode(t *testing.T) {
 	}
 }
 
-func Benchmark{{.Name}}Encode(b *testing.B) {
-	v := {{.Name}}{}
+func Benchmark{{.TypeName}}Encode(b *testing.B) {
+	v := {{.TypeName}}{}
 	var buf bytes.Buffer 
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -121,8 +136,8 @@ func Benchmark{{.Name}}Encode(b *testing.B) {
 	en.Flush()
 }
 
-func Benchmark{{.Name}}Decode(b *testing.B) {
-	v := {{.Name}}{}
+func Benchmark{{.TypeName}}Decode(b *testing.B) {
+	v := {{.TypeName}}{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))

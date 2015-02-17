@@ -5,23 +5,30 @@ import (
 )
 
 type unmarshalGen struct {
-	p printer
+	p        printer
+	hasfield bool
 }
 
-func (u *unmarshalGen) Execute(p *Ptr) error {
+func (u *unmarshalGen) needsField() {
+	if u.hasfield {
+		return
+	}
+	u.p.print("\nvar field []byte; _ = field")
+	u.hasfield = true
+}
+
+func (u *unmarshalGen) Execute(p Elem) error {
+	u.hasfield = false
 	if !u.p.ok() {
 		return u.p.err
 	}
-	s := p.Value.(*Struct)
 
 	u.p.print("\n//UnmarshalMsg implements msgp.Unmarshaler\n")
-	u.p.printf("func (%s *%s) UnmarshalMsg(bts []byte) (o []byte, err error) {", p.Varname(), s.Name)
-	if !s.AsTuple {
-		u.p.print("\nvar field []byte; _ = field")
-	}
-	u.gStruct(s)
+	u.p.printf("func (%s %s) UnmarshalMsg(bts []byte) (o []byte, err error) {", p.Varname(), methodReceiver(p))
+	next(u, p)
 	u.p.print("\no = bts")
 	u.p.nakedReturn()
+	unsetReceiver(p)
 	return u.p.err
 }
 
@@ -53,16 +60,17 @@ func (u *unmarshalGen) tuple(s *Struct) {
 	u.p.declare(structArraySizeVar, u32)
 	u.assignAndCheck(structArraySizeVar, arrayHeader)
 	u.p.arrayCheck(strconv.Itoa(len(s.Fields)), structArraySizeVar)
+	u.p.closeblock() // close 'ssz' block
 	for i := range s.Fields {
 		if !u.p.ok() {
 			return
 		}
 		next(u, s.Fields[i].FieldElem)
 	}
-	u.p.closeblock()
 }
 
 func (u *unmarshalGen) mapstruct(s *Struct) {
+	u.needsField()
 	u.p.declare(structMapSizeVar, u32)
 	u.assignAndCheck(structMapSizeVar, mapHeader)
 
@@ -119,11 +127,11 @@ func (u *unmarshalGen) gArray(a *Array) {
 		return
 	}
 
+	// special case for [const]byte objects
+	// see decode.go for symmetry
 	if be, ok := a.Els.(*BaseElem); ok && be.Value == Byte {
-		u.p.declare("tscrtch", "[]byte")
-		u.p.printf("\ntscrtch, bts, err = msgp.ReadBytesBytes(bts, %s[:])", a.Varname())
+		u.p.printf("\nbts, err = msgp.ReadExactBytes(bts, %s[:])", a.Varname())
 		u.p.print(errcheck)
-		u.p.arrayCheck(a.Size, "uint32(len(tscrtch))")
 		return
 	}
 

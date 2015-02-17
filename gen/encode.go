@@ -13,17 +13,17 @@ func (e *encodeGen) writeAndCheck(typ string, argfmt string, arg interface{}) {
 	e.p.print(errcheck)
 }
 
-func (e *encodeGen) Execute(p *Ptr) error {
+func (e *encodeGen) Execute(p Elem) error {
 	if !e.p.ok() {
 		return e.p.err
 	}
-	s := p.Value.(*Struct)
 
 	e.p.comment("EncodeMsg implements msgp.Encodable")
 
-	e.p.printf("\nfunc (%s *%s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), s.Name)
-	e.gStruct(s)
+	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), methodReceiver(p))
+	next(e, p)
 	e.p.nakedReturn()
+	unsetReceiver(p)
 	return e.p.err
 }
 

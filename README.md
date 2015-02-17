@@ -11,7 +11,7 @@ This is a code generation tool and serialization library for [MesssagePack](http
 - Use Go as your schema language
 - Speeeeeed (400MB/s on modern hardware)
 - [JSON interop](http://godoc.org/github.com/tinylib/msgp/msgp#CopyToJSON)
-- [User-defined types](http://github.com/tinylib/msgp/wiki/Using-Extensions)
+- [User-defined extensions](http://github.com/tinylib/msgp/wiki/Using-Extensions)
 - Type safety
 - Encoding flexibility
 
@@ -25,9 +25,7 @@ In a source file, include the following directive:
 //go:generate msgp
 ```
 
-The `msgp` command will generate serialization methods for all exported struct
-definitions in the file. You will need to include that directive in every file that contains structs that 
-need code generation.
+The `msgp` command will generate serialization methods for all exported type declarations in the file.
 
 You can [read more about the code generation options here](http://github.com/tinylib/msgp/wiki/Using-the-Code-Generator).
 
@@ -57,16 +55,15 @@ of `*bufio.Writer` and `*bufio.Reader`, respectively.)
 ### Features
 
  - Extremely fast generated code
+ - Test and benchmark generation
  - JSON interoperability (see `msgp.CopyToJSON() and msgp.UnmarshalAsJSON()`)
- - Support for embedded fields, anonymous structs, and multi-field inline declarations
- - Identifier resolution (see below)
+ - Support for complex type declarations
  - Native support for Go's `time.Time`, `complex64`, and `complex128` types 
  - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods
  - Support for arbitrary type system extensions
  - [Preprocessor directives](http://github.com/tinylib/msgp/wiki/Preprocessor-Directives)
 
-Because of (limited) identifier resolution, the code generator will still yield the
-correct code for the following struct declaration:
+Consider the following:
 ```go
 const Eight = 8
 type MyInt int
@@ -78,11 +75,7 @@ type Struct struct {
 	Nums   [Eight]float64    `msg:"nums"`
 }
 ```
-As long as the declarations of `MyInt` and `Data` are in the same file as `Struct`, the parser will figure out that 
-`MyInt` is really an `int`, and `Data` is really just a `[]byte`. The constant `Eight` does not have to be in the 
-same file as the struct definition, but it does have to be in the same package (as the generated code will simply
-use `Eight` as a literal under the assumption that the compiler will figure out what it is.) Note that this only works for "base" types (no composite types, although `[]byte` is supported as a special case.) Unresolved identifiers are (optimistically) 
-assumed to be struct definitions in other files. (The parser will spit out warnings about unresolved identifiers.)
+As long as the declarations of `MyInt` and `Data` are in the same file as `Struct`, the parser will determine that the type information for `MyInt` and `Data` can be passed into the definition of `Struct` before its methods are generated.
 
 #### Extensions
 
@@ -97,17 +90,15 @@ You can read more about how `msgp` maps MessagePack types onto Go types [in the 
 
 Here some of the known limitations/restrictions:
 
- - All fields of a struct that are not Go built-ins are assumed (optimistically) to have been seen by the code generator in another file. The generator will output a warning if it can't resolve an identifier in the file, or if it ignores an exported field. The generated code will fail to compile if you encounter this issue, so it shouldn't catch you by surprise.
+ - Identifiers from outside the processed source file are assumed (optimistically) to satisfy the generator's interfaces. If this isn't the case, your code will fail to compile.
  - Like most serializers, `chan` and `func` fields are ignored, as well as non-exported fields.
- - Methods are only generated for `struct` definitions. Chances are that we will keep things this way.
  - Encoding of `interface{}` is limited to built-ins or types that have explicit encoding methods.
  - _Maps must have `string` keys._ This is intentional (as it preserves JSON interop.) Although non-string map keys are not forbidden by the MessagePack standard, many serializers impose this restriction. (It also means *any* well-formed `struct` can be de-serialized into a `map[string]interface{}`.) The only exception to this rule is that the deserializers will allow you to read map keys encoded as `bin` types, due to the fact that some legacy encodings permitted this. (However, those values will still be cast to Go `string`s, and they will be converted to `str` types when re-encoded. It is the responsibility of the user to ensure that map keys are UTF-8 safe in this case.) The same rules hold true for JSON translation.
- - All variable-length objects (maps, strings, arrays, extensions, etc.) cannot have more than `(1<<32)-1` elements.
 
 If the output compiles, then there's a pretty good chance things are fine. (Plus, we generate tests for you.) *Please, please, please* file an issue if you think the generator is writing broken code.
 
 ### Performance
 
-If you like benchmarks, see [here.](https://github.com/alecthomas/go_serialization_benchmarks) In general, you pay a performance penalty using this code generator over the gogoprotobuf (protocol buffers) generator, but you get substantially better JSON interop and dedicated `io.Reader/Writer` methods, along with the ability to use Go as your schema language.
+If you like benchmarks, see [here.](https://github.com/alecthomas/go_serialization_benchmarks)
 
-As one might expect, the generated methods that deal with `[]byte` are faster, but the `io.Reader/Writer` methods are generally more memory-efficient for large (> 2KB) objects. As always, benchmark for your particular use case.
+As one might expect, the generated methods that deal with `[]byte` are faster, but the `io.Reader/Writer` methods are generally more memory-efficient for large (> 2KB) objects.

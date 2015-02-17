@@ -99,12 +99,8 @@ func generate(els []gen.Elem, dst *bufio.Writer, ms ...gen.Method) error {
 		gs[i] = gen.New(ms[i], dst)
 	}
 	for _, el := range els {
-		p, ok := el.(*gen.Ptr)
-		if !ok {
-			continue
-		}
 		for _, g := range gs {
-			if err := g.Execute(p); err != nil {
+			if err := g.Execute(el); err != nil {
 				return err
 			}
 		}
@@ -162,7 +158,7 @@ func DoAll(gopkg string, gofile string, marshal bool, encode bool, tests bool) e
 
 	fmt.Printf(chalk.Magenta.Color("========= %s =========\n"), filepath.Clean(gofile))
 
-	elems, pkgName, err := parse.GetElems(gofile)
+	elems, pkgName, err := parse.Elems(gofile)
 	if err != nil {
 		return err
 	}

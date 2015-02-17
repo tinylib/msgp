@@ -21,12 +21,6 @@ var directives = map[string]directive{
 	"tuple":  astuple,
 }
 
-type shim struct {
-	tp   gen.Primitive
-	to   string // toShim function name
-	from string // fromShim function name
-}
-
 // find all comment lines that begin with //msgp:
 func yieldComments(c []*ast.CommentGroup) []string {
 	var out []string
@@ -45,15 +39,10 @@ func applyShim(text []string, f *FileSet) error {
 	if len(text) != 4 {
 		return fmt.Errorf("shim directive should have 3 arguments; found %d", len(text)-1)
 	}
-	if f.shims == nil {
-		f.shims = make(map[string]*shim)
-	}
 
 	name := text[1]
-	if _, ok := f.shims[name]; ok {
-		return fmt.Errorf("shim already exists for %s", name)
-	}
-	tp := pullIdent(strings.TrimPrefix(strings.TrimSpace(text[2]), "as:")) // parse as::{base}
+	be := gen.Ident(strings.TrimPrefix(strings.TrimSpace(text[2]), "as:")) // parse as::{base}
+	be.Alias(name)
 
 	usestr := strings.TrimPrefix(strings.TrimSpace(text[3]), "using:") // parse using::{method/method}
 
@@ -61,12 +50,14 @@ func applyShim(text []string, f *FileSet) error {
 	if len(methods) != 2 {
 		return fmt.Errorf("expected 2 using::{} methods; found %d (%q)", len(methods), text[3])
 	}
-	infof("applying shim for %s -> %s ...\n", name, tp.String())
-	f.shims[name] = &shim{
-		tp:   tp,
-		to:   methods[0],
-		from: methods[1],
-	}
+
+	be.ShimToBase = methods[0]
+	be.ShimFromBase = methods[1]
+
+	infof("applying shim for %s to %s...\n", name, be.Value.String())
+
+	f.Identities[name] = be
+
 	return nil
 }
 
@@ -77,12 +68,9 @@ func ignore(text []string, f *FileSet) error {
 	}
 	for _, item := range text[1:] {
 		name := strings.TrimSpace(item)
-		for i, dec := range f.Specs {
-			if dec != nil && dec.Name != nil && name == dec.Name.Name {
-				// delete spec
-				f.Specs, f.Specs[i], f.Specs[len(f.Specs)-1] = f.Specs[:len(f.Specs)-1], f.Specs[len(f.Specs)-1], nil
-				infof("ignoring: %s...\n", name)
-			}
+		if _, ok := f.Identities[name]; ok {
+			delete(f.Identities, name)
+			infof("ignoring: %s...\n", name)
 		}
 	}
 	return nil
@@ -95,9 +83,9 @@ func astuple(text []string, f *FileSet) error {
 	}
 	for _, item := range text[1:] {
 		name := strings.TrimSpace(item)
-		for _, dec := range f.Specs {
-			if dec != nil && dec.Name != nil && name == dec.Name.Name {
-				f.tuples[name] = set
+		if el, ok := f.Identities[name]; ok {
+			if st, ok := el.(*gen.Struct); ok {
+				st.AsTuple = true
 				infof("using type %s as tuple...\n", name)
 			}
 		}

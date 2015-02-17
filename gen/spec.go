@@ -39,13 +39,13 @@ const (
 func New(m Method, out io.Writer) Generator {
 	switch m {
 	case Decode:
-		return &decodeGen{printer{w: out}}
+		return &decodeGen{printer{w: out}, false}
 	case Encode:
 		return &encodeGen{printer{w: out}}
 	case Marshal:
 		return &marshalGen{printer{w: out}}
 	case Unmarshal:
-		return &unmarshalGen{printer{w: out}}
+		return &unmarshalGen{printer{w: out}, false}
 	case Size:
 		return &sizeGen{printer{w: out}, assign}
 	case MarshalTest:
@@ -59,10 +59,8 @@ func New(m Method, out io.Writer) Generator {
 // Generator is the interface through
 // which code is generated.
 type Generator interface {
-	// Execute writes the method
-	// body for the provided pointer.
-	// p.Value should be of type *gen.Struct.
-	Execute(p *Ptr) error
+	// Execute writes the method for the provided object.
+	Execute(Elem) error
 }
 
 // every recursive type generator
@@ -94,6 +92,34 @@ func next(t traversal, e Elem) {
 		t.gBase(e)
 	default:
 		panic("bad element type")
+	}
+}
+
+// if necessary, wraps a type
+// so that its method receiver
+// is of the write type.
+func methodReceiver(p Elem) string {
+	switch p.(type) {
+
+	// structs and arrays are
+	// dereferenced automatically,
+	// so no need to alter varname
+	case *Struct, *Array:
+		return "*" + p.TypeName()
+
+	// set variable name to
+	// *varname
+	default:
+		p.SetVarname("(*" + p.Varname() + ")")
+		return "*" + p.TypeName()
+	}
+}
+
+func unsetReceiver(p Elem) {
+	switch p.(type) {
+	case *Struct, *Array:
+	default:
+		p.SetVarname("z")
 	}
 }
 

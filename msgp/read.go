@@ -457,7 +457,7 @@ func (m *Reader) ReadFloat64() (f float64, err error) {
 	p, err = m.r.Peek(9)
 	if err != nil {
 		// we'll allow a coversion from float32 to float64,
-		// since we don't loose any precision
+		// since we don't lose any precision
 		if err == io.EOF && len(p) > 0 && p[0] == mfloat32 {
 			ef, err := m.ReadFloat32()
 			return float64(ef), err
@@ -726,6 +726,17 @@ func (m *Reader) ReadUint() (u uint, err error) {
 	return
 }
 
+func (m *Reader) ReadByte() (b byte, err error) {
+	var in uint64
+	in, err = m.ReadUint64()
+	if in > math.MaxUint8 {
+		err = UintOverflow{Value: in, FailedBitsize: 8}
+		return
+	}
+	b = byte(in)
+	return
+}
+
 // ReadBytes reads a MessagePack 'bin' object
 // from the reader and returns its value. It may
 // use 'scratch' for storage if it is non-nil.
@@ -765,6 +776,47 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, err error) {
 	}
 	_, err = m.r.ReadFull(b)
 	return
+}
+
+// ReadExactBytes reads a MessagePack 'bin'-encoded
+// object off of the wire into the provided slice. An
+// ArrayError will be returned if the object is not
+// exactly the length of the input slice.
+func (m *Reader) ReadExactBytes(into []byte) error {
+	p, err := m.r.Peek(2)
+	if err != nil {
+		return err
+	}
+	lead := p[0]
+	var read int64 // bytes to read
+	var skip int   // prefix size to skip
+	switch lead {
+	case mbin8:
+		read = int64(p[1])
+		skip = 2
+	case mbin16:
+		p, err = m.r.Peek(3)
+		if err != nil {
+			return err
+		}
+		read = int64(big.Uint16(p[1:]))
+		skip = 3
+	case mbin32:
+		p, err = m.r.Peek(5)
+		if err != nil {
+			return err
+		}
+		read = int64(big.Uint32(p[1:]))
+		skip = 5
+	default:
+		return badPrefix(BinType, lead)
+	}
+	if read != int64(len(into)) {
+		return ArrayError{Wanted: uint32(len(into)), Got: uint32(read)}
+	}
+	m.r.Skip(skip)
+	_, err = m.r.ReadFull(into)
+	return err
 }
 
 // ReadStringAsBytes reads a MessagePack 'str' (utf-8) string
