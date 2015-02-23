@@ -12,35 +12,28 @@ import (
 	"strings"
 )
 
-// just syntactic sugar
-type flag struct{}
-
-var set = flag{}
-
 // A FileSet is the in-memory representation of a
-// parsed file. The same FileSet will always
-// generate the same element (gen.Elem) set.
+// parsed file.
 type FileSet struct {
-	Package    string                   // package name
-	Specs      []*ast.TypeSpec          // type specs in file
-	Directives []string                 // preprocessor directives
-	Identities map[string]gen.Primitive // alias types (e.g. type Flag uint32)
-
-	processed map[string]flag  // processed type decls
-	shims     map[string]*shim // shims
-	tuples    map[string]flag  // tuples
+	Package    string              // package name
+	Specs      map[string]ast.Expr // type specs in file
+	Identities map[string]gen.Elem // processed from specs
+	Directives []string            // raw preprocessor directives
 }
 
 // File parses a file at the relative path
 // provided and produces a new *FileSet.
 // (No exported structs is considered an error.)
+// If you pass in a path to a directory, the entire
+// directory will be parsed.
 func File(name string) (*FileSet, error) {
-	var files []*ast.File
-	var finfo os.FileInfo
-	var err error
-	var pkg string
+	fs := &FileSet{
+		Specs:      make(map[string]ast.Expr),
+		Identities: make(map[string]gen.Elem),
+	}
+
 	fset := token.NewFileSet()
-	finfo, err = os.Stat(name)
+	finfo, err := os.Stat(name)
 	if err != nil {
 		return nil, err
 	}
@@ -49,65 +42,47 @@ func File(name string) (*FileSet, error) {
 		if err != nil {
 			return nil, err
 		}
-		var one *ast.Package
-		if len(pkgs) > 1 {
+		if len(pkgs) != 1 {
 			return nil, fmt.Errorf("multiple packages in directory: %s", name)
 		}
+		var one *ast.Package
 		for _, nm := range pkgs {
 			one = nm
 			break
 		}
-		pkg = one.Name
-		files = make([]*ast.File, 0, len(one.Files))
-		for _, file := range one.Files {
-			files = append(files, file)
+		fs.Package = one.Name
+		for _, fl := range one.Files {
+			fs.Directives = append(fs.Directives, yieldComments(fl.Comments)...)
+			ast.FileExports(fl)
+			fs.getTypeSpecs(fl)
 		}
 	} else {
-		var f *ast.File
-		f, err = parser.ParseFile(fset, name, nil, parser.ParseComments)
+		f, err := parser.ParseFile(fset, name, nil, parser.ParseComments)
 		if err != nil {
 			return nil, err
 		}
-		files = []*ast.File{f}
-		pkg = f.Name.Name
-	}
-
-	var comments []string
-	for _, fl := range files {
-		comments = append(comments, yieldComments(fl.Comments)...)
-	}
-
-	// drop non-exported fields
-	for _, fl := range files {
-		ast.FileExports(fl)
-	}
-
-	fs := &FileSet{
-		Package:    pkg,
-		Specs:      make([]*ast.TypeSpec, 0, 8), // pre-allocate some space
-		Directives: comments,
-		Identities: make(map[string]gen.Primitive),
-		processed:  make(map[string]flag),
-		shims:      make(map[string]*shim),
-		tuples:     make(map[string]flag),
-	}
-
-	// get specs from each *ast.File
-	for _, fl := range files {
-		fs.getTypeSpecs(fl)
+		fs.Package = f.Name.Name
+		fs.Directives = yieldComments(f.Comments)
+		ast.FileExports(f)
+		fs.getTypeSpecs(f)
 	}
 
 	if len(fs.Specs) == 0 {
 		return nil, fmt.Errorf("no exported definitions in %s", name)
 	}
 
+	fs.process()
+	fs.applyDirectives()
+	fs.propInline()
+
 	return fs, nil
 }
 
 // ApplyDirectives applies all of the preprocessor
 // directives to the file set in the order that they
-// appear in the source file.
-func (f *FileSet) ApplyDirectives() {
+// appear in the source file. It is assumed that
+// f.Identities is already populated.
+func (f *FileSet) applyDirectives() {
 	for _, d := range f.Directives {
 		chunks := strings.Split(d, " ")
 		if len(chunks) > 0 {
@@ -121,61 +96,43 @@ func (f *FileSet) ApplyDirectives() {
 	}
 }
 
-// Process processes the file set into generator "trees" that
-// can be used for code generation.
-func (f *FileSet) Process() []gen.Elem {
-	g := make([]gen.Elem, 0, len(f.Specs))
-
-	// process each element, then
-	// resolve identifiers. we have
-	// to do this in two passes, b/c
-	// types are added to the "processed"
-	// list as we generate elements.
-
+// process takes the contents of f.Specs and
+// uses them to populate f.Identities
+func (f *FileSet) process() {
 	// generate elements
-	for _, spec := range f.Specs {
-		e := f.genElem(spec)
-		if e != nil {
-			g = append(g, e)
+	for name, def := range f.Specs {
+		infof("parsing %s...\n", name)
+		el := f.parseExpr(def)
+		if el != nil {
+			el.Alias(name)
+			f.Identities[name] = el
+		} else {
+			warnf(" \u26a0 unable to parse %s\n", name)
 		}
 	}
-	// resolve typedefs
-	var unresolved []string
-	for _, el := range g {
-		un := f.findUnresolved(el)
-		if len(un) > 0 {
-			unresolved = append(unresolved, un...)
-		}
-	}
-	// warn about unresolved identifiers
-	if len(unresolved) > 0 {
-		warnln("unresolved identifiers:")
-		for _, u := range unresolved {
-			warnf("\t-> %q\n", u)
-		}
-	}
-
-	// propogate variable names
-	for _, e := range g {
-		e.SetVarname("z")
-	}
-
-	return g
 }
 
-// GetElems creates a FileSet from 'filename' and
-// returns the processed elements.
-func GetElems(filename string) ([]gen.Elem, string, error) {
+// GetElems creates a FileSet from a filename
+// or directory and returns copies of the processed
+// elements with initialized variable names.
+func Elems(filename string) ([]gen.Elem, string, error) {
 	fs, err := File(filename)
 	if err != nil {
 		return nil, "", err
 	}
-	fs.ApplyDirectives()
-	g := fs.Process()
+
+	g := make([]gen.Elem, 0, len(fs.Identities))
+
+	for _, el := range fs.Identities {
+		el.SetVarname("z")
+		g = append(g, el)
+	}
+
 	return g, fs.Package, nil
 }
 
-// getTypeSpecs extracts all of the *ast.TypeSpecs in the file.
+// getTypeSpecs extracts all of the *ast.TypeSpecs in the file
+// into fs.Identities, but does not set the actual element
 func (fs *FileSet) getTypeSpecs(f *ast.File) {
 
 	// check all declarations...
@@ -189,35 +146,16 @@ func (fs *FileSet) getTypeSpecs(f *ast.File) {
 
 				// for ast.TypeSpecs....
 				if ts, ok := s.(*ast.TypeSpec); ok {
-					//out = append(out, ts)
-					fs.Specs = append(fs.Specs, ts)
+					switch ts.Type.(type) {
 
-					// record identifier
-					switch a := ts.Type.(type) {
-					case *ast.StructType:
-						fs.Identities[ts.Name.Name] = gen.IDENT
-
-					case *ast.Ident:
-						// we will resolve this later
-						fs.Identities[ts.Name.Name] = pullIdent(a.Name)
-
-					case *ast.ArrayType:
-						switch k := a.Elt.(type) {
-						case *ast.Ident:
-							if k.Name == "byte" && a.Len == nil {
-								fs.Identities[ts.Name.Name] = gen.Bytes
-							} else {
-								fs.Identities[ts.Name.Name] = gen.IDENT
-							}
-						default:
-							fs.Identities[ts.Name.Name] = gen.IDENT
-						}
-
-					case *ast.StarExpr:
-						fs.Identities[ts.Name.Name] = gen.IDENT
-
-					case *ast.MapType:
-						fs.Identities[ts.Name.Name] = gen.IDENT
+					// this is the list of parse-able
+					// type specs
+					case *ast.StructType,
+						*ast.ArrayType,
+						*ast.StarExpr,
+						*ast.MapType,
+						*ast.Ident:
+						fs.Specs[ts.Name.Name] = ts.Type
 
 					}
 				}
@@ -226,48 +164,17 @@ func (fs *FileSet) getTypeSpecs(f *ast.File) {
 	}
 }
 
-// genElem creates the gen.Elem out of an
-// ast.TypeSpec. Right now the only supported
-// TypeSpec.Type is *ast.StructType. Unsupported
-// types will yield a 'nil' return value.
-func (fs *FileSet) genElem(in *ast.TypeSpec) gen.Elem {
-	if v, ok := in.Type.(*ast.StructType); ok {
-		fmt.Printf(chalk.Green.Color("parsing %s..."), in.Name.Name)
-		p := &gen.Ptr{
-			Value: &gen.Struct{
-				Name:   in.Name.Name, // ast.Ident
-				Fields: fs.parseFieldList(v.Fields),
-			},
-		}
-
-		// mark type as processed
-		fs.processed[in.Name.Name] = set
-
-		// use as tuple if marked
-		if _, ok := fs.tuples[in.Name.Name]; ok {
-			p.Value.(*gen.Struct).AsTuple = true
-		}
-
-		if len(p.Value.(*gen.Struct).Fields) == 0 {
-			fmt.Printf(chalk.Red.Color(" has no exported fields \u2717\n")) // X
-			return nil
-		}
-		fmt.Print(chalk.Green.Color("  \u2713\n")) // check
-		return p
-	}
-	return nil // all non-*ast.StructType elements are unsupported
-}
-
-// this is where most of the magic happens
 func (fs *FileSet) parseFieldList(fl *ast.FieldList) []gen.StructField {
 	if fl == nil || fl.NumFields() == 0 {
 		return nil
 	}
 	out := make([]gen.StructField, 0, fl.NumFields())
-	for _, field := range fl.List {
+	for i, field := range fl.List {
 		fds := fs.getField(field)
 		if len(fds) > 0 {
 			out = append(out, fds...)
+		} else {
+			warnf(" \u26a0 ignored struct field %d\n", i)
 		}
 	}
 	return out
@@ -310,7 +217,7 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 			sf = append(sf, gen.StructField{
 				FieldTag:  nm.Name,
 				FieldName: nm.Name,
-				FieldElem: fs.parseExpr(f.Type),
+				FieldElem: ex.Copy(),
 			})
 		}
 		return sf
@@ -327,13 +234,13 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 			if b, ok := ex.Value.(*gen.BaseElem); ok {
 				b.Value = gen.Ext
 			} else {
-				warnf(" (\u26a0 field %q couldn't be cast as an extension)", sf[0].FieldName)
+				warnf(" \u26a0 field %q couldn't be cast as an extension\n", sf[0].FieldName)
 				return nil
 			}
 		case *gen.BaseElem:
 			ex.Value = gen.Ext
 		default:
-			warnf(" (\u26a0 field %q couldn't be cast as an extension)", sf[0].FieldName)
+			warnf(" \u26a0 field %q couldn't be cast as an extension\n", sf[0].FieldName)
 			return nil
 		}
 	}
@@ -341,16 +248,24 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 }
 
 // extract embedded field name
+//
+// so, for a struct like
+//
+//	type A struct {
+//		io.Writer
+//  }
+//
+// we want "Writer"
 func embedded(f ast.Expr) string {
 	switch f := f.(type) {
 	case *ast.Ident:
 		return f.Name
 	case *ast.StarExpr:
 		return embedded(f.X)
+	case *ast.SelectorExpr:
+		return f.Sel.Name
 	default:
-		// other possibilities (like selector expressions)
-		// are disallowed; we can't reasonably know
-		// their type
+		// other possibilities are disallowed
 		return ""
 	}
 }
@@ -387,21 +302,6 @@ func stringify(e ast.Expr) string {
 // - *ast.SelectorExpr (a.B)
 // - *ast.InterfaceType (interface {})
 func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
-
-	// check for shim; apply and return
-	if len(fs.shims) > 0 {
-		s := stringify(e)
-		if shm, ok := fs.shims[s]; ok {
-			return &gen.BaseElem{
-				Value:        shm.tp,
-				Convert:      true,
-				Ident:        s,
-				ShimToBase:   shm.to,
-				ShimFromBase: shm.from,
-			}
-		}
-	}
-
 	switch e := e.(type) {
 
 	case *ast.MapType:
@@ -413,11 +313,14 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		return nil
 
 	case *ast.Ident:
-		b := &gen.BaseElem{
-			Value: pullIdent(e.Name),
-		}
+		b := gen.Ident(e.Name)
+
+		// if the name isn't one of the type
+		// specs, warn
 		if b.Value == gen.IDENT {
-			b.Ident = (e.Name)
+			if _, ok := fs.Specs[e.Name]; !ok {
+				warnf(" \u26a0 non-local identifier: %s\n", e.Name)
+			}
 		}
 		return b
 
@@ -477,26 +380,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		return nil
 
 	case *ast.SelectorExpr:
-		// special case for time.Time and msgp.Raw
-		if im, ok := e.X.(*ast.Ident); ok {
-			if e.Sel.Name == "Time" && im.Name == "time" {
-				return &gen.BaseElem{Value: gen.Time}
-
-			} else if e.Sel.Name == "Raw" && im.Name == "msgp" {
-				fs.Identities["msgp.Raw"] = gen.IDENT
-				fs.processed["msgp.Raw"] = set
-				return &gen.BaseElem{
-					Value: gen.IDENT,
-					Ident: "msgp.Raw",
-				}
-			} else {
-				return &gen.BaseElem{
-					Value: gen.IDENT,
-					Ident: im.Name + "." + e.Sel.Name,
-				}
-			}
-		}
-		return nil
+		return gen.Ident(stringify(e))
 
 	case *ast.InterfaceType:
 		// support `interface{}`
@@ -507,57 +391,6 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 
 	default: // other types not supported
 		return nil
-	}
-}
-
-// convert an identity to a base type
-func pullIdent(name string) gen.Primitive {
-	switch name {
-	case "string":
-		return gen.String
-	case "[]byte":
-		return gen.Bytes
-	case "byte":
-		return gen.Byte
-	case "int":
-		return gen.Int
-	case "int8":
-		return gen.Int8
-	case "int16":
-		return gen.Int16
-	case "int32":
-		return gen.Int32
-	case "int64":
-		return gen.Int64
-	case "uint":
-		return gen.Uint
-	case "uint8":
-		return gen.Uint8
-	case "uint16":
-		return gen.Uint16
-	case "uint32":
-		return gen.Uint32
-	case "uint64":
-		return gen.Uint64
-	case "bool":
-		return gen.Bool
-	case "float64":
-		return gen.Float64
-	case "float32":
-		return gen.Float32
-	case "complex64":
-		return gen.Complex64
-	case "complex128":
-		return gen.Complex128
-	case "time.Time":
-		return gen.Time
-	case "interface{}":
-		return gen.Intf
-	case "msgp.Extension", "Extension":
-		return gen.Ext
-	default:
-		// unrecognized identity
-		return gen.IDENT
 	}
 }
 

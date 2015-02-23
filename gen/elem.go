@@ -40,20 +40,20 @@ func randIdx() string {
 // 			{
 // 				FieldTag: "thing1",
 // 				FieldElem: &Ptr{
-// 					name: "z.thing1",
+// 					name: "z.Thing1",
 // 					Value: &BaseElem{
-// 						name:    "*z.thing1",
+// 						name:    "*z.Thing1",
 // 						Value:   Float64,
 //						Convert: false,
 // 					},
 // 				},
 // 			},
 // 			{
-// 				FieldTag: "",
+// 				FieldTag: "body",
 // 				FieldElem: &BaseElem{
-// 					name:    "z.body",
+// 					name:    "z.Body",
 // 					Value:   Bytes,
-// 					Convert: False,
+// 					Convert: false,
 // 				},
 // 			},
 // 		},
@@ -94,10 +94,42 @@ const (
 	IDENT // IDENT means an unrecognized identifier
 )
 
+var primitives = map[string]Primitive{
+	"[]byte":         Bytes,
+	"string":         String,
+	"float32":        Float32,
+	"float64":        Float64,
+	"complex64":      Complex64,
+	"complex128":     Complex128,
+	"uint":           Uint,
+	"uint8":          Uint8,
+	"uint16":         Uint16,
+	"uint32":         Uint32,
+	"uint64":         Uint64,
+	"byte":           Byte,
+	"int":            Int,
+	"int8":           Int8,
+	"int16":          Int16,
+	"int32":          Int32,
+	"int64":          Int64,
+	"bool":           Bool,
+	"interface{}":    Intf,
+	"time.Time":      Time,
+	"msgp.Extension": Ext,
+}
+
+// common data/methods for every Elem
+type common struct{ vname, alias string }
+
+func (c *common) SetVarname(s string) { c.vname = s }
+func (c *common) Varname() string     { return c.vname }
+func (c *common) Alias(typ string)    { c.alias = typ }
+func (c *common) hidden()             {}
+
 // Elem is a go type capable of being
 // serialized into MessagePack. It is
 // implemented by *Ptr, *Struct, *Array,
-// *Slice, *Map, and *BaseElem
+// *Slice, *Map, and *BaseElem.
 type Elem interface {
 	// SetVarname sets this nodes
 	// variable name and recursively
@@ -113,47 +145,82 @@ type Elem interface {
 	// TypeName is the canonical
 	// go type name of the node
 	// e.g. "string", "int", "map[string]float64"
+	// OR the alias name, if it has been set.
 	TypeName() string
+
+	// Alias sets a type (alias) name
+	Alias(typ string)
+
+	// Copy should perform a deep copy of the object
+	Copy() Elem
+
+	// Complexity returns a measure of the
+	// complexity of element (greater than
+	// or equal to 1.)
+	Complexity() int
 
 	hidden()
 }
 
+// Ident returns the *BaseElem that corresponds
+// to the provided identity.
+func Ident(id string) *BaseElem {
+	p, ok := primitives[id]
+	if ok {
+		return &BaseElem{Value: p}
+	}
+	be := &BaseElem{Value: IDENT}
+	be.Alias(id)
+	return be
+}
+
 type Array struct {
-	name  string // Varname
+	common
 	Index string // index variable name
 	Size  string // array size
 	Els   Elem   // child
 }
 
 func (a *Array) SetVarname(s string) {
-	a.name = s
+	a.common.SetVarname(s)
 ridx:
 	a.Index = randIdx()
 
 	// try to avoid using the same
 	// index as a parent slice
-	if strings.Contains(a.name, a.Index) {
+	if strings.Contains(a.Varname(), a.Index) {
 		goto ridx
 	}
 
-	a.Els.SetVarname(fmt.Sprintf("%s[%s]", a.name, a.Index))
+	a.Els.SetVarname(fmt.Sprintf("%s[%s]", a.Varname(), a.Index))
 }
-func (a *Array) Varname() string { return a.name }
 
-func (a *Array) TypeName() string { return fmt.Sprintf("[%s]%s", a.Size, a.Els.TypeName()) }
+func (a *Array) TypeName() string {
+	if a.common.alias != "" {
+		return a.common.alias
+	}
+	a.common.Alias(fmt.Sprintf("[%s]%s", a.Size, a.Els.TypeName()))
+	return a.common.alias
+}
 
-func (a *Array) hidden() {}
+func (a *Array) Copy() Elem {
+	b := *a
+	b.Els = a.Els.Copy()
+	return &b
+}
+
+func (a *Array) Complexity() int { return 1 + a.Els.Complexity() }
 
 // Map is a map[string]Elem
 type Map struct {
-	name   string // varname
+	common
 	Keyidx string // key variable name
 	Validx string // value variable name
 	Value  Elem   // value element
 }
 
 func (m *Map) SetVarname(s string) {
-	m.name = s
+	m.common.SetVarname(s)
 ridx:
 	m.Keyidx = randIdx()
 	m.Validx = randIdx()
@@ -166,37 +233,59 @@ ridx:
 	m.Value.SetVarname(m.Validx)
 }
 
-func (m *Map) Varname() string { return m.name }
+func (m *Map) TypeName() string {
+	if m.common.alias != "" {
+		return m.common.alias
+	}
+	m.common.Alias("map[string]" + m.Value.TypeName())
+	return m.common.alias
+}
 
-func (m *Map) TypeName() string { return fmt.Sprintf("map[string]%s", m.Value.TypeName()) }
+func (m *Map) Copy() Elem {
+	g := *m
+	g.Value = m.Value.Copy()
+	return &g
+}
 
-func (m *Map) hidden() {}
+func (m *Map) Complexity() int { return 2 + m.Value.Complexity() }
 
 type Slice struct {
-	name  string
+	common
 	Index string
 	Els   Elem // The type of each element
 }
 
 func (s *Slice) SetVarname(a string) {
-	s.name = a
+	s.common.SetVarname(a)
 	s.Index = randIdx()
-	s.Els.SetVarname(fmt.Sprintf("%s[%s]", s.name, s.Index))
+	s.Els.SetVarname(fmt.Sprintf("%s[%s]", s.Varname(), s.Index))
 }
 
-func (s *Slice) Varname() string { return s.name }
+func (s *Slice) TypeName() string {
+	if s.common.alias != "" {
+		return s.common.alias
+	}
+	s.common.Alias("[]" + s.Els.TypeName())
+	return s.common.alias
+}
 
-func (s *Slice) TypeName() string { return "[]" + s.Els.TypeName() }
+func (s *Slice) Copy() Elem {
+	z := *s
+	z.Els = s.Els.Copy()
+	return &z
+}
 
-func (s *Slice) hidden() {}
+func (s *Slice) Complexity() int {
+	return 1 + s.Els.Complexity()
+}
 
 type Ptr struct {
-	name  string
+	common
 	Value Elem
 }
 
 func (s *Ptr) SetVarname(a string) {
-	s.name = a
+	s.common.SetVarname(a)
 
 	// struct fields are dereferenced
 	// automatically...
@@ -207,7 +296,7 @@ func (s *Ptr) SetVarname(a string) {
 		return
 
 	case *BaseElem:
-		// identities and extensions have pointer receivers
+		// identities have pointer receivers
 		if x.Value == IDENT {
 			x.SetVarname(a)
 		} else {
@@ -221,51 +310,87 @@ func (s *Ptr) SetVarname(a string) {
 	}
 }
 
-func (s *Ptr) Varname() string { return s.name }
+func (s *Ptr) TypeName() string {
+	if s.common.alias != "" {
+		return s.common.alias
+	}
+	s.common.Alias("*" + s.Value.TypeName())
+	return s.common.alias
+}
 
-func (s *Ptr) TypeName() string { return "*" + s.Value.TypeName() }
+func (s *Ptr) Copy() Elem {
+	v := *s
+	v.Value = s.Value.Copy()
+	return &v
+}
 
-func (s *Ptr) hidden() {}
+func (s *Ptr) Complexity() int { return 1 + s.Value.Complexity() }
 
 type Struct struct {
-	vname   string        // varname
-	Name    string        // struct type name
+	common
 	Fields  []StructField // field list
 	AsTuple bool          // write as an array instead of a map
 }
 
-func (s *Struct) Varname() string { return s.vname }
+func (s *Struct) TypeName() string {
+	if s.common.alias != "" {
+		return s.common.alias
+	}
+	str := "struct{\n"
+	for i := range s.Fields {
+		str += s.Fields[i].FieldName + " " + s.Fields[i].FieldElem.TypeName() + ";\n"
+	}
+	str += "}"
+	s.common.Alias(str)
+	return s.common.alias
+}
 
 func (s *Struct) SetVarname(a string) {
-	s.vname = a
+	s.common.SetVarname(a)
 	writeStructFields(s.Fields, a)
 }
 
-func (s *Struct) TypeName() string { return s.Name }
+func (s *Struct) Copy() Elem {
+	g := *s
+	g.Fields = make([]StructField, len(s.Fields))
+	copy(g.Fields, s.Fields)
+	for i := range s.Fields {
+		g.Fields[i].FieldElem = s.Fields[i].FieldElem.Copy()
+	}
+	return &g
+}
 
-func (s *Struct) hidden() {}
+func (s *Struct) Complexity() int {
+	c := 1
+	for i := range s.Fields {
+		c += s.Fields[i].FieldElem.Complexity()
+	}
+	return c
+}
 
 type StructField struct {
-	FieldTag  string
-	FieldName string
-	FieldElem Elem
+	FieldTag  string // the string inside the `msg:""` tag
+	FieldName string // the name of the struct field
+	FieldElem Elem   // the field type
 }
 
 // BaseElem is an element that
 // can be represented by a primitive
 // MessagePack type.
 type BaseElem struct {
-	name         string    // varname
-	Ident        string    // IDENT name if unresolved, or empty
+	common
 	ShimToBase   string    // shim to base type, or empty
 	ShimFromBase string    // shim from base type, or empty
 	Value        Primitive // Type of element
 	Convert      bool      // should we do an explicit conversion?
 }
 
-func (s *BaseElem) hidden() {}
-
-func (s *BaseElem) Varname() string { return s.name }
+func (s *BaseElem) Alias(typ string) {
+	s.common.Alias(typ)
+	if s.Value != IDENT {
+		s.Convert = true
+	}
+}
 
 func (s *BaseElem) SetVarname(a string) {
 	// extensions whose parents
@@ -273,23 +398,24 @@ func (s *BaseElem) SetVarname(a string) {
 	// be explicitly referenced
 	if s.Value == Ext {
 		if strings.HasPrefix(a, "*") {
-			s.name = a[1:]
-		} else {
-			s.name = "&" + a
+			s.common.SetVarname(a[1:])
+			return
 		}
+		s.common.SetVarname("&" + a)
 		return
 	}
 
-	s.name = a
+	s.common.SetVarname(a)
 }
 
 // TypeName returns the syntactically correct Go
 // type name for the base element.
 func (s *BaseElem) TypeName() string {
-	if s.Ident != "" {
-		return s.Ident
+	if s.common.alias != "" {
+		return s.common.alias
 	}
-	return s.BaseType()
+	s.common.Alias(s.BaseType())
+	return s.common.alias
 }
 
 // ToBase, used if Convert==true, is used as tmp = {{ToBase}}({{Varname}})
@@ -305,7 +431,7 @@ func (s *BaseElem) FromBase() string {
 	if s.ShimFromBase != "" {
 		return s.ShimFromBase
 	}
-	return s.Ident
+	return s.TypeName()
 }
 
 // BaseName returns the string form of the
@@ -322,7 +448,7 @@ func (s *BaseElem) BaseName() string {
 func (s *BaseElem) BaseType() string {
 	switch s.Value {
 	case IDENT:
-		return s.Ident
+		return s.TypeName()
 
 	// exceptions to the naming/capitalization
 	// rule:
@@ -340,6 +466,18 @@ func (s *BaseElem) BaseType() string {
 	default:
 		return strings.ToLower(s.BaseName())
 	}
+}
+
+func (s *BaseElem) Copy() Elem {
+	g := *s
+	return &g
+}
+
+func (s *BaseElem) Complexity() int {
+	if s.Convert {
+		return 2
+	}
+	return 1
 }
 
 func (k Primitive) String() string {

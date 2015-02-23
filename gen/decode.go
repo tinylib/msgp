@@ -13,23 +13,30 @@ const (
 )
 
 type decodeGen struct {
-	p printer
+	p        printer
+	hasfield bool
 }
 
-func (d *decodeGen) Execute(p *Ptr) error {
+func (d *decodeGen) needsField() {
+	if d.hasfield {
+		return
+	}
+	d.p.print("\nvar field []byte; _ = field")
+	d.hasfield = true
+}
+
+func (d *decodeGen) Execute(p Elem) error {
+	d.hasfield = false
 	if !d.p.ok() {
 		return d.p.err
 	}
-	s := p.Value.(*Struct)
 
 	d.p.comment("DecodeMsg implements msgp.Decodable")
 
-	d.p.printf("\nfunc (%s *%s) DecodeMsg(dc *msgp.Reader) (err error) {", p.Varname(), s.Name)
-	if !s.AsTuple {
-		d.p.print("var field []byte; _ = field\n")
-	}
-	d.gStruct(s)
+	d.p.printf("\nfunc (%s %s) DecodeMsg(dc *msgp.Reader) (err error) {", p.Varname(), methodReceiver(p))
+	next(d, p)
 	d.p.nakedReturn()
+	unsetReceiver(p)
 	return d.p.err
 }
 
@@ -68,6 +75,7 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 }
 
 func (d *decodeGen) structAsMap(s *Struct) {
+	d.needsField()
 	d.p.declare(structMapSizeVar, u32)
 	d.assignAndCheck(structMapSizeVar, mapHeader)
 
@@ -164,13 +172,11 @@ func (d *decodeGen) gArray(a *Array) {
 	if !d.p.ok() {
 		return
 	}
-	// if we have [const]byte, just do a read as 'bin'
-	// and then check that the output slice has the correct length
+
+	// special case if we have [const]byte
 	if be, ok := a.Els.(*BaseElem); ok && (be.Value == Byte || be.Value == Uint8) {
-		d.p.declare("tscrtch", "[]byte")
-		d.p.printf("\ntscrtch, err = dc.ReadBytes(%s[:])", a.Varname())
+		d.p.printf("\nerr = dc.ReadExactBytes(%s[:])", a.Varname())
 		d.p.print(errcheck)
-		d.p.arrayCheck(a.Size, "uint32(len(tscrtch))")
 		return
 	}
 
