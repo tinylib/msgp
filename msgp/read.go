@@ -88,13 +88,13 @@ func (t Type) String() string {
 	}
 }
 
-// FreeR frees a reader for use
+// freeR frees a reader for use
 // by other processes. It is not necessary
-// to call FreeR on a reader. However, maintaining
-// a reference to a *Reader after calling FreeR on
+// to call freeR on a reader. However, maintaining
+// a reference to a *Reader after calling freeR on
 // it will cause undefined behavior. Typically, this
 // function should only be used by the code generator.
-func FreeR(m *Reader) {
+func freeR(m *Reader) {
 	if m != nil {
 		readerPool.Put(m)
 	}
@@ -121,7 +121,7 @@ type Decodable interface {
 func Decode(r io.Reader, d Decodable) error {
 	rd := NewReader(r)
 	err := d.DecodeMsg(rd)
-	FreeR(rd)
+	freeR(rd)
 	return err
 }
 

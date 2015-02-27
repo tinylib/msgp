@@ -53,12 +53,12 @@ func pushWriter(wr *Writer) {
 	}
 }
 
-// FreeW frees a writer for use
+// freeW frees a writer for use
 // by other processes. It is not necessary
-// to call FreeW on a writer. However, maintaining
-// a reference to a *Writer after calling FreeW on
+// to call freeW on a writer. However, maintaining
+// a reference to a *Writer after calling freeW on
 // it will cause undefined behavior.
-func FreeW(w *Writer) { pushWriter(w) }
+func freeW(w *Writer) { pushWriter(w) }
 
 // Require ensures that cap(old)-len(old) >= extra
 func Require(old []byte, extra int) []byte {
@@ -132,7 +132,7 @@ func Encode(w io.Writer, e Encodable) error {
 	if err == nil {
 		err = wr.Flush()
 	}
-	FreeW(wr)
+	freeW(wr)
 	return err
 }
 
@@ -143,7 +143,7 @@ func Write(w io.Writer, m Marshaler) error {
 	if err == nil {
 		err = wr.Flush()
 	}
-	FreeW(wr)
+	freeW(wr)
 	return err
 }
 

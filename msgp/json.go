@@ -54,7 +54,7 @@ type jsWriter interface {
 func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
 	r := NewReader(src)
 	n, err = r.WriteToJSON(dst)
-	FreeR(r)
+	freeR(r)
 	return
 }
 
