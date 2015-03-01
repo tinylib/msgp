@@ -39,6 +39,7 @@ type TestType struct {
 	Time     time.Time   `msg:"time"`
 	Any      interface{} `msg:"any"`
 	Appended msgp.Raw    `msg:"appended"`
+	Num      msgp.Number `msg:"num"`
 }
 
 //msgp:tuple TestBench

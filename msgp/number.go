@@ -11,7 +11,10 @@ import (
 // from any of the native
 // messagepack number types.
 // The zero-value of Number
-// is Int(0).
+// is Int(0). Using the equality
+// operator with Number compares
+// both the type and the value
+// of the number.
 type Number struct {
 	// internally, this
 	// is just a tagged union.
@@ -30,6 +33,17 @@ func (n *Number) AsFloat64(f float64) {
 
 // AsInt sets the number to an int64.
 func (n *Number) AsInt(i int64) {
+
+	// we always store int(0)
+	// as {0, InvalidType} in
+	// order to preserve
+	// the behavior of the == operator
+	if i == 0 {
+		n.typ = InvalidType
+		n.bits = 0
+		return
+	}
+
 	n.typ = IntType
 	n.bits = *(*uint64)(unsafe.Pointer(&i))
 }
@@ -54,7 +68,14 @@ func (n *Number) DecodeMsg(r *Reader) error {
 		return err
 	}
 	switch typ {
-	case Float32Type, Float64Type:
+	case Float32Type:
+		f, err := r.ReadFloat32()
+		if err != nil {
+			return err
+		}
+		n.AsFloat32(f)
+		return nil
+	case Float64Type:
 		// note: ReadFloat64 can read
 		// Float32 objects. we still
 		// save the original type info
@@ -64,24 +85,21 @@ func (n *Number) DecodeMsg(r *Reader) error {
 		if err != nil {
 			return err
 		}
-		n.bits = *(*uint64)(unsafe.Pointer(&f))
-		n.typ = typ
+		n.AsFloat64(f)
 		return nil
 	case IntType:
 		i, err := r.ReadInt64()
 		if err != nil {
 			return err
 		}
-		n.bits = *(*uint64)(unsafe.Pointer(&i))
-		n.typ = typ
+		n.AsInt(i)
 		return nil
 	case UintType:
 		u, err := r.ReadUint64()
 		if err != nil {
 			return err
 		}
-		n.bits = u
-		n.typ = typ
+		n.AsUint(u)
 		return nil
 	default:
 		return TypeError{Encoded: typ, Method: IntType}
@@ -170,24 +188,28 @@ func (n *Number) UnmarshalMsg(b []byte) ([]byte, error) {
 		if err != nil {
 			return b, err
 		}
-		n.typ = typ
-		n.bits = *(*uint64)(unsafe.Pointer(&i))
+		n.AsInt(i)
 		return o, nil
 	case UintType:
 		u, o, err := ReadUint64Bytes(b)
 		if err != nil {
 			return b, err
 		}
-		n.typ = typ
-		n.bits = u
+		n.AsUint(u)
 		return o, nil
-	case Float32Type, Float64Type:
+	case Float64Type:
 		f, o, err := ReadFloat64Bytes(b)
 		if err != nil {
 			return b, err
 		}
-		n.typ = typ
-		n.bits = *(*uint64)(unsafe.Pointer(&f))
+		n.AsFloat64(f)
+		return o, nil
+	case Float32Type:
+		f, o, err := ReadFloat32Bytes(b)
+		if err != nil {
+			return b, err
+		}
+		n.AsFloat32(f)
 		return o, nil
 	default:
 		return b, TypeError{Method: IntType, Encoded: typ}
