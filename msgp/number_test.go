@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -38,16 +39,52 @@ func TestNumber(t *testing.T) {
 	}
 
 	var dat []byte
+	var buf bytes.Buffer
+	wr := NewWriter(&buf)
 	for _, n := range nums {
 		dat, _ = AppendIntf(dat, n)
+		wr.WriteIntf(n)
 	}
+	wr.Flush()
 
-	for range nums {
+	mout := make([]Number, len(nums))
+	dout := make([]Number, len(nums))
+
+	rd := NewReader(&buf)
+	unm := dat
+	for i := range nums {
 		var err error
-		dat, err = n.UnmarshalMsg(dat)
+		unm, err = mout[i].UnmarshalMsg(unm)
+		if err != nil {
+			t.Fatal("unmarshal error:", err)
+		}
+		err = dout[i].DecodeMsg(rd)
 		if err != nil {
 			t.Fatal("decode error:", err)
 		}
+		if mout[i] != dout[i] {
+			t.Errorf("for %#v, got %#v from unmarshal and %#v from decode", nums[i], mout[i], dout[i])
+		}
+	}
+
+	buf.Reset()
+	var odat []byte
+	for i := range nums {
+		var err error
+		odat, err = mout[i].MarshalMsg(odat)
+		if err != nil {
+			t.Fatal("marshal error:", err)
+		}
+		err = dout[i].EncodeMsg(wr)
+	}
+	wr.Flush()
+
+	if !bytes.Equal(dat, odat) {
+		t.Errorf("marshal: expected output %#v; got %#v", dat, odat)
+	}
+
+	if !bytes.Equal(dat, buf.Bytes()) {
+		t.Errorf("encode: expected output %#v; got %#v", dat, buf.Bytes())
 	}
 
 }
