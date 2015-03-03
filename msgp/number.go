@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"strconv"
 	"unsafe"
 )
 
@@ -218,5 +219,27 @@ func (n *Number) Msgsize() int {
 		return Uint64Size
 	default:
 		return 1 // fixint(0)
+	}
+}
+
+// MarshalJSON implements json.Marshaler
+func (n *Number) MarshalJSON() ([]byte, error) {
+	t := n.Type()
+	if t == InvalidType {
+		return []byte{'0'}, nil
+	}
+	out := make([]byte, 0, 32)
+	switch t {
+	case Float32Type, Float64Type:
+		f, _ := n.Float()
+		return strconv.AppendFloat(out, f, 'f', -1, 64), nil
+	case IntType:
+		i, _ := n.Int()
+		return strconv.AppendInt(out, i, 10), nil
+	case UintType:
+		u, _ := n.Uint()
+		return strconv.AppendUint(out, u, 10), nil
+	default:
+		panic("(*Number).typ is invalid")
 	}
 }
