@@ -5,7 +5,7 @@ import (
 )
 
 // Number can be
-// an int64, uint64,
+// an int64, uint64, float32,
 // or float64 internally.
 // It can decode itself
 // from any of the native
@@ -45,7 +45,7 @@ func (n *Number) AsInt(i int64) {
 	}
 
 	n.typ = IntType
-	n.bits = *(*uint64)(unsafe.Pointer(&i))
+	n.bits = uint64(i)
 }
 
 // AsUint sets the number to a uint64.
@@ -76,11 +76,6 @@ func (n *Number) DecodeMsg(r *Reader) error {
 		n.AsFloat32(f)
 		return nil
 	case Float64Type:
-		// note: ReadFloat64 can read
-		// Float32 objects. we still
-		// save the original type info
-		// to ensure that we re-encode
-		// as a float32.
 		f, err := r.ReadFloat64()
 		if err != nil {
 			return err
@@ -106,7 +101,7 @@ func (n *Number) DecodeMsg(r *Reader) error {
 	}
 }
 
-// Type will return one of
+// Type will return one of:
 // Float64Type, Float32Type, UintType, or IntType.
 func (n *Number) Type() Type {
 	if n.typ == InvalidType {
@@ -119,27 +114,21 @@ func (n *Number) Type() Type {
 // and returns whether or not that was
 // the underlying type. (This is legal
 // for both float32 and float64 types.)
-func (n *Number) Float() (f float64, ok bool) {
-	ok = n.typ == Float64Type || n.typ == Float32Type
-	f = *(*float64)(unsafe.Pointer(&n.bits))
-	return
+func (n *Number) Float() (float64, bool) {
+	return *(*float64)(unsafe.Pointer(&n.bits)), n.typ == Float64Type || n.typ == Float32Type
 }
 
 // Int casts the number as an int64, and
 // returns whether or not that was the
 // underlying type.
-func (n *Number) Int() (i int64, ok bool) {
-	ok = n.typ == IntType || n.typ == InvalidType
-	i = *(*int64)(unsafe.Pointer(&n.bits))
-	return
+func (n *Number) Int() (int64, bool) {
+	return int64(n.bits), n.typ == IntType || n.typ == InvalidType
 }
 
 // Uint casts the number as a uint64, and returns
 // whether or not that was the underlying type.
-func (n *Number) Uint() (u uint64, ok bool) {
-	ok = n.typ == UintType
-	u = n.bits
-	return
+func (n *Number) Uint() (uint64, bool) {
+	return n.bits, n.typ == UintType
 }
 
 // EncodeMsg implements msgp.Encodable
@@ -148,7 +137,7 @@ func (n *Number) EncodeMsg(w *Writer) error {
 	case InvalidType:
 		return w.WriteInt(0)
 	case IntType:
-		return w.WriteInt64(*(*int64)(unsafe.Pointer(&n.bits)))
+		return w.WriteInt64(int64(n.bits))
 	case UintType:
 		return w.WriteUint64(n.bits)
 	case Float64Type:
@@ -167,7 +156,7 @@ func (n *Number) MarshalMsg(b []byte) ([]byte, error) {
 	case InvalidType:
 		return AppendInt(b, 0), nil
 	case IntType:
-		return AppendInt64(b, *(*int64)(unsafe.Pointer(&n.bits))), nil
+		return AppendInt64(b, int64(n.bits)), nil
 	case UintType:
 		return AppendUint64(b, n.bits), nil
 	case Float64Type:

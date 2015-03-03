@@ -23,8 +23,9 @@ func (u *unmarshalGen) Execute(p Elem) error {
 		return u.p.err
 	}
 
-	u.p.print("\n//UnmarshalMsg implements msgp.Unmarshaler\n")
-	u.p.printf("func (%s %s) UnmarshalMsg(bts []byte) (o []byte, err error) {", p.Varname(), methodReceiver(p))
+	u.p.comment("UnmarshalMsg implements msgp.Unmarshaler")
+
+	u.p.printf("\nfunc (%s %s) UnmarshalMsg(bts []byte) (o []byte, err error) {", p.Varname(), methodReceiver(p))
 	next(u, p)
 	u.p.print("\no = bts")
 	u.p.nakedReturn()
