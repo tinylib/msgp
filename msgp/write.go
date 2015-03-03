@@ -35,7 +35,7 @@ var (
 	btsType    = reflect.TypeOf(([]byte)(nil))
 	writerPool = sync.Pool{
 		New: func() interface{} {
-			return &Writer{buf: make([]byte, 0, 1024)}
+			return &Writer{buf: make([]byte, 2048)}
 		},
 	}
 )
@@ -102,8 +102,9 @@ type Encodable interface {
 // to flush all of the buffered data
 // to the underlying writer.
 type Writer struct {
-	w   io.Writer
-	buf []byte
+	w    io.Writer
+	buf  []byte
+	wloc int
 }
 
 // NewWriter returns a new *Writer.
@@ -116,12 +117,16 @@ func NewWriter(w io.Writer) *Writer {
 
 // NewWriterSize returns a writer with a custom buffer size.
 func NewWriterSize(w io.Writer, sz int) *Writer {
-	if sz < 16 {
-		sz = 16
+	// we must be able to require() 18
+	// contiguous bytes, so that is the
+	// practical minimum buffer size
+	if sz < 18 {
+		sz = 18
 	}
+
 	return &Writer{
 		w:   w,
-		buf: make([]byte, 0, sz),
+		buf: make([]byte, sz),
 	}
 }
 
@@ -136,31 +141,15 @@ func Encode(w io.Writer, e Encodable) error {
 	return err
 }
 
-// Write writes a marshaler to an io.Writer.
-func Write(w io.Writer, m Marshaler) error {
-	wr := NewWriter(w)
-	err := wr.Encode(m)
-	if err == nil {
-		err = wr.Flush()
-	}
-	freeW(wr)
-	return err
-}
-
 func (mw *Writer) flush() error {
-	if len(mw.buf) > 0 {
-		n, err := mw.w.Write(mw.buf)
-		if err != nil {
-			// copy unwritten data
-			// back to index 0
-			if n > 0 {
-				mw.buf = mw.buf[:copy(mw.buf[0:], mw.buf[n:])]
-			}
-			return err
+	n, err := mw.w.Write(mw.buf[:mw.wloc])
+	if err != nil {
+		if n > 0 {
+			mw.wloc = copy(mw.buf, mw.buf[n:mw.wloc])
 		}
-		mw.buf = mw.buf[0:0]
-		return nil
+		return err
 	}
+	mw.wloc = 0
 	return nil
 }
 
@@ -169,43 +158,36 @@ func (mw *Writer) flush() error {
 func (mw *Writer) Flush() error { return mw.flush() }
 
 // Buffered returns the number bytes in the write buffer
-func (mw *Writer) Buffered() int { return len(mw.buf) }
+func (mw *Writer) Buffered() int { return len(mw.buf) - mw.wloc }
 
-func (mw *Writer) avail() int { return cap(mw.buf) - len(mw.buf) }
+func (mw *Writer) avail() int { return len(mw.buf) - mw.wloc }
 
+// NOTE: this should only be called with
+// a number that is guaranteed to be less than
+// the minimum buffer size (18). in practice,
+// this is always called with a constant.
 func (mw *Writer) require(n int) (int, error) {
-	l := len(mw.buf)
-	c := cap(mw.buf)
-	if c-l >= n {
-		mw.buf = mw.buf[:l+n] // grow by 'n'; return old offset
-		return l, nil
+	c := len(mw.buf)
+	wl := mw.wloc
+	if c-wl < n {
+		if err := mw.flush(); err != nil {
+			return 0, err
+		}
+		wl = mw.wloc
 	}
-	err := mw.flush()
-	if err != nil {
-		return 0, err
-	}
-	// after flush,
-	// len(mw.buf) = 0
-	if n > c {
-		mw.buf = make([]byte, n)
-		return 0, nil
-	}
-	mw.buf = mw.buf[:n]
-	return 0, nil
+	mw.wloc += n
+	return wl, nil
 }
 
 // push one byte onto the buffer
 func (mw *Writer) push(b byte) error {
-	l := len(mw.buf)
-	if l == cap(mw.buf) {
-		err := mw.flush()
-		if err != nil {
+	if mw.wloc == len(mw.buf) {
+		if err := mw.flush(); err != nil {
 			return err
 		}
-		l = 0
 	}
-	mw.buf = mw.buf[:l+1]
-	mw.buf[l] = b
+	mw.buf[mw.wloc] = b
+	mw.wloc++
 	return nil
 }
 
@@ -213,93 +195,39 @@ func (mw *Writer) push(b byte) error {
 // data directly to the buffer.
 func (mw *Writer) Write(p []byte) (int, error) {
 	l := len(p)
-	if mw.avail() >= l {
-		o := len(mw.buf)
-		mw.buf = mw.buf[:o+l]
-		copy(mw.buf[o:], p)
-		return l, nil
+	if mw.avail() < l {
+		if err := mw.flush(); err != nil {
+			return 0, err
+		}
+		if l > len(mw.buf) {
+			return mw.w.Write(p)
+		}
 	}
-	err := mw.flush()
-	if err != nil {
-		return 0, err
-	}
-	if l > cap(mw.buf) {
-		return mw.w.Write(p)
-	}
-	mw.buf = mw.buf[:l]
-	copy(mw.buf, p)
+	mw.wloc += copy(mw.buf[mw.wloc:], p)
 	return l, nil
 }
 
 // implements io.WriteString
 func (mw *Writer) writeString(s string) error {
 	l := len(s)
-
-	// we have space; copy
-	if mw.avail() >= l {
-		o := len(mw.buf)
-		mw.buf = mw.buf[:o+l]
-		copy(mw.buf[o:], s)
-		return nil
-	}
-
-	// we need to flush one way
-	// or another.
-	if err := mw.flush(); err != nil {
-		return err
-	}
-
-	// shortcut: big strings go
-	// straight to the underlying writer
-	if l > cap(mw.buf) {
-		_, err := io.WriteString(mw.w, s)
-		return err
-	}
-
-	mw.buf = mw.buf[:l]
-	copy(mw.buf, s)
-	return nil
-}
-
-// Encode writes a Marshaler to the writer.
-// Users should attempt to ensure that the
-// encoded size of the marshaler is less than
-// the total capacity of the buffer in order
-// to avoid the writer having to re-allocate
-// the entirety of the buffer.
-func (mw *Writer) Encode(m Marshaler) error {
-	if s, ok := m.(Sizer); ok {
-		// check for available space
-		sz := s.Msgsize()
-		if sz > mw.avail() {
-			err := mw.flush()
-			if err != nil {
-				return err
-			}
-			if sz > cap(mw.buf) {
-				mw.buf = make([]byte, 0, sz)
-			}
-		}
-	} else if mw.avail() > (cap(mw.buf) / 2) {
-		// flush if we're more than half full
+	if mw.avail() < l {
 		if err := mw.flush(); err != nil {
 			return err
 		}
+		if l > len(mw.buf) {
+			_, err := io.WriteString(mw.w, s)
+			return err
+		}
 	}
-	var err error
-	old := mw.buf
-	mw.buf, err = m.MarshalMsg(mw.buf)
-	if err != nil {
-		mw.buf = old
-		return err
-	}
+	mw.wloc += copy(mw.buf[mw.wloc:], s)
 	return nil
 }
 
 // Reset changes the underlying writer used by the Writer
 func (mw *Writer) Reset(w io.Writer) {
+	mw.buf = mw.buf[:cap(mw.buf)]
 	mw.w = w
-	mw.buf = mw.buf[0:0]
+	mw.wloc = 0
 }
 
 // WriteMapHeader writes a map header of the given
@@ -681,8 +609,6 @@ func (mw *Writer) WriteIntf(v interface{}) error {
 
 	case Encodable:
 		return v.EncodeMsg(mw)
-	case Marshaler:
-		return mw.Encode(v)
 	case Extension:
 		return mw.WriteExtension(v)
 
@@ -795,9 +721,6 @@ func (mw *Writer) writeSlice(v reflect.Value) (err error) {
 func (mw *Writer) writeStruct(v reflect.Value) error {
 	if enc, ok := v.Interface().(Encodable); ok {
 		return enc.EncodeMsg(mw)
-	}
-	if mar, ok := v.Interface().(Marshaler); ok {
-		return mw.Encode(mar)
 	}
 	return fmt.Errorf("msgp: unsupported type: %s", v.Type())
 }
