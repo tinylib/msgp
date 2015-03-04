@@ -10,24 +10,28 @@ func TestNumber(t *testing.T) {
 	n := Number{}
 
 	if n.Type() != IntType {
-		t.Errorf("expect zero-value type to be %s; got %s", IntType, n.Type())
+		t.Errorf("expected zero-value type to be %s; got %s", IntType, n.Type())
+	}
+
+	if n.String() != "0" {
+		t.Errorf("expected Number{}.String() to be \"0\" but got %q", n.String())
 	}
 
 	n.AsInt(248)
 	i, ok := n.Int()
-	if !ok || i != 248 || n.Type() != IntType {
+	if !ok || i != 248 || n.Type() != IntType || n.String() != "248" {
 		t.Errorf("%d in; %d out!", 248, i)
 	}
 
 	n.AsFloat64(3.141)
 	f, ok := n.Float()
-	if !ok || f != 3.141 || n.Type() != Float64Type {
+	if !ok || f != 3.141 || n.Type() != Float64Type || n.String() != "3.141" {
 		t.Errorf("%f in; %f out!", 3.141, f)
 	}
 
 	n.AsUint(40000)
 	u, ok := n.Uint()
-	if !ok || u != 40000 || n.Type() != UintType {
+	if !ok || u != 40000 || n.Type() != UintType || n.String() != "40000" {
 		t.Errorf("%d in; %d out!", 40000, u)
 	}
 

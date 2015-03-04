@@ -243,3 +243,21 @@ func (n *Number) MarshalJSON() ([]byte, error) {
 		panic("(*Number).typ is invalid")
 	}
 }
+
+func (n *Number) String() string {
+	switch n.typ {
+	case InvalidType:
+		return "0"
+	case Float32Type, Float64Type:
+		f, _ := n.Float()
+		return strconv.FormatFloat(f, 'f', -1, 64)
+	case IntType:
+		i, _ := n.Int()
+		return strconv.FormatInt(i, 10)
+	case UintType:
+		u, _ := n.Uint()
+		return strconv.FormatUint(u, 10)
+	default:
+		panic("(*Number).typ is invalid")
+	}
+}
