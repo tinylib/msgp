@@ -48,9 +48,8 @@ type jsWriter interface {
 	WriteString(string) (int, error)
 }
 
-// CopyToJSON reads a single MessagePack-encoded message from 'src' and
-// writes it as JSON to 'dst' until 'src' returns EOF. It returns the
-// number of bytes written and any errors encountered.
+// CopyToJSON reads MessagePack from 'src' and copies it
+// as JSON to 'dst' until EOF.
 func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
 	r := NewReader(src)
 	n, err = r.WriteToJSON(dst)
@@ -386,7 +385,7 @@ func rwBytes(dst jsWriter, src *Reader) (n int, err error) {
 		return
 	}
 	n++
-	src.scratch, err = src.ReadBytes(src.scratch[0:0])
+	src.scratch, err = src.ReadBytes(src.scratch[:0])
 	if err != nil {
 		return
 	}

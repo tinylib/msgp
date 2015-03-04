@@ -196,11 +196,31 @@ func (mw *Writer) WriteExtension(e Extension) error {
 			mw.buf[o+5] = byte(e.ExtensionType())
 		}
 	}
-	o, err := mw.require(l)
+	// we can only write directly to the
+	// buffer if we're sure that it
+	// fits the object
+	if l <= mw.bufsize() {
+		o, err := mw.require(l)
+		if err != nil {
+			return err
+		}
+		return e.MarshalBinaryTo(mw.buf[o:])
+	}
+	// here we create a new buffer
+	// just large enough for the body
+	// and save it as the write buffer
+	err = mw.flush()
 	if err != nil {
 		return err
 	}
-	return e.MarshalBinaryTo(mw.buf[o:])
+	buf := make([]byte, l)
+	err = e.MarshalBinaryTo(buf)
+	if err != nil {
+		return err
+	}
+	mw.buf = buf
+	mw.wloc = l
+	return nil
 }
 
 // peek at the extension type, assuming the next

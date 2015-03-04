@@ -10,13 +10,11 @@ import (
 	"unsafe"
 )
 
-var _int int
-
 const (
 	// spec says int and uint are always
 	// the same size, but that int/uint
 	// size may not be machine word size
-	smallint = unsafe.Sizeof(_int) == 4
+	smallint = unsafe.Sizeof(int(0)) == 4
 )
 
 // where we keep old *Readers
@@ -1031,11 +1029,6 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 	t = time.Unix(sec, int64(nsec)).Local()
 	_, err = m.r.Skip(15)
 	return
-}
-
-// ReadIdent reads data into an object that implements the msgp.Decoder interface
-func (m *Reader) ReadIdent(d Decodable) error {
-	return d.DecodeMsg(m)
 }
 
 // ReadIntf reads out the next object as a raw interface{}.
