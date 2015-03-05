@@ -86,16 +86,8 @@ func (t Type) String() string {
 	}
 }
 
-// freeR frees a reader for use
-// by other processes. It is not necessary
-// to call freeR on a reader. However, maintaining
-// a reference to a *Reader after calling freeR on
-// it will cause undefined behavior. Typically, this
-// function should only be used by the code generator.
 func freeR(m *Reader) {
-	if m != nil {
-		readerPool.Put(m)
-	}
+	readerPool.Put(m)
 }
 
 // Unmarshaler is the interface fulfilled
