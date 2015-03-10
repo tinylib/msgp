@@ -10,13 +10,11 @@ import (
 	"unsafe"
 )
 
-var _int int
-
 const (
 	// spec says int and uint are always
 	// the same size, but that int/uint
 	// size may not be machine word size
-	smallint = unsafe.Sizeof(_int) == 4
+	smallint = unsafe.Sizeof(int(0)) == 4
 )
 
 // where we keep old *Readers
@@ -88,16 +86,8 @@ func (t Type) String() string {
 	}
 }
 
-// FreeR frees a reader for use
-// by other processes. It is not necessary
-// to call FreeR on a reader. However, maintaining
-// a reference to a *Reader after calling FreeR on
-// it will cause undefined behavior. Typically, this
-// function should only be used by the code generator.
-func FreeR(m *Reader) {
-	if m != nil {
-		readerPool.Put(m)
-	}
+func freeR(m *Reader) {
+	readerPool.Put(m)
 }
 
 // Unmarshaler is the interface fulfilled
@@ -121,7 +111,7 @@ type Decodable interface {
 func Decode(r io.Reader, d Decodable) error {
 	rd := NewReader(r)
 	err := d.DecodeMsg(rd)
-	FreeR(rd)
+	freeR(rd)
 	return err
 }
 
@@ -1031,11 +1021,6 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 	t = time.Unix(sec, int64(nsec)).Local()
 	_, err = m.r.Skip(15)
 	return
-}
-
-// ReadIdent reads data into an object that implements the msgp.Decoder interface
-func (m *Reader) ReadIdent(d Decodable) error {
-	return d.DecodeMsg(m)
 }
 
 // ReadIntf reads out the next object as a raw interface{}.

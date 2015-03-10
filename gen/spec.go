@@ -5,6 +5,15 @@ import (
 	"io"
 )
 
+var (
+	NopGen Generator = nopgen{}
+)
+
+// no-op Generator
+type nopgen struct{}
+
+func (n nopgen) Execute(_ Elem) error { return nil }
+
 const (
 	errcheck    = "\nif err != nil { return }"
 	lenAsUint32 = "uint32(len(%s))"

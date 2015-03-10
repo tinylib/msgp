@@ -38,8 +38,7 @@ func (e etestGen) Execute(p Elem) error {
 }
 
 func init() {
-	template.Must(marshalTestTempl.Parse(`
-func Test{{.TypeName}}MarshalUnmarshal(t *testing.T) {
+	template.Must(marshalTestTempl.Parse(`func Test{{.TypeName}}MarshalUnmarshal(t *testing.T) {
 	v := {{.TypeName}}{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
@@ -95,10 +94,11 @@ func Benchmark{{.TypeName}}Unmarshal(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-}`))
+}
 
-	template.Must(encodeTestTempl.Parse(`
-func Test{{.TypeName}}EncodeDecode(t *testing.T) {
+`))
+
+	template.Must(encodeTestTempl.Parse(`func Test{{.TypeName}}EncodeDecode(t *testing.T) {
 	v := {{.TypeName}}{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
@@ -151,6 +151,8 @@ func Benchmark{{.TypeName}}Decode(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-}`))
+}
+
+`))
 
 }

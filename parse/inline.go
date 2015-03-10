@@ -58,7 +58,10 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 			if node, ok := f.Identities[typ]; ok && node.Complexity() < maxComplex {
 				infof("inlining methods for %s into %s...\n", typ, root)
 				*ref = node.Copy()
-			} else if !ok && typ != "msgp.Raw" {
+			} else if !ok && !el.Resolved() {
+				// this is the point at which we're sure that
+				// we've got a type that isn't a primitive,
+				// a library builtin, or a processed type
 				warnf(" \u26a0 WARNING: unresolved identifier: %s\n", typ)
 			}
 		}

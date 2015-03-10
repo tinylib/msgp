@@ -94,6 +94,8 @@ const (
 	IDENT // IDENT means an unrecognized identifier
 )
 
+// all of the recognized identities
+// that map to primitive types
 var primitives = map[string]Primitive{
 	"[]byte":         Bytes,
 	"string":         String,
@@ -116,6 +118,14 @@ var primitives = map[string]Primitive{
 	"interface{}":    Intf,
 	"time.Time":      Time,
 	"msgp.Extension": Ext,
+}
+
+// types built into the library
+// that satisfy all of the
+// interfaces.
+var builtins = map[string]struct{}{
+	"msgp.Raw":    struct{}{},
+	"msgp.Number": struct{}{},
 }
 
 // common data/methods for every Elem
@@ -478,6 +488,18 @@ func (s *BaseElem) Complexity() int {
 		return 2
 	}
 	return 1
+}
+
+// Resolved returns whether or not
+// the type of the element is
+// a primitive or a builtin provided
+// by the package.
+func (s *BaseElem) Resolved() bool {
+	if s.Value == IDENT {
+		_, ok := builtins[s.TypeName()]
+		return ok
+	}
+	return true
 }
 
 func (k Primitive) String() string {
