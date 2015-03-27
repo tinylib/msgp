@@ -169,6 +169,10 @@ type Elem interface {
 	// or equal to 1.)
 	Complexity() int
 
+	// Returns whether or not the
+	// type is safely printable
+	Printable() bool
+
 	hidden()
 }
 
@@ -221,6 +225,8 @@ func (a *Array) Copy() Elem {
 
 func (a *Array) Complexity() int { return 1 + a.Els.Complexity() }
 
+func (a *Array) Printable() bool { return a.Els.Printable() }
+
 // Map is a map[string]Elem
 type Map struct {
 	common
@@ -259,6 +265,8 @@ func (m *Map) Copy() Elem {
 
 func (m *Map) Complexity() int { return 2 + m.Value.Complexity() }
 
+func (m *Map) Printable() bool { return m.Value.Printable() }
+
 type Slice struct {
 	common
 	Index string
@@ -288,6 +296,8 @@ func (s *Slice) Copy() Elem {
 func (s *Slice) Complexity() int {
 	return 1 + s.Els.Complexity()
 }
+
+func (s *Slice) Printable() bool { return s.Els.Printable() }
 
 type Ptr struct {
 	common
@@ -336,6 +346,15 @@ func (s *Ptr) Copy() Elem {
 
 func (s *Ptr) Complexity() int { return 1 + s.Value.Complexity() }
 
+func (s *Ptr) Printable() bool { return s.Value.Printable() }
+
+func (s *Ptr) Needsinit() bool {
+	if be, ok := s.Value.(*BaseElem); ok && be.needsref {
+		return false
+	}
+	return true
+}
+
 type Struct struct {
 	common
 	Fields  []StructField // field list
@@ -378,6 +397,8 @@ func (s *Struct) Complexity() int {
 	return c
 }
 
+func (s *Struct) Printable() bool { return true }
+
 type StructField struct {
 	FieldTag  string // the string inside the `msg:""` tag
 	FieldName string // the name of the struct field
@@ -393,12 +414,19 @@ type BaseElem struct {
 	ShimFromBase string    // shim from base type, or empty
 	Value        Primitive // Type of element
 	Convert      bool      // should we do an explicit conversion?
+	mustinline   bool      // must inline; not printable
+	needsref     bool      // needs reference for shim
 }
+
+func (s *BaseElem) Printable() bool { return !s.mustinline }
 
 func (s *BaseElem) Alias(typ string) {
 	s.common.Alias(typ)
 	if s.Value != IDENT {
 		s.Convert = true
+	}
+	if strings.Contains(typ, ".") {
+		s.mustinline = true
 	}
 }
 
@@ -406,7 +434,7 @@ func (s *BaseElem) SetVarname(a string) {
 	// extensions whose parents
 	// are not pointers need to
 	// be explicitly referenced
-	if s.Value == Ext {
+	if s.Value == Ext || s.needsref {
 		if strings.HasPrefix(a, "*") {
 			s.common.SetVarname(a[1:])
 			return
@@ -478,15 +506,22 @@ func (s *BaseElem) BaseType() string {
 	}
 }
 
+func (s *BaseElem) Needsref(b bool) {
+	s.needsref = b
+}
+
 func (s *BaseElem) Copy() Elem {
 	g := *s
 	return &g
 }
 
 func (s *BaseElem) Complexity() int {
-	if s.Convert {
+	if s.Convert && !s.mustinline {
 		return 2
 	}
+	// we need to return 1 if !printable(),
+	// in order to make sure that stuff gets
+	// inlined appropriately
 	return 1
 }
 

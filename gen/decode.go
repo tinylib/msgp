@@ -30,6 +30,9 @@ func (d *decodeGen) Execute(p Elem) error {
 	if !d.p.ok() {
 		return d.p.err
 	}
+	if !p.Printable() {
+		return nil
+	}
 
 	d.p.comment("DecodeMsg implements msgp.Decodable")
 
@@ -191,12 +194,11 @@ func (d *decodeGen) gPtr(p *Ptr) {
 	if !d.p.ok() {
 		return
 	}
-	vname := p.Varname()
 	d.p.print("\nif dc.IsNil() {")
 	d.p.print("\nerr = dc.ReadNil()")
 	d.p.print(errcheck)
-	d.p.printf("\n%s = nil\n} else {", vname)
-	d.p.printf("\nif %s == nil { %s = new(%s); }", vname, vname, p.Value.TypeName())
+	d.p.printf("\n%s = nil\n} else {", p.Varname())
+	d.p.initPtr(p)
 	next(d, p.Value)
 	d.p.closeblock()
 }

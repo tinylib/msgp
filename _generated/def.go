@@ -2,6 +2,7 @@ package _generated
 
 import (
 	"github.com/tinylib/msgp/msgp"
+	"os"
 	"time"
 )
 
@@ -98,6 +99,17 @@ const (
 
 //msgp:shim MyEnum as:string using:(MyEnum).String/myenumStr
 
+//msgp:shim *os.File as:string using:filetostr/filefromstr
+
+func filetostr(f *os.File) string {
+	return f.Name()
+}
+
+func filefromstr(s string) *os.File {
+	f, _ := os.Open(s)
+	return f
+}
+
 func (m MyEnum) String() string {
 	switch m {
 	case A:
@@ -135,6 +147,7 @@ type Custom struct {
 	Bts   CustomBytes          `msg:"bts"`
 	Mp    map[string]*Embedded `msg:"mp"`
 	Enums []MyEnum             `msg:"enums"` // test explicit enum shim
+	File  *os.File             `msg:file`
 }
 
 type CustomInt int

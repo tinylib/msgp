@@ -220,6 +220,13 @@ func (p *printer) print(format string) {
 	}
 }
 
+func (p *printer) initPtr(pt *Ptr) {
+	if pt.Needsinit() {
+		vname := pt.Varname()
+		p.printf("\nif %s == nil { %s = new(%s); }", vname, vname, pt.Value.TypeName())
+	}
+}
+
 func (p *printer) ok() bool { return p.err == nil }
 
 func tobaseConvert(b *BaseElem) string {
