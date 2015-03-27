@@ -12,6 +12,9 @@ func (m *marshalGen) Execute(p Elem) error {
 	if !m.p.ok() {
 		return m.p.err
 	}
+	if !p.Printable() {
+		return nil
+	}
 
 	m.p.comment("MarshalMsg implements msgp.Marshaler")
 

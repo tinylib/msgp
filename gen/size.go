@@ -55,6 +55,9 @@ func (s *sizeGen) Execute(p Elem) error {
 	if !s.p.ok() {
 		return s.p.err
 	}
+	if !p.Printable() {
+		return nil
+	}
 
 	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", p.Varname(), methodReceiver(p))
 	s.state = assign

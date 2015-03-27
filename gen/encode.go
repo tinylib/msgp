@@ -17,6 +17,9 @@ func (e *encodeGen) Execute(p Elem) error {
 	if !e.p.ok() {
 		return e.p.err
 	}
+	if !p.Printable() {
+		return nil
+	}
 
 	e.p.comment("EncodeMsg implements msgp.Encodable")
 

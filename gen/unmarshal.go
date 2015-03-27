@@ -22,6 +22,9 @@ func (u *unmarshalGen) Execute(p Elem) error {
 	if !u.p.ok() {
 		return u.p.err
 	}
+	if !p.Printable() {
+		return nil
+	}
 
 	u.p.comment("UnmarshalMsg implements msgp.Unmarshaler")
 
@@ -172,9 +175,8 @@ func (u *unmarshalGen) gMap(m *Map) {
 }
 
 func (u *unmarshalGen) gPtr(p *Ptr) {
-	vname := p.Varname()
-	u.p.printf("\nif msgp.IsNil(bts) { bts, err = msgp.ReadNilBytes(bts); if err != nil { return }; %s = nil; } else { ", vname)
-	u.p.printf("\nif %s == nil { %s = new(%s) }", vname, vname, p.Value.TypeName())
+	u.p.printf("\nif msgp.IsNil(bts) { bts, err = msgp.ReadNilBytes(bts); if err != nil { return }; %s = nil; } else { ", p.Varname())
+	u.p.initPtr(p)
 	next(u, p.Value)
 	u.p.closeblock()
 }
