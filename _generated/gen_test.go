@@ -3,6 +3,7 @@ package _generated
 import (
 	"bytes"
 	"github.com/tinylib/msgp/msgp"
+	. "github.com/tinylib/msgp/testing"
 	"reflect"
 	"testing"
 	"time"
@@ -47,7 +48,7 @@ func BenchmarkFastDecode(b *testing.B) {
 
 	var buf bytes.Buffer
 	msgp.Encode(&buf, v)
-	dc := msgp.NewReader(msgp.NewEndlessReader(buf.Bytes(), b))
+	dc := msgp.NewReader(NewEndlessReader(buf.Bytes(), b))
 	b.SetBytes(int64(buf.Len()))
 	b.ReportAllocs()
 	b.ResetTimer()

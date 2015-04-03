@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
+	. "github.com/tinylib/msgp/testing"
 )
 
 func TestSanity(t *testing.T) {

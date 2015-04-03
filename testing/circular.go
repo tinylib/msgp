@@ -1,4 +1,4 @@
-package msgp
+package testing
 
 import (
 	"testing"
