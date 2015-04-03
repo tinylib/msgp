@@ -30,7 +30,8 @@ func (d *decodeGen) Execute(p Elem) error {
 	if !d.p.ok() {
 		return d.p.err
 	}
-	if !p.Printable() {
+
+	if !IsPrintable(p) {
 		return nil
 	}
 

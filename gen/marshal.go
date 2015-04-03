@@ -12,7 +12,7 @@ func (m *marshalGen) Execute(p Elem) error {
 	if !m.p.ok() {
 		return m.p.err
 	}
-	if !p.Printable() {
+	if !IsPrintable(p) {
 		return nil
 	}
 
@@ -23,10 +23,9 @@ func (m *marshalGen) Execute(p Elem) error {
 	// that z.Msgsize() is printed correctly
 	c := p.Varname()
 
-	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", p.Varname(), methodReceiver(p))
+	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", p.Varname(), imutMethodReceiver(p))
 	m.p.printf("\no = msgp.Require(b, %s.Msgsize())", c)
 	next(m, p)
-	unsetReceiver(p)
 	m.p.nakedReturn()
 	return m.p.err
 }

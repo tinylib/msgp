@@ -22,7 +22,7 @@ func (u *unmarshalGen) Execute(p Elem) error {
 	if !u.p.ok() {
 		return u.p.err
 	}
-	if !p.Printable() {
+	if !IsPrintable(p) {
 		return nil
 	}
 

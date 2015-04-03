@@ -55,15 +55,14 @@ func (s *sizeGen) Execute(p Elem) error {
 	if !s.p.ok() {
 		return s.p.err
 	}
-	if !p.Printable() {
+	if !IsPrintable(p) {
 		return nil
 	}
 
-	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", p.Varname(), methodReceiver(p))
+	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", p.Varname(), imutMethodReceiver(p))
 	s.state = assign
 	next(s, p)
 	s.p.nakedReturn()
-	unsetReceiver(p)
 	return s.p.err
 }
 

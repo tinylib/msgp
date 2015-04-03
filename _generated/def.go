@@ -150,5 +150,7 @@ type Custom struct {
 	File  *os.File             `msg:file`
 }
 
+type Files []*os.File
+
 type CustomInt int
 type CustomBytes []byte

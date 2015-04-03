@@ -136,6 +136,13 @@ func (c *common) Varname() string     { return c.vname }
 func (c *common) Alias(typ string)    { c.alias = typ }
 func (c *common) hidden()             {}
 
+func IsPrintable(e Elem) bool {
+	if be, ok := e.(*BaseElem); ok && !be.Printable() {
+		return false
+	}
+	return true
+}
+
 // Elem is a go type capable of being
 // serialized into MessagePack. It is
 // implemented by *Ptr, *Struct, *Array,
@@ -168,10 +175,6 @@ type Elem interface {
 	// complexity of element (greater than
 	// or equal to 1.)
 	Complexity() int
-
-	// Returns whether or not the
-	// type is safely printable
-	Printable() bool
 
 	hidden()
 }
@@ -225,8 +228,6 @@ func (a *Array) Copy() Elem {
 
 func (a *Array) Complexity() int { return 1 + a.Els.Complexity() }
 
-func (a *Array) Printable() bool { return a.Els.Printable() }
-
 // Map is a map[string]Elem
 type Map struct {
 	common
@@ -265,8 +266,6 @@ func (m *Map) Copy() Elem {
 
 func (m *Map) Complexity() int { return 2 + m.Value.Complexity() }
 
-func (m *Map) Printable() bool { return m.Value.Printable() }
-
 type Slice struct {
 	common
 	Index string
@@ -296,8 +295,6 @@ func (s *Slice) Copy() Elem {
 func (s *Slice) Complexity() int {
 	return 1 + s.Els.Complexity()
 }
-
-func (s *Slice) Printable() bool { return s.Els.Printable() }
 
 type Ptr struct {
 	common
@@ -345,8 +342,6 @@ func (s *Ptr) Copy() Elem {
 }
 
 func (s *Ptr) Complexity() int { return 1 + s.Value.Complexity() }
-
-func (s *Ptr) Printable() bool { return s.Value.Printable() }
 
 func (s *Ptr) Needsinit() bool {
 	if be, ok := s.Value.(*BaseElem); ok && be.needsref {
@@ -396,8 +391,6 @@ func (s *Struct) Complexity() int {
 	}
 	return c
 }
-
-func (s *Struct) Printable() bool { return true }
 
 type StructField struct {
 	FieldTag  string // the string inside the `msg:""` tag
