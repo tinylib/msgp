@@ -2,23 +2,25 @@ package parse
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/gen"
-	"github.com/ttacon/chalk"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
 	"reflect"
 	"strings"
+
+	"github.com/tinylib/msgp/gen"
+	"github.com/ttacon/chalk"
 )
 
 // A FileSet is the in-memory representation of a
 // parsed file.
 type FileSet struct {
-	Package    string              // package name
-	Specs      map[string]ast.Expr // type specs in file
-	Identities map[string]gen.Elem // processed from specs
-	Directives []string            // raw preprocessor directives
+	Package              string              // package name
+	Specs                map[string]ast.Expr // type specs in file
+	Identities           map[string]gen.Elem // processed from specs
+	Directives           []string            // raw preprocessor directives
+	EncodeValueReceivers bool                // whether generated encode function reveivers are values instead of pointers
 }
 
 // File parses a file at the relative path
@@ -125,6 +127,7 @@ func Elems(filename string) ([]gen.Elem, string, error) {
 
 	for _, el := range fs.Identities {
 		el.SetVarname("z")
+		el.SetEncodeValueReceivers(fs.EncodeValueReceivers)
 		g = append(g, el)
 	}
 
