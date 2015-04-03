@@ -59,7 +59,7 @@ func (s *sizeGen) Execute(p Elem) error {
 		return nil
 	}
 
-	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", p.Varname(), methodReceiver(p))
+	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", p.Varname(), methodReceiver(p, false))
 	s.state = assign
 	next(s, p)
 	s.p.nakedReturn()

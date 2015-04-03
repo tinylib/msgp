@@ -23,7 +23,7 @@ func (m *marshalGen) Execute(p Elem) error {
 	// that z.Msgsize() is printed correctly
 	c := p.Varname()
 
-	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", p.Varname(), methodReceiver(p))
+	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", p.Varname(), methodReceiver(p, true))
 	m.p.printf("\no = msgp.Require(b, %s.Msgsize())", c)
 	next(m, p)
 	unsetReceiver(p)

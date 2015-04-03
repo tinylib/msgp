@@ -2,9 +2,10 @@ package parse
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/gen"
 	"go/ast"
 	"strings"
+
+	"github.com/tinylib/msgp/gen"
 )
 
 const linePrefix = "//msgp:"
@@ -16,9 +17,10 @@ type directive func([]string, *FileSet) error
 // to add a directive, define a func([]string, *FileSet) error
 // and then add it to this list.
 var directives = map[string]directive{
-	"shim":   applyShim,
-	"ignore": ignore,
-	"tuple":  astuple,
+	"shim":                 applyShim,
+	"ignore":               ignore,
+	"tuple":                astuple,
+	"encodeValueReceivers": encodeValueReceivers,
 }
 
 // find all comment lines that begin with //msgp:
@@ -77,6 +79,15 @@ func ignore(text []string, f *FileSet) error {
 			infof("ignoring: %s...\n", name)
 		}
 	}
+	return nil
+}
+
+//msgp:encodeValueReceivers
+func encodeValueReceivers(text []string, f *FileSet) error {
+	if len(text) != 1 {
+		return fmt.Errorf("encodeValueReceivers directive should have 0 argument; found %+v", text)
+	}
+	f.EncodeValueReceivers = true
 	return nil
 }
 

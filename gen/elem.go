@@ -129,12 +129,17 @@ var builtins = map[string]struct{}{
 }
 
 // common data/methods for every Elem
-type common struct{ vname, alias string }
+type common struct {
+	vname, alias         string
+	encodeValueReceivers bool
+}
 
-func (c *common) SetVarname(s string) { c.vname = s }
-func (c *common) Varname() string     { return c.vname }
-func (c *common) Alias(typ string)    { c.alias = typ }
-func (c *common) hidden()             {}
+func (c *common) SetVarname(s string)            { c.vname = s }
+func (c *common) Varname() string                { return c.vname }
+func (c *common) Alias(typ string)               { c.alias = typ }
+func (c *common) SetEncodeValueReceivers(b bool) { c.encodeValueReceivers = b }
+func (c *common) EncodeValueReceivers() bool     { return c.encodeValueReceivers }
+func (c *common) hidden()                        {}
 
 // Elem is a go type capable of being
 // serialized into MessagePack. It is
@@ -172,6 +177,15 @@ type Elem interface {
 	// Returns whether or not the
 	// type is safely printable
 	Printable() bool
+
+	// SetEncodeValueReceivers sets whether this
+	// nodes encode functions should have value
+	// receivers.
+	SetEncodeValueReceivers(b bool)
+
+	// Returns whether the encode functions
+	// of the type should have value receivers
+	EncodeValueReceivers() bool
 
 	hidden()
 }

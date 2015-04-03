@@ -23,7 +23,7 @@ func (e *encodeGen) Execute(p Elem) error {
 
 	e.p.comment("EncodeMsg implements msgp.Encodable")
 
-	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), methodReceiver(p))
+	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), methodReceiver(p, true))
 	next(e, p)
 	e.p.nakedReturn()
 	unsetReceiver(p)

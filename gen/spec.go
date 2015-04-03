@@ -107,20 +107,25 @@ func next(t traversal, e Elem) {
 // if necessary, wraps a type
 // so that its method receiver
 // is of the write type.
-func methodReceiver(p Elem) string {
+func methodReceiver(p Elem, encodeFunc bool) string {
+	star := "*"
+	if encodeFunc && p.EncodeValueReceivers() {
+		star = ""
+	}
+
 	switch p.(type) {
 
 	// structs and arrays are
 	// dereferenced automatically,
 	// so no need to alter varname
 	case *Struct, *Array:
-		return "*" + p.TypeName()
+		return star + p.TypeName()
 
 	// set variable name to
 	// *varname
 	default:
-		p.SetVarname("(*" + p.Varname() + ")")
-		return "*" + p.TypeName()
+		p.SetVarname("(" + star + p.Varname() + ")")
+		return star + p.TypeName()
 	}
 }
 

@@ -36,7 +36,7 @@ func (d *decodeGen) Execute(p Elem) error {
 
 	d.p.comment("DecodeMsg implements msgp.Decodable")
 
-	d.p.printf("\nfunc (%s %s) DecodeMsg(dc *msgp.Reader) (err error) {", p.Varname(), methodReceiver(p))
+	d.p.printf("\nfunc (%s %s) DecodeMsg(dc *msgp.Reader) (err error) {", p.Varname(), methodReceiver(p, false))
 	next(d, p)
 	d.p.nakedReturn()
 	unsetReceiver(p)
