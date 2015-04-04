@@ -56,6 +56,12 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 		typ := el.TypeName()
 		if el.Value == gen.IDENT && typ != root {
 			if node, ok := f.Identities[typ]; ok && node.Complexity() < maxComplex {
+
+				// in order to ensure bottom-up inlining, we need
+				// to make sure this node has already had all its children
+				// inlined.
+				f.nextInline(&node, root)
+
 				infof("inlining methods for %s into %s...\n", typ, root)
 				*ref = node.Copy()
 			} else if !ok && !el.Resolved() {

@@ -17,16 +17,15 @@ func (e *encodeGen) Execute(p Elem) error {
 	if !e.p.ok() {
 		return e.p.err
 	}
-	if !p.Printable() {
+	if !IsPrintable(p) {
 		return nil
 	}
 
 	e.p.comment("EncodeMsg implements msgp.Encodable")
 
-	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), methodReceiver(p))
+	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), imutMethodReceiver(p))
 	next(e, p)
 	e.p.nakedReturn()
-	unsetReceiver(p)
 	return e.p.err
 }
 

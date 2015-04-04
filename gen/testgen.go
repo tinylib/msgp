@@ -20,9 +20,11 @@ var (
 type mtestGen struct{ io.Writer }
 
 func (m mtestGen) Execute(p Elem) error {
-	switch p.(type) {
-	case *Struct, *Array, *Slice, *Map:
-		return marshalTestTempl.Execute(m.Writer, p)
+	if IsPrintable(p) {
+		switch p.(type) {
+		case *Struct, *Array, *Slice, *Map:
+			return marshalTestTempl.Execute(m.Writer, p)
+		}
 	}
 	return nil
 }
@@ -30,9 +32,11 @@ func (m mtestGen) Execute(p Elem) error {
 type etestGen struct{ io.Writer }
 
 func (e etestGen) Execute(p Elem) error {
-	switch p.(type) {
-	case *Struct, *Array, *Slice, *Map:
-		return encodeTestTempl.Execute(e.Writer, p)
+	if IsPrintable(p) {
+		switch p.(type) {
+		case *Struct, *Array, *Slice, *Map:
+			return encodeTestTempl.Execute(e.Writer, p)
+		}
 	}
 	return nil
 }

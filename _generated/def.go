@@ -147,7 +147,14 @@ type Custom struct {
 	Bts   CustomBytes          `msg:"bts"`
 	Mp    map[string]*Embedded `msg:"mp"`
 	Enums []MyEnum             `msg:"enums"` // test explicit enum shim
-	File  *os.File             `msg:file`
+	Some  FileHandle           `msg:file_handle`
+}
+
+type Files []*os.File
+
+type FileHandle struct {
+	Relevent Files  `msg:"files"`
+	Name     string `msg:"name"`
 }
 
 type CustomInt int
