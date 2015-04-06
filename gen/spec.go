@@ -5,15 +5,6 @@ import (
 	"io"
 )
 
-var (
-	NopGen Generator = nopgen{}
-)
-
-// no-op Generator
-type nopgen struct{}
-
-func (n nopgen) Execute(_ Elem) error { return nil }
-
 const (
 	errcheck    = "\nif err != nil { return }"
 	lenAsUint32 = "uint32(len(%s))"
@@ -27,53 +18,178 @@ const (
 	u32         = "uint32"
 )
 
-// Method is a method that the generator
-// knows how to generate
+// Method is a bitfield representing something that the
+// generator knows how to print.
 type Method uint8
 
+// are the bits in 'f' set in 'm'?
+func (m Method) isset(f Method) bool { return (m&f == f) }
+
+// String implements fmt.Stringer
+func (m Method) String() string {
+	switch m {
+	case 0, invalidmeth:
+		return "<invalid method>"
+	case Decode:
+		return "decode"
+	case Encode:
+		return "encode"
+	case Marshal:
+		return "marshal"
+	case Unmarshal:
+		return "unmarshal"
+	case Size:
+		return "size"
+	case Test:
+		return "test"
+	default:
+		// return e.g. "decode+encode+test"
+		modes := [...]Method{Decode, Encode, Marshal, Unmarshal, Size, Test}
+		any := false
+		nm := ""
+		for _, mm := range modes {
+			if m.isset(mm) {
+				if any {
+					nm += "+" + mm.String()
+				} else {
+					nm += mm.String()
+					any = true
+				}
+			}
+		}
+		return nm
+
+	}
+}
+
+func strtoMeth(s string) Method {
+	switch s {
+	case "encode":
+		return Encode
+	case "decode":
+		return Decode
+	case "marshal":
+		return Marshal
+	case "unmarshal":
+		return Unmarshal
+	case "size":
+		return Size
+	case "test":
+		return Test
+	default:
+		return 0
+	}
+}
+
 const (
-	Decode      Method = iota // msgp.Decodable
-	Encode                    // msgp.Encodable
-	Marshal                   // msgp.Marshaler
-	Unmarshal                 // msgp.Unmarshaler
-	Size                      // msgp.Sizer
-	MarshalTest               // test Marshaler and Unmarshaler
-	EncodeTest                // test Encodable and Decodable
+	Decode      Method                       = 1 << iota // msgp.Decodable
+	Encode                                               // msgp.Encodable
+	Marshal                                              // msgp.Marshaler
+	Unmarshal                                            // msgp.Unmarshaler
+	Size                                                 // msgp.Sizer
+	Test                                                 // generate tests
+	invalidmeth                                          // this isn't a method
+	encodetest  = Encode | Decode | Test                 // tests for Encodable and Decodable
+	marshaltest = Marshal | Unmarshal | Test             // tests for Marshaler and Unmarshaler
 )
 
-// New returns a new Generator that generates
-// a particular method and writes its body
-// to the provided io.Writer. The output
-// may not be in canonical Go format.
-func New(m Method, out io.Writer) Generator {
-	switch m {
-	case Decode:
-		return &decodeGen{printer{w: out}, false}
-	case Encode:
-		return &encodeGen{printer{w: out}}
-	case Marshal:
-		return &marshalGen{printer{w: out}}
-	case Unmarshal:
-		return &unmarshalGen{printer{w: out}, false}
-	case Size:
-		return &sizeGen{printer{w: out}, assign}
-	case MarshalTest:
-		return mtestGen{out}
-	case EncodeTest:
-		return etestGen{out}
+type Printer struct {
+	gens []generator
+}
+
+func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
+	if m.isset(Test) && tests == nil {
+		panic("cannot print tests with 'nil' tests argument!")
 	}
-	panic("bad Method type")
+	gens := make([]generator, 0, 7)
+	if m.isset(Decode) {
+		gens = append(gens, decode(out))
+	}
+	if m.isset(Encode) {
+		gens = append(gens, encode(out))
+	}
+	if m.isset(Marshal) {
+		gens = append(gens, marshal(out))
+	}
+	if m.isset(Unmarshal) {
+		gens = append(gens, unmarshal(out))
+	}
+	if m.isset(Size) {
+		gens = append(gens, sizes(out))
+	}
+	if m.isset(marshaltest) {
+		gens = append(gens, mtest(tests))
+	}
+	if m.isset(encodetest) {
+		gens = append(gens, etest(tests))
+	}
+	if len(gens) == 0 {
+		panic("NewPrinter called with invalid method flags")
+	}
+	return &Printer{gens: gens}
 }
 
-// Generator is the interface through
+// TransformPass is a pass that transforms individual
+// elements. (Note that if the returned is different from
+// the argument, it should not point to the same objects.)
+type TransformPass func(Elem) Elem
+
+// IgnoreTypename is a pass that just ignores
+// types of a given name.
+func IgnoreTypename(name string) TransformPass {
+	return func(e Elem) Elem {
+		if e.TypeName() == name {
+			return nil
+		}
+		return e
+	}
+}
+
+// ApplyDirective applies a directive to a named pass
+// and all of its dependents.
+func (p *Printer) ApplyDirective(pass Method, t TransformPass) {
+	for _, g := range p.gens {
+		if g.Method().isset(pass) {
+			g.Add(t)
+		}
+	}
+}
+
+// Print prints an Elem.
+func (p *Printer) Print(e Elem) error {
+	for _, g := range p.gens {
+		err := g.Execute(e)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// generator is the interface through
 // which code is generated.
-type Generator interface {
-	// Execute writes the method for the provided object.
-	Execute(Elem) error
+type generator interface {
+	Method() Method
+	Add(p TransformPass)
+	Execute(Elem) error // execute writes the method for the provided object.
 }
 
-// every recursive type generator
-// implements this
+type passes []TransformPass
+
+func (p *passes) Add(t TransformPass) {
+	*p = append(*p, t)
+}
+
+func (p *passes) applyall(e Elem) Elem {
+	for _, t := range *p {
+		e = t(e)
+		if e == nil {
+			return nil
+		}
+	}
+	return e
+}
+
 type traversal interface {
 	gMap(*Map)
 	gSlice(*Slice)

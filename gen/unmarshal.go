@@ -1,13 +1,23 @@
 package gen
 
 import (
+	"io"
 	"strconv"
 )
 
+func unmarshal(w io.Writer) *unmarshalGen {
+	return &unmarshalGen{
+		p: printer{w: w},
+	}
+}
+
 type unmarshalGen struct {
+	passes
 	p        printer
 	hasfield bool
 }
+
+func (u *unmarshalGen) Method() Method { return Unmarshal }
 
 func (u *unmarshalGen) needsField() {
 	if u.hasfield {

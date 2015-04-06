@@ -2,15 +2,33 @@ package gen
 
 import (
 	"fmt"
+	"io"
 )
 
+func marshal(w io.Writer) *marshalGen {
+	return &marshalGen{
+		p: printer{w: w},
+	}
+}
+
 type marshalGen struct {
+	passes
 	p printer
+}
+
+func (m *marshalGen) Method() Method { return Marshal }
+
+func (m *marshalGen) Apply(dirs []string) error {
+	return nil
 }
 
 func (m *marshalGen) Execute(p Elem) error {
 	if !m.p.ok() {
 		return m.p.err
+	}
+	p = m.applyall(p)
+	if p == nil {
+		return nil
 	}
 	if !IsPrintable(p) {
 		return nil

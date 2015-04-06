@@ -78,11 +78,11 @@ func File(name string) (*FileSet, error) {
 	return fs, nil
 }
 
-// ApplyDirectives applies all of the preprocessor
-// directives to the file set in the order that they
-// appear in the source file. It is assumed that
-// f.Identities is already populated.
+// applyDirectives applies all of the directives that
+// are known to the parser. additional method-specific
+// directives remain in f.Directives
 func (f *FileSet) applyDirectives() {
+	newdirs := make([]string, 0, len(f.Directives))
 	for _, d := range f.Directives {
 		chunks := strings.Split(d, " ")
 		if len(chunks) > 0 {
@@ -91,9 +91,12 @@ func (f *FileSet) applyDirectives() {
 				if err != nil {
 					warnf("error applying directive: %s\n", err)
 				}
+			} else {
+				newdirs = append(newdirs, d)
 			}
 		}
 	}
+	f.Directives = newdirs
 }
 
 // process takes the contents of f.Specs and
@@ -112,23 +115,66 @@ func (f *FileSet) process() {
 	}
 }
 
-// GetElems creates a FileSet from a filename
-// or directory and returns copies of the processed
-// elements with initialized variable names.
-func Elems(filename string) ([]gen.Elem, string, error) {
-	fs, err := File(filename)
-	if err != nil {
-		return nil, "", err
+func strToMethod(s string) gen.Method {
+	switch s {
+	case "encode":
+		return gen.Encode
+	case "decode":
+		return gen.Decode
+	case "test":
+		return gen.Test
+	case "size":
+		return gen.Size
+	case "marshal":
+		return gen.Marshal
+	case "unmarshal":
+		return gen.Unmarshal
+	default:
+		return 0
 	}
+}
 
-	g := make([]gen.Elem, 0, len(fs.Identities))
+func (f *FileSet) applyDirs(p *gen.Printer) {
+	// apply directives of the form
+	//
+	// 	//msgp:encode ignore {{TypeName}}
+	//
+loop:
+	for _, d := range f.Directives {
+		chunks := strings.Split(d, " ")
+		if len(chunks) > 1 {
+			for i := range chunks {
+				chunks[i] = strings.TrimSpace(chunks[i])
+			}
+			m := strToMethod(chunks[0])
+			if m == 0 {
+				warnf("unknown pass name: %q", chunks[0])
+				continue loop
+			}
+			if fn, ok := passDirectives[chunks[1]]; ok {
+				err := fn(m, chunks[2:], p)
+				if err != nil {
+					warnf("error applying directive: %s", err)
+				}
+			} else {
+				warnf("unrecognized directive %q", chunks[1])
+			}
+		} else {
+			warnf("empty directive: %q", d)
+		}
+	}
+}
 
-	for _, el := range fs.Identities {
+func (f *FileSet) PrintTo(p *gen.Printer) error {
+	f.applyDirs(p)
+	for _, el := range f.Identities {
 		el.SetVarname("z")
-		g = append(g, el)
+		err := p.Print(el)
+		if err != nil {
+			return err
+		}
 	}
-
-	return g, fs.Package, nil
+	return nil
 }
 
 // getTypeSpecs extracts all of the *ast.TypeSpecs in the file
