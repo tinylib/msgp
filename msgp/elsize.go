@@ -48,8 +48,8 @@ func init() {
 	}
 
 	// nfixint
-	for i := mnfixint; i < 0xff; i++ {
-		sizes[i] = bytespec{size: 1, extra: constsize, typ: IntType}
+	for i := uint16(mnfixint); i < 0x100; i++ {
+		sizes[uint8(i)] = bytespec{size: 1, extra: constsize, typ: IntType}
 	}
 
 	// fixstr gets constsize,
