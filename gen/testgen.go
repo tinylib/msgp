@@ -17,29 +17,49 @@ var (
 // "Type{}" syntax.
 // we should support all the types.
 
-type mtestGen struct{ io.Writer }
+func mtest(w io.Writer) *mtestGen {
+	return &mtestGen{w: w}
+}
 
-func (m mtestGen) Execute(p Elem) error {
-	if IsPrintable(p) {
+type mtestGen struct {
+	passes
+	w io.Writer
+}
+
+func (m *mtestGen) Execute(p Elem) error {
+	p = m.applyall(p)
+	if p != nil && IsPrintable(p) {
 		switch p.(type) {
 		case *Struct, *Array, *Slice, *Map:
-			return marshalTestTempl.Execute(m.Writer, p)
+			return marshalTestTempl.Execute(m.w, p)
 		}
 	}
 	return nil
 }
 
-type etestGen struct{ io.Writer }
+func (m *mtestGen) Method() Method { return marshaltest }
 
-func (e etestGen) Execute(p Elem) error {
-	if IsPrintable(p) {
+type etestGen struct {
+	passes
+	w io.Writer
+}
+
+func etest(w io.Writer) *etestGen {
+	return &etestGen{w: w}
+}
+
+func (e *etestGen) Execute(p Elem) error {
+	p = e.applyall(p)
+	if p != nil && IsPrintable(p) {
 		switch p.(type) {
 		case *Struct, *Array, *Slice, *Map:
-			return encodeTestTempl.Execute(e.Writer, p)
+			return encodeTestTempl.Execute(e.w, p)
 		}
 	}
 	return nil
 }
+
+func (e *etestGen) Method() Method { return encodetest }
 
 func init() {
 	template.Must(marshalTestTempl.Parse(`func Test{{.TypeName}}MarshalUnmarshal(t *testing.T) {

@@ -2,10 +2,24 @@ package gen
 
 import (
 	"fmt"
+	"io"
 )
 
+func encode(w io.Writer) *encodeGen {
+	return &encodeGen{
+		p: printer{w: w},
+	}
+}
+
 type encodeGen struct {
+	passes
 	p printer
+}
+
+func (e *encodeGen) Method() Method { return Encode }
+
+func (e *encodeGen) Apply(dirs []string) error {
+	return nil
 }
 
 func (e *encodeGen) writeAndCheck(typ string, argfmt string, arg interface{}) {
@@ -16,6 +30,10 @@ func (e *encodeGen) writeAndCheck(typ string, argfmt string, arg interface{}) {
 func (e *encodeGen) Execute(p Elem) error {
 	if !e.p.ok() {
 		return e.p.err
+	}
+	p = e.applyall(p)
+	if p == nil {
+		return nil
 	}
 	if !IsPrintable(p) {
 		return nil

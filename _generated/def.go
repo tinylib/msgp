@@ -140,10 +140,12 @@ func myenumStr(s string) MyEnum {
 	}
 }
 
+// test pass-specific directive
+//msgp:decode ignore Insane
+
 type Insane [3]map[string]struct{ A, B CustomInt }
 
 type Custom struct {
-	Int   Insane               `msg:"mapstrint"`
 	Bts   CustomBytes          `msg:"bts"`
 	Mp    map[string]*Embedded `msg:"mp"`
 	Enums []MyEnum             `msg:"enums"` // test explicit enum shim

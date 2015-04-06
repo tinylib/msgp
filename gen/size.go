@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"io"
 	"strconv"
 )
 
@@ -18,9 +19,23 @@ const (
 	expr
 )
 
+func sizes(w io.Writer) *sizeGen {
+	return &sizeGen{
+		p:     printer{w: w},
+		state: assign,
+	}
+}
+
 type sizeGen struct {
+	passes
 	p     printer
 	state sizeState
+}
+
+func (s *sizeGen) Method() Method { return Size }
+
+func (s *sizeGen) Apply(dirs []string) error {
+	return nil
 }
 
 func builtinSize(typ string) string {
@@ -54,6 +69,10 @@ func (s *sizeGen) addConstant(sz string) {
 func (s *sizeGen) Execute(p Elem) error {
 	if !s.p.ok() {
 		return s.p.err
+	}
+	p = s.applyall(p)
+	if p == nil {
+		return nil
 	}
 	if !IsPrintable(p) {
 		return nil

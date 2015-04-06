@@ -9,7 +9,11 @@ import (
 
 const linePrefix = "//msgp:"
 
+// func(args, fileset)
 type directive func([]string, *FileSet) error
+
+// func(passName, args, printer)
+type passDirective func(gen.Method, []string, *gen.Printer) error
 
 // map of all recognized directives
 //
@@ -19,6 +23,18 @@ var directives = map[string]directive{
 	"shim":   applyShim,
 	"ignore": ignore,
 	"tuple":  astuple,
+}
+
+var passDirectives = map[string]passDirective{
+	"ignore": passignore,
+}
+
+func passignore(m gen.Method, text []string, p *gen.Printer) error {
+	for _, a := range text {
+		p.ApplyDirective(m, gen.IgnoreTypename(a))
+		infof("%s generation pass: ignoring %s\n", m, a)
+	}
+	return nil
 }
 
 // find all comment lines that begin with //msgp:

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tinylib/msgp/gen"
 	"github.com/tinylib/msgp/parse"
 	"github.com/tinylib/msgp/printer"
 	"github.com/ttacon/chalk"
@@ -15,7 +16,6 @@ import (
 var (
 	out     = flag.String("o", "", "output file")
 	file    = flag.String("file", "", "input file")
-	pkg     = flag.String("pkg", "", "output package")
 	encode  = flag.Bool("io", true, "create Encode and Decode methods")
 	marshal = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
 	tests   = flag.Bool("tests", true, "create tests and benchmarks")
@@ -34,27 +34,23 @@ func main() {
 		}
 	}
 
-	if *pkg == "" {
-		*pkg = os.Getenv("GOPACKAGE")
-	}
-
-	var mode printer.Mode
+	var mode gen.Method
 	if *encode {
-		mode |= printer.Encode
+		mode |= (gen.Encode | gen.Decode | gen.Size)
 	}
 	if *marshal {
-		mode |= printer.Marshal
+		mode |= (gen.Marshal | gen.Unmarshal)
 	}
-	if *tests && mode != printer.Zero {
-		mode |= printer.Test
+	if *tests {
+		mode |= gen.Test
 	}
 
-	if mode == printer.Zero {
+	if mode&^gen.Test == 0 {
 		fmt.Println(chalk.Red.Color("No methods to generate; -io=false && -marshal=false"))
 		os.Exit(1)
 	}
 
-	if err := Run(*pkg, *file, mode); err != nil {
+	if err := Run(*file, mode); err != nil {
 		fmt.Println(chalk.Red.Color(err.Error()))
 		os.Exit(1)
 	}
@@ -62,29 +58,23 @@ func main() {
 
 // Run writes all methods using the associated file/path and package.
 // (The package is only relevant for writing the new file's package declaration.)
-func Run(gopkg string, gofile string, mode printer.Mode) error {
+func Run(gofile string, mode gen.Method) error {
+	if mode&^gen.Test == 0 {
+		return nil
+	}
 	fmt.Println(chalk.Magenta.Color("======== MessagePack Code Generator ======="))
 	fmt.Printf(chalk.Magenta.Color(">>> Input: \"%s\"...\n"), gofile)
-	elems, pkgName, err := parse.Elems(gofile)
+	fs, err := parse.File(gofile)
 	if err != nil {
 		return err
 	}
 
-	// use the parsed
-	// package name if it
-	// isn't set from $GOPACKAGE
-	// or -pkg
-	if gopkg == "" {
-		gopkg = pkgName
-	}
-
-	if len(elems) == 0 {
-		fmt.Println(chalk.Magenta.Color("No structs requiring code generation were found!"))
+	if len(fs.Identities) == 0 {
+		fmt.Println(chalk.Magenta.Color("No types requiring code generation were found!"))
 		return nil
 	}
 
-	newfile := newFilename(gofile, pkgName)
-	return printer.PrintFile(newfile, gopkg, elems, mode)
+	return printer.PrintFile(newFilename(gofile, fs.Package), fs, mode)
 }
 
 func newFilename(old string, pkg string) string {

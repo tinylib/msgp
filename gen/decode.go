@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"io"
 	"strconv"
 )
 
@@ -12,10 +13,20 @@ const (
 	arraySizeVar       = "asz"
 )
 
+func decode(w io.Writer) *decodeGen {
+	return &decodeGen{
+		p:        printer{w: w},
+		hasfield: false,
+	}
+}
+
 type decodeGen struct {
+	passes
 	p        printer
 	hasfield bool
 }
+
+func (d *decodeGen) Method() Method { return Decode }
 
 func (d *decodeGen) needsField() {
 	if d.hasfield {
@@ -26,6 +37,10 @@ func (d *decodeGen) needsField() {
 }
 
 func (d *decodeGen) Execute(p Elem) error {
+	p = d.applyall(p)
+	if p == nil {
+		return nil
+	}
 	d.hasfield = false
 	if !d.p.ok() {
 		return d.p.err
