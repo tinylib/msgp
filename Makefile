@@ -16,4 +16,4 @@ bench: install generate
 	@go test -bench . ./_generated
 
 clean:
-	rm ./_generated/generated.go && rm ./_generated/generated_test.go
+	$(RM) ./_generated/generated.go && $(RM) ./_generated/generated_test.go
