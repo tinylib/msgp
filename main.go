@@ -60,7 +60,7 @@ func main() {
 		mode |= (gen.Encode | gen.Decode | gen.Size)
 	}
 	if *marshal {
-		mode |= (gen.Marshal | gen.Unmarshal)
+		mode |= (gen.Marshal | gen.Unmarshal | gen.Size)
 	}
 	if *tests {
 		mode |= gen.Test
