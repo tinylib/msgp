@@ -26,11 +26,17 @@ func PrintFile(file string, f *parse.FileSet, mode gen.Method) error {
 		return err
 	}
 	infof(">>> Generated \"%s\"\n", file)
-	err = format(file)
-	if err != nil {
-		return err
+	files := []string{file}
+	if mode&gen.Test != 0 {
+		files = append(files, strings.TrimSuffix(file, ".go") + "_test.go")
 	}
-	infof(">>> Formatted \"%s\"\n", file)
+	for _, file := range(files) {
+		err = format(file)
+		if err != nil {
+			return err
+		}
+		infof(">>> Formatted \"%s\"\n", file)
+	}
 	infof(">>> Done.\n")
 	return nil
 }
