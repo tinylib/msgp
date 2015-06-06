@@ -84,7 +84,11 @@ func generate(file string, f *parse.FileSet, mode gen.Method) error {
 		if err != nil {
 			return err
 		}
-		err = writeImportHeader(testwr, "bytes", "github.com/tinylib/msgp/msgp", "testing")
+		if mode&(gen.Encode|gen.Decode) != 0 {
+			err = writeImportHeader(testwr, "bytes", "github.com/tinylib/msgp/msgp", "testing")
+		} else {
+			err = writeImportHeader(testwr, "github.com/tinylib/msgp/msgp", "testing")
+		}
 	}
 	return f.PrintTo(gen.NewPrinter(mode, outwr, testwr))
 }
