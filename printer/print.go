@@ -24,11 +24,14 @@ func PrintFile(file string, f *parse.FileSet, mode gen.Method) error {
 	if err != nil {
 		return err
 	}
-	err = format(file, out.Bytes())
-	if err != nil {
-		return err
-	}
-	infof(">>> Wrote and formatted \"%s\"\n", file)
+
+	// we'll run goimports on the main file
+	// in another goroutine, and run it here
+	// for the test file. empirically, this
+	// takes about the same amount of time as
+	// doing them in serial when GOMAXPROCS=1,
+	// and faster otherwise.
+	res := goformat(file, out.Bytes())
 	if tests != nil {
 		testfile := strings.TrimSuffix(file, ".go") + "_test.go"
 		err = format(testfile, tests.Bytes())
@@ -36,6 +39,10 @@ func PrintFile(file string, f *parse.FileSet, mode gen.Method) error {
 			return err
 		}
 		infof(">>> Wrote and formatted \"%s\"\n", testfile)
+	}
+	err = <-res
+	if err != nil {
+		return err
 	}
 	infof(">>> Done.\n")
 	return nil
@@ -47,6 +54,15 @@ func format(file string, data []byte) error {
 		return err
 	}
 	return ioutil.WriteFile(file, out, 0600)
+}
+
+func goformat(file string, data []byte) <-chan error {
+	out := make(chan error, 1)
+	go func(file string, data []byte, end chan error) {
+		end <- format(file, data)
+		infof(">>> Wrote and formatted \"%s\"\n", file)
+	}(file, data, out)
+	return out
 }
 
 func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, error) {
