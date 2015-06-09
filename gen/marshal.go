@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"github.com/tinylib/msgp/msgp"
 	"io"
 )
 
@@ -66,7 +67,10 @@ func (m *marshalGen) gStruct(s *Struct) {
 }
 
 func (m *marshalGen) tuple(s *Struct) {
-	m.rawAppend(arrayHeader, intFmt, len(s.Fields))
+	data := make([]byte, 0, 5)
+	data = msgp.AppendArrayHeader(data, uint32(len(s.Fields)))
+	m.p.printf("\n// array header, size %d", len(s.Fields))
+	m.rawbytes(data)
 	for i := range s.Fields {
 		if !m.p.ok() {
 			return
@@ -76,14 +80,31 @@ func (m *marshalGen) tuple(s *Struct) {
 }
 
 func (m *marshalGen) mapstruct(s *Struct) {
-	m.rawAppend(mapHeader, intFmt, len(s.Fields))
+	data := make([]byte, 0, 64)
+	data = msgp.AppendMapHeader(data, uint32(len(s.Fields)))
+	m.p.printf("\n// map header, size %d", len(s.Fields))
+	m.rawbytes(data)
 	for i := range s.Fields {
 		if !m.p.ok() {
 			return
 		}
-		m.rawAppend(stringTyp, quotedFmt, s.Fields[i].FieldTag)
+		data = data[:0]
+		data = msgp.AppendString(data, s.Fields[i].FieldTag)
+
+		m.p.printf("\n// string %q", s.Fields[i].FieldTag)
+		m.rawbytes(data)
+
 		next(m, s.Fields[i].FieldElem)
 	}
+}
+
+// append raw data
+func (m *marshalGen) rawbytes(bts []byte) {
+	m.p.print("\no = append(o, ")
+	for _, b := range bts {
+		m.p.printf("0x%x,", b)
+	}
+	m.p.print(")")
 }
 
 func (m *marshalGen) gMap(s *Map) {
