@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"github.com/tinylib/msgp/msgp"
 	"io"
 	"strconv"
 )
@@ -89,8 +90,12 @@ func (s *sizeGen) gStruct(st *Struct) {
 	if !s.p.ok() {
 		return
 	}
+
+	nfields := uint32(len(st.Fields))
+
 	if st.AsTuple {
-		s.addConstant(builtinSize(arrayHeader))
+		data := msgp.AppendArrayHeader(nil, nfields)
+		s.addConstant(strconv.Itoa(len(data)))
 		for i := range st.Fields {
 			if !s.p.ok() {
 				return
@@ -98,10 +103,15 @@ func (s *sizeGen) gStruct(st *Struct) {
 			next(s, st.Fields[i].FieldElem)
 		}
 	} else {
-		s.addConstant(builtinSize(mapHeader))
+		data := msgp.AppendMapHeader(nil, nfields)
+		s.addConstant(strconv.Itoa(len(data)))
+		//s.addConstant(builtinSize(mapHeader))
 		for i := range st.Fields {
-			s.addConstant(builtinSize("StringPrefix"))
-			s.addConstant(strconv.Itoa(len(st.Fields[i].FieldTag)))
+			data = data[:0]
+			data = msgp.AppendString(data, st.Fields[i].FieldTag)
+			s.addConstant(strconv.Itoa(len(data)))
+			//s.addConstant(builtinSize("StringPrefix"))
+			//s.addConstant(strconv.Itoa(len(st.Fields[i].FieldTag)))
 			next(s, st.Fields[i].FieldElem)
 		}
 	}
