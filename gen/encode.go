@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"github.com/tinylib/msgp/msgp"
 	"io"
 )
 
@@ -61,7 +62,9 @@ func (e *encodeGen) gStruct(s *Struct) {
 
 func (e *encodeGen) tuple(s *Struct) {
 	nfields := len(s.Fields)
-	e.writeAndCheck(arrayHeader, intFmt, nfields)
+	data := msgp.AppendArrayHeader(nil, uint32(nfields))
+	e.p.printf("\n// array header, size %d", nfields)
+	e.appendraw(data)
 	for i := range s.Fields {
 		if !e.p.ok() {
 			return
@@ -70,14 +73,31 @@ func (e *encodeGen) tuple(s *Struct) {
 	}
 }
 
+func (e *encodeGen) appendraw(bts []byte) {
+	e.p.print("\nerr = en.Append(")
+	for i, b := range bts {
+		if i != 0 {
+			e.p.print(", ")
+		}
+		e.p.printf("0x%x", b)
+	}
+	e.p.print(")\nif err != nil { return err }")
+}
+
 func (e *encodeGen) structmap(s *Struct) {
 	nfields := len(s.Fields)
-	e.writeAndCheck(mapHeader, intFmt, nfields)
+	data := msgp.AppendMapHeader(nil, uint32(nfields))
+	e.p.printf("\n// map header, size %d", nfields)
+	e.appendraw(data)
 	for i := range s.Fields {
 		if !e.p.ok() {
 			return
 		}
-		e.writeAndCheck(stringTyp, quotedFmt, s.Fields[i].FieldTag)
+		data = data[:0]
+		data = msgp.AppendString(data, s.Fields[i].FieldTag)
+		e.p.printf("\n// write %q", s.Fields[i].FieldTag)
+		e.appendraw(data)
+		//e.writeAndCheck(stringTyp, quotedFmt, s.Fields[i].FieldTag)
 		next(e, s.Fields[i].FieldElem)
 	}
 }
