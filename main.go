@@ -41,6 +41,7 @@ var (
 	encode  = flag.Bool("io", true, "create Encode and Decode methods")
 	marshal = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
 	tests   = flag.Bool("tests", true, "create tests and benchmarks")
+	exports = flag.Bool("exports", true, "process only exported types")
 )
 
 func main() {
@@ -65,6 +66,9 @@ func main() {
 	if *tests {
 		mode |= gen.Test
 	}
+	if !*exports {
+		mode |= gen.Unexported
+	}
 
 	if mode&^gen.Test == 0 {
 		fmt.Println(chalk.Red.Color("No methods to generate; -io=false && -marshal=false"))
@@ -87,7 +91,7 @@ func Run(gofile string, mode gen.Method) error {
 	}
 	fmt.Println(chalk.Magenta.Color("======== MessagePack Code Generator ======="))
 	fmt.Printf(chalk.Magenta.Color(">>> Input: \"%s\"...\n"), gofile)
-	fs, err := parse.File(gofile)
+	fs, err := parse.File(gofile, mode&gen.Unexported == 0)
 	if err != nil {
 		return err
 	}

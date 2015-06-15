@@ -2,14 +2,15 @@ package parse
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/gen"
-	"github.com/ttacon/chalk"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
 	"reflect"
 	"strings"
+
+	"github.com/tinylib/msgp/gen"
+	"github.com/ttacon/chalk"
 )
 
 // A FileSet is the in-memory representation of a
@@ -23,10 +24,11 @@ type FileSet struct {
 
 // File parses a file at the relative path
 // provided and produces a new *FileSet.
-// (No exported structs is considered an error.)
+// (No structs is considered an error.)
 // If you pass in a path to a directory, the entire
 // directory will be parsed.
-func File(name string) (*FileSet, error) {
+// If exports is true, only exported identifiers are included in the FileSet.
+func File(name string, exports bool) (*FileSet, error) {
 	fs := &FileSet{
 		Specs:      make(map[string]ast.Expr),
 		Identities: make(map[string]gen.Elem),
@@ -53,7 +55,9 @@ func File(name string) (*FileSet, error) {
 		fs.Package = one.Name
 		for _, fl := range one.Files {
 			fs.Directives = append(fs.Directives, yieldComments(fl.Comments)...)
-			ast.FileExports(fl)
+			if exports {
+				ast.FileExports(fl)
+			}
 			fs.getTypeSpecs(fl)
 		}
 	} else {
@@ -63,12 +67,14 @@ func File(name string) (*FileSet, error) {
 		}
 		fs.Package = f.Name.Name
 		fs.Directives = yieldComments(f.Comments)
-		ast.FileExports(f)
+		if exports {
+			ast.FileExports(f)
+		}
 		fs.getTypeSpecs(f)
 	}
 
 	if len(fs.Specs) == 0 {
-		return nil, fmt.Errorf("no exported definitions in %s", name)
+		return nil, fmt.Errorf("no definitions in %s", name)
 	}
 
 	fs.process()

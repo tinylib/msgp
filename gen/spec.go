@@ -42,9 +42,11 @@ func (m Method) String() string {
 		return "size"
 	case Test:
 		return "test"
+	case Unexported:
+		return "unexported"
 	default:
 		// return e.g. "decode+encode+test"
-		modes := [...]Method{Decode, Encode, Marshal, Unmarshal, Size, Test}
+		modes := [...]Method{Decode, Encode, Marshal, Unmarshal, Size, Test, Unexported}
 		any := false
 		nm := ""
 		for _, mm := range modes {
@@ -76,6 +78,8 @@ func strtoMeth(s string) Method {
 		return Size
 	case "test":
 		return Test
+	case "unexported":
+		return Unexported
 	default:
 		return 0
 	}
@@ -88,6 +92,7 @@ const (
 	Unmarshal                                            // msgp.Unmarshaler
 	Size                                                 // msgp.Sizer
 	Test                                                 // generate tests
+	Unexported                                           // generate code for unexported types
 	invalidmeth                                          // this isn't a method
 	encodetest  = Encode | Decode | Test                 // tests for Encodable and Decodable
 	marshaltest = Marshal | Unmarshal | Test             // tests for Marshaler and Unmarshaler
