@@ -36,11 +36,12 @@ import (
 )
 
 var (
-	out     = flag.String("o", "", "output file")
-	file    = flag.String("file", "", "input file")
-	encode  = flag.Bool("io", true, "create Encode and Decode methods")
-	marshal = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
-	tests   = flag.Bool("tests", true, "create tests and benchmarks")
+	out        = flag.String("o", "", "output file")
+	file       = flag.String("file", "", "input file")
+	encode     = flag.Bool("io", true, "create Encode and Decode methods")
+	marshal    = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
+	tests      = flag.Bool("tests", true, "create tests and benchmarks")
+	unexported = flag.Bool("unexported", false, "also process unexported types")
 )
 
 func main() {
@@ -71,7 +72,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := Run(*file, mode); err != nil {
+	if err := Run(*file, mode, *unexported); err != nil {
 		fmt.Println(chalk.Red.Color(err.Error()))
 		os.Exit(1)
 	}
@@ -79,15 +80,15 @@ func main() {
 
 // Run writes all methods using the associated file or path, e.g.
 //
-//	err := msgp.Run("path/to/myfile.go", gen.Size|gen.Marshal|gen.Unmarshal|gen.Test)
+//	err := msgp.Run("path/to/myfile.go", gen.Size|gen.Marshal|gen.Unmarshal|gen.Test, false)
 //
-func Run(gofile string, mode gen.Method) error {
+func Run(gofile string, mode gen.Method, unexported bool) error {
 	if mode&^gen.Test == 0 {
 		return nil
 	}
 	fmt.Println(chalk.Magenta.Color("======== MessagePack Code Generator ======="))
 	fmt.Printf(chalk.Magenta.Color(">>> Input: \"%s\"...\n"), gofile)
-	fs, err := parse.File(gofile)
+	fs, err := parse.File(gofile, unexported)
 	if err != nil {
 		return err
 	}
