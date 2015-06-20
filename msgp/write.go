@@ -184,6 +184,17 @@ func (mw *Writer) require(n int) (int, error) {
 	return wl, nil
 }
 
+func (mw *Writer) Append(b ...byte) error {
+	if mw.avail() < len(b) {
+		err := mw.flush()
+		if err != nil {
+			return err
+		}
+	}
+	mw.wloc += copy(mw.buf[mw.wloc:], b)
+	return nil
+}
+
 // push one byte onto the buffer
 //
 // NOTE: this is a hot code path
