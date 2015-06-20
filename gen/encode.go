@@ -97,7 +97,6 @@ func (e *encodeGen) structmap(s *Struct) {
 		data = msgp.AppendString(data, s.Fields[i].FieldTag)
 		e.p.printf("\n// write %q", s.Fields[i].FieldTag)
 		e.appendraw(data)
-		//e.writeAndCheck(stringTyp, quotedFmt, s.Fields[i].FieldTag)
 		next(e, s.Fields[i].FieldElem)
 	}
 }
