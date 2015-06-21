@@ -2,5 +2,6 @@ language: go
 
 go:
   - 1.4
+  - tip
 
-script: "go get -d -t ./... && make test"
+script: "make travis"
