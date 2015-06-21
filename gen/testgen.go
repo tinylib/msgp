@@ -62,7 +62,7 @@ func (e *etestGen) Execute(p Elem) error {
 func (e *etestGen) Method() Method { return encodetest }
 
 func init() {
-	template.Must(marshalTestTempl.Parse(`func Test{{.TypeName}}MarshalUnmarshal(t *testing.T) {
+	template.Must(marshalTestTempl.Parse(`func TestMarshalUnmarshal{{.TypeName}}(t *testing.T) {
 	v := {{.TypeName}}{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
@@ -85,7 +85,7 @@ func init() {
 	}
 }
 
-func Benchmark{{.TypeName}}MarshalMsg(b *testing.B) {
+func BenchmarkMarshalMsg{{.TypeName}}(b *testing.B) {
 	v := {{.TypeName}}{}
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -94,7 +94,7 @@ func Benchmark{{.TypeName}}MarshalMsg(b *testing.B) {
 	}
 }
 
-func Benchmark{{.TypeName}}AppendMsg(b *testing.B) {
+func BenchmarkAppendMsg{{.TypeName}}(b *testing.B) {
 	v := {{.TypeName}}{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
@@ -106,7 +106,7 @@ func Benchmark{{.TypeName}}AppendMsg(b *testing.B) {
 	}
 }
 
-func Benchmark{{.TypeName}}Unmarshal(b *testing.B) {
+func BenchmarkUnmarshal{{.TypeName}}(b *testing.B) {
 	v := {{.TypeName}}{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
@@ -122,7 +122,7 @@ func Benchmark{{.TypeName}}Unmarshal(b *testing.B) {
 
 `))
 
-	template.Must(encodeTestTempl.Parse(`func Test{{.TypeName}}EncodeDecode(t *testing.T) {
+	template.Must(encodeTestTempl.Parse(`func TestEncodeDecode{{.TypeName}}(t *testing.T) {
 	v := {{.TypeName}}{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
@@ -146,7 +146,7 @@ func Benchmark{{.TypeName}}Unmarshal(b *testing.B) {
 	}
 }
 
-func Benchmark{{.TypeName}}Encode(b *testing.B) {
+func BenchmarkEncode{{.TypeName}}(b *testing.B) {
 	v := {{.TypeName}}{}
 	var buf bytes.Buffer 
 	msgp.Encode(&buf, &v)
@@ -160,7 +160,7 @@ func Benchmark{{.TypeName}}Encode(b *testing.B) {
 	en.Flush()
 }
 
-func Benchmark{{.TypeName}}Decode(b *testing.B) {
+func BenchmarkDecode{{.TypeName}}(b *testing.B) {
 	v := {{.TypeName}}{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
