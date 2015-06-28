@@ -9,8 +9,16 @@ GGEN = ./_generated/generated.go ./_generated/generated_test.go
 # generated unit test files
 MGEN = ./msgp/defgen_test.go
 
-install:
-	go install ./...
+SHELL := /bin/bash
+
+BIN = $(GOPATH)/bin/msgp
+
+.PHONY: clean wipe install get-deps bench all
+
+$(BIN): */*.go
+	@go install ./...
+
+install: $(BIN)
 
 $(GGEN): ./_generated/def.go
 	go generate ./_generated
@@ -18,19 +26,24 @@ $(GGEN): ./_generated/def.go
 $(MGEN): ./msgp/defs_test.go
 	go generate ./msgp
 
-test: install $(GGEN) $(MGEN)
+test: all
 	go test -v ./msgp
 	go test -v ./_generated
 
-bench: $(GGEN) $(MGEN) install
+bench: all
 	go test -bench . ./msgp
 	go test -bench . ./_generated
 
 clean:
 	$(RM) $(GGEN) $(MGEN)
 
+wipe: clean
+	$(RM) $(BIN)
+
 get-deps:
 	go get -d -t ./...
+
+all: install $(GGEN) $(MGEN)
 
 # travis CI enters here
 travis: get-deps test
