@@ -66,7 +66,7 @@ func (r *Reader) WriteToJSON(w io.Writer) (n int64, err error) {
 	if jsw, ok := w.(jsWriter); ok {
 		j = jsw
 	} else {
-		bf = bufio.NewWriterSize(w, 512)
+		bf = bufio.NewWriter(w)
 		j = bf
 	}
 	var nn int

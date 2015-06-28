@@ -1,19 +1,49 @@
 
-install:
+# NOTE: This Makefile is only necessary if you 
+# plan on developing the msgp tool and library.
+# Installation can still be performed with a
+# normal `go install`.
+
+# generated integration test files
+GGEN = ./_generated/generated.go ./_generated/generated_test.go
+# generated unit test files
+MGEN = ./msgp/defgen_test.go
+
+SHELL := /bin/bash
+
+BIN = $(GOPATH)/bin/msgp
+
+.PHONY: clean wipe install get-deps bench all
+
+$(BIN): */*.go
 	@go install ./...
 
-generate:
-	@go generate ./_generated
+install: $(BIN)
 
-test: install generate
-	@go test -v ./_generated
+$(GGEN): ./_generated/def.go
+	go generate ./_generated
 
-test-pkg: install
-	@msgp -o ./_generated/generated.go -file ./_generated
-	@go test -v ./_generated
+$(MGEN): ./msgp/defs_test.go
+	go generate ./msgp
 
-bench: install generate
-	@go test -bench . ./_generated
+test: all
+	go test -v ./msgp
+	go test -v ./_generated
+
+bench: all
+	go test -bench . ./msgp
+	go test -bench . ./_generated
 
 clean:
-	$(RM) ./_generated/generated.go && $(RM) ./_generated/generated_test.go
+	$(RM) $(GGEN) $(MGEN)
+
+wipe: clean
+	$(RM) $(BIN)
+
+get-deps:
+	go get -d -t ./...
+
+all: install $(GGEN) $(MGEN)
+
+# travis CI enters here
+travis: get-deps test
