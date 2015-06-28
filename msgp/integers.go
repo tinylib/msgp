@@ -110,6 +110,10 @@ func getMuint8(b []byte) uint8 {
 	return uint8(b[1])
 }
 
+//go:noescape
+func getUnix(b []byte) (sec int64, nsec int32)
+
+/*
 func getUnix(b []byte) (sec int64, nsec int32) {
 	sec = (int64(b[0]) << 56) | (int64(b[1]) << 48) |
 		(int64(b[2]) << 40) | (int64(b[3]) << 32) |
@@ -118,8 +122,12 @@ func getUnix(b []byte) (sec int64, nsec int32) {
 
 	nsec = (int32(b[8]) << 24) | (int32(b[9]) << 16) | (int32(b[10]) << 8) | (int32(b[11]))
 	return
-}
+}*/
 
+//go:nosecape
+func putUnix(b []byte, sec int64, nsec int32)
+
+/*
 func putUnix(b []byte, sec int64, nsec int32) {
 	b[0] = byte(sec >> 56)
 	b[1] = byte(sec >> 48)
@@ -133,7 +141,7 @@ func putUnix(b []byte, sec int64, nsec int32) {
 	b[9] = byte(nsec >> 16)
 	b[10] = byte(nsec >> 8)
 	b[11] = byte(nsec)
-}
+}*/
 
 /* -----------------------------
 		prefix utilities

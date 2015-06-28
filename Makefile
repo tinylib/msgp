@@ -4,21 +4,18 @@
 # Installation can still be performed with a
 # normal `go install`.
 
-# generated integration test files
-GGEN = ./_generated/generated.go ./_generated/generated_test.go
-# generated unit test files
-MGEN = ./msgp/defgen_test.go
+# For more information, please see HACKING.md
 
-SHELL := /bin/bash
+GGEN=./_generated/generated.go ./_generated/generated_test.go
+MGEN=./msgp/defgen_test.go
+SHELL=/bin/bash
+BIN=$(GOBIN)/msgp
+BRANCH=$(shell git symbolic-ref --short HEAD)
 
-BIN = $(GOPATH)/bin/msgp
+.PHONY: clean wipe install get-deps bench all lint travis
 
-.PHONY: clean wipe install get-deps bench all
-
-$(BIN): */*.go
-	@go install ./...
-
-install: $(BIN)
+$(BIN): *.go
+	go install ./...
 
 $(GGEN): ./_generated/def.go
 	go generate ./_generated
@@ -26,13 +23,25 @@ $(GGEN): ./_generated/def.go
 $(MGEN): ./msgp/defs_test.go
 	go generate ./msgp
 
+$(BRANCH)-gen-bench.txt: all
+	go test ./_generated -run=NONE -bench . | tee $(BRANCH)-gen-bench.txt
+
+$(BRANCH)-unit-bench.txt: all
+	go test ./msgp -run=NONE -bench . | tee $(BRANCH)-unit-bench.txt
+
+$(GOBIN)/benchcmp:
+	go get golang.org/x/tools/cmd/benchcmp
+
+bench: $(BRANCH)-gen-bench.txt $(BRANCH)-unit-bench.txt
+
+install: $(BIN)
+
 test: all
 	go test -v ./msgp
-	go test -v ./_generated
+	go test - v./_generated
 
-bench: all
-	go test -bench . ./msgp
-	go test -bench . ./_generated
+benchcmp: $(BRANCH)-gen-bench.txt master-gen-bench.txt $(GOBIN)/benchcmp
+	benchcmp master-gen-bench.txt $(BRANCH)-gen-bench.txt
 
 clean:
 	$(RM) $(GGEN) $(MGEN)
@@ -45,5 +54,4 @@ get-deps:
 
 all: install $(GGEN) $(MGEN)
 
-# travis CI enters here
 travis: get-deps test
