@@ -227,7 +227,7 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		sz = uint32(big.Uint16(b[1:]))
+		sz = uint32(getMuint16(b))
 		o = b[3:]
 		return
 
@@ -236,7 +236,7 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		sz = big.Uint32(b[1:])
+		sz = getMuint32(b)
 		o = b[5:]
 		return
 
@@ -614,7 +614,7 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 			err = ErrShortBytes
 			return
 		}
-		read = int(big.Uint16(b[1:]))
+		read = int(getMint16(b))
 		b = b[3:]
 
 	case mbin32:
@@ -622,7 +622,7 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 			err = ErrShortBytes
 			return
 		}
-		read = int(big.Uint32(b[1:]))
+		read = int(getMuint32(b))
 		b = b[5:]
 
 	default:
@@ -687,7 +687,7 @@ func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		read = uint32(big.Uint16(b[1:]))
+		read = uint32(getMuint16(b))
 		skip = 3
 
 	case mbin32:
@@ -695,7 +695,7 @@ func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		read = uint32(big.Uint32(b[1:]))
+		read = uint32(getMuint32(b))
 		skip = 5
 
 	default:
@@ -745,7 +745,7 @@ func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 				err = ErrShortBytes
 				return
 			}
-			read = int(big.Uint16(b[1:]))
+			read = int(getMuint16(b))
 			b = b[3:]
 
 		case mstr32:
@@ -753,7 +753,7 @@ func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 				err = ErrShortBytes
 				return
 			}
-			read = int(big.Uint32(b[1:]))
+			read = int(getMuint32(b))
 			b = b[5:]
 
 		default:
@@ -1072,17 +1072,17 @@ func getSize(b []byte) (uintptr, uintptr, error) {
 	case extra8:
 		return uintptr(size) + uintptr(b[1]), 0, nil
 	case extra16:
-		return uintptr(size) + uintptr(big.Uint16(b[1:])), 0, nil
+		return uintptr(size) + uintptr(getMuint16(b)), 0, nil
 	case extra32:
-		return uintptr(size) + uintptr(big.Uint32(b[1:])), 0, nil
+		return uintptr(size) + uintptr(getMuint32(b)), 0, nil
 	case map16v:
-		return uintptr(size), 2 * uintptr(big.Uint16(b[1:])), nil
+		return uintptr(size), 2 * uintptr(getMuint16(b)), nil
 	case map32v:
-		return uintptr(size), 2 * uintptr(big.Uint32(b[1:])), nil
+		return uintptr(size), 2 * uintptr(getMuint32(b)), nil
 	case array16v:
-		return uintptr(size), uintptr(big.Uint16(b[1:])), nil
+		return uintptr(size), uintptr(getMuint16(b)), nil
 	case array32v:
-		return uintptr(size), uintptr(big.Uint32(b[1:])), nil
+		return uintptr(size), uintptr(getMuint32(b)), nil
 	default:
 		return 0, 0, fatal
 	}

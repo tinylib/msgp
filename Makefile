@@ -38,7 +38,7 @@ install: $(BIN)
 
 test: all
 	go test -v ./msgp
-	go test - v./_generated
+	go test -v ./_generated
 
 benchcmp: $(BRANCH)-gen-bench.txt master-gen-bench.txt $(GOBIN)/benchcmp
 	benchcmp master-gen-bench.txt $(BRANCH)-gen-bench.txt

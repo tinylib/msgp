@@ -27,12 +27,12 @@ func AppendMapHeader(b []byte, sz uint32) []byte {
 
 	case sz <= math.MaxUint16:
 		o, n := ensure(b, 3)
-		prefixu16(o[n:], mmap16, uint16(sz))
+		prefixu16(o[n:], uint16(sz), mmap16)
 		return o
 
 	default:
 		o, n := ensure(b, 5)
-		prefixu32(o[n:], mmap32, sz)
+		prefixu32(o[n:], sz, mmap32)
 		return o
 	}
 }
@@ -46,12 +46,12 @@ func AppendArrayHeader(b []byte, sz uint32) []byte {
 
 	case sz <= math.MaxUint16:
 		o, n := ensure(b, 3)
-		prefixu16(o[n:], marray16, uint16(sz))
+		prefixu16(o[n:], uint16(sz), marray16)
 		return o
 
 	default:
 		o, n := ensure(b, 5)
-		prefixu32(o[n:], marray32, sz)
+		prefixu32(o[n:], sz, marray32)
 		return o
 	}
 }
@@ -62,14 +62,14 @@ func AppendNil(b []byte) []byte { return append(b, mnil) }
 // AppendFloat64 appends a float64 to the slice
 func AppendFloat64(b []byte, f float64) []byte {
 	o, n := ensure(b, Float64Size)
-	prefixu64(o[n:], mfloat64, math.Float64bits(f))
+	prefixu64(o[n:], math.Float64bits(f), mfloat64)
 	return o
 }
 
 // AppendFloat32 appends a float32 to the slice
 func AppendFloat32(b []byte, f float32) []byte {
 	o, n := ensure(b, Float32Size)
-	prefixu32(o[n:], mfloat32, math.Float32bits(f))
+	prefixu32(o[n:], math.Float32bits(f), mfloat32)
 	return o
 }
 
@@ -179,15 +179,15 @@ func AppendBytes(b []byte, bts []byte) []byte {
 	switch {
 	case sz <= math.MaxUint8:
 		o, n = ensure(b, 2+sz)
-		prefixu8(o[n:], mbin8, uint8(sz))
+		prefixu8(o[n:], uint8(sz), mbin8)
 		n += 2
 	case sz <= math.MaxUint16:
 		o, n = ensure(b, 3+sz)
-		prefixu16(o[n:], mbin16, uint16(sz))
+		prefixu16(o[n:], uint16(sz), mbin16)
 		n += 3
 	default:
 		o, n = ensure(b, 5+sz)
-		prefixu32(o[n:], mbin32, uint32(sz))
+		prefixu32(o[n:], uint32(sz), mbin32)
 		n += 5
 	}
 	return o[:n+copy(o[n:], bts)]
@@ -201,6 +201,8 @@ func AppendBool(b []byte, t bool) []byte {
 	return append(b, mfalse)
 }
 
+const stringMask uint32 = uint32(mfixstr)<<24 | uint32(mstr8)<<16 | uint32(mstr16)<<8 | uint32(mstr32)
+
 // AppendString appends a string as a MessagePack 'str' to the slice
 func AppendString(b []byte, s string) []byte {
 	sz := len(s)
@@ -213,15 +215,15 @@ func AppendString(b []byte, s string) []byte {
 		n++
 	case sz <= math.MaxUint8:
 		o, n = ensure(b, 2+sz)
-		prefixu8(o[n:], mstr8, uint8(sz))
+		prefixu8(o[n:], uint8(sz), mstr8)
 		n += 2
 	case sz <= math.MaxUint16:
 		o, n = ensure(b, 3+sz)
-		prefixu16(o[n:], mstr16, uint16(sz))
+		prefixu16(o[n:], uint16(sz), mstr16)
 		n += 3
 	default:
 		o, n = ensure(b, 5+sz)
-		prefixu32(o[n:], mstr32, uint32(sz))
+		prefixu32(o[n:], uint32(sz), mstr32)
 		n += 5
 	}
 	return o[:n+copy(o[n:], s)]
@@ -259,8 +261,7 @@ func AppendComplex64(b []byte, c complex64) []byte {
 	o, n := ensure(b, Complex64Size)
 	o[n] = mfixext8
 	o[n+1] = Complex64Extension
-	big.PutUint32(o[n+2:], math.Float32bits(real(c)))
-	big.PutUint32(o[n+6:], math.Float32bits(imag(c)))
+	put232(o[n+2:], real(c), imag(c))
 	return o
 }
 
@@ -269,8 +270,7 @@ func AppendComplex128(b []byte, c complex128) []byte {
 	o, n := ensure(b, Complex128Size)
 	o[n] = mfixext16
 	o[n+1] = Complex128Extension
-	big.PutUint64(o[n+2:], math.Float64bits(real(c)))
-	big.PutUint64(o[n+10:], math.Float64bits(imag(c)))
+	put264(o[n+2:], real(c), imag(c))
 	return o
 }
 
