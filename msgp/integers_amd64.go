@@ -5,7 +5,14 @@ package msgp
 //go:noescape
 func putBinHdr(p *byte, sz int) int
 
+//go:noescape
 func putStrHdr(p *byte, sz int) int
+
+//go:noescape
+func putArrayHdr(p *byte, sz int) int
+
+//go:noescape
+func putMapHdr(p *byte, sz int) int
 
 //go:noescape
 func getUnix(b []byte) (sec int64, nsec int32)

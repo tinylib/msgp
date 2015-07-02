@@ -107,76 +107,101 @@ TEXT ·put264(SB),NOSPLIT,$0-40
 	MOVQ   DX, 8(AX)
 	RET
 
-#define STRDESC 0xd9
+TEXT ·putMapHdr(SB),NOSPLIT,$0-24
+	MOVQ p+0(FP), AX
+	MOVQ sz+8(FP), DI
+	MOVQ $0x80, BX
+	MOVQ $0xde, SI
+	JMP  put4bit<>(SB)
+
+TEXT ·putArrayHdr(SB),NOSPLIT,$0-24
+	MOVQ p+0(FP), AX
+	MOVQ sz+8(FP), DI
+	MOVQ $0x90, BX
+	MOVQ $0xdc, SI
+	JMP  put4bit<>(SB)
+
+// putHdr for maps and arrays
+// that do not have 8-bit prefixes
+// ptr in AX, size in DI, desc in SI
+// fixbits in BX
+TEXT put4bit<>(SB),NOSPLIT,$0-24
+	CMPQ DI, $16
+	JAE  put16
+	ORQ  BX, DI
+	MOVB DI, (AX)
+	MOVQ $1, ret+16(FP)
+	RET
+put16:
+	CMPQ   DI, $0xffff
+	JA     put32
+	BSWAPL DI
+	SHRQ   $8, DI
+	ORQ    DI, SI
+	MOVQ   $3, ret+16(FP)
+	MOVQ   SI, (AX)
+	RET
+put32:
+	BSWAPL DI
+	INCQ   SI
+	SHLQ   $8, DI
+	ORQ    DI, SI
+	MOVQ   $5, ret+16(FP)
+	MOVQ   SI, (AX)
+	RET
 
 // putStrHdr(p *byte, sz uint32) int
 TEXT ·putStrHdr(SB),NOSPLIT,$0-24
 	MOVQ p+0(FP), AX
 	MOVQ sz+8(FP), DI
-	CMPL DI, $32
-	JB   fixstr
-	MOVQ $STRDESC, SI
-	JMP  putHdr<>(SB)
-fixstr:
-	ORL $0xa0, DI
+	CMPQ DI, $32
+	JAE  putstr
+	ORQ  $0xa0, DI
 	MOVB DI, (AX)
 	MOVQ $1, ret+16(FP)
 	RET
-
-#define BINDESC 0xc4
+putstr:
+	MOVQ $0xd9, SI
+	JMP  putHdr<>(SB)
 
 // putBinHdr(p *byte, sz int) int
 TEXT ·putBinHdr(SB),NOSPLIT,$0-24
 	MOVQ p+0(FP), AX
 	MOVQ sz+8(FP), DI
-	MOVQ $BINDESC, SI
+	MOVQ $0xc4, SI
 	JMP  putHdr<>(SB)
 
-// ptr in AX, size in DI, desc in SI, ret in BX
+// putHdr is the body for storing
+// either a big-ending uint8, 
+// uint16, or uint32.
+//
+// compare jumps are forward under
+// the assumption that smaller
+// headers are more likely than 
+// larger.
 TEXT putHdr<>(SB),NOSPLIT,$0-24
-	BSRQ DI, CX
-	JZ   zero
-	ANDQ $0x18, CX  // CX is now 0, 8, 16, 24
-	MOVQ $hdrtab<>(SB), DX
-	ADDQ CX, DX
-	JMP  (DX)      // jumps into hdr_{8/16/32}<>(SB)
-zero:
-	MOVQ $2, BX
-	MOVQ SI, (AX)
-	MOVQ BX, ret+16(FP)
-	RET            
-
-TEXT hdr_8<>(SB),NOSPLIT,$0-24
-	MOVQ $2, BX
-	SHLQ $8, DI
-	ORQ  DI, SI
-	MOVQ BX, ret+16(FP)
-	MOVQ SI, (AX)
+	CMPQ DI, $0xff
+	JA    test16
+	SHLQ  $8, DI
+	ORQ   DI, SI
+	MOVQ  $2, ret+16(FP)
+	MOVQ  SI, (AX)
 	RET
-
-TEXT hdr_16<>(SB),NOSPLIT,$0-24
-	MOVQ   $3, BX
+test16:
+	CMPQ DI, $0xffff
+	JA    test32
 	BSWAPL DI
-	INCQ   SI
-	SHRQ   $8, DI
-	ORQ    DI, SI
-	MOVQ   BX, ret+16(FP)
-	MOVQ   SI, (AX)
+	INCQ  SI
+	SHRQ  $8, DI
+	ORQ   DI, SI
+	MOVQ  $3, ret+16(FP)
+	MOVQ  SI, (AX)
 	RET
-
-TEXT hdr_32<>(SB),NOSPLIT,$0-24
-	MOVQ   $5, BX
+test32:
 	BSWAPL DI
-	SHLQ   $8, DI
 	ADDQ   $2, SI
+	SHLQ   $8, DI
 	ORQ    DI, SI
-	MOVQ   BX, ret+16(FP)
+	MOVQ   $5, ret+16(FP)
 	MOVQ   SI, (AX)
 	RET
-
-// jump table for header
-DATA hdrtab<>+0(SB)/8, $hdr_8<>(SB)
-DATA hdrtab<>+8(SB)/8, $hdr_16<>(SB)
-DATA hdrtab<>+16(SB)/8, $hdr_32<>(SB)
-DATA hdrtab<>+24(SB)/8, $hdr_32<>(SB)
-GLOBL hdrtab<>(SB),RODATA,$36
