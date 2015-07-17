@@ -425,10 +425,11 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		return nil
 
 	case *ast.StructType:
-		if fields := fs.parseFieldList(e.Fields); len(fields) > 0 {
-			return &gen.Struct{Fields: fields}
+		fields := fs.parseFieldList(e.Fields)
+		if len(fields) == 0 {
+			warnln(" \u26a0 0 valid fields")
 		}
-		return nil
+		return &gen.Struct{Fields: fields}
 
 	case *ast.SelectorExpr:
 		return gen.Ident(stringify(e))
