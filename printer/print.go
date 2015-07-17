@@ -51,6 +51,7 @@ func PrintFile(file string, f *parse.FileSet, mode gen.Method) error {
 func format(file string, data []byte) error {
 	out, err := imports.Process(file, data, nil)
 	if err != nil {
+		ioutil.WriteFile(file, data, 0600)
 		return err
 	}
 	return ioutil.WriteFile(file, out, 0600)

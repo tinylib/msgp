@@ -60,6 +60,7 @@ func (e *encodeGen) Execute(p Elem) error {
 
 	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), imutMethodReceiver(p))
 	next(e, p)
+	e.fuseHook()
 	e.p.nakedReturn()
 	return e.p.err
 }

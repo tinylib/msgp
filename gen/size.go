@@ -222,6 +222,9 @@ func fixedsizeExpr(e Elem) (string, bool) {
 			return builtinSize(e.BaseName()), true
 		}
 	case *Struct:
+		if len(e.Fields) == 0 {
+			return "1", true
+		}
 		var str string
 		for _, f := range e.Fields {
 			if fs, ok := fixedsizeExpr(f.FieldElem); ok {

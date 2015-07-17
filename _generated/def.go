@@ -28,6 +28,7 @@ type X struct {
 	Others    [][32]int32 // should compile to len(x.Others)*32*msgp.Int32Size
 	Matrix    [][]int32   // should not optimize
 	ManyFixed []Fixed
+	ManyEmpty []Empty
 }
 
 // test fixed-size struct
@@ -36,6 +37,8 @@ type Fixed struct {
 	A float64
 	B bool
 }
+
+type Empty struct{}
 
 type TestType struct {
 	F   *float64          `msg:"float"`
