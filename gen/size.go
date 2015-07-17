@@ -221,6 +221,28 @@ func fixedsizeExpr(e Elem) (string, bool) {
 		if fixedSize(e.Value) {
 			return builtinSize(e.BaseName()), true
 		}
+	case *Struct:
+		var str string
+		for _, f := range e.Fields {
+			if fs, ok := fixedsizeExpr(f.FieldElem); ok {
+				if str == "" {
+					str = fs
+				} else {
+					str += "+" + fs
+				}
+			} else {
+				return "", false
+			}
+		}
+		var hdrlen int
+		mhdr := msgp.AppendMapHeader(nil, uint32(len(e.Fields)))
+		hdrlen += len(mhdr)
+		var strbody []byte
+		for _, f := range e.Fields {
+			strbody = msgp.AppendString(strbody[:0], f.FieldTag)
+			hdrlen += len(strbody)
+		}
+		return fmt.Sprintf("%d + %s", hdrlen, str), true
 	}
 	return "", false
 }
