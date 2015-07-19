@@ -447,6 +447,28 @@ func (mw *Writer) WriteString(s string) error {
 	return mw.writeString(s)
 }
 
+// WriteStringFromBytes writes a 'str' object
+// from a []byte.
+func (mw *Writer) WriteStringFromBytes(str []byte) error {
+	sz := uint32(len(str))
+	var err error
+	switch {
+	case sz < 32:
+		err = mw.push(wfixstr(uint8(sz)))
+	case sz < math.MaxUint8:
+		err = mw.prefix8(mstr8, uint8(sz))
+	case sz < math.MaxUint16:
+		err = mw.prefix16(mstr16, uint16(sz))
+	default:
+		err = mw.prefix32(mstr32, sz)
+	}
+	if err != nil {
+		return err
+	}
+	_, err = mw.Write(str)
+	return err
+}
+
 // WriteComplex64 writes a complex64 to the writer
 func (mw *Writer) WriteComplex64(f complex64) error {
 	o, err := mw.require(10)

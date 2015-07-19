@@ -784,6 +784,22 @@ func ReadStringBytes(b []byte) (string, []byte, error) {
 	return string(v), o, err
 }
 
+// ReadStringAsBytes reads a 'str' object
+// into a slice of bytes. 'v' is the value of
+// the 'str' object, which may reside in memory
+// pointed to by 'scratch.' 'o' is the remaining bytes
+// in 'b.''
+// Possible errors:
+// - ErrShortBytes (b not long enough)
+// - TypeError{} (not 'str' type)
+// - InvalidPrefixError (unknown type marker)
+func ReadStringAsBytes(b []byte, scratch []byte) (v []byte, o []byte, err error) {
+	var tmp []byte
+	tmp, o, err = ReadStringZC(b)
+	v = append(scratch[:0], tmp...)
+	return
+}
+
 // ReadComplex128Bytes reads a complex128
 // extension object from 'b' and returns the
 // remaining bytes.
