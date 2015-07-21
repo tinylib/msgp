@@ -2,14 +2,16 @@ package parse
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/gen"
-	"github.com/ttacon/chalk"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
+
+	"github.com/tinylib/msgp/gen"
+	"github.com/ttacon/chalk"
 )
 
 // A FileSet is the in-memory representation of a
@@ -172,7 +174,13 @@ loop:
 
 func (f *FileSet) PrintTo(p *gen.Printer) error {
 	f.applyDirs(p)
-	for _, el := range f.Identities {
+	names := make([]string, 0, len(f.Identities))
+	for name := range f.Identities {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		el := f.Identities[name]
 		el.SetVarname("z")
 		err := p.Print(el)
 		if err != nil {
