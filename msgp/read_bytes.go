@@ -117,13 +117,13 @@ func (r Raw) Msgsize() int {
 }
 
 func appendNext(f *Reader, d *[]byte) error {
-	amt, o, err := getNextSize(f.r)
+	amt, o, err := getNextSize(f.R)
 	if err != nil {
 		return err
 	}
 	var i int
 	*d, i = ensure(*d, int(amt))
-	_, err = f.r.ReadFull((*d)[i:])
+	_, err = f.R.ReadFull((*d)[i:])
 	if err != nil {
 		return err
 	}
