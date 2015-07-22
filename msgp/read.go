@@ -759,6 +759,45 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, err error) {
 	return
 }
 
+// ReadBytesHeader reads the size header
+// of a MessagePack 'bin' object. The user
+// is responsible for dealing with the next
+// 'sz' bytes from the reader in an application-specific
+// way.
+func (m *Reader) ReadBytesHeader() (sz uint32, err error) {
+	var p []byte
+	p, err = m.r.Peek(1)
+	if err != nil {
+		return
+	}
+	switch p[0] {
+	case mbin8:
+		p, err = m.r.Next(2)
+		if err != nil {
+			return
+		}
+		sz = uint32(p[1])
+		return
+	case mbin16:
+		p, err = m.r.Next(3)
+		if err != nil {
+			return
+		}
+		sz = uint32(big.Uint16(p[1:]))
+		return
+	case mbin32:
+		p, err = m.r.Next(5)
+		if err != nil {
+			return
+		}
+		sz = uint32(big.Uint32(p[1:]))
+		return
+	default:
+		err = badPrefix(BinType, p[0])
+		return
+	}
+}
+
 // ReadExactBytes reads a MessagePack 'bin'-encoded
 // object off of the wire into the provided slice. An
 // ArrayError will be returned if the object is not
@@ -850,6 +889,50 @@ fill:
 	}
 	_, err = m.r.ReadFull(b)
 	return
+}
+
+// ReadStringHeader reads a string header
+// off of the wire. The user is then responsible
+// for dealing with the next 'sz' bytes from
+// the reader in an application-specific manner.
+func (m *Reader) ReadStringHeader() (sz uint32, err error) {
+	var p []byte
+	var lead byte
+	p, err = m.r.Peek(1)
+	if err != nil {
+		return
+	}
+	lead = p[0]
+	if isfixstr(lead) {
+		sz = uint32(rfixstr(lead))
+		return
+	}
+	switch lead {
+	case mbin8:
+		p, err = m.r.Next(2)
+		if err != nil {
+			return
+		}
+		sz = uint32(p[1])
+		return
+	case mbin16:
+		p, err = m.r.Next(3)
+		if err != nil {
+			return
+		}
+		sz = uint32(big.Uint16(p[1:]))
+		return
+	case mbin32:
+		p, err = m.r.Next(5)
+		if err != nil {
+			return
+		}
+		sz = big.Uint32(p[1:])
+		return
+	default:
+		err = badPrefix(StrType, lead)
+		return
+	}
 }
 
 // ReadString reads a utf-8 string from the reader
