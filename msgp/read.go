@@ -897,32 +897,32 @@ fill:
 // the reader in an application-specific manner.
 func (m *Reader) ReadStringHeader() (sz uint32, err error) {
 	var p []byte
-	var lead byte
 	p, err = m.r.Peek(1)
 	if err != nil {
 		return
 	}
-	lead = p[0]
+	lead := p[0]
 	if isfixstr(lead) {
 		sz = uint32(rfixstr(lead))
+		m.r.Skip(1)
 		return
 	}
 	switch lead {
-	case mbin8:
+	case mstr8:
 		p, err = m.r.Next(2)
 		if err != nil {
 			return
 		}
 		sz = uint32(p[1])
 		return
-	case mbin16:
+	case mstr16:
 		p, err = m.r.Next(3)
 		if err != nil {
 			return
 		}
 		sz = uint32(big.Uint16(p[1:]))
 		return
-	case mbin32:
+	case mstr32:
 		p, err = m.r.Next(5)
 		if err != nil {
 			return

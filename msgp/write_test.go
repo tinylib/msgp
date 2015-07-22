@@ -64,13 +64,15 @@ func TestWriteMapHeader(t *testing.T) {
 }
 
 func BenchmarkWriteMapHeader(b *testing.B) {
-	sizes := []uint32{0, 1, tuint16, tuint32}
 	wr := NewWriter(Nowhere)
+	N := b.N / 4
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		sz := sizes[i%len(sizes)]
-		wr.WriteMapHeader(sz)
+	for i := 0; i < N; i++ {
+		wr.WriteMapHeader(0)
+		wr.WriteMapHeader(8)
+		wr.WriteMapHeader(tuint16)
+		wr.WriteMapHeader(tuint32)
 	}
 }
 
@@ -104,14 +106,68 @@ func TestWriteArrayHeader(t *testing.T) {
 	}
 }
 
+func TestReadWriteStringHeader(t *testing.T) {
+	sizes := []uint32{0, 5, 8, 19, 150, tuint16, tuint32}
+	var buf bytes.Buffer
+	var err error
+	wr := NewWriter(&buf)
+	for _, sz := range sizes {
+		buf.Reset()
+		err = wr.WriteStringHeader(sz)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var nsz uint32
+		nsz, err = NewReader(&buf).ReadStringHeader()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if nsz != sz {
+			t.Errorf("put in size %d but got out size %d", sz, nsz)
+		}
+	}
+}
+
+func TestReadWriteBytesHeader(t *testing.T) {
+	sizes := []uint32{0, 5, 8, 19, 150, tuint16, tuint32}
+	var buf bytes.Buffer
+	var err error
+	wr := NewWriter(&buf)
+	for _, sz := range sizes {
+		buf.Reset()
+		err = wr.WriteBytesHeader(sz)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var nsz uint32
+		nsz, err = NewReader(&buf).ReadBytesHeader()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if nsz != sz {
+			t.Errorf("put in size %d but got out size %d", sz, nsz)
+		}
+	}
+}
+
 func BenchmarkWriteArrayHeader(b *testing.B) {
-	sizes := []uint32{0, 1, tuint16, tuint32}
 	wr := NewWriter(Nowhere)
+	N := b.N / 4
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		sz := sizes[i%len(sizes)]
-		wr.WriteArrayHeader(sz)
+	for i := 0; i < N; i++ {
+		wr.WriteArrayHeader(0)
+		wr.WriteArrayHeader(16)
+		wr.WriteArrayHeader(tuint16)
+		wr.WriteArrayHeader(tuint32)
 	}
 }
 
