@@ -48,6 +48,7 @@ func TestReadWriteFile(t *testing.T) {
 	}
 
 	var out rawBytes
+	f.Seek(0, os.SEEK_SET)
 	err = msgp.ReadFile(&out, f)
 	if err != nil {
 		t.Fatal(err)
