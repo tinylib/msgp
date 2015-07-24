@@ -25,13 +25,15 @@ func TestAppendMapHeader(t *testing.T) {
 }
 
 func BenchmarkAppendMapHeader(b *testing.B) {
-	sizes := []uint32{0, uint32(tint8), uint32(tint16), tuint32}
 	buf := make([]byte, 0, 9)
+	N := b.N / 4
 	b.ReportAllocs()
 	b.ResetTimer()
-	l := len(sizes)
-	for i := 0; i < b.N; i++ {
-		AppendMapHeader(buf[0:0], sizes[i%l])
+	for i := 0; i < N; i++ {
+		AppendMapHeader(buf[:0], 0)
+		AppendMapHeader(buf[:0], uint32(tint8))
+		AppendMapHeader(buf[:0], tuint16)
+		AppendMapHeader(buf[:0], tuint32)
 	}
 }
 
@@ -54,13 +56,15 @@ func TestAppendArrayHeader(t *testing.T) {
 }
 
 func BenchmarkAppendArrayHeader(b *testing.B) {
-	sizes := []uint32{0, uint32(tint8), uint32(tint16), tuint32}
 	buf := make([]byte, 0, 9)
+	N := b.N / 4
 	b.ReportAllocs()
 	b.ResetTimer()
-	l := len(sizes)
-	for i := 0; i < b.N; i++ {
-		AppendArrayHeader(buf[0:0], sizes[i%l])
+	for i := 0; i < N; i++ {
+		AppendArrayHeader(buf[:0], 0)
+		AppendArrayHeader(buf[:0], uint32(tint8))
+		AppendArrayHeader(buf[:0], tuint16)
+		AppendArrayHeader(buf[:0], tuint32)
 	}
 }
 

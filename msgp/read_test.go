@@ -112,10 +112,7 @@ func BenchmarkReadMapHeader(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := rd.ReadMapHeader()
-		if err != nil {
-			b.Fatal(err)
-		}
+		rd.ReadMapHeader()
 	}
 }
 
@@ -165,10 +162,7 @@ func BenchmarkReadArrayHeader(b *testing.B) {
 	b.SetBytes(int64(len(data) / len(sizes)))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := rd.ReadArrayHeader()
-		if err != nil {
-			b.Fatal(err)
-		}
+		rd.ReadArrayHeader()
 	}
 }
 
