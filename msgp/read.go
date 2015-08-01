@@ -767,27 +767,27 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, err error) {
 // way.
 func (m *Reader) ReadBytesHeader() (sz uint32, err error) {
 	var p []byte
-	p, err = m.r.Peek(1)
+	p, err = m.R.Peek(1)
 	if err != nil {
 		return
 	}
 	switch p[0] {
 	case mbin8:
-		p, err = m.r.Next(2)
+		p, err = m.R.Next(2)
 		if err != nil {
 			return
 		}
 		sz = uint32(p[1])
 		return
 	case mbin16:
-		p, err = m.r.Next(3)
+		p, err = m.R.Next(3)
 		if err != nil {
 			return
 		}
 		sz = uint32(big.Uint16(p[1:]))
 		return
 	case mbin32:
-		p, err = m.r.Next(5)
+		p, err = m.R.Next(5)
 		if err != nil {
 			return
 		}
@@ -898,33 +898,33 @@ fill:
 // the reader in an application-specific manner.
 func (m *Reader) ReadStringHeader() (sz uint32, err error) {
 	var p []byte
-	p, err = m.r.Peek(1)
+	p, err = m.R.Peek(1)
 	if err != nil {
 		return
 	}
 	lead := p[0]
 	if isfixstr(lead) {
 		sz = uint32(rfixstr(lead))
-		m.r.Skip(1)
+		m.R.Skip(1)
 		return
 	}
 	switch lead {
 	case mstr8:
-		p, err = m.r.Next(2)
+		p, err = m.R.Next(2)
 		if err != nil {
 			return
 		}
 		sz = uint32(p[1])
 		return
 	case mstr16:
-		p, err = m.r.Next(3)
+		p, err = m.R.Next(3)
 		if err != nil {
 			return
 		}
 		sz = uint32(big.Uint16(p[1:]))
 		return
 	case mstr32:
-		p, err = m.r.Next(5)
+		p, err = m.R.Next(5)
 		if err != nil {
 			return
 		}
