@@ -707,6 +707,10 @@ func (m *Reader) ReadUint() (u uint, err error) {
 	return
 }
 
+// ReadByte is analagous to ReadUint8.
+//
+// NOTE: this is *not* an implementation
+// of io.ByteReader.
 func (m *Reader) ReadByte() (b byte, err error) {
 	var in uint64
 	in, err = m.ReadUint64()
