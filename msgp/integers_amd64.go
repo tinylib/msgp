@@ -2,17 +2,19 @@
 
 package msgp
 
-//go:noescape
-func putBinHdr(p *byte, sz int) int
+import "unsafe"
 
 //go:noescape
-func putStrHdr(p *byte, sz int) int
+func putBinHdr(p unsafe.Pointer, sz int) int
 
 //go:noescape
-func putArrayHdr(p *byte, sz int) int
+func putStrHdr(p unsafe.Pointer, sz int) int
 
 //go:noescape
-func putMapHdr(p *byte, sz int) int
+func putArrayHdr(p unsafe.Pointer, sz int) int
+
+//go:noescape
+func putMapHdr(p unsafe.Pointer, sz int) int
 
 //go:noescape
 func getUnix(b []byte) (sec int64, nsec int32)

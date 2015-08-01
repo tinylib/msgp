@@ -1,4 +1,4 @@
-// +build !amd64,appengine
+// +build amd64
 
 package msgp
 
@@ -6,6 +6,7 @@ import (
 	"math"
 	"reflect"
 	"time"
+	"unsafe"
 )
 
 // ensure 'sz' extra bytes in 'b' btw len(b) and cap(b)
@@ -23,39 +24,15 @@ func ensure(b []byte, sz int) ([]byte, int) {
 // AppendMapHeader appends a map header with the
 // given size to the slice
 func AppendMapHeader(b []byte, sz uint32) []byte {
-	switch {
-	case sz <= 15:
-		return append(b, wfixmap(uint8(sz)))
-
-	case sz <= math.MaxUint16:
-		o, n := ensure(b, 3)
-		prefixu16(o[n:], uint16(sz), mmap16)
-		return o
-
-	default:
-		o, n := ensure(b, 5)
-		prefixu32(o[n:], sz, mmap32)
-		return o
-	}
+	o, n := ensure(b, 8)
+	return o[:n+putMapHdr(unsafe.Pointer(&o[n]), int(sz))]
 }
 
 // AppendArrayHeader appends an array header with
 // the given size to the slice
 func AppendArrayHeader(b []byte, sz uint32) []byte {
-	switch {
-	case sz <= 15:
-		return append(b, wfixarray(uint8(sz)))
-
-	case sz <= math.MaxUint16:
-		o, n := ensure(b, 3)
-		prefixu16(o[n:], uint16(sz), marray16)
-		return o
-
-	default:
-		o, n := ensure(b, 5)
-		prefixu32(o[n:], sz, marray32)
-		return o
-	}
+	o, n := ensure(b, 8)
+	return o[:len(b)+putArrayHdr(unsafe.Pointer(&o[n]), int(sz))]
 }
 
 // AppendNil appends a 'nil' byte to the slice
@@ -77,39 +54,29 @@ func AppendFloat32(b []byte, f float32) []byte {
 
 // AppendInt64 appends an int64 to the slice
 func AppendInt64(b []byte, i int64) []byte {
-	if i >= 0 {
-		switch {
-		case i <= math.MaxInt8:
-			return append(b, wfixint(uint8(i)))
-		case i <= math.MaxInt16:
-			o, n := ensure(b, 3)
-			putMint16(o[n:], int16(i))
-			return o
-		case i <= math.MaxInt32:
-			o, n := ensure(b, 5)
-			putMint32(o[n:], int32(i))
-			return o
-		default:
-			o, n := ensure(b, 9)
-			putMint64(o[n:], i)
-			return o
-		}
-	}
+	a := abs(i)
 	switch {
-	case i >= -31:
+	case i < 0 && i > -32:
 		return append(b, wnfixint(int8(i)))
-	case i >= math.MinInt8:
+
+	case i >= 0 && i < 128:
+		return append(b, wfixint(uint8(i)))
+
+	case a < math.MaxInt8:
 		o, n := ensure(b, 2)
 		putMint8(o[n:], int8(i))
 		return o
-	case i >= math.MinInt16:
+
+	case a < math.MaxInt16:
 		o, n := ensure(b, 3)
 		putMint16(o[n:], int16(i))
 		return o
-	case i >= math.MinInt32:
+
+	case a < math.MaxInt32:
 		o, n := ensure(b, 5)
 		putMint32(o[n:], int32(i))
 		return o
+
 	default:
 		o, n := ensure(b, 9)
 		putMint64(o[n:], i)
@@ -132,20 +99,20 @@ func AppendInt32(b []byte, i int32) []byte { return AppendInt64(b, int64(i)) }
 // AppendUint64 appends a uint64 to the slice
 func AppendUint64(b []byte, u uint64) []byte {
 	switch {
-	case u <= (1<<7)-1:
+	case u < (1 << 7):
 		return append(b, wfixint(uint8(u)))
 
-	case u <= math.MaxUint8:
+	case u < math.MaxUint8:
 		o, n := ensure(b, 2)
 		putMuint8(o[n:], uint8(u))
 		return o
 
-	case u <= math.MaxUint16:
+	case u < math.MaxUint16:
 		o, n := ensure(b, 3)
 		putMuint16(o[n:], uint16(u))
 		return o
 
-	case u <= math.MaxUint32:
+	case u < math.MaxUint32:
 		o, n := ensure(b, 5)
 		putMuint32(o[n:], uint32(u))
 		return o
@@ -176,23 +143,9 @@ func AppendUint32(b []byte, u uint32) []byte { return AppendUint64(b, uint64(u))
 // AppendBytes appends bytes to the slice as MessagePack 'bin' data
 func AppendBytes(b []byte, bts []byte) []byte {
 	sz := len(bts)
-	var o []byte
-	var n int
-	switch {
-	case sz <= math.MaxUint8:
-		o, n = ensure(b, 2+sz)
-		prefixu8(o[n:], uint8(sz), mbin8)
-		n += 2
-	case sz <= math.MaxUint16:
-		o, n = ensure(b, 3+sz)
-		prefixu16(o[n:], uint16(sz), mbin16)
-		n += 3
-	default:
-		o, n = ensure(b, 5+sz)
-		prefixu32(o[n:], uint32(sz), mbin32)
-		n += 5
-	}
-	return o[:n+copy(o[n:], bts)]
+	o, n := ensure(b, 8+sz)
+	hdr := n + putBinHdr(unsafe.Pointer(&o[n]), sz)
+	return o[:hdr+copy(o[hdr:], bts)]
 }
 
 // AppendBool appends a bool to the slice
@@ -203,59 +156,12 @@ func AppendBool(b []byte, t bool) []byte {
 	return append(b, mfalse)
 }
 
-const stringMask uint32 = uint32(mfixstr)<<24 | uint32(mstr8)<<16 | uint32(mstr16)<<8 | uint32(mstr32)
-
 // AppendString appends a string as a MessagePack 'str' to the slice
 func AppendString(b []byte, s string) []byte {
 	sz := len(s)
-	var n int
-	var o []byte
-	switch {
-	case sz <= 31:
-		o, n = ensure(b, 1+sz)
-		o[n] = wfixstr(uint8(sz))
-		n++
-	case sz <= math.MaxUint8:
-		o, n = ensure(b, 2+sz)
-		prefixu8(o[n:], uint8(sz), mstr8)
-		n += 2
-	case sz <= math.MaxUint16:
-		o, n = ensure(b, 3+sz)
-		prefixu16(o[n:], uint16(sz), mstr16)
-		n += 3
-	default:
-		o, n = ensure(b, 5+sz)
-		prefixu32(o[n:], uint32(sz), mstr32)
-		n += 5
-	}
-	return o[:n+copy(o[n:], s)]
-}
-
-// AppendStringFromBytes appends a []byte
-// as a MessagePack 'str' to the slice 'b.'
-func AppendStringFromBytes(b []byte, str []byte) []byte {
-	sz := len(str)
-	var n int
-	var o []byte
-	switch {
-	case sz <= 31:
-		o, n = ensure(b, 1+sz)
-		o[n] = wfixstr(uint8(sz))
-		n++
-	case sz <= math.MaxUint8:
-		o, n = ensure(b, 2+sz)
-		prefixu8(o[n:], mstr8, uint8(sz))
-		n += 2
-	case sz <= math.MaxUint16:
-		o, n = ensure(b, 3+sz)
-		prefixu16(o[n:], mstr16, uint16(sz))
-		n += 3
-	default:
-		o, n = ensure(b, 5+sz)
-		prefixu32(o[n:], mstr32, uint32(sz))
-		n += 5
-	}
-	return o[:n+copy(o[n:], str)]
+	o, n := ensure(b, 8+sz)
+	hdr := n + putStrHdr(unsafe.Pointer(&o[n]), sz)
+	return o[:hdr+copy(o[hdr:], s)]
 }
 
 // AppendComplex64 appends a complex64 to the slice as a MessagePack extension

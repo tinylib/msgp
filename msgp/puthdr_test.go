@@ -5,11 +5,12 @@ package msgp
 import (
 	"bytes"
 	"testing"
+	"unsafe"
 )
 
 func BenchmarkPut4StrHeader(b *testing.B) {
 	out := make([]byte, 8)
-	ptr := &out[0]
+	ptr := unsafe.Pointer(&out[0])
 	b.SetBytes(11)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -22,7 +23,7 @@ func BenchmarkPut4StrHeader(b *testing.B) {
 
 func BenchmarkPut4BinHeader(b *testing.B) {
 	out := make([]byte, 8)
-	ptr := &out[0]
+	ptr := unsafe.Pointer(&out[0])
 	b.SetBytes(12)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -35,7 +36,7 @@ func BenchmarkPut4BinHeader(b *testing.B) {
 
 func BenchmarkPut4ArrayHeader(b *testing.B) {
 	out := make([]byte, 8)
-	ptr := &out[0]
+	ptr := unsafe.Pointer(&out[0])
 	b.SetBytes(12)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -48,7 +49,7 @@ func BenchmarkPut4ArrayHeader(b *testing.B) {
 
 func BenchmarkPut4MapHeader(b *testing.B) {
 	out := make([]byte, 8)
-	ptr := &out[0]
+	ptr := unsafe.Pointer(&out[0])
 	b.SetBytes(12)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -61,7 +62,7 @@ func BenchmarkPut4MapHeader(b *testing.B) {
 
 func TestPutMapHeader(t *testing.T) {
 	out := make([]byte, 8)
-	ptr := &out[0]
+	ptr := unsafe.Pointer(&out[0])
 
 	cases := []struct {
 		sz     int
@@ -89,7 +90,7 @@ func TestPutMapHeader(t *testing.T) {
 
 func TestPutArrayHeader(t *testing.T) {
 	out := make([]byte, 8)
-	ptr := &out[0]
+	ptr := unsafe.Pointer(&out[0])
 
 	cases := []struct {
 		sz     int
@@ -117,7 +118,7 @@ func TestPutArrayHeader(t *testing.T) {
 
 func TestPutStrHeader(t *testing.T) {
 	out := make([]byte, 8)
-	ptr := &out[0]
+	ptr := unsafe.Pointer(&out[0])
 
 	cases := []struct {
 		sz     int
@@ -146,7 +147,7 @@ func TestPutStrHeader(t *testing.T) {
 func TestPutBinHeader(t *testing.T) {
 
 	out := make([]byte, 8)
-	ptr := &out[0]
+	ptr := unsafe.Pointer(&out[0])
 
 	cases := []struct {
 		sz     int
