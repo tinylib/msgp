@@ -2,9 +2,34 @@ package msgp
 
 import (
 	"bytes"
+	"math"
 	"testing"
 	"time"
 )
+
+func TestIssue116(t *testing.T) {
+	data := AppendInt64(nil, math.MinInt64)
+	i, _, err := ReadInt64Bytes(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if i != math.MinInt64 {
+		t.Errorf("put %d in and got %d out", math.MinInt64, i)
+	}
+
+	var buf bytes.Buffer
+
+	w := NewWriter(&buf)
+	w.WriteInt64(math.MinInt64)
+	w.Flush()
+	i, err = NewReader(&buf).ReadInt64()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if i != math.MinInt64 {
+		t.Errorf("put %d in and got %d out", math.MinInt64, i)
+	}
+}
 
 func TestAppendMapHeader(t *testing.T) {
 	szs := []uint32{0, 1, uint32(tint8), uint32(tint16), tuint32}

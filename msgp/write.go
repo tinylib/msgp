@@ -10,13 +10,6 @@ import (
 	"time"
 )
 
-func abs(i int64) int64 {
-	if i < 0 {
-		return -i
-	}
-	return i
-}
-
 // Sizer is an interface implemented
 // by types that can estimate their
 // size when MessagePack encoded.
@@ -339,17 +332,28 @@ func (mw *Writer) WriteFloat32(f float32) error {
 
 // WriteInt64 writes an int64 to the writer
 func (mw *Writer) WriteInt64(i int64) error {
-	a := abs(i)
+	if i >= 0 {
+		switch {
+		case i < 128:
+			return mw.push(wfixint(uint8(i)))
+		case i < math.MaxInt8:
+			return mw.prefix8(mint8, uint8(i))
+		case i < math.MaxInt16:
+			return mw.prefix16(mint16, uint16(i))
+		case i < math.MaxInt32:
+			return mw.prefix32(mint32, uint32(i))
+		default:
+			return mw.prefix64(mint64, uint64(i))
+		}
+	}
 	switch {
-	case i < 0 && i > -32:
+	case i > -32:
 		return mw.push(wnfixint(int8(i)))
-	case i >= 0 && i < 128:
-		return mw.push(wfixint(uint8(i)))
-	case a < math.MaxInt8:
+	case i > math.MinInt8:
 		return mw.prefix8(mint8, uint8(i))
-	case a < math.MaxInt16:
+	case i > math.MinInt16:
 		return mw.prefix16(mint16, uint16(i))
-	case a < math.MaxInt32:
+	case i > math.MinInt32:
 		return mw.prefix32(mint32, uint32(i))
 	default:
 		return mw.prefix64(mint64, uint64(i))
