@@ -1,4 +1,4 @@
-// +build linux,!appengine darwin dragonfly freebsd netbsd openbsd
+// +build linux,!appengine darwin,!appengine dragonfly freebsd netbsd openbsd
 
 package msgp
 

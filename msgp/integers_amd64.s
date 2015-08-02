@@ -168,7 +168,7 @@ putstr:
 TEXT ·putBinHdr(SB),NOSPLIT,$0-24
 	MOVQ p+0(FP), AX
 	MOVQ sz+8(FP), DI
-	MOVQ $0xc4, SI
+	MOVL $0xc4, SI
 	JMP  putHdr<>(SB)
 
 // putHdr is the body for storing
@@ -180,28 +180,31 @@ TEXT ·putBinHdr(SB),NOSPLIT,$0-24
 // headers are more likely than 
 // larger.
 TEXT putHdr<>(SB),NOSPLIT,$0-24
-	CMPQ DI, $0xff
-	JA    test16
-	SHLQ  $8, DI
-	ORQ   DI, SI
-	MOVQ  $2, ret+16(FP)
-	MOVQ  SI, (AX)
+	CMPL   DI, $0xff
+	JA     test16
+	MOVL   $2, CX
+	SHLL   $8, DI
+	ORL    DI, SI
+	MOVQ   CX, ret+16(FP)
+	MOVL   SI, (AX)
 	RET
 test16:
-	CMPQ DI, $0xffff
-	JA    test32
+	CMPL   DI, $0xffff
+	JA     test32
+	MOVL   $3, CX
 	BSWAPL DI
-	INCQ  SI
-	SHRQ  $8, DI
-	ORQ   DI, SI
-	MOVQ  $3, ret+16(FP)
-	MOVQ  SI, (AX)
+	INCQ   SI
+	SHRQ   $8, DI
+	ORQ    DI, SI
+	MOVQ   CX, ret+16(FP)
+	MOVL   SI, (AX)
 	RET
 test32:
+	MOVL   $5, CX
 	BSWAPL DI
 	ADDQ   $2, SI
 	SHLQ   $8, DI
 	ORQ    DI, SI
-	MOVQ   $5, ret+16(FP)
+	MOVQ   CX, ret+16(FP)
 	MOVQ   SI, (AX)
 	RET

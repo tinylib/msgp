@@ -14,7 +14,7 @@ func ensure(b []byte, sz int) ([]byte, int) {
 	l := len(b)
 	c := cap(b)
 	if c-l < sz {
-		o := make([]byte, (2*c)+sz) // exponential growth
+		o := make([]byte, (2*c)+sz) // exponential *aligned* growth
 		n := copy(o, b)
 		return o[:n+sz], n
 	}
@@ -54,29 +54,43 @@ func AppendFloat32(b []byte, f float32) []byte {
 
 // AppendInt64 appends an int64 to the slice
 func AppendInt64(b []byte, i int64) []byte {
-	a := abs(i)
+	if i >= 0 {
+		switch {
+		case i < 128:
+			return append(b, wfixint(uint8(i)))
+		case i < math.MaxInt8:
+			o, n := ensure(b, 2)
+			putMint8(o[n:], int8(i))
+			return o
+		case i < math.MaxInt16:
+			o, n := ensure(b, 3)
+			putMint16(o[n:], int16(i))
+			return o
+		case i < math.MaxInt32:
+			o, n := ensure(b, 5)
+			putMint32(o[n:], int32(i))
+			return o
+		default:
+			o, n := ensure(b, 9)
+			putMint64(o[n:], i)
+			return o
+		}
+	}
 	switch {
-	case i < 0 && i > -32:
+	case i > -32:
 		return append(b, wnfixint(int8(i)))
-
-	case i >= 0 && i < 128:
-		return append(b, wfixint(uint8(i)))
-
-	case a < math.MaxInt8:
+	case i > math.MinInt8:
 		o, n := ensure(b, 2)
 		putMint8(o[n:], int8(i))
 		return o
-
-	case a < math.MaxInt16:
+	case i > math.MinInt16:
 		o, n := ensure(b, 3)
 		putMint16(o[n:], int16(i))
 		return o
-
-	case a < math.MaxInt32:
+	case i > math.MinInt32:
 		o, n := ensure(b, 5)
 		putMint32(o[n:], int32(i))
 		return o
-
 	default:
 		o, n := ensure(b, 9)
 		putMint64(o[n:], i)
@@ -143,7 +157,13 @@ func AppendUint32(b []byte, u uint32) []byte { return AppendUint64(b, uint64(u))
 // AppendBytes appends bytes to the slice as MessagePack 'bin' data
 func AppendBytes(b []byte, bts []byte) []byte {
 	sz := len(bts)
-	o, n := ensure(b, 8+sz)
+
+	// NOTE: we're playing a nasty trick here.
+	// We need 8 free bytes of space in order
+	// to store the prefix+uint32 combo, but
+	// that only occurs if sz is already more
+	// than 65535.
+	o, n := ensure(b, 5+sz)
 	hdr := n + putBinHdr(unsafe.Pointer(&o[n]), sz)
 	return o[:hdr+copy(o[hdr:], bts)]
 }
@@ -159,7 +179,22 @@ func AppendBool(b []byte, t bool) []byte {
 // AppendString appends a string as a MessagePack 'str' to the slice
 func AppendString(b []byte, s string) []byte {
 	sz := len(s)
-	o, n := ensure(b, 8+sz)
+
+	// NOTE: we're playing a nasty trick here.
+	// We need 8 free bytes of space in order
+	// to store the prefix+uint32 combo, but
+	// that only occurs if sz is already more
+	// than 65535.
+	o, n := ensure(b, 5+sz)
+	hdr := n + putStrHdr(unsafe.Pointer(&o[n]), sz)
+	return o[:hdr+copy(o[hdr:], s)]
+}
+
+// AppendStringFromBytes appends a []byte
+// as a MessagePack 'str' to the slice 'b.'
+func AppendStringFromBytes(b []byte, s []byte) []byte {
+	sz := len(s)
+	o, n := ensure(b, 5+sz)
 	hdr := n + putStrHdr(unsafe.Pointer(&o[n]), sz)
 	return o[:hdr+copy(o[hdr:], s)]
 }
