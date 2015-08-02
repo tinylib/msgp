@@ -22,10 +22,10 @@ func ensure(b []byte, sz int) ([]byte, int) {
 // given size to the slice
 func AppendMapHeader(b []byte, sz uint32) []byte {
 	switch {
-	case sz < 16:
+	case sz <= 15:
 		return append(b, wfixmap(uint8(sz)))
 
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		o, n := ensure(b, 3)
 		prefixu16(o[n:], mmap16, uint16(sz))
 		return o
@@ -41,10 +41,10 @@ func AppendMapHeader(b []byte, sz uint32) []byte {
 // the given size to the slice
 func AppendArrayHeader(b []byte, sz uint32) []byte {
 	switch {
-	case sz < 16:
+	case sz <= 15:
 		return append(b, wfixarray(uint8(sz)))
 
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		o, n := ensure(b, 3)
 		prefixu16(o[n:], marray16, uint16(sz))
 		return o
@@ -77,17 +77,13 @@ func AppendFloat32(b []byte, f float32) []byte {
 func AppendInt64(b []byte, i int64) []byte {
 	if i >= 0 {
 		switch {
-		case i < 128:
+		case i <= math.MaxInt8:
 			return append(b, wfixint(uint8(i)))
-		case i < math.MaxInt8:
-			o, n := ensure(b, 2)
-			putMint8(o[n:], int8(i))
-			return o
-		case i < math.MaxInt16:
+		case i <= math.MaxInt16:
 			o, n := ensure(b, 3)
 			putMint16(o[n:], int16(i))
 			return o
-		case i < math.MaxInt32:
+		case i <= math.MaxInt32:
 			o, n := ensure(b, 5)
 			putMint32(o[n:], int32(i))
 			return o
@@ -98,17 +94,17 @@ func AppendInt64(b []byte, i int64) []byte {
 		}
 	}
 	switch {
-	case i > -32:
+	case i >= -31:
 		return append(b, wnfixint(int8(i)))
-	case i > math.MinInt8:
+	case i >= math.MinInt8:
 		o, n := ensure(b, 2)
 		putMint8(o[n:], int8(i))
 		return o
-	case i > math.MinInt16:
+	case i >= math.MinInt16:
 		o, n := ensure(b, 3)
 		putMint16(o[n:], int16(i))
 		return o
-	case i > math.MinInt32:
+	case i >= math.MinInt32:
 		o, n := ensure(b, 5)
 		putMint32(o[n:], int32(i))
 		return o
@@ -134,20 +130,20 @@ func AppendInt32(b []byte, i int32) []byte { return AppendInt64(b, int64(i)) }
 // AppendUint64 appends a uint64 to the slice
 func AppendUint64(b []byte, u uint64) []byte {
 	switch {
-	case u < (1 << 7):
+	case u <= (1<<7)-1:
 		return append(b, wfixint(uint8(u)))
 
-	case u < math.MaxUint8:
+	case u <= math.MaxUint8:
 		o, n := ensure(b, 2)
 		putMuint8(o[n:], uint8(u))
 		return o
 
-	case u < math.MaxUint16:
+	case u <= math.MaxUint16:
 		o, n := ensure(b, 3)
 		putMuint16(o[n:], uint16(u))
 		return o
 
-	case u < math.MaxUint32:
+	case u <= math.MaxUint32:
 		o, n := ensure(b, 5)
 		putMuint32(o[n:], uint32(u))
 		return o
@@ -181,11 +177,11 @@ func AppendBytes(b []byte, bts []byte) []byte {
 	var o []byte
 	var n int
 	switch {
-	case sz < math.MaxUint8:
+	case sz <= math.MaxUint8:
 		o, n = ensure(b, 2+sz)
 		prefixu8(o[n:], mbin8, uint8(sz))
 		n += 2
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		o, n = ensure(b, 3+sz)
 		prefixu16(o[n:], mbin16, uint16(sz))
 		n += 3
@@ -211,15 +207,15 @@ func AppendString(b []byte, s string) []byte {
 	var n int
 	var o []byte
 	switch {
-	case sz < 32:
+	case sz <= 31:
 		o, n = ensure(b, 1+sz)
 		o[n] = wfixstr(uint8(sz))
 		n++
-	case sz < math.MaxUint8:
+	case sz <= math.MaxUint8:
 		o, n = ensure(b, 2+sz)
 		prefixu8(o[n:], mstr8, uint8(sz))
 		n += 2
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		o, n = ensure(b, 3+sz)
 		prefixu16(o[n:], mstr16, uint16(sz))
 		n += 3
@@ -238,15 +234,15 @@ func AppendStringFromBytes(b []byte, str []byte) []byte {
 	var n int
 	var o []byte
 	switch {
-	case sz < 32:
+	case sz <= 31:
 		o, n = ensure(b, 1+sz)
 		o[n] = wfixstr(uint8(sz))
 		n++
-	case sz < math.MaxUint8:
+	case sz <= math.MaxUint8:
 		o, n = ensure(b, 2+sz)
 		prefixu8(o[n:], mstr8, uint8(sz))
 		n += 2
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		o, n = ensure(b, 3+sz)
 		prefixu16(o[n:], mstr16, uint16(sz))
 		n += 3

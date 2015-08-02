@@ -293,9 +293,9 @@ func (mw *Writer) Reset(w io.Writer) {
 // size to the writer
 func (mw *Writer) WriteMapHeader(sz uint32) error {
 	switch {
-	case sz < 16:
+	case sz <= 15:
 		return mw.push(wfixmap(uint8(sz)))
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		return mw.prefix16(mmap16, uint16(sz))
 	default:
 		return mw.prefix32(mmap32, sz)
@@ -306,9 +306,9 @@ func (mw *Writer) WriteMapHeader(sz uint32) error {
 // given size to the writer
 func (mw *Writer) WriteArrayHeader(sz uint32) error {
 	switch {
-	case sz < 16:
+	case sz <= 15:
 		return mw.push(wfixarray(uint8(sz)))
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		return mw.prefix16(marray16, uint16(sz))
 	default:
 		return mw.prefix32(marray32, sz)
@@ -334,26 +334,24 @@ func (mw *Writer) WriteFloat32(f float32) error {
 func (mw *Writer) WriteInt64(i int64) error {
 	if i >= 0 {
 		switch {
-		case i < 128:
+		case i <= math.MaxInt8:
 			return mw.push(wfixint(uint8(i)))
-		case i < math.MaxInt8:
-			return mw.prefix8(mint8, uint8(i))
-		case i < math.MaxInt16:
+		case i <= math.MaxInt16:
 			return mw.prefix16(mint16, uint16(i))
-		case i < math.MaxInt32:
+		case i <= math.MaxInt32:
 			return mw.prefix32(mint32, uint32(i))
 		default:
 			return mw.prefix64(mint64, uint64(i))
 		}
 	}
 	switch {
-	case i > -32:
+	case i >= -31:
 		return mw.push(wnfixint(int8(i)))
-	case i > math.MinInt8:
+	case i >= math.MinInt8:
 		return mw.prefix8(mint8, uint8(i))
-	case i > math.MinInt16:
+	case i >= math.MinInt16:
 		return mw.prefix16(mint16, uint16(i))
-	case i > math.MinInt32:
+	case i >= math.MinInt32:
 		return mw.prefix32(mint32, uint32(i))
 	default:
 		return mw.prefix64(mint64, uint64(i))
@@ -375,13 +373,13 @@ func (mw *Writer) WriteInt(i int) error { return mw.WriteInt64(int64(i)) }
 // WriteUint64 writes a uint64 to the writer
 func (mw *Writer) WriteUint64(u uint64) error {
 	switch {
-	case u < (1 << 7):
+	case u <= (1<<7)-1:
 		return mw.push(wfixint(uint8(u)))
-	case u < math.MaxUint8:
+	case u <= math.MaxUint8:
 		return mw.prefix8(muint8, uint8(u))
-	case u < math.MaxUint16:
+	case u <= math.MaxUint16:
 		return mw.prefix16(muint16, uint16(u))
-	case u < math.MaxUint32:
+	case u <= math.MaxUint32:
 		return mw.prefix32(muint32, uint32(u))
 	default:
 		return mw.prefix64(muint64, u)
@@ -408,9 +406,9 @@ func (mw *Writer) WriteBytes(b []byte) error {
 	sz := uint32(len(b))
 	var err error
 	switch {
-	case sz < math.MaxUint8:
+	case sz <= math.MaxUint8:
 		err = mw.prefix8(mbin8, uint8(sz))
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		err = mw.prefix16(mbin16, uint16(sz))
 	default:
 		err = mw.prefix32(mbin32, sz)
@@ -427,9 +425,9 @@ func (mw *Writer) WriteBytes(b []byte) error {
 // for then writing 'sz' more bytes into the stream.
 func (mw *Writer) WriteBytesHeader(sz uint32) error {
 	switch {
-	case sz < math.MaxUint8:
+	case sz <= math.MaxUint8:
 		return mw.prefix8(mbin8, uint8(sz))
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		return mw.prefix16(mbin16, uint16(sz))
 	default:
 		return mw.prefix32(mbin32, sz)
@@ -450,11 +448,11 @@ func (mw *Writer) WriteString(s string) error {
 	sz := uint32(len(s))
 	var err error
 	switch {
-	case sz < 32:
+	case sz <= 31:
 		err = mw.push(wfixstr(uint8(sz)))
-	case sz < math.MaxUint8:
+	case sz <= math.MaxUint8:
 		err = mw.prefix8(mstr8, uint8(sz))
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		err = mw.prefix16(mstr16, uint16(sz))
 	default:
 		err = mw.prefix32(mstr32, sz)
@@ -471,11 +469,11 @@ func (mw *Writer) WriteString(s string) error {
 // bytes to the stream.
 func (mw *Writer) WriteStringHeader(sz uint32) error {
 	switch {
-	case sz < 32:
+	case sz <= 31:
 		return mw.push(wfixstr(uint8(sz)))
-	case sz < math.MaxUint8:
+	case sz <= math.MaxUint8:
 		return mw.prefix8(mstr8, uint8(sz))
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		return mw.prefix16(mstr16, uint16(sz))
 	default:
 		return mw.prefix32(mstr32, sz)
@@ -488,11 +486,11 @@ func (mw *Writer) WriteStringFromBytes(str []byte) error {
 	sz := uint32(len(str))
 	var err error
 	switch {
-	case sz < 32:
+	case sz <= 31:
 		err = mw.push(wfixstr(uint8(sz)))
-	case sz < math.MaxUint8:
+	case sz <= math.MaxUint8:
 		err = mw.prefix8(mstr8, uint8(sz))
-	case sz < math.MaxUint16:
+	case sz <= math.MaxUint16:
 		err = mw.prefix16(mstr16, uint16(sz))
 	default:
 		err = mw.prefix32(mstr32, sz)
