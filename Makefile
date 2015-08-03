@@ -11,7 +11,7 @@ MGEN = ./msgp/defgen_test.go
 
 SHELL := /bin/bash
 
-BIN = $(GOPATH)/bin/msgp
+BIN = $(GOBIN)/msgp
 
 .PHONY: clean wipe install get-deps bench all
 
