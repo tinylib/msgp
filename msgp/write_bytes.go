@@ -94,7 +94,7 @@ func AppendInt64(b []byte, i int64) []byte {
 		}
 	}
 	switch {
-	case i >= -31:
+	case i >= -32:
 		return append(b, wnfixint(int8(i)))
 	case i >= math.MinInt8:
 		o, n := ensure(b, 2)

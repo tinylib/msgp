@@ -345,7 +345,7 @@ func (mw *Writer) WriteInt64(i int64) error {
 		}
 	}
 	switch {
-	case i >= -31:
+	case i >= -32:
 		return mw.push(wnfixint(int8(i)))
 	case i >= math.MinInt8:
 		return mw.prefix8(mint8, uint8(i))
