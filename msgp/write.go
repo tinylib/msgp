@@ -52,15 +52,26 @@ func pushWriter(wr *Writer) {
 // it will cause undefined behavior.
 func freeW(w *Writer) { pushWriter(w) }
 
-// Require ensures that cap(old)-len(old) >= extra
+// Require ensures that cap(old)-len(old) >= extra.
 func Require(old []byte, extra int) []byte {
-	if cap(old)-len(old) >= extra {
+	l := len(old)
+	c := cap(old)
+	r := l + extra
+	if c >= r {
 		return old
-	}
-	if len(old) == 0 {
+	} else if l == 0 {
 		return make([]byte, 0, extra)
 	}
-	n := make([]byte, len(old), cap(old)-len(old)+extra)
+	// the new size is the greater
+	// of double the old capacity
+	// and the sum of the old length
+	// and the number of new bytes
+	// necessary.
+	c <<= 1
+	if c < r {
+		c = r
+	}
+	n := make([]byte, l, c)
 	copy(n, old)
 	return n
 }
