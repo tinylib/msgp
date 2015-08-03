@@ -110,15 +110,15 @@ TEXT ·put264(SB),NOSPLIT,$0-40
 TEXT ·putMapHdr(SB),NOSPLIT,$0-24
 	MOVQ p+0(FP), AX
 	MOVQ sz+8(FP), DI
-	MOVQ $0x80, BX
-	MOVQ $0xde, SI
+	MOVL $0x80, BX
+	MOVL $0xde, SI
 	JMP  put4bit<>(SB)
 
 TEXT ·putArrayHdr(SB),NOSPLIT,$0-24
 	MOVQ p+0(FP), AX
 	MOVQ sz+8(FP), DI
-	MOVQ $0x90, BX
-	MOVQ $0xdc, SI
+	MOVL $0x90, BX
+	MOVL $0xdc, SI
 	JMP  put4bit<>(SB)
 
 // putHdr for maps and arrays
@@ -128,25 +128,28 @@ TEXT ·putArrayHdr(SB),NOSPLIT,$0-24
 TEXT put4bit<>(SB),NOSPLIT,$0-24
 	CMPQ DI, $16
 	JAE  put16
+	MOVL $1, CX
 	ORQ  BX, DI
 	MOVB DI, (AX)
-	MOVQ $1, ret+16(FP)
+	MOVQ CX, ret+16(FP)
 	RET
 put16:
 	CMPQ   DI, $0xffff
 	JA     put32
+	MOVL   $3, CX
 	BSWAPL DI
-	SHRQ   $8, DI
-	ORQ    DI, SI
-	MOVQ   $3, ret+16(FP)
-	MOVQ   SI, (AX)
+	SHRL   $8, DI
+	ORL    DI, SI
+	MOVQ   CX, ret+16(FP)
+	MOVL   SI, (AX)
 	RET
 put32:
+	MOVL   $5, CX
 	BSWAPL DI
-	INCQ   SI
+	ADDL   $1, SI
 	SHLQ   $8, DI
 	ORQ    DI, SI
-	MOVQ   $5, ret+16(FP)
+	MOVQ   CX, ret+16(FP)
 	MOVQ   SI, (AX)
 	RET
 
@@ -156,9 +159,10 @@ TEXT ·putStrHdr(SB),NOSPLIT,$0-24
 	MOVQ sz+8(FP), DI
 	CMPQ DI, $32
 	JAE  putstr
+	MOVL $1, CX
 	ORQ  $0xa0, DI
 	MOVB DI, (AX)
-	MOVQ $1, ret+16(FP)
+	MOVQ CX, ret+16(FP)
 	RET
 putstr:
 	MOVQ $0xd9, SI
@@ -193,16 +197,16 @@ test16:
 	JA     test32
 	MOVL   $3, CX
 	BSWAPL DI
-	INCQ   SI
-	SHRQ   $8, DI
-	ORQ    DI, SI
+	ADDL   $1, SI
+	SHRL   $8, DI
+	ORL    DI, SI
 	MOVQ   CX, ret+16(FP)
 	MOVL   SI, (AX)
 	RET
 test32:
 	MOVL   $5, CX
 	BSWAPL DI
-	ADDQ   $2, SI
+	ADDL   $2, SI
 	SHLQ   $8, DI
 	ORQ    DI, SI
 	MOVQ   CX, ret+16(FP)
