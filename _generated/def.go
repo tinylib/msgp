@@ -69,6 +69,17 @@ type TestFast struct {
 	Data           []byte
 }
 
+// Test nested aliases
+type FastAlias TestFast
+type AliasContainer struct {
+	Fast FastAlias
+}
+
+// Test dependency resolution
+type IntA int
+type IntB IntA
+type IntC IntB
+
 type TestHidden struct {
 	A   string
 	B   []float64

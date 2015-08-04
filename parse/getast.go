@@ -106,19 +106,81 @@ func (f *FileSet) applyDirectives() {
 	f.Directives = newdirs
 }
 
+// A linkset is a graph of unresolved
+// identities.
+//
+// Since gen.Ident can only represent
+// one level of type indirection (e.g. Foo -> uint8),
+// type declarations like `type Foo Bar`
+// aren't resolve-able until we've processed
+// everything else.
+//
+// The goal of this dependency resolution
+// is to distill the type declaration
+// into just one level of indirection.
+// In other words, if we have:
+//
+//  type A uint64
+//  type B A
+//  type C B
+//  type D C
+//
+// ... then we want to end up
+// figuring out that D is just a uint64.
+type linkset map[string]*gen.BaseElem
+
+func (f *FileSet) resolve(ls linkset) {
+	progress := true
+	for progress && len(ls) > 0 {
+		progress = false
+		for name, elem := range ls {
+			real, ok := f.Identities[elem.TypeName()]
+			if ok {
+				// copy the old type descriptor,
+				// alias it to the new value,
+				// and insert it into the resolved
+				// identities list
+				progress = true
+				nt := real.Copy()
+				nt.Alias(name)
+				f.Identities[name] = nt
+				delete(ls, name)
+			}
+		}
+	}
+
+	// what's left can't be resolved
+	for name, elem := range ls {
+		warnf(" \u26a0 couldn't resolve link from %s to %s", name, elem.TypeName())
+	}
+}
+
 // process takes the contents of f.Specs and
 // uses them to populate f.Identities
 func (f *FileSet) process() {
 	// generate elements
+
+	deferred := make(map[string]*gen.BaseElem)
+
 	for name, def := range f.Specs {
 		infof("parsing %s...\n", name)
 		el := f.parseExpr(def)
 		if el != nil {
-			el.Alias(name)
-			f.Identities[name] = el
+			// if the type is unlinked, re-aliasing it just removes
+			// information. defer processing this.
+			if be, ok := el.(*gen.BaseElem); ok && be.Value == gen.IDENT {
+				deferred[name] = be
+			} else {
+				el.Alias(name)
+				f.Identities[name] = el
+			}
 		} else {
 			warnf(" \u26a0 unable to parse %s\n", name)
 		}
+	}
+
+	if len(deferred) > 0 {
+		f.resolve(deferred)
 	}
 }
 
@@ -374,8 +436,9 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	case *ast.Ident:
 		b := gen.Ident(e.Name)
 
-		// if the name isn't one of the type
-		// specs, warn
+		// work to resove this expression
+		// can be done later, once we've resolved
+		// everything else.
 		if b.Value == gen.IDENT {
 			if _, ok := fs.Specs[e.Name]; !ok {
 				warnf(" \u26a0 non-local identifier: %s\n", e.Name)

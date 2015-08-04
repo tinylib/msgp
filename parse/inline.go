@@ -48,6 +48,11 @@ func (f *FileSet) propInline() {
 	}
 }
 
+const fatalloop = `detected infinite recursion in inlining loop!
+Please file a bug at github.com/tinylib/msgp/issues!
+Thanks!
+`
+
 func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 	switch el := (*ref).(type) {
 	case *gen.BaseElem:
@@ -56,13 +61,17 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 		typ := el.TypeName()
 		if el.Value == gen.IDENT && typ != root {
 			if node, ok := f.Identities[typ]; ok && node.Complexity() < maxComplex {
-
-				// in order to ensure bottom-up inlining, we need
-				// to make sure this node has already had all its children
-				// inlined.
-				f.nextInline(&node, root)
-
 				infof("inlining methods for %s into %s...\n", typ, root)
+
+				// This should never happen; it will cause
+				// infinite recursion.
+				if node == *ref {
+					panic(fatalloop)
+				}
+
+				// inline bottom-up so as not to miss
+				// other inlining opportunities.
+				f.nextInline(&node, root)
 				*ref = node.Copy()
 			} else if !ok && !el.Resolved() {
 				// this is the point at which we're sure that
