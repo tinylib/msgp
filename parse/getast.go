@@ -30,6 +30,8 @@ type FileSet struct {
 // If unexport is false, only exported identifiers are included in the FileSet.
 // If the resulting FileSet would be empty, an error is returned.
 func File(name string, unexported bool) (*FileSet, error) {
+	pushstate(name)
+	defer popstate()
 	fs := &FileSet{
 		Specs:      make(map[string]ast.Expr),
 		Identities: make(map[string]gen.Elem),
@@ -55,11 +57,13 @@ func File(name string, unexported bool) (*FileSet, error) {
 		}
 		fs.Package = one.Name
 		for _, fl := range one.Files {
+			pushstate(fl.Name.Name)
 			fs.Directives = append(fs.Directives, yieldComments(fl.Comments)...)
 			if !unexported {
 				ast.FileExports(fl)
 			}
 			fs.getTypeSpecs(fl)
+			popstate()
 		}
 	} else {
 		f, err := parser.ParseFile(fset, name, nil, parser.ParseComments)
@@ -94,10 +98,12 @@ func (f *FileSet) applyDirectives() {
 		chunks := strings.Split(d, " ")
 		if len(chunks) > 0 {
 			if fn, ok := directives[chunks[0]]; ok {
+				pushstate(chunks[0])
 				err := fn(chunks, f)
 				if err != nil {
-					warnf("error applying directive: %s\n", err)
+					warnln(err.Error())
 				}
+				popstate()
 			} else {
 				newdirs = append(newdirs, d)
 			}
@@ -151,32 +157,35 @@ func (f *FileSet) resolve(ls linkset) {
 
 	// what's left can't be resolved
 	for name, elem := range ls {
-		warnf(" \u26a0 couldn't resolve link from %s to %s", name, elem.TypeName())
+		warnf("couldn't resolve type %s (%s)\n", name, elem.TypeName())
 	}
 }
 
 // process takes the contents of f.Specs and
 // uses them to populate f.Identities
 func (f *FileSet) process() {
-	// generate elements
 
-	deferred := make(map[string]*gen.BaseElem)
-
+	deferred := make(linkset)
+parse:
 	for name, def := range f.Specs {
-		infof("parsing %s...\n", name)
+		pushstate(name)
 		el := f.parseExpr(def)
-		if el != nil {
-			// if the type is unlinked, re-aliasing it just removes
-			// information. defer processing this.
-			if be, ok := el.(*gen.BaseElem); ok && be.Value == gen.IDENT {
-				deferred[name] = be
-			} else {
-				el.Alias(name)
-				f.Identities[name] = el
-			}
-		} else {
-			warnf(" \u26a0 unable to parse %s\n", name)
+		if el == nil {
+			warnln("failed to parse")
+			popstate()
+			continue parse
 		}
+		// push unresolved identities into
+		// the graph of links and resolve after
+		// we've handled every possible named type.
+		if be, ok := el.(*gen.BaseElem); ok && be.Value == gen.IDENT {
+			deferred[name] = be
+			popstate()
+			continue parse
+		}
+		el.Alias(name)
+		f.Identities[name] = el
+		popstate()
 	}
 
 	if len(deferred) > 0 {
@@ -217,19 +226,21 @@ loop:
 			}
 			m := strToMethod(chunks[0])
 			if m == 0 {
-				warnf("unknown pass name: %q", chunks[0])
+				warnf("unknown pass name: %q\n", chunks[0])
 				continue loop
 			}
 			if fn, ok := passDirectives[chunks[1]]; ok {
+				pushstate(chunks[1])
 				err := fn(m, chunks[2:], p)
 				if err != nil {
-					warnf("error applying directive: %s", err)
+					warnf("error applying directive: %s\n", err)
 				}
+				popstate()
 			} else {
-				warnf("unrecognized directive %q", chunks[1])
+				warnf("unrecognized directive %q\n", chunks[1])
 			}
 		} else {
-			warnf("empty directive: %q", d)
+			warnf("empty directive: %q\n", d)
 		}
 	}
 }
@@ -244,7 +255,9 @@ func (f *FileSet) PrintTo(p *gen.Printer) error {
 	for _, name := range names {
 		el := f.Identities[name]
 		el.SetVarname("z")
+		pushstate(el.TypeName())
 		err := p.Print(el)
+		popstate()
 		if err != nil {
 			return err
 		}
@@ -285,18 +298,31 @@ func (fs *FileSet) getTypeSpecs(f *ast.File) {
 	}
 }
 
+func fieldName(f *ast.Field) string {
+	switch len(f.Names) {
+	case 0:
+		return stringify(f.Type)
+	case 1:
+		return f.Names[0].Name
+	default:
+		return f.Names[0].Name + " (and others)"
+	}
+}
+
 func (fs *FileSet) parseFieldList(fl *ast.FieldList) []gen.StructField {
 	if fl == nil || fl.NumFields() == 0 {
 		return nil
 	}
 	out := make([]gen.StructField, 0, fl.NumFields())
-	for i, field := range fl.List {
+	for _, field := range fl.List {
+		pushstate(fieldName(field))
 		fds := fs.getField(field)
 		if len(fds) > 0 {
 			out = append(out, fds...)
 		} else {
-			warnf(" \u26a0 ignored struct field %d\n", i)
+			warnln("ignored.")
 		}
+		popstate()
 	}
 	return out
 }
@@ -355,13 +381,13 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 			if b, ok := ex.Value.(*gen.BaseElem); ok {
 				b.Value = gen.Ext
 			} else {
-				warnf(" \u26a0 field %q couldn't be cast as an extension\n", sf[0].FieldName)
+				warnln("couldn't cast to extension.")
 				return nil
 			}
 		case *gen.BaseElem:
 			ex.Value = gen.Ext
 		default:
-			warnf(" \u26a0 field %q couldn't be cast as an extension\n", sf[0].FieldName)
+			warnln("couldn't cast to extension.")
 			return nil
 		}
 	}
@@ -410,7 +436,7 @@ func stringify(e ast.Expr) string {
 			return "interface{}"
 		}
 	}
-	return ""
+	return "<BAD>"
 }
 
 // recursively translate ast.Expr to gen.Elem; nil means type not supported
@@ -441,7 +467,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		// everything else.
 		if b.Value == gen.IDENT {
 			if _, ok := fs.Specs[e.Name]; !ok {
-				warnf(" \u26a0 non-local identifier: %s\n", e.Name)
+				warnf("non-local identifier: %s\n", e.Name)
 			}
 		}
 		return b
@@ -516,7 +542,44 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	}
 }
 
-func infof(s string, v ...interface{})  { fmt.Printf(chalk.Green.Color(s), v...) }
-func warnf(s string, v ...interface{})  { fmt.Printf(chalk.Yellow.Color(s), v...) }
-func warnln(s string)                   { fmt.Println(chalk.Yellow.Color(s)) }
-func fatalf(s string, v ...interface{}) { fmt.Printf(chalk.Red.Color(s), v...) }
+func infof(s string, v ...interface{}) {
+	pushstate(s)
+	fmt.Printf(chalk.Green.Color(strings.Join(logctx, ": ")), v...)
+	popstate()
+}
+
+func infoln(s string) {
+	pushstate(s)
+	fmt.Println(chalk.Green.Color(strings.Join(logctx, ": ")))
+	popstate()
+}
+
+func warnf(s string, v ...interface{}) {
+	pushstate(s)
+	fmt.Printf(chalk.Yellow.Color(strings.Join(logctx, ": ")), v...)
+	popstate()
+}
+
+func warnln(s string) {
+	pushstate(s)
+	fmt.Println(chalk.Yellow.Color(strings.Join(logctx, ": ")))
+	popstate()
+}
+
+func fatalf(s string, v ...interface{}) {
+	pushstate(s)
+	fmt.Printf(chalk.Red.Color(strings.Join(logctx, ": ")), v...)
+	popstate()
+}
+
+var logctx []string
+
+// push logging state
+func pushstate(s string) {
+	logctx = append(logctx, s)
+}
+
+// pop logging state
+func popstate() {
+	logctx = logctx[:len(logctx)-1]
+}

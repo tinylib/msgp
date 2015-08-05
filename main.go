@@ -87,7 +87,7 @@ func Run(gofile string, mode gen.Method, unexported bool) error {
 		return nil
 	}
 	fmt.Println(chalk.Magenta.Color("======== MessagePack Code Generator ======="))
-	fmt.Printf(chalk.Magenta.Color(">>> Input: \"%s\"...\n"), gofile)
+	fmt.Printf(chalk.Magenta.Color(">>> Input: \"%s\"\n"), gofile)
 	fs, err := parse.File(gofile, unexported)
 	if err != nil {
 		return err

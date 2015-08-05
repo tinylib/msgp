@@ -31,6 +31,7 @@ const maxComplex = 5
 // propInline identifies and inlines candidates
 func (f *FileSet) propInline() {
 	for name, el := range f.Identities {
+		pushstate(name)
 		switch el := el.(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
@@ -45,6 +46,7 @@ func (f *FileSet) propInline() {
 		case *gen.Ptr:
 			f.nextInline(&el.Value, name)
 		}
+		popstate()
 	}
 }
 
@@ -61,7 +63,7 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 		typ := el.TypeName()
 		if el.Value == gen.IDENT && typ != root {
 			if node, ok := f.Identities[typ]; ok && node.Complexity() < maxComplex {
-				infof("inlining methods for %s into %s...\n", typ, root)
+				infof("inlining %s\n", typ)
 
 				// This should never happen; it will cause
 				// infinite recursion.
@@ -77,7 +79,7 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 				// this is the point at which we're sure that
 				// we've got a type that isn't a primitive,
 				// a library builtin, or a processed type
-				warnf(" \u26a0 WARNING: unresolved identifier: %s\n", typ)
+				warnf("unresolved identifier: %s\n", typ)
 			}
 		}
 	case *gen.Struct:
