@@ -1,0 +1,54 @@
+fatal error: runtime: out of memory
+
+runtime stack:
+runtime.throw(0x5f3550, 0x16)
+	/tmp/go-fuzz-build977350642/src/runtime/panic.go:527 +0x90
+runtime.sysMap(0xc820100000, 0x783040000, 0x698b00, 0x6cdc78)
+	/tmp/go-fuzz-build977350642/src/runtime/mem_linux.go:143 +0x9b
+runtime.mHeap_SysAlloc(0x6affe0, 0x783040000, 0xc08)
+	/tmp/go-fuzz-build977350642/src/runtime/malloc.go:423 +0x160
+runtime.mHeap_Grow(0x6affe0, 0x3c1820, 0x0)
+	/tmp/go-fuzz-build977350642/src/runtime/mheap.go:628 +0x63
+runtime.mHeap_AllocSpanLocked(0x6affe0, 0x3c1819, 0x0)
+	/tmp/go-fuzz-build977350642/src/runtime/mheap.go:532 +0x5f1
+runtime.mHeap_Alloc_m(0x6affe0, 0x3c1819, 0x100000000, 0x4)
+	/tmp/go-fuzz-build977350642/src/runtime/mheap.go:425 +0x1ac
+runtime.mHeap_Alloc.func1()
+	/tmp/go-fuzz-build977350642/src/runtime/mheap.go:484 +0x41
+runtime.systemstack(0x7ffc75f72460)
+	/tmp/go-fuzz-build977350642/src/runtime/asm_amd64.s:278 +0xab
+runtime.mHeap_Alloc(0x6affe0, 0x3c1819, 0x10100000000, 0x7f529765c090)
+	/tmp/go-fuzz-build977350642/src/runtime/mheap.go:485 +0x63
+runtime.largeAlloc(0x783030300, 0x0, 0xc82009a000)
+	/tmp/go-fuzz-build977350642/src/runtime/malloc.go:745 +0xb3
+runtime.mallocgc.func3()
+	/tmp/go-fuzz-build977350642/src/runtime/malloc.go:634 +0x33
+runtime.systemstack(0x6a9240)
+	/tmp/go-fuzz-build977350642/src/runtime/asm_amd64.s:262 +0x79
+runtime.mstart()
+	/tmp/go-fuzz-build977350642/src/runtime/proc1.go:674
+
+goroutine 1 [running]:
+runtime.systemstack_switch()
+	/tmp/go-fuzz-build977350642/src/runtime/asm_amd64.s:216 fp=0xc82004d9f8 sp=0xc82004d9f0
+runtime.mallocgc(0x783030300, 0x577f40, 0x0, 0x0)
+	/tmp/go-fuzz-build977350642/src/runtime/malloc.go:635 +0x9c4 fp=0xc82004dac8 sp=0xc82004d9f8
+runtime.newarray(0x577f40, 0x78303030, 0x0)
+	/tmp/go-fuzz-build977350642/src/runtime/malloc.go:777 +0xc9 fp=0xc82004db08 sp=0xc82004dac8
+runtime.makeslice(0x570b00, 0x78303030, 0x78303030, 0x0, 0x0, 0x0)
+	/tmp/go-fuzz-build977350642/src/runtime/slice.go:32 +0x165 fp=0xc82004db58 sp=0xc82004db08
+github.com/tinylib/msgp/msgp.ReadIntfBytes(0x7f52972a7003, 0x5, 0x1ffffd, 0x0, 0x0, 0x7f52972a7008, 0x0, 0x1ffff8, 0x0, 0x0)
+	/tmp/go-fuzz-build977350642/src/github.com/tinylib/msgp/msgp/read_bytes.go:945 +0x695 fp=0xc82004dcd0 sp=0xc82004db58
+github.com/tinylib/msgp/msgp.ReadIntfBytes(0x7f52972a7000, 0x8, 0x200000, 0x570b00, 0xc82000e1c0, 0x7f52972a7003, 0x5, 0x1ffffd, 0x0, 0x0)
+	/tmp/go-fuzz-build977350642/src/github.com/tinylib/msgp/msgp/read_bytes.go:948 +0x7a2 fp=0xc82004de48 sp=0xc82004dcd0
+github.com/tinylib/msgp/msgp/fuzz/readintf.Fuzz(0x7f52972a7000, 0x8, 0x200000, 0x40c5d7)
+	/tmp/go-fuzz-build977350642/src/github.com/tinylib/msgp/msgp/fuzz/readintf/readintf.go:6 +0x58 fp=0xc82004dea0 sp=0xc82004de48
+github.com/dvyukov/go-fuzz/go-fuzz-dep.Main(0x613090)
+	/home/phil/gopath/src/github.com/dvyukov/go-fuzz/go-fuzz-dep/main.go:44 +0x14c fp=0xc82004df40 sp=0xc82004dea0
+main.main()
+	/tmp/go-fuzz-build977350642/src/go-fuzz-main/main.go:10 +0x23 fp=0xc82004df50 sp=0xc82004df40
+runtime.main()
+	/tmp/go-fuzz-build977350642/src/runtime/proc.go:111 +0x2b0 fp=0xc82004dfa0 sp=0xc82004df50
+runtime.goexit()
+	/tmp/go-fuzz-build977350642/src/runtime/asm_amd64.s:1696 +0x1 fp=0xc82004dfa8 sp=0xc82004dfa0
+exit status 2

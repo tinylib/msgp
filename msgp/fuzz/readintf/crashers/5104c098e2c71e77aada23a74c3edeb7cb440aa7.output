@@ -1,0 +1,14 @@
+panic: makemap: size out of range
+
+goroutine 1 [running]:
+github.com/tinylib/msgp/msgp.ReadMapStrIntfBytes(0x7fa77feb2000, 0x5, 0x200000, 0x0, 0x0, 0x7fa77feb2005, 0x0, 0x1ffffb, 0x0, 0x0)
+	/tmp/go-fuzz-build977350642/src/github.com/tinylib/msgp/msgp/read_bytes.go:900 +0x8c6
+github.com/tinylib/msgp/msgp.ReadIntfBytes(0x7fa77feb2000, 0x5, 0x200000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0)
+	/tmp/go-fuzz-build977350642/src/github.com/tinylib/msgp/msgp/read_bytes.go:936 +0x42e
+github.com/tinylib/msgp/msgp/fuzz/readintf.Fuzz(0x7fa77feb2000, 0x5, 0x200000, 0x40c5d7)
+	/tmp/go-fuzz-build977350642/src/github.com/tinylib/msgp/msgp/fuzz/readintf/readintf.go:6 +0x58
+github.com/dvyukov/go-fuzz/go-fuzz-dep.Main(0x613090)
+	/home/phil/gopath/src/github.com/dvyukov/go-fuzz/go-fuzz-dep/main.go:44 +0x14c
+main.main()
+	/tmp/go-fuzz-build977350642/src/go-fuzz-main/main.go:10 +0x23
+exit status 2

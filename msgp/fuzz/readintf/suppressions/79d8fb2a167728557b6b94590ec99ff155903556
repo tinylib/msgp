@@ -1,0 +1,6 @@
+panic: makemap: size out of range
+github.com/tinylib/msgp/msgp.ReadMapStrIntfBytes
+github.com/tinylib/msgp/msgp.ReadIntfBytes
+github.com/tinylib/msgp/msgp/fuzz/readintf.Fuzz
+github.com/dvyukov/go-fuzz/go-fuzz-dep.Main
+main.main

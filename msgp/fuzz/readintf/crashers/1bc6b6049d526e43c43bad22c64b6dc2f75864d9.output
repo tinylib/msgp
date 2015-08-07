@@ -1,0 +1,51 @@
+program hanged (timeout 10 seconds)
+
+SIGABRT: abort
+PC=0x456521 m=0
+
+goroutine 0 [idle]:
+runtime.futex(0x6a9650, 0x0, 0x0, 0x0, 0x0, 0x6a9000, 0x0, 0x0, 0x40c844, 0x6a9650, ...)
+	/tmp/go-fuzz-build977350642/src/runtime/sys_linux_amd64.s:288 +0x21
+runtime.futexsleep(0x6a9650, 0x0, 0xffffffffffffffff)
+	/tmp/go-fuzz-build977350642/src/runtime/os1_linux.go:39 +0x53
+runtime.notesleep(0x6a9650)
+	/tmp/go-fuzz-build977350642/src/runtime/lock_futex.go:142 +0xa4
+runtime.stopm()
+	/tmp/go-fuzz-build977350642/src/runtime/proc1.go:1128 +0x112
+runtime.exitsyscall0(0xc820001380)
+	/tmp/go-fuzz-build977350642/src/runtime/proc1.go:2138 +0x16c
+runtime.mcall(0x7fff55847190)
+	/tmp/go-fuzz-build977350642/src/runtime/asm_amd64.s:204 +0x5b
+
+goroutine 1 [runnable]:
+github.com/tinylib/msgp/msgp.ReadIntfBytes(0x7f0802a1f000, 0x6, 0x200000, 0x0, 0x0, 0x7f0802a1f005, 0x1, 0x1ffffb, 0x0, 0x0)
+	/tmp/go-fuzz-build977350642/src/github.com/tinylib/msgp/msgp/read_bytes.go:946 +0x6fa
+github.com/tinylib/msgp/msgp/fuzz/readintf.Fuzz(0x7f0802a1f000, 0x6, 0x200000, 0x3)
+	/tmp/go-fuzz-build977350642/src/github.com/tinylib/msgp/msgp/fuzz/readintf/readintf.go:6 +0x58
+github.com/dvyukov/go-fuzz/go-fuzz-dep.Main(0x613090)
+	/home/phil/gopath/src/github.com/dvyukov/go-fuzz/go-fuzz-dep/main.go:44 +0x14c
+main.main()
+	/tmp/go-fuzz-build977350642/src/go-fuzz-main/main.go:10 +0x23
+
+rax    0xca
+rbx    0x0
+rcx    0x456523
+rdx    0x0
+rdi    0x6a9650
+rsi    0x0
+rbp    0x1
+rsp    0x7fff558470a0
+r8     0x0
+r9     0x0
+r10    0x0
+r11    0x286
+r12    0x2c
+r13    0x610c78
+r14    0x8
+r15    0x0
+rip    0x456521
+rflags 0x286
+cs     0x33
+fs     0x0
+gs     0x0
+exit status 2

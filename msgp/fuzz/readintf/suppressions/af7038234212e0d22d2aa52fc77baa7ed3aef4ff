@@ -1,0 +1,12 @@
+fatal error: runtime: out of memory
+runtime.systemstack_switch
+runtime.mallocgc
+runtime.newarray
+runtime.makeslice
+github.com/tinylib/msgp/msgp.ReadIntfBytes
+github.com/tinylib/msgp/msgp.ReadIntfBytes
+github.com/tinylib/msgp/msgp/fuzz/readintf.Fuzz
+github.com/dvyukov/go-fuzz/go-fuzz-dep.Main
+main.main
+runtime.main
+runtime.goexit
