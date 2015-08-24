@@ -82,9 +82,11 @@ func (d *decodeGen) assignAndCheck(name string, typ string) {
 func (d *decodeGen) structAsTuple(s *Struct) {
 	nfields := len(s.Fields)
 
+	d.p.print("\n{")
 	d.p.declare(structArraySizeVar, u32)
 	d.assignAndCheck(structArraySizeVar, arrayHeader)
 	d.p.arrayCheck(strconv.Itoa(nfields), structArraySizeVar)
+	d.p.print("\n}")
 	for i := range s.Fields {
 		if !d.p.ok() {
 			return
