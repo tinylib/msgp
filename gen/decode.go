@@ -85,12 +85,14 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 	d.p.declare(structArraySizeVar, u32)
 	d.assignAndCheck(structArraySizeVar, arrayHeader)
 	d.p.arrayCheck(strconv.Itoa(nfields), structArraySizeVar)
+	d.p.print("\n{")
 	for i := range s.Fields {
 		if !d.p.ok() {
 			return
 		}
 		next(d, s.Fields[i].FieldElem)
 	}
+	d.p.print("\n}")
 }
 
 func (d *decodeGen) structAsMap(s *Struct) {
