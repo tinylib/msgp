@@ -275,11 +275,10 @@ func rwTimeBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error)
 	if err != nil {
 		return msg, scratch, err
 	}
-	bts, err := t.MarshalJSON()
-	if err != nil {
-		return msg, scratch, err
-	}
-	_, err = w.Write(bts)
+	scratch = append(scratch[:0], '"')
+	scratch = t.AppendFormat(scratch, time.RFC3339Nano)
+	scratch = append(scratch, '"')
+	_, err = w.Write(scratch)
 	return msg, scratch, err
 }
 
@@ -293,17 +292,7 @@ func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, e
 
 	// if it's time.Time
 	if et == TimeExtension {
-		var tm time.Time
-		tm, msg, err = ReadTimeBytes(msg)
-		if err != nil {
-			return msg, scratch, err
-		}
-		bts, err := tm.MarshalJSON()
-		if err != nil {
-			return msg, scratch, err
-		}
-		_, err = w.Write(bts)
-		return msg, scratch, err
+		return rwTimeBytes(w, msg, scratch)
 	}
 
 	// if the extension is registered,

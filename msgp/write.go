@@ -300,6 +300,28 @@ func (mw *Writer) Reset(w io.Writer) {
 	mw.wloc = 0
 }
 
+// ReadFrom implements io.ReaderFrom
+func (mw *Writer) ReadFrom(r io.Reader) (int64, error) {
+	var (
+		n   int
+		nn  int64
+		err error
+	)
+	for err == nil {
+		err = mw.flush()
+		if err != nil {
+			return nn, err
+		}
+		n, err = r.Read(mw.buf)
+		nn += int64(n)
+		mw.wloc += n
+	}
+	if err == io.EOF {
+		return nn, mw.flush()
+	}
+	return nn, err
+}
+
 // WriteMapHeader writes a map header of the given
 // size to the writer
 func (mw *Writer) WriteMapHeader(sz uint32) error {

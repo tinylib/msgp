@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"strconv"
+	"time"
 	"unicode/utf8"
 )
 
@@ -253,17 +254,19 @@ func rwTime(dst jsWriter, src *Reader) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	bts, err := t.MarshalJSON()
-	if err != nil {
-		return 0, err
-	}
-	return dst.Write(bts)
+	src.scratch = append(src.scratch[:0], '"')
+	src.scratch = t.AppendFormat(src.scratch, time.RFC3339Nano)
+	src.scratch = append(src.scratch, '"')
+	return dst.Write(src.scratch)
 }
 
 func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
 	et, err := src.peekExtensionType()
 	if err != nil {
 		return 0, err
+	}
+	if et == TimeExtension {
+		return rwTime(dst, src)
 	}
 
 	// registered extensions can override

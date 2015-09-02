@@ -591,6 +591,29 @@ func ReadBytesBytes(b []byte, scratch []byte) (v []byte, o []byte, err error) {
 	return readBytesBytes(b, scratch, false)
 }
 
+func ReadBytesHeader(b []byte) (uint32, []byte, error) {
+	l := len(b)
+	if l < 2 {
+		return 0, b, ErrShortBytes
+	}
+	switch b[0] {
+	case mbin8:
+		return uint32(b[1]), b[2:], nil
+	case mbin16:
+		if l < 3 {
+			return 0, b, ErrShortBytes
+		}
+		return uint32(big.Uint16(b[1:])), b[3:], nil
+	case mbin32:
+		if l < 5 {
+			return 0, b, ErrShortBytes
+		}
+		return big.Uint32(b[1:]), b[5:], nil
+	default:
+		return 0, b, badPrefix(BinType, b[0])
+	}
+}
+
 func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err error) {
 	l := len(b)
 	if l < 1 {

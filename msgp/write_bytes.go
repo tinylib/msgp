@@ -171,6 +171,23 @@ func AppendUint16(b []byte, u uint16) []byte { return AppendUint64(b, uint64(u))
 // AppendUint32 appends a uint32 to the slice
 func AppendUint32(b []byte, u uint32) []byte { return AppendUint64(b, uint64(u)) }
 
+func AppendBytesHeader(b []byte, sz uint32) []byte {
+	switch {
+	case sz <= math.MaxUint8:
+		o, n := ensure(b, 2)
+		prefixu8(o[n:], mbin8, uint8(sz))
+		return o
+	case sz < math.MaxUint16:
+		o, n := ensure(b, 3)
+		prefixu16(o[n:], mbin16, uint16(sz))
+		return o
+	default:
+		o, n := ensure(b, 5)
+		prefixu32(o[n:], mbin32, sz)
+		return o
+	}
+}
+
 // AppendBytes appends bytes to the slice as MessagePack 'bin' data
 func AppendBytes(b []byte, bts []byte) []byte {
 	sz := len(bts)
