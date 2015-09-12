@@ -399,7 +399,12 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 			}
 		}
 		return b, nil
-
+	case reflect.Ptr:
+		if v.IsNil() {
+			return AppendNil(b), err
+		}
+		b, err = AppendIntf(b, v.Elem().Interface())
+		return b, err
 	default:
 		return b, &ErrUnsupportedType{T: v.Type()}
 	}
