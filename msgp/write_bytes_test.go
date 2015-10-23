@@ -14,7 +14,7 @@ func TestIssue116(t *testing.T) {
 		t.Fatal(err)
 	}
 	if i != math.MinInt64 {
-		t.Errorf("put %d in and got %d out", math.MinInt64, i)
+		t.Errorf("put %d in and got %d out", int64(math.MinInt64), i)
 	}
 
 	var buf bytes.Buffer
@@ -27,7 +27,7 @@ func TestIssue116(t *testing.T) {
 		t.Fatal(err)
 	}
 	if i != math.MinInt64 {
-		t.Errorf("put %d in and got %d out", math.MinInt64, i)
+		t.Errorf("put %d in and got %d out", int64(math.MinInt64), i)
 	}
 }
 
