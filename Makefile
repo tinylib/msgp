@@ -46,4 +46,10 @@ get-deps:
 all: install $(GGEN) $(MGEN)
 
 # travis CI enters here
-travis: get-deps test
+travis:
+	go get -d -t ./...
+	go build -o "$${GOPATH%%:*}/bin/msgp" .
+	go generate ./msgp
+	go generate ./_generated
+	go test ./msgp
+	go test ./_generated
