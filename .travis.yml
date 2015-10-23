@@ -2,6 +2,11 @@ language: go
 
 go:
   - 1.4
+  - 1.5
   - tip
+
+env:
+  - GIMME_ARCH=amd64
+  - GIMME_ARCH=386
 
 script: "make travis"
