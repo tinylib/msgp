@@ -97,25 +97,26 @@ type Printer struct {
 	gens []generator
 }
 
-func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
+func NewPrinter(m Method, out io.Writer, tests io.Writer, receiver string) *Printer {
 	if m.isset(Test) && tests == nil {
 		panic("cannot print tests with 'nil' tests argument!")
 	}
 	gens := make([]generator, 0, 7)
+	r := receiverType(receiver)
 	if m.isset(Decode) {
 		gens = append(gens, decode(out))
 	}
 	if m.isset(Encode) {
-		gens = append(gens, encode(out))
+		gens = append(gens, encode(out, r))
 	}
 	if m.isset(Marshal) {
-		gens = append(gens, marshal(out))
+		gens = append(gens, marshal(out, r))
 	}
 	if m.isset(Unmarshal) {
 		gens = append(gens, unmarshal(out))
 	}
 	if m.isset(Size) {
-		gens = append(gens, sizes(out))
+		gens = append(gens, sizes(out, r))
 	}
 	if m.isset(marshaltest) {
 		gens = append(gens, mtest(tests))
@@ -221,7 +222,14 @@ func next(t traversal, e Elem) {
 }
 
 // possibly-immutable method receiver
-func imutMethodReceiver(p Elem) string {
+func imutMethodReceiver(p Elem, r receiverType) string {
+	switch r {
+	case Pointer:
+		return "*" + p.TypeName()
+	case Value:
+		return p.TypeName()
+	}
+
 	switch e := p.(type) {
 	case *Struct:
 		// TODO(HACK): actually do real math here.

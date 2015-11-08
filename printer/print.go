@@ -19,8 +19,8 @@ func infof(s string, v ...interface{}) {
 // PrintFile prints the methods for the provided list
 // of elements to the given file name and canonical
 // package path.
-func PrintFile(file string, f *parse.FileSet, mode gen.Method) error {
-	out, tests, err := generate(f, mode)
+func PrintFile(file string, f *parse.FileSet, mode gen.Method, receiver string) error {
+	out, tests, err := generate(f, mode, receiver)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func goformat(file string, data []byte) <-chan error {
 	return out
 }
 
-func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, error) {
+func generate(f *parse.FileSet, mode gen.Method, receiver string) (*bytes.Buffer, *bytes.Buffer, error) {
 	outbuf := bytes.NewBuffer(make([]byte, 0, 4096))
 	writePkgHeader(outbuf, f.Package)
 	writeImportHeader(outbuf, "github.com/tinylib/msgp/msgp")
@@ -81,7 +81,7 @@ func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, 
 		}
 		testwr = testbuf
 	}
-	return outbuf, testbuf, f.PrintTo(gen.NewPrinter(mode, outbuf, testwr))
+	return outbuf, testbuf, f.PrintTo(gen.NewPrinter(mode, outbuf, testwr, receiver))
 }
 
 func writePkgHeader(b *bytes.Buffer, name string) {

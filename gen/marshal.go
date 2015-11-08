@@ -2,18 +2,21 @@ package gen
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/msgp"
 	"io"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
-func marshal(w io.Writer) *marshalGen {
+func marshal(w io.Writer, r receiverType) *marshalGen {
 	return &marshalGen{
+		r: r,
 		p: printer{w: w},
 	}
 }
 
 type marshalGen struct {
 	passes
+	r    receiverType
 	p    printer
 	fuse []byte
 }
@@ -43,7 +46,7 @@ func (m *marshalGen) Execute(p Elem) error {
 	// that z.Msgsize() is printed correctly
 	c := p.Varname()
 
-	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", p.Varname(), imutMethodReceiver(p))
+	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", p.Varname(), imutMethodReceiver(p, m.r))
 	m.p.printf("\no = msgp.Require(b, %s.Msgsize())", c)
 	next(m, p)
 	m.p.nakedReturn()

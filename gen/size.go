@@ -2,9 +2,10 @@ package gen
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/msgp"
 	"io"
 	"strconv"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 type sizeState uint8
@@ -20,8 +21,9 @@ const (
 	expr
 )
 
-func sizes(w io.Writer) *sizeGen {
+func sizes(w io.Writer, r receiverType) *sizeGen {
 	return &sizeGen{
+		r:     r,
 		p:     printer{w: w},
 		state: assign,
 	}
@@ -29,6 +31,7 @@ func sizes(w io.Writer) *sizeGen {
 
 type sizeGen struct {
 	passes
+	r     receiverType
 	p     printer
 	state sizeState
 }
@@ -79,7 +82,7 @@ func (s *sizeGen) Execute(p Elem) error {
 		return nil
 	}
 
-	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", p.Varname(), imutMethodReceiver(p))
+	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", p.Varname(), imutMethodReceiver(p, s.r))
 	s.state = assign
 	next(s, p)
 	s.p.nakedReturn()

@@ -2,18 +2,21 @@ package gen
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/msgp"
 	"io"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
-func encode(w io.Writer) *encodeGen {
+func encode(w io.Writer, r receiverType) *encodeGen {
 	return &encodeGen{
+		r: r,
 		p: printer{w: w},
 	}
 }
 
 type encodeGen struct {
 	passes
+	r    receiverType
 	p    printer
 	fuse []byte
 }
@@ -58,7 +61,7 @@ func (e *encodeGen) Execute(p Elem) error {
 
 	e.p.comment("EncodeMsg implements msgp.Encodable")
 
-	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), imutMethodReceiver(p))
+	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), imutMethodReceiver(p, e.r))
 	next(e, p)
 	e.p.nakedReturn()
 	return e.p.err

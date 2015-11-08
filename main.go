@@ -38,6 +38,7 @@ import (
 var (
 	out        = flag.String("o", "", "output file")
 	file       = flag.String("file", "", "input file")
+	receiver   = flag.String("receiver", "auto", "receiver type: auto, pointer, value")
 	encode     = flag.Bool("io", true, "create Encode and Decode methods")
 	marshal    = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
 	tests      = flag.Bool("tests", true, "create tests and benchmarks")
@@ -72,7 +73,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := Run(*file, mode, *unexported); err != nil {
+	if err := Run(*file, mode, *unexported, *receiver); err != nil {
 		fmt.Println(chalk.Red.Color(err.Error()))
 		os.Exit(1)
 	}
@@ -82,7 +83,7 @@ func main() {
 //
 //	err := msgp.Run("path/to/myfile.go", gen.Size|gen.Marshal|gen.Unmarshal|gen.Test, false)
 //
-func Run(gofile string, mode gen.Method, unexported bool) error {
+func Run(gofile string, mode gen.Method, unexported bool, receiver string) error {
 	if mode&^gen.Test == 0 {
 		return nil
 	}
@@ -98,7 +99,7 @@ func Run(gofile string, mode gen.Method, unexported bool) error {
 		return nil
 	}
 
-	return printer.PrintFile(newFilename(gofile, fs.Package), fs, mode)
+	return printer.PrintFile(newFilename(gofile, fs.Package), fs, mode, receiver)
 }
 
 // picks a new file name based on input flags and input filename(s).
