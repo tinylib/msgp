@@ -21,6 +21,7 @@ type FileSet struct {
 	Specs      map[string]ast.Expr // type specs in file
 	Identities map[string]gen.Elem // processed from specs
 	Directives []string            // raw preprocessor directives
+	Tag        string              // structure field tag
 }
 
 // File parses a file at the relative path
@@ -29,12 +30,17 @@ type FileSet struct {
 // directory will be parsed.
 // If unexport is false, only exported identifiers are included in the FileSet.
 // If the resulting FileSet would be empty, an error is returned.
-func File(name string, unexported bool) (*FileSet, error) {
+func File(name string, unexported bool, tag string) (*FileSet, error) {
 	pushstate(name)
 	defer popstate()
+	if tag == "" {
+		tag = "msg"
+	}
+
 	fs := &FileSet{
 		Specs:      make(map[string]ast.Expr),
 		Identities: make(map[string]gen.Elem),
+		Tag:tag,
 	}
 
 	fset := token.NewFileSet()
@@ -333,7 +339,7 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 	var extension bool
 	// parse tag; otherwise field name is field tag
 	if f.Tag != nil {
-		body := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("msg")
+		body := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get(fs.Tag)
 		tags := strings.Split(body, ",")
 		if len(tags) == 2 && tags[1] == "extension" {
 			extension = true
