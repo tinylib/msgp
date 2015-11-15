@@ -317,12 +317,12 @@ func (s *Ptr) SetVarname(a string) {
 		if x.Value == IDENT {
 			x.SetVarname(a)
 		} else {
-			x.SetVarname("*" + a)
+			x.SetVarname("(*" + a+")")
 		}
 		return
 
 	default:
-		s.Value.SetVarname("*" + a)
+		s.Value.SetVarname("(*" + a+")")
 		return
 	}
 }
