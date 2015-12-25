@@ -77,7 +77,7 @@ func applyShim(text []string, f *FileSet) error {
 	be.ShimFromBase = methods[1]
 
 	infof("%s -> %s\n", name, be.Value.String())
-	f.Identities[name] = be
+	f.findShim(name, be)
 
 	return nil
 }

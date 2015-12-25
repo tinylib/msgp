@@ -28,6 +28,52 @@ import (
 // of the number of children in a node
 const maxComplex = 5
 
+// begin recursive search for identities with the
+// given name and replace them with be
+func (f *FileSet) findShim(id string, be *gen.BaseElem) {
+	for name, el := range f.Identities {
+		pushstate(name)
+		switch el := el.(type) {
+		case *gen.Struct:
+			for i := range el.Fields {
+				f.nextShim(&el.Fields[i].FieldElem, id, be)
+			}
+		case *gen.Array:
+			f.nextShim(&el.Els, id, be)
+		case *gen.Slice:
+			f.nextShim(&el.Els, id, be)
+		case *gen.Map:
+			f.nextShim(&el.Value, id, be)
+		case *gen.Ptr:
+			f.nextShim(&el.Value, id, be)
+		}
+		popstate()
+	}
+	// we'll need this at the top level as well
+	f.Identities[id] = be
+}
+
+func (f *FileSet) nextShim(ref *gen.Elem, id string, be *gen.BaseElem) {
+	if (*ref).TypeName() == id {
+		*ref = be
+	} else {
+		switch el := (*ref).(type) {
+		case *gen.Struct:
+			for i := range el.Fields {
+				f.nextShim(&el.Fields[i].FieldElem, id, be)
+			}
+		case *gen.Array:
+			f.nextShim(&el.Els, id, be)
+		case *gen.Slice:
+			f.nextShim(&el.Els, id, be)
+		case *gen.Map:
+			f.nextShim(&el.Value, id, be)
+		case *gen.Ptr:
+			f.nextShim(&el.Value, id, be)
+		}
+	}
+}
+
 // propInline identifies and inlines candidates
 func (f *FileSet) propInline() {
 	for name, el := range f.Identities {
