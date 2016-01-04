@@ -576,7 +576,7 @@ func ReadUintBytes(b []byte) (uint, []byte, error) {
 	return uint(u), b, err
 }
 
-// ReadByteBytes is analagous to ReadUint8Bytes
+// ReadByteBytes is analogous to ReadUint8Bytes
 func ReadByteBytes(b []byte) (byte, []byte, error) {
 	return ReadUint8Bytes(b)
 }
