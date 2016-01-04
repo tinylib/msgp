@@ -715,7 +715,7 @@ func (m *Reader) ReadUint() (u uint, err error) {
 	return
 }
 
-// ReadByte is analagous to ReadUint8.
+// ReadByte is analogous to ReadUint8.
 //
 // NOTE: this is *not* an implementation
 // of io.ByteReader.
