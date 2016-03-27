@@ -21,6 +21,7 @@ type FileSet struct {
 	Specs      map[string]ast.Expr // type specs in file
 	Identities map[string]gen.Elem // processed from specs
 	Directives []string            // raw preprocessor directives
+	Imports    []*ast.ImportSpec   // imports
 }
 
 // File parses a file at the relative path
@@ -268,6 +269,9 @@ func (f *FileSet) PrintTo(p *gen.Printer) error {
 // getTypeSpecs extracts all of the *ast.TypeSpecs in the file
 // into fs.Identities, but does not set the actual element
 func (fs *FileSet) getTypeSpecs(f *ast.File) {
+
+	// collect all imports...
+	fs.Imports = append(fs.Imports, f.Imports...)
 
 	// check all declarations...
 	for i := range f.Decls {
