@@ -5,14 +5,6 @@ import (
 	"strconv"
 )
 
-const (
-	structArraySizeVar = "ssz"
-	structMapSizeVar   = "isz"
-	mapSizeVar         = "msz"
-	sliceSizeVar       = "xsz"
-	arraySizeVar       = "asz"
-)
-
 func decode(w io.Writer) *decodeGen {
 	return &decodeGen{
 		p:        printer{w: w},
@@ -82,11 +74,10 @@ func (d *decodeGen) assignAndCheck(name string, typ string) {
 func (d *decodeGen) structAsTuple(s *Struct) {
 	nfields := len(s.Fields)
 
-	d.p.print("\n{")
-	d.p.declare(structArraySizeVar, u32)
-	d.assignAndCheck(structArraySizeVar, arrayHeader)
-	d.p.arrayCheck(strconv.Itoa(nfields), structArraySizeVar)
-	d.p.print("\n}")
+	sz := randIdent()
+	d.p.declare(sz, u32)
+	d.assignAndCheck(sz, arrayHeader)
+	d.p.arrayCheck(strconv.Itoa(nfields), sz)
 	for i := range s.Fields {
 		if !d.p.ok() {
 			return
@@ -97,10 +88,11 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 
 func (d *decodeGen) structAsMap(s *Struct) {
 	d.needsField()
-	d.p.declare(structMapSizeVar, u32)
-	d.assignAndCheck(structMapSizeVar, mapHeader)
+	sz := randIdent()
+	d.p.declare(sz, u32)
+	d.assignAndCheck(sz, mapHeader)
 
-	d.p.print("\nfor isz > 0 {\nisz--")
+	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
 	d.assignAndCheck("field", mapKey)
 	d.p.print("\nswitch msgp.UnsafeString(field) {")
 	for i := range s.Fields {
@@ -122,8 +114,10 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	}
 
 	// open block for 'tmp'
+	var tmp string
 	if b.Convert {
-		d.p.printf("\n{ var tmp %s", b.BaseType())
+		tmp = randIdent()
+		d.p.printf("\n{ var %s %s", tmp, b.BaseType())
 	}
 
 	vname := b.Varname()  // e.g. "z.FieldOne"
@@ -134,7 +128,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	switch b.Value {
 	case Bytes:
 		if b.Convert {
-			d.p.printf("\ntmp, err = dc.ReadBytes([]byte(%s))", vname)
+			d.p.printf("\n%s, err = dc.ReadBytes([]byte(%s))", tmp, vname)
 		} else {
 			d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
 		}
@@ -144,7 +138,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 		d.p.printf("\nerr = dc.ReadExtension(%s)", vname)
 	default:
 		if b.Convert {
-			d.p.printf("\ntmp, err = dc.Read%s()", bname)
+			d.p.printf("\n%s, err = dc.Read%s()", tmp, bname)
 		} else {
 			d.p.printf("\n%s, err = dc.Read%s()", vname, bname)
 		}
@@ -152,7 +146,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 
 	// close block for 'tmp'
 	if b.Convert {
-		d.p.printf("\n%s = %s(tmp)\n}", vname, b.FromBase())
+		d.p.printf("\n%s = %s(%s)\n}", vname, b.FromBase(), tmp)
 	}
 
 	d.p.print(errcheck)
@@ -162,15 +156,16 @@ func (d *decodeGen) gMap(m *Map) {
 	if !d.p.ok() {
 		return
 	}
+	sz := randIdent()
 
 	// resize or allocate map
-	d.p.declare(mapSizeVar, u32)
-	d.assignAndCheck(mapSizeVar, mapHeader)
-	d.p.resizeMap(mapSizeVar, m)
+	d.p.declare(sz, u32)
+	d.assignAndCheck(sz, mapHeader)
+	d.p.resizeMap(sz, m)
 
 	// for element in map, read string/value
 	// pair and assign
-	d.p.print("\nfor msz > 0 {\nmsz--")
+	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
 	d.p.declare(m.Keyidx, "string")
 	d.p.declare(m.Validx, m.Value.TypeName())
 	d.assignAndCheck(m.Keyidx, stringTyp)
@@ -183,9 +178,10 @@ func (d *decodeGen) gSlice(s *Slice) {
 	if !d.p.ok() {
 		return
 	}
-	d.p.declare(sliceSizeVar, u32)
-	d.assignAndCheck(sliceSizeVar, arrayHeader)
-	d.p.resizeSlice(sliceSizeVar, s)
+	sz := randIdent()
+	d.p.declare(sz, u32)
+	d.assignAndCheck(sz, arrayHeader)
+	d.p.resizeSlice(sz, s)
 	d.p.rangeBlock(s.Index, s.Varname(), d, s.Els)
 }
 
@@ -200,10 +196,10 @@ func (d *decodeGen) gArray(a *Array) {
 		d.p.print(errcheck)
 		return
 	}
-
-	d.p.declare(arraySizeVar, u32)
-	d.assignAndCheck(arraySizeVar, arrayHeader)
-	d.p.arrayCheck(a.Size, arraySizeVar)
+	sz := randIdent()
+	d.p.declare(sz, u32)
+	d.assignAndCheck(sz, arrayHeader)
+	d.p.arrayCheck(a.Size, sz)
 
 	d.p.rangeBlock(a.Index, a.Varname(), d, a.Els)
 }

@@ -11,8 +11,8 @@ const (
 	idxLen   = 3
 )
 
-// generate a random index variable name
-func randIdx() string {
+// generate a random identifier name
+func randIdent() string {
 	bts := make([]byte, idxLen)
 	for i := range bts {
 		bts[i] = idxChars[rand.Intn(len(idxChars))]
@@ -201,7 +201,7 @@ type Array struct {
 func (a *Array) SetVarname(s string) {
 	a.common.SetVarname(s)
 ridx:
-	a.Index = randIdx()
+	a.Index = randIdent()
 
 	// try to avoid using the same
 	// index as a parent slice
@@ -239,8 +239,8 @@ type Map struct {
 func (m *Map) SetVarname(s string) {
 	m.common.SetVarname(s)
 ridx:
-	m.Keyidx = randIdx()
-	m.Validx = randIdx()
+	m.Keyidx = randIdent()
+	m.Validx = randIdent()
 
 	// just in case
 	if m.Keyidx == m.Validx {
@@ -274,7 +274,7 @@ type Slice struct {
 
 func (s *Slice) SetVarname(a string) {
 	s.common.SetVarname(a)
-	s.Index = randIdx()
+	s.Index = randIdent()
 	s.Els.SetVarname(fmt.Sprintf("%s[%s]", s.Varname(), s.Index))
 }
 

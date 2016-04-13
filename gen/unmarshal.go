@@ -70,11 +70,10 @@ func (u *unmarshalGen) gStruct(s *Struct) {
 func (u *unmarshalGen) tuple(s *Struct) {
 
 	// open block
-	u.p.print("\n{")
-	u.p.declare(structArraySizeVar, u32)
-	u.assignAndCheck(structArraySizeVar, arrayHeader)
-	u.p.arrayCheck(strconv.Itoa(len(s.Fields)), structArraySizeVar)
-	u.p.closeblock() // close 'ssz' block
+	sz := randIdent()
+	u.p.declare(sz, u32)
+	u.assignAndCheck(sz, arrayHeader)
+	u.p.arrayCheck(strconv.Itoa(len(s.Fields)), sz)
 	for i := range s.Fields {
 		if !u.p.ok() {
 			return
@@ -85,11 +84,12 @@ func (u *unmarshalGen) tuple(s *Struct) {
 
 func (u *unmarshalGen) mapstruct(s *Struct) {
 	u.needsField()
-	u.p.declare(structMapSizeVar, u32)
-	u.assignAndCheck(structMapSizeVar, mapHeader)
+	sz := randIdent()
+	u.p.declare(sz, u32)
+	u.assignAndCheck(sz, mapHeader)
 
-	u.p.print("\nfor isz > 0 {")
-	u.p.print("\nisz--; field, bts, err = msgp.ReadMapKeyZC(bts)")
+	u.p.printf("\nfor %s > 0 {", sz)
+	u.p.printf("\n%s--; field, bts, err = msgp.ReadMapKeyZC(bts)", sz)
 	u.p.print(errcheck)
 	u.p.print("\nswitch msgp.UnsafeString(field) {")
 	for i := range s.Fields {
@@ -113,9 +113,9 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 	lowered := b.Varname() // passed as argument
 	if b.Convert {
 		// begin 'tmp' block
-		refname = "tmp"
+		refname = randIdent()
 		lowered = b.ToBase() + "(" + lowered + ")"
-		u.p.printf("\n{\nvar tmp %s", b.BaseType())
+		u.p.printf("\n{\nvar %s %s", refname, b.BaseType())
 	}
 
 	switch b.Value {
@@ -130,7 +130,7 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 	}
 	if b.Convert {
 		// close 'tmp' block
-		u.p.printf("\n%s = %s(tmp)\n}", b.Varname(), b.FromBase())
+		u.p.printf("\n%s = %s(%s)\n}", b.Varname(), b.FromBase(), refname)
 	}
 
 	u.p.print(errcheck)
@@ -149,9 +149,10 @@ func (u *unmarshalGen) gArray(a *Array) {
 		return
 	}
 
-	u.p.declare(arraySizeVar, u32)
-	u.assignAndCheck(arraySizeVar, arrayHeader)
-	u.p.arrayCheck(a.Size, arraySizeVar)
+	sz := randIdent()
+	u.p.declare(sz, u32)
+	u.assignAndCheck(sz, arrayHeader)
+	u.p.arrayCheck(a.Size, sz)
 	u.p.rangeBlock(a.Index, a.Varname(), u, a.Els)
 }
 
@@ -159,9 +160,10 @@ func (u *unmarshalGen) gSlice(s *Slice) {
 	if !u.p.ok() {
 		return
 	}
-	u.p.declare(sliceSizeVar, u32)
-	u.assignAndCheck(sliceSizeVar, arrayHeader)
-	u.p.resizeSlice(sliceSizeVar, s)
+	sz := randIdent()
+	u.p.declare(sz, u32)
+	u.assignAndCheck(sz, arrayHeader)
+	u.p.resizeSlice(sz, s)
 	u.p.rangeBlock(s.Index, s.Varname(), u, s.Els)
 }
 
@@ -169,15 +171,16 @@ func (u *unmarshalGen) gMap(m *Map) {
 	if !u.p.ok() {
 		return
 	}
-	u.p.declare(mapSizeVar, u32)
-	u.assignAndCheck(mapSizeVar, mapHeader)
+	sz := randIdent()
+	u.p.declare(sz, u32)
+	u.assignAndCheck(sz, mapHeader)
 
 	// allocate or clear map
-	u.p.resizeMap(mapSizeVar, m)
+	u.p.resizeMap(sz, m)
 
 	// loop and get key,value
-	u.p.print("\nfor msz > 0 {")
-	u.p.printf("\nvar %s string; var %s %s; msz--", m.Keyidx, m.Validx, m.Value.TypeName())
+	u.p.printf("\nfor %s > 0 {", sz)
+	u.p.printf("\nvar %s string; var %s %s; %s--", m.Keyidx, m.Validx, m.Value.TypeName(), sz)
 	u.assignAndCheck(m.Keyidx, stringTyp)
 	next(u, m.Value)
 	u.p.mapAssign(m)
