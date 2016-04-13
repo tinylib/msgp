@@ -18,14 +18,14 @@ import (
 
 //msgp:shim time.Time as:string using:timetostr/strtotime
 type T struct {
-    T time.Time
+	T time.Time
 }
 
 func timetostr(t time.Time) string {
-    return t.Format(time.RFC3339)
+	return t.Format(time.RFC3339)
 }
 
 func strtotime(s string) time.Time {
-    t, _ := time.Parse(time.RFC3339, s)
-    return t
+	t, _ := time.Parse(time.RFC3339, s)
+	return t
 }

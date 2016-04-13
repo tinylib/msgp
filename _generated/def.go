@@ -49,6 +49,16 @@ type TestType struct {
 	Any      interface{} `msg:"any"`
 	Appended msgp.Raw    `msg:"appended"`
 	Num      msgp.Number `msg:"num"`
+	Slice1   []string
+	Slice2   []string
+}
+
+//msgp:tuple Object
+type Object struct {
+	ObjectNo string   `msg:"objno"`
+	Slice1   []string `msg:"slice1"`
+	Slice2   []string `msg:"slice2"`
+	MapMap   map[string]map[string]string
 }
 
 //msgp:tuple TestBench
