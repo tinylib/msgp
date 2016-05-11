@@ -222,29 +222,7 @@ func next(t traversal, e Elem) {
 
 // possibly-immutable method receiver
 func imutMethodReceiver(p Elem) string {
-	switch e := p.(type) {
-	case *Struct:
-		// TODO(HACK): actually do real math here.
-		if len(e.Fields) <= 3 {
-			for i := range e.Fields {
-				if be, ok := e.Fields[i].FieldElem.(*BaseElem); !ok || (be.Value == IDENT || be.Value == Bytes) {
-					goto nope
-				}
-			}
-			return p.TypeName()
-		}
-	nope:
-		return "*" + p.TypeName()
-
-	// gets dereferenced automatically
-	case *Array:
-		return "*" + p.TypeName()
-
-	// everything else can be
-	// by-value.
-	default:
-		return p.TypeName()
-	}
+	return p.TypeName()
 }
 
 // if necessary, wraps a type
