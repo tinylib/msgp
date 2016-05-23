@@ -17,7 +17,7 @@ func randIdent() string {
 	for i := range bts {
 		bts[i] = idxChars[rand.Intn(len(idxChars))]
 	}
-	return string(bts)
+	return "msgp_" + string(bts)
 }
 
 // This code defines the type declaration tree.
