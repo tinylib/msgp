@@ -2,9 +2,10 @@ package parse
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/gen"
 	"go/ast"
 	"strings"
+
+	"github.com/tinylib/msgp/gen"
 )
 
 const linePrefix = "//msgp:"

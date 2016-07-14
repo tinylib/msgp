@@ -396,9 +396,9 @@ func (s *Struct) Complexity() int {
 }
 
 type StructField struct {
-	FieldTag  string // the string inside the `msg:""` tag
-	FieldName string // the name of the struct field
-	FieldElem Elem   // the field type
+	FieldTag  interface{} // the label of the struct field in msgpack
+	FieldName string      // the name of the struct field
+	FieldElem Elem        // the field type
 }
 
 // BaseElem is an element that

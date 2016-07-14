@@ -2,8 +2,9 @@ package gen
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/msgp"
 	"io"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 func encode(w io.Writer) *encodeGen {
@@ -101,19 +102,7 @@ func (e *encodeGen) appendraw(bts []byte) {
 }
 
 func (e *encodeGen) structmap(s *Struct) {
-	nfields := len(s.Fields)
-	data := msgp.AppendMapHeader(nil, uint32(nfields))
-	e.p.printf("\n// map header, size %d", nfields)
-	e.Fuse(data)
-	for i := range s.Fields {
-		if !e.p.ok() {
-			return
-		}
-		data = msgp.AppendString(nil, s.Fields[i].FieldTag)
-		e.p.printf("\n// write %q", s.Fields[i].FieldTag)
-		e.Fuse(data)
-		next(e, s.Fields[i].FieldElem)
-	}
+	genStructFieldsSerializer(e, e.p, s.Fields)
 }
 
 func (e *encodeGen) gMap(m *Map) {

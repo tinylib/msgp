@@ -3,9 +3,14 @@ package gen
 import (
 	"fmt"
 	"io"
+	"math"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 const (
+	field       = "field"
+	typ         = "typ"
 	errcheck    = "\nif err != nil { return }"
 	lenAsUint32 = "uint32(len(%s))"
 	literalFmt  = "%s"
@@ -13,7 +18,7 @@ const (
 	quotedFmt   = `"%s"`
 	mapHeader   = "MapHeader"
 	arrayHeader = "ArrayHeader"
-	mapKey      = "MapKeyPtr"
+	mapKey      = "MapKey"
 	stringTyp   = "String"
 	u32         = "uint32"
 )
@@ -197,6 +202,161 @@ type traversal interface {
 	gPtr(*Ptr)
 	gBase(*BaseElem)
 	gStruct(*Struct)
+}
+
+type assigner interface {
+	assignAndCheck(name, base string)
+	nextTypeAndCheck(name string)
+	skipAndCheck()
+}
+
+type fuser interface {
+	Fuse([]byte)
+}
+
+type traversalAssigner interface {
+	traversal
+	assigner
+}
+
+type traversalFuser interface {
+	traversal
+	fuser
+}
+
+func genStructFieldsSerializer(t traversalFuser, p printer, fields []StructField) {
+	data := msgp.AppendMapHeader(nil, uint32(len(fields)))
+	p.printf("\n// map header, size %d", len(fields))
+	t.Fuse(data)
+	for _, f := range fields {
+		if !p.ok() {
+			return
+		}
+
+		data, p.err = msgp.AppendIntf(nil, f.FieldTag)
+		p.printf(
+			"\n// write struct field key %q = %v; declared as type %T, eventually become msgp.%s",
+			f.FieldName, f.FieldTag, f.FieldTag, msgp.NextType(data),
+		)
+		t.Fuse(data)
+
+		next(t, f.FieldElem)
+	}
+}
+
+func genStructFieldsParser(t traversalAssigner, p printer, fields []StructField) {
+	sz := randIdent()
+	p.declare(sz, u32)
+	t.assignAndCheck(sz, mapHeader)
+
+	p.printf("\nfor %s > 0 {\n%s--", sz, sz)
+
+	groups := groupFieldsByType(fields)
+	hasUint := len(groups[msgp.UintType]) > 0
+	hasInt := len(groups[msgp.IntType]) > 0
+	hasStr := len(groups[msgp.StrType]) > 0
+
+	if !hasUint && !hasInt { // there are no numerically labeled fields, so parse every field label as string
+		p.declare(field, "[]byte")
+		t.assignAndCheck(field, mapKey)
+		switchFieldKeysStr(t, p, fields)
+	} else {
+		// switch on inferred type of next field
+		p.declare(typ, "msgp.Type")
+		t.nextTypeAndCheck(typ)
+		p.printf("\nswitch %s {", typ)
+
+		if hasUint {
+			p.print("\ncase msgp.UintType:")
+			p.declare(field, "uint64")
+			t.assignAndCheck(field, "Uint64")
+			switchFieldKeys(t, p, groups[msgp.UintType])
+
+			// Append to int fields also uint fields that do not overflow int64.
+			// This is necessary because uint field with value <= (1<<7)-1 could be serialized as fixint.
+			// and become a msgp.IntType. This is done for best compatibility with other libraries
+			// (and with other languages). That is, some endpoint could serialize uint16 key with value <= (1<<7)-1 as
+			// real msgpack uint16, but also could serialize it like fixint.
+			for _, f := range groups[msgp.UintType] {
+				v := f.FieldTag.(uint64)
+				if v <= math.MaxInt64 {
+					groups[msgp.IntType] = append(groups[msgp.IntType], f)
+					hasInt = true
+				}
+			}
+		}
+		if hasInt {
+			p.print("\ncase msgp.IntType:")
+			p.declare(field, "int64")
+			t.assignAndCheck(field, "Int64")
+			switchFieldKeys(t, p, groups[msgp.IntType])
+		}
+		if hasStr {
+			// double case is done for backward compatibility with previous implementation
+			p.print("\ncase msgp.StrType, msgp.BinType:")
+			p.declare(field, "[]byte")
+			t.assignAndCheck(field, mapKey)
+			switchFieldKeysStr(t, p, groups[msgp.StrType])
+		}
+
+		p.print("\ndefault:")
+		t.skipAndCheck()
+
+		p.closeblock() // close switch
+	}
+
+	p.closeblock() // close loop
+}
+
+func groupFieldsByType(fields []StructField) map[msgp.Type][]StructField {
+	groups := make(map[msgp.Type][]StructField, len(fields))
+	for _, f := range fields {
+		var t msgp.Type
+		switch f.FieldTag.(type) {
+		case int, int8, int16, int32, int64:
+			t = msgp.IntType
+		case uint, uint8, byte, uint16, uint32, uint64:
+			t = msgp.UintType
+		case string:
+			t = msgp.StrType
+		default:
+			panic(fmt.Errorf("field %q has unknown tag type %T", f.FieldName, f.FieldTag))
+		}
+		groups[t] = append(groups[t], f)
+	}
+	return groups
+}
+
+func switchFieldKeysStr(t traversalAssigner, p printer, fields []StructField) {
+	p.printf("\nswitch msgp.UnsafeString(%s) {", field)
+	for _, f := range fields {
+		p.printf("\ncase \"%s\":", f.FieldTag)
+		next(t, f.FieldElem)
+		if !p.ok() {
+			return
+		}
+	}
+
+	p.print("\ndefault:")
+	t.skipAndCheck()
+
+	p.closeblock() // close switch
+}
+
+func switchFieldKeys(t traversalAssigner, p printer, fields []StructField) {
+	p.printf("\nswitch %s {", field)
+	for _, f := range fields {
+		p.printf("\ncase %v:", f.FieldTag)
+		next(t, f.FieldElem)
+		if !p.ok() {
+			return
+		}
+	}
+
+	p.print("\ndefault:")
+	t.skipAndCheck()
+
+	p.closeblock() // close switch
 }
 
 // type-switch dispatch to the correct

@@ -63,12 +63,30 @@ func (d *decodeGen) gStruct(s *Struct) {
 	return
 }
 
-func (d *decodeGen) assignAndCheck(name string, typ string) {
+func (d *decodeGen) assignAndCheck(name string, base string) {
 	if !d.p.ok() {
 		return
 	}
-	d.p.printf("\n%s, err = dc.Read%s()", name, typ)
+	if base == mapKey {
+		d.p.printf("\n%s, err = dc.ReadMapKeyPtr()", name)
+	} else {
+		d.p.printf("\n%s, err = dc.Read%s()", name, base)
+	}
+
 	d.p.print(errcheck)
+}
+
+func (u *decodeGen) nextTypeAndCheck(name string) {
+	if !u.p.ok() {
+		return
+	}
+	u.p.printf("\n%s, err = dc.NextType()", name)
+	u.p.print(errcheck)
+}
+
+func (u *decodeGen) skipAndCheck() {
+	u.p.print("\nerr = dc.Skip()")
+	u.p.print(errcheck)
 }
 
 func (d *decodeGen) structAsTuple(s *Struct) {
@@ -87,25 +105,7 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 }
 
 func (d *decodeGen) structAsMap(s *Struct) {
-	d.needsField()
-	sz := randIdent()
-	d.p.declare(sz, u32)
-	d.assignAndCheck(sz, mapHeader)
-
-	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
-	d.assignAndCheck("field", mapKey)
-	d.p.print("\nswitch msgp.UnsafeString(field) {")
-	for i := range s.Fields {
-		d.p.printf("\ncase \"%s\":", s.Fields[i].FieldTag)
-		next(d, s.Fields[i].FieldElem)
-		if !d.p.ok() {
-			return
-		}
-	}
-	d.p.print("\ndefault:\nerr = dc.Skip()")
-	d.p.print(errcheck)
-	d.p.closeblock() // close switch
-	d.p.closeblock() // close for loop
+	genStructFieldsParser(d, d.p, s.Fields)
 }
 
 func (d *decodeGen) gBase(b *BaseElem) {

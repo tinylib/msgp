@@ -376,6 +376,7 @@ func (m *Reader) ReadMapKeyPtr() ([]byte, error) {
 			return nil, err
 		}
 		read = int(big.Uint32(p[1:]))
+
 	default:
 		return nil, badPrefix(StrType, lead)
 	}

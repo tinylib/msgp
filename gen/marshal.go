@@ -2,8 +2,9 @@ package gen
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/msgp"
 	"io"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 func marshal(w io.Writer) *marshalGen {
@@ -96,21 +97,7 @@ func (m *marshalGen) tuple(s *Struct) {
 }
 
 func (m *marshalGen) mapstruct(s *Struct) {
-	data := make([]byte, 0, 64)
-	data = msgp.AppendMapHeader(data, uint32(len(s.Fields)))
-	m.p.printf("\n// map header, size %d", len(s.Fields))
-	m.Fuse(data)
-	for i := range s.Fields {
-		if !m.p.ok() {
-			return
-		}
-		data = msgp.AppendString(nil, s.Fields[i].FieldTag)
-
-		m.p.printf("\n// string %q", s.Fields[i].FieldTag)
-		m.Fuse(data)
-
-		next(m, s.Fields[i].FieldElem)
-	}
+	genStructFieldsSerializer(m, m.p, s.Fields)
 }
 
 // append raw data

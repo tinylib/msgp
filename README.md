@@ -42,6 +42,15 @@ type Person struct {
 	unexported bool             // this field is also ignored
 }
 ```
+If you need to have numeric labels in your structs, you could set it in `msg:"(int/uint)value"` notation:
+```go
+type Person struct {
+	Name       string `msg:"(int)0x01"`
+	Address    string `msg:"(int)0x02"`
+	Age        int    `msg:"(int)0x03"`
+}
+```
+> Note that `uint` typed field labels will be serialized as `msgp.fixint` in case when label value is <= (1<<7)-1
 
 By default, the code generator will satisfy `msgp.Sizer`, `msgp.Encodable`, `msgp.Decodable`, 
 `msgp.Marshaler`, and `msgp.Unmarshaler`. Carefully-designed applications can use these methods to do
