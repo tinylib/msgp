@@ -315,7 +315,7 @@ func groupFieldsByType(fields []StructField) map[msgp.Type][]StructField {
 		switch f.FieldTag.(type) {
 		case int, int8, int16, int32, int64:
 			t = msgp.IntType
-		case uint, uint8, byte, uint16, uint32, uint64:
+		case uint, uint8, uint16, uint32, uint64:
 			t = msgp.UintType
 		case string:
 			t = msgp.StrType
