@@ -348,7 +348,7 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 			return nil
 		}
 
-		if tags[0][0] == '(' { // field key type casting
+		if len(tags[0]) > 2 && tags[0][0] == '(' { // field key type casting
 			var err error
 
 			pair := strings.Split(tags[0][1:], ")")
