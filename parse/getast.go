@@ -370,13 +370,12 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 				}
 
 			default:
-				sf[0].FieldTag = val
+				panic(fmt.Sprintf("unsupported field %q cast annotation: type %s is not acceptable", f.Names[0].Name, cast))
 			}
-
 			if err != nil {
 				panic(fmt.Sprintf("could not parse field %q annotation: %s", f.Names[0].Name, err))
 			}
-		} else {
+		} else if tags[0] != "" {
 			sf[0].FieldTag = tags[0]
 		}
 
