@@ -343,12 +343,14 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 		if len(tags) == 2 && tags[1] == "extension" {
 			extension = true
 		}
+
 		// ignore "-" fields
 		if tags[0] == "-" {
 			return nil
 		}
 
-		if len(tags[0]) > 2 && tags[0][0] == '(' { // field key type casting
+		// field label type casting
+		if len(tags[0]) > 2 && tags[0][0] == '(' {
 			var err error
 
 			pair := strings.Split(tags[0][1:], ")")
@@ -378,7 +380,6 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 		} else if tags[0] != "" {
 			sf[0].FieldTag = tags[0]
 		}
-
 	}
 
 	ex := fs.parseExpr(f.Type)
