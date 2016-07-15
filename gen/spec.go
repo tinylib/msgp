@@ -281,6 +281,7 @@ func genStructFieldsParser(t traversalAssigner, p printer, fields []StructField)
 	hasUint := len(groups[msgp.UintType]) > 0
 	hasInt := len(groups[msgp.IntType]) > 0
 	hasStr := len(groups[msgp.StrType]) > 0
+	singleType := len(groups) == 1
 
 	if hasStr {
 		t.declareOnce(p, fieldBytes, "[]byte")
@@ -304,7 +305,7 @@ func genStructFieldsParser(t traversalAssigner, p printer, fields []StructField)
 	if hasInt {
 		t.declareOnce(p, fieldInt, "int64")
 	}
-	if hasInt || hasUint {
+	if !singleType || hasUint {
 		t.declareOnce(p, typ, "msgp.Type")
 	}
 
@@ -312,11 +313,14 @@ func genStructFieldsParser(t traversalAssigner, p printer, fields []StructField)
 	p.declare(sz, u32)
 	t.assignAndCheck(sz, mapHeader)
 	p.printf("\nfor %s > 0 {\n%s--", sz, sz)
-
-	if hasStr && !hasUint && !hasInt { // there are no numerically labeled fields, so parse every field label as string
+	switch {
+	case singleType && hasStr:
 		t.assignAndCheck(fieldBytes, mapKey)
 		switchFieldKeysStr(t, p, fields, fieldBytes)
-	} else {
+	case singleType && hasInt:
+		t.assignAndCheck(fieldInt, "Int64")
+		switchFieldKeys(t, p, fields, fieldInt)
+	default:
 		// switch on inferred type of next field
 		t.nextTypeAndCheck(typ)
 		p.printf("\nswitch %s {", typ)
@@ -340,7 +344,6 @@ func genStructFieldsParser(t traversalAssigner, p printer, fields []StructField)
 		t.skipAndCheck()
 		p.closeblock() // close switch
 	}
-
 	p.closeblock() // close loop
 }
 
@@ -372,10 +375,8 @@ func switchFieldKeysStr(t traversalAssigner, p printer, fields []StructField, la
 			return
 		}
 	}
-
 	p.print("\ndefault:")
 	t.skipAndCheck()
-
 	p.closeblock() // close switch
 }
 
