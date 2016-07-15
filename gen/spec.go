@@ -389,10 +389,8 @@ func switchFieldKeys(t traversalAssigner, p printer, fields []StructField, label
 			return
 		}
 	}
-
 	p.print("\ndefault:")
 	t.skipAndCheck()
-
 	p.closeblock() // close switch
 }
 
