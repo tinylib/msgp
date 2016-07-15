@@ -7,33 +7,24 @@ import (
 
 func decode(w io.Writer) *decodeGen {
 	return &decodeGen{
-		p:        printer{w: w},
-		hasfield: false,
+		p: printer{w: w},
 	}
 }
 
 type decodeGen struct {
 	passes
-	p        printer
-	hasfield bool
+	fields
+	p printer
 }
 
 func (d *decodeGen) Method() Method { return Decode }
-
-func (d *decodeGen) needsField() {
-	if d.hasfield {
-		return
-	}
-	d.p.print("\nvar field []byte; _ = field")
-	d.hasfield = true
-}
 
 func (d *decodeGen) Execute(p Elem) error {
 	p = d.applyall(p)
 	if p == nil {
 		return nil
 	}
-	d.hasfield = false
+	d.fields.drop()
 	if !d.p.ok() {
 		return d.p.err
 	}

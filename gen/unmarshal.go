@@ -13,14 +13,14 @@ func unmarshal(w io.Writer) *unmarshalGen {
 
 type unmarshalGen struct {
 	passes
-	p        printer
-	hasfield bool
+	fields
+	p printer
 }
 
 func (u *unmarshalGen) Method() Method { return Unmarshal }
 
 func (u *unmarshalGen) Execute(p Elem) error {
-	u.hasfield = false
+	u.fields.drop()
 	if !u.p.ok() {
 		return u.p.err
 	}

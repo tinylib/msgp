@@ -193,6 +193,28 @@ func (p *passes) applyall(e Elem) Elem {
 	return e
 }
 
+type fields struct {
+	cache map[string]bool
+}
+
+func (f *fields) declareOnce(p printer, name, typ string) {
+	key := name + "." + typ
+	if f.cache == nil {
+		f.cache = make(map[string]bool)
+	} else if f.cache[key] {
+		return
+	}
+
+	p.printf("\nvar %s %s;", name, typ)
+	f.cache[key] = true
+}
+
+func (f *fields) drop() {
+	for k := range f.cache {
+		delete(f.cache, k)
+	}
+}
+
 type traversal interface {
 	gMap(*Map)
 	gSlice(*Slice)
@@ -200,6 +222,10 @@ type traversal interface {
 	gPtr(*Ptr)
 	gBase(*BaseElem)
 	gStruct(*Struct)
+}
+
+type declarer interface {
+	declareOnce(p printer, name, typ string)
 }
 
 type assigner interface {
@@ -215,6 +241,7 @@ type fuser interface {
 type traversalAssigner interface {
 	traversal
 	assigner
+	declarer
 }
 
 type traversalFuser interface {
@@ -233,7 +260,7 @@ func genStructFieldsSerializer(t traversalFuser, p printer, fields []StructField
 
 		data, p.err = msgp.AppendIntf(nil, f.FieldTag)
 		p.printf(
-			"\n// write label for the struct field %q: %v typed as msgp.%s",
+			"\n// [field %q] write label `%v` as msgp.%s",
 			f.FieldName, f.FieldTag, msgp.NextType(data),
 		)
 		t.Fuse(data)
@@ -256,10 +283,10 @@ func genStructFieldsParser(t traversalAssigner, p printer, fields []StructField)
 	hasStr := len(groups[msgp.StrType]) > 0
 
 	if hasStr {
-		p.declare(fieldBytes, "[]byte")
+		t.declareOnce(p, fieldBytes, "[]byte")
 	}
 	if hasUint {
-		p.declare(fieldUint, "uint64")
+		t.declareOnce(p, fieldUint, "uint64")
 
 		// Append to int fields also uint fields that do not overflow int64.
 		// This is necessary because uint field with value <= (1<<7)-1 could be serialized as fixint.
@@ -275,10 +302,10 @@ func genStructFieldsParser(t traversalAssigner, p printer, fields []StructField)
 		}
 	}
 	if hasInt {
-		p.declare(fieldInt, "int64")
+		t.declareOnce(p, fieldInt, "int64")
 	}
 	if hasInt || hasUint {
-		p.declare(typ, "msgp.Type")
+		t.declareOnce(p, typ, "msgp.Type")
 	}
 
 	sz := randIdent()
