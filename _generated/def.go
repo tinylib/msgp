@@ -53,6 +53,17 @@ type TestType struct {
 	Slice2   []string
 }
 
+type TestNumericLabels struct {
+	One string `msg:"(int)0x01"`
+	Two string `msg:"(uint)0xffffffffffffffff"`
+}
+
+type TestOnlyIntLabels struct {
+	A string `msg:"(int)0xfa"`
+	B string `msg:"(int)0xfb"`
+	C string `msg:"(int)0xfc"`
+}
+
 //msgp:tuple Object
 type Object struct {
 	ObjectNo string   `msg:"objno"`
