@@ -325,7 +325,7 @@ func (fs *FileSet) parseFieldList(fl *ast.FieldList) []gen.StructField {
 		if len(fds) > 0 {
 			out = append(out, fds...)
 		} else {
-			warnln("ignored.")
+			warnln("ignored")
 		}
 		popstate()
 	}
@@ -340,45 +340,33 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 	if f.Tag != nil {
 		body := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("msg")
 		tags := strings.Split(body, ",")
-		if len(tags) == 2 && tags[1] == "extension" {
-			extension = true
-		}
 
 		// ignore "-" fields
 		if tags[0] == "-" {
 			return nil
 		}
 
-		// field label type casting
-		if len(tags[0]) > 2 && tags[0][0] == '(' {
+		if tags[0] != "" {
+			sf[0].FieldTag = tags[0]
+		}
+
+		if len(tags) > 1 {
+			last := len(tags) - 1
+			extension = tags[last] == "extension"
+
 			var err error
-
-			pair := strings.Split(tags[0][1:], ")")
-			cast, val := pair[0], pair[1]
-
-			switch cast {
+			switch tags[1] {
 			case "uint":
-				if strings.HasPrefix(val, "0x") {
-					sf[0].FieldTag, err = strconv.ParseUint(strings.TrimPrefix(val, "0x"), 16, 64)
-				} else {
-					sf[0].FieldTag, err = strconv.ParseUint(val, 10, 64)
-				}
-
+				str, base := numeric(tags[0])
+				sf[0].FieldTag, err = strconv.ParseUint(str, base, 64)
 			case "int":
-				if strings.HasPrefix(val, "0x") {
-					sf[0].FieldTag, err = strconv.ParseInt(strings.TrimPrefix(val, "0x"), 16, 64)
-				} else {
-					sf[0].FieldTag, err = strconv.ParseInt(val, 10, 64)
-				}
-
-			default:
-				panic(fmt.Sprintf("unsupported field %q cast annotation: type %s is not acceptable", f.Names[0].Name, cast))
+				str, base := numeric(tags[0])
+				sf[0].FieldTag, err = strconv.ParseInt(str, base, 64)
 			}
 			if err != nil {
-				panic(fmt.Sprintf("could not parse field %q annotation: %s", f.Names[0].Name, err))
+				warnf("could not parse field label %q as msgp.%s: %s\n", tags[0], tags[1], err)
+				return nil
 			}
-		} else if tags[0] != "" {
-			sf[0].FieldTag = tags[0]
 		}
 	}
 
@@ -429,6 +417,25 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 		}
 	}
 	return sf
+}
+
+// numeric extracts the base and string representation of number literal.
+func numeric(s string) (string, int) {
+	var base int
+	switch {
+	case len(s) > 2 && s[:2] == "0x":
+		base = 16
+		s = s[2:]
+	case len(s) > 2 && s[:2] == "0b":
+		base = 2
+		s = s[2:]
+	case len(s) > 1 && s[0] == '0':
+		base = 8
+		s = s[1:]
+	default:
+		base = 10
+	}
+	return s, base
 }
 
 // extract embedded field name

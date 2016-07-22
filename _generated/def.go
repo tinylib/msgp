@@ -41,9 +41,9 @@ type TestType struct {
 	F   *float64          `msg:"float"`
 	Els map[string]string `msg:"elements"`
 	Obj struct {          // test anonymous struct
-		ValueA string `msg:"value_a"`
-		ValueB []byte `msg:"value_b"`
-	} `msg:"object"`
+		    ValueA string `msg:"value_a"`
+		    ValueB []byte `msg:"value_b"`
+	    } `msg:"object"`
 	Child    *TestType   `msg:"child"`
 	Time     time.Time   `msg:"time"`
 	Any      interface{} `msg:"any"`
@@ -54,14 +54,14 @@ type TestType struct {
 }
 
 type TestNumericLabels struct {
-	One string `msg:"(int)0x01"`
-	Two string `msg:"(uint)0xffffffffffffffff"`
+	One string `msg:"0x01,int"`
+	Two string `msg:"0xffffffffffffffff,uint"`
 }
 
 type TestOnlyIntLabels struct {
-	A string `msg:"(int)0xfa"`
-	B string `msg:"(int)0xfb"`
-	C string `msg:"(int)0xfc"`
+	A string `msg:"0xfa,int"`
+	B string `msg:"0xfb,int"`
+	C string `msg:"0xfc,int"`
 }
 
 //msgp:tuple Object
