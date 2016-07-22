@@ -79,6 +79,8 @@ func (s *sizeGen) Execute(p Elem) error {
 		return nil
 	}
 
+	s.p.comment("Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message")
+
 	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", p.Varname(), imutMethodReceiver(p))
 	s.state = assign
 	next(s, p)
