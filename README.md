@@ -42,12 +42,12 @@ type Person struct {
 	unexported bool             // this field is also ignored
 }
 ```
-If you need to have numeric labels for a struct fields, you could set it in `msg:"(int/uint)value"` notation:
+If you need to have numeric labels for a struct fields, you could set it as following:
 ```go
 type Person struct {
-	Name       string `msg:"(int)0x01"`
-	Address    string `msg:"(int)0x02"`
-	Age        int    `msg:"(int)0x03"`
+	Name       string `msg:"0x01,int"`
+	Address    string `msg:"0x02,int"`
+	Age        int    `msg:"0x03,int"`
 }
 ```
 > Note that field labels with `uint` value will be serialized as `msgp.fixint` in case when label value is <= (1<<7)-1
