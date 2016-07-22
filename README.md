@@ -46,8 +46,9 @@ If you need to have numeric labels for a struct fields, you could set it as foll
 ```go
 type Person struct {
 	Name       string `msg:"0x01,int"`
-	Address    string `msg:"0x02,int"`
-	Age        int    `msg:"0x03,int"`
+	Address    string `msg:"0b10,int"`
+	Email      string `msg:"03,int"`
+	Age        int    `msg:"4,int"`
 }
 ```
 > Note that field labels with `uint` value will be serialized as `msgp.fixint` in case when label value is <= (1<<7)-1
