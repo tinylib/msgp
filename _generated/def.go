@@ -64,6 +64,14 @@ type TestOnlyIntLabels struct {
 	C string `msg:"0xfc,int"`
 }
 
+
+type TestIntLiterals struct {
+	A string `msg:"0x01,int"`
+	B string `msg:"0b10,int"`
+	C string `msg:"03,int"`
+	D string `msg:"4,int"`
+}
+
 //msgp:tuple Object
 type Object struct {
 	ObjectNo string   `msg:"objno"`
