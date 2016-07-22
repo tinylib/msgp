@@ -318,7 +318,7 @@ func genStructFieldsParser(t traversalAssigner, p printer, fields []StructField)
 		t.assignAndCheck(fieldBytes, mapKey)
 		switchFieldKeysStr(t, p, fields, fieldBytes)
 
-	case singleType && hasInt:
+	case singleType && !hasUint && hasInt:
 		t.assignAndCheck(fieldInt, "Int64")
 		switchFieldKeys(t, p, fields, fieldInt)
 
