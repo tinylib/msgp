@@ -361,7 +361,10 @@ func groupFieldsByType(fields []StructField) map[msgp.Type][]StructField {
 		case string:
 			t = msgp.StrType
 		default:
-			panic(fmt.Errorf("field %q has unknown tag type %T", f.FieldName, f.FieldTag))
+			panic(fmt.Sprintf(
+				"could not generate code to work with field's %q label: has unknown type %T",
+				f.FieldName, f.FieldTag,
+			))
 		}
 		groups[t] = append(groups[t], f)
 	}
