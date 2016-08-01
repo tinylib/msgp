@@ -278,7 +278,12 @@ type Slice struct {
 func (s *Slice) SetVarname(a string) {
 	s.common.SetVarname(a)
 	s.Index = randIdent()
-	s.Els.SetVarname(fmt.Sprintf("%s[%s]", s.Varname(), s.Index))
+	varName := s.Varname()
+	if varName[0] == '*' {
+		// Pointer-to-slice requires parenthesis for slicing.
+		varName = "(" + varName + ")"
+	}
+	s.Els.SetVarname(fmt.Sprintf("%s[%s]", varName, s.Index))
 }
 
 func (s *Slice) TypeName() string {
