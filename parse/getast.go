@@ -357,11 +357,9 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 			var err error
 			switch tags[1] {
 			case "uint":
-				str, base := numeric(tags[0])
-				sf[0].FieldTag, err = strconv.ParseUint(str, base, 64)
+				sf[0].FieldTag, err = strconv.ParseUint(tags[0], 0, 64)
 			case "int":
-				str, base := numeric(tags[0])
-				sf[0].FieldTag, err = strconv.ParseInt(str, base, 64)
+				sf[0].FieldTag, err = strconv.ParseInt(tags[0], 0, 64)
 			}
 			if err != nil {
 				warnf("could not parse field label %q as msgp.%s: %s\n", tags[0], tags[1], err)
@@ -417,25 +415,6 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 		}
 	}
 	return sf
-}
-
-// numeric extracts the base and string representation of number literal.
-func numeric(s string) (string, int) {
-	var base int
-	switch {
-	case len(s) > 2 && s[:2] == "0x":
-		base = 16
-		s = s[2:]
-	case len(s) > 2 && s[:2] == "0b":
-		base = 2
-		s = s[2:]
-	case len(s) > 1 && s[0] == '0':
-		base = 8
-		s = s[1:]
-	default:
-		base = 10
-	}
-	return s, base
 }
 
 // extract embedded field name

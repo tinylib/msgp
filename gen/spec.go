@@ -271,9 +271,9 @@ func genStructFieldsSerializer(t traversalFuser, p printer, fields []StructField
 
 func genStructFieldsParser(t traversalAssigner, p printer, fields []StructField) {
 	const (
-		fieldBytes = "field_b"
-		fieldInt   = "field_i"
-		fieldUint  = "field_u"
+		fieldBytes = "fieldBytes"
+		fieldInt   = "fieldInt"
+		fieldUint  = "fieldUint"
 		typ        = "typ"
 	)
 
