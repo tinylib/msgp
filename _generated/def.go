@@ -51,6 +51,7 @@ type TestType struct {
 	Num      msgp.Number `msg:"num"`
 	Slice1   []string
 	Slice2   []string
+	SlicePtr *[]string
 }
 
 //msgp:tuple Object
