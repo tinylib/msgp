@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/tinylib/msgp/msgp"
+	"github.com/tinylib/msgp/internal/log"
 )
 
 const (
@@ -361,10 +362,10 @@ func groupFieldsByType(fields []StructField) map[msgp.Type][]StructField {
 		case string:
 			t = msgp.StrType
 		default:
-			panic(fmt.Sprintf(
+			log.Fatalf(
 				"could not generate code to work with field's %q label: has unknown type %T",
 				f.FieldName, f.FieldTag,
-			))
+			)
 		}
 		groups[t] = append(groups[t], f)
 	}
