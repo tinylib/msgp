@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
+	"github.com/tinylib/msgp/internal/log"
 )
 
 const linePrefix = "//msgp:"
