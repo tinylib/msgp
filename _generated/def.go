@@ -40,6 +40,8 @@ type Fixed struct {
 type TestType struct {
 	F   *float64          `msg:"float"`
 	Els map[string]string `msg:"elements"`
+	Els2 map[int]int `msg:"elements_int"`
+	Els3 map[uint]uint `msg:"elements_uint"`
 	Obj struct {          // test anonymous struct
 		    ValueA string `msg:"value_a"`
 		    ValueB []byte `msg:"value_b"`
@@ -66,9 +68,8 @@ type TestOnlyIntLabels struct {
 
 type TestIntLiterals struct {
 	A string `msg:"0x01,int"`
-	B string `msg:"0b10,int"`
-	C string `msg:"03,int"`
-	D string `msg:"4,int"`
+	B string `msg:"03,int"`
+	C string `msg:"4,int"`
 }
 
 type SingleFieldNumeric struct {

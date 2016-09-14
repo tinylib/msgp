@@ -475,9 +475,12 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	switch e := e.(type) {
 
 	case *ast.MapType:
-		if k, ok := e.Key.(*ast.Ident); ok && k.Name == "string" {
-			if in := fs.parseExpr(e.Value); in != nil {
-				return &gen.Map{Value: in}
+		key := fs.parseExpr(e.Key)
+		val := fs.parseExpr(e.Value)
+		if key != nil && val != nil {
+			return &gen.Map{
+				Key: key,
+				Value: val,
 			}
 		}
 		return nil
@@ -485,7 +488,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	case *ast.Ident:
 		b := gen.Ident(e.Name)
 
-		// work to resove this expression
+		// work to resolve this expression
 		// can be done later, once we've resolved
 		// everything else.
 		if b.Value == gen.IDENT {
