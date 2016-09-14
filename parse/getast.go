@@ -479,7 +479,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		val := fs.parseExpr(e.Value)
 		if key != nil && val != nil {
 			return &gen.Map{
-				Key: key,
+				Key:   key,
 				Value: val,
 			}
 		}

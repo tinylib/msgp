@@ -5,8 +5,8 @@ import (
 	"io"
 	"math"
 
-	"github.com/tinylib/msgp/msgp"
 	"github.com/tinylib/msgp/internal/log"
+	"github.com/tinylib/msgp/msgp"
 )
 
 const (

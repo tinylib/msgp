@@ -3,8 +3,8 @@ package log
 import (
 	"fmt"
 	"github.com/ttacon/chalk"
-	"strings"
 	"os"
+	"strings"
 )
 
 var logctx []string

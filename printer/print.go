@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
-	"github.com/tinylib/msgp/parse"
 	"github.com/tinylib/msgp/internal/log"
+	"github.com/tinylib/msgp/parse"
 	"golang.org/x/tools/imports"
 )
 

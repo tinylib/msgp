@@ -236,7 +236,7 @@ type Map struct {
 	common
 	Keyidx string // key variable name
 	Validx string // value variable name
-	Key  Elem   // key element
+	Key    Elem   // key element
 	Value  Elem   // value element
 }
 
