@@ -156,9 +156,9 @@ func (d *decodeGen) gMap(m *Map) {
 
 	// for element in map, read string/value
 	// pair and assign
+	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
 	d.p.declare(m.Keyidx, m.Key.TypeName())
 	d.p.declare(m.Validx, m.Value.TypeName())
-	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
 	next(d, m.Key)
 	next(d, m.Value)
 	d.p.mapAssign(m)

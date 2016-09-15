@@ -40,8 +40,9 @@ type Fixed struct {
 type TestType struct {
 	F   *float64          `msg:"float"`
 	Els map[string]string `msg:"elements"`
-	Els2 map[int]int `msg:"elements_int"`
-	Els3 map[uint]uint `msg:"elements_uint"`
+	Els2 map[int]int      `msg:"elements_2"`
+	Els3 map[uint]uint    `msg:"elements_3"`
+	Els4 map[uint][]byte  `msg:"elements_4"`
 	Obj struct {          // test anonymous struct
 		    ValueA string `msg:"value_a"`
 		    ValueB []byte `msg:"value_b"`

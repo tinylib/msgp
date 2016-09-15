@@ -169,10 +169,10 @@ func (u *unmarshalGen) gMap(m *Map) {
 	u.p.resizeMap(sz, m)
 
 	// loop and get key,value
-	u.p.declare(m.Keyidx, m.Key.TypeName())
-	u.p.declare(m.Validx, m.Value.TypeName())
 	u.p.printf("\nfor %s > 0 {", sz)
 	u.p.printf("\n%s--", sz)
+	u.p.declare(m.Keyidx, m.Key.TypeName())
+	u.p.declare(m.Validx, m.Value.TypeName())
 	next(u, m.Key)
 	next(u, m.Value)
 	u.p.mapAssign(m)
