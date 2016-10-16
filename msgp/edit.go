@@ -53,13 +53,14 @@ func Remove(key string, raw []byte) []byte {
 // HasKey returns whether the map in 'raw' has
 // a field with key 'key'
 func HasKey(key string, raw []byte) bool {
-	sz, bts, err := ReadMapHeaderBytes(raw)
+	var nbs *NilBitsStack
+	sz, bts, err := nbs.ReadMapHeaderBytes(raw)
 	if err != nil {
 		return false
 	}
 	var field []byte
 	for i := uint32(0); i < sz; i++ {
-		field, bts, err = ReadStringZC(bts)
+		field, bts, err = nbs.ReadStringZC(bts)
 		if err != nil {
 			return false
 		}
@@ -119,14 +120,15 @@ func locate(raw []byte, key string) (start int, end int) {
 		field []byte
 		err   error
 	)
-	sz, bts, err = ReadMapHeaderBytes(raw)
+	var nbs *NilBitsStack
+	sz, bts, err = nbs.ReadMapHeaderBytes(raw)
 	if err != nil {
 		return
 	}
 
 	// loop and locate field
 	for i := uint32(0); i < sz; i++ {
-		field, bts, err = ReadStringZC(bts)
+		field, bts, err = nbs.ReadStringZC(bts)
 		if err != nil {
 			return 0, 0
 		}
@@ -151,20 +153,22 @@ func locate(raw []byte, key string) (start int, end int) {
 
 // locate key AND value
 func locateKV(raw []byte, key string) (start int, end int) {
+	var nbs *NilBitsStack
+
 	var (
 		sz    uint32
 		bts   []byte
 		field []byte
 		err   error
 	)
-	sz, bts, err = ReadMapHeaderBytes(raw)
+	sz, bts, err = nbs.ReadMapHeaderBytes(raw)
 	if err != nil {
 		return 0, 0
 	}
 
 	for i := uint32(0); i < sz; i++ {
 		tmp := len(bts)
-		field, bts, err = ReadStringZC(bts)
+		field, bts, err = nbs.ReadStringZC(bts)
 		if err != nil {
 			return 0, 0
 		}

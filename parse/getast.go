@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tinylib/msgp/cfg"
 	"github.com/tinylib/msgp/gen"
 	"github.com/ttacon/chalk"
 )
@@ -22,6 +23,7 @@ type FileSet struct {
 	Identities map[string]gen.Elem // processed from specs
 	Directives []string            // raw preprocessor directives
 	Imports    []*ast.ImportSpec   // imports
+	Cfg        *cfg.MsgpConfig
 }
 
 // File parses a file at the relative path
@@ -30,12 +32,14 @@ type FileSet struct {
 // directory will be parsed.
 // If unexport is false, only exported identifiers are included in the FileSet.
 // If the resulting FileSet would be empty, an error is returned.
-func File(name string, unexported bool) (*FileSet, error) {
+func File(c *cfg.MsgpConfig) (*FileSet, error) {
+	name := c.GoFile
 	pushstate(name)
 	defer popstate()
 	fs := &FileSet{
 		Specs:      make(map[string]ast.Expr),
 		Identities: make(map[string]gen.Elem),
+		Cfg:        c,
 	}
 
 	fset := token.NewFileSet()
@@ -60,7 +64,7 @@ func File(name string, unexported bool) (*FileSet, error) {
 		for _, fl := range one.Files {
 			pushstate(fl.Name.Name)
 			fs.Directives = append(fs.Directives, yieldComments(fl.Comments)...)
-			if !unexported {
+			if !c.Unexported {
 				ast.FileExports(fl)
 			}
 			fs.getTypeSpecs(fl)
@@ -73,7 +77,7 @@ func File(name string, unexported bool) (*FileSet, error) {
 		}
 		fs.Package = f.Name.Name
 		fs.Directives = yieldComments(f.Comments)
-		if !unexported {
+		if !c.Unexported {
 			ast.FileExports(f)
 		}
 		fs.getTypeSpecs(f)
@@ -331,28 +335,52 @@ func (fs *FileSet) parseFieldList(fl *ast.FieldList) []gen.StructField {
 	return out
 }
 
+func anyMatches(haystack []string, needle string) bool {
+	needle = strings.TrimSpace(needle)
+	for _, v := range haystack {
+		tr := strings.TrimSpace(v)
+		if tr == needle {
+			return true
+		}
+	}
+	return false
+}
+
 // translate *ast.Field into []gen.StructField
 func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 	sf := make([]gen.StructField, 1)
 	var extension bool
+	var omitempty bool
+
 	// parse tag; otherwise field name is field tag
 	if f.Tag != nil {
-		body := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("msg")
+		alltags := reflect.StructTag(strings.Trim(f.Tag.Value, "`"))
+		body := alltags.Get("msg")
 		tags := strings.Split(body, ",")
 		if len(tags) == 2 && tags[1] == "extension" {
 			extension = true
+		}
+		// must use msg:",omitempty" if no alt name, to
+		// mark a field omitempty. this avoids confusion
+		// with any alt name, which always comes first.
+		if len(tags) > 1 && anyMatches(tags[1:], "omitempty") {
+			omitempty = true
 		}
 		// ignore "-" fields
 		if tags[0] == "-" {
 			return nil
 		}
-		sf[0].FieldTag = tags[0]
+		if len(tags[0]) > 0 {
+			sf[0].FieldTag = tags[0]
+		}
 	}
 
 	ex := fs.parseExpr(f.Type)
 	if ex == nil {
 		return nil
 	}
+
+	sf[0].OmitEmpty = omitempty
 
 	// parse field name
 	switch len(f.Names) {
@@ -369,6 +397,7 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 				FieldTag:  nm.Name,
 				FieldName: nm.Name,
 				FieldElem: ex.Copy(),
+				OmitEmpty: omitempty,
 			})
 		}
 		return sf

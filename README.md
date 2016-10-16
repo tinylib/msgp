@@ -102,3 +102,17 @@ If the output compiles, then there's a pretty good chance things are fine. (Plus
 If you like benchmarks, see [here.](https://github.com/alecthomas/go_serialization_benchmarks)
 
 As one might expect, the generated methods that deal with `[]byte` are faster, but the `io.Reader/Writer` methods are generally more memory-efficient for large (> 2KB) objects.
+
+### `msgp:",omitempty"` tags on struct fields
+
+In the following example,
+```
+type Hedgehog struct {
+   Furriness string `msgp:",omitempty"`
+}
+```
+If Furriness is the empty string, the field will not be serialized, thus saving the space of the field name on the wire.
+
+Generally, most zero values that have the omitempty tag applied will be skipped. Recursive struct elements are an exception; they are always included and are never impacted by omitempty tagging recursively. Naturally the member's own fields may have tags that will be in-force locally once the serializer reaches them. Note that member structs are different from member pointers-to-structs. Nil pointers that are tagged `omitempty` will have their field skipped.
+
+Under tuple encoding, all fields are serialized and the omitempty tag is ignored.

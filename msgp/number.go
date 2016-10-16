@@ -142,31 +142,32 @@ func (n *Number) DecodeMsg(r *Reader) error {
 
 // UnmarshalMsg implements msgp.Unmarshaler
 func (n *Number) UnmarshalMsg(b []byte) ([]byte, error) {
+	var nbs *NilBitsStack
 	typ := NextType(b)
 	switch typ {
 	case IntType:
-		i, o, err := ReadInt64Bytes(b)
+		i, o, err := nbs.ReadInt64Bytes(b)
 		if err != nil {
 			return b, err
 		}
 		n.AsInt(i)
 		return o, nil
 	case UintType:
-		u, o, err := ReadUint64Bytes(b)
+		u, o, err := nbs.ReadUint64Bytes(b)
 		if err != nil {
 			return b, err
 		}
 		n.AsUint(u)
 		return o, nil
 	case Float64Type:
-		f, o, err := ReadFloat64Bytes(b)
+		f, o, err := nbs.ReadFloat64Bytes(b)
 		if err != nil {
 			return b, err
 		}
 		n.AsFloat64(f)
 		return o, nil
 	case Float32Type:
-		f, o, err := ReadFloat32Bytes(b)
+		f, o, err := nbs.ReadFloat32Bytes(b)
 		if err != nil {
 			return b, err
 		}

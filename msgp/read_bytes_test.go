@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var nbs *NilBitsStack
+
 func TestReadMapHeaderBytes(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
@@ -18,7 +20,7 @@ func TestReadMapHeaderBytes(t *testing.T) {
 		en.WriteMapHeader(v)
 		en.Flush()
 
-		out, left, err := ReadMapHeaderBytes(buf.Bytes())
+		out, left, err := nbs.ReadMapHeaderBytes(buf.Bytes())
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
@@ -44,7 +46,7 @@ func BenchmarkReadMapHeaderBytes(b *testing.B) {
 	b.ResetTimer()
 	o := buf
 	for i := 0; i < b.N; i++ {
-		_, buf, _ = ReadMapHeaderBytes(buf)
+		_, buf, _ = nbs.ReadMapHeaderBytes(buf)
 		if len(buf) == 0 {
 			buf = o
 		}
@@ -62,7 +64,7 @@ func TestReadArrayHeaderBytes(t *testing.T) {
 		en.WriteArrayHeader(v)
 		en.Flush()
 
-		out, left, err := ReadArrayHeaderBytes(buf.Bytes())
+		out, left, err := nbs.ReadArrayHeaderBytes(buf.Bytes())
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
@@ -88,7 +90,7 @@ func BenchmarkReadArrayHeaderBytes(b *testing.B) {
 	b.ResetTimer()
 	o := buf
 	for i := 0; i < b.N; i++ {
-		_, buf, _ = ReadArrayHeaderBytes(buf)
+		_, buf, _ = nbs.ReadArrayHeaderBytes(buf)
 		if len(buf) == 0 {
 			buf = o
 		}
@@ -101,7 +103,7 @@ func TestReadNilBytes(t *testing.T) {
 	en.WriteNil()
 	en.Flush()
 
-	left, err := ReadNilBytes(buf.Bytes())
+	left, err := nbs.ReadNilBytes(buf.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +118,7 @@ func BenchmarkReadNilByte(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ReadNilBytes(buf)
+		nbs.ReadNilBytes(buf)
 	}
 }
 
@@ -126,7 +128,7 @@ func TestReadFloat64Bytes(t *testing.T) {
 	en.WriteFloat64(3.14159)
 	en.Flush()
 
-	out, left, err := ReadFloat64Bytes(buf.Bytes())
+	out, left, err := nbs.ReadFloat64Bytes(buf.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +148,7 @@ func BenchmarkReadFloat64Bytes(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ReadFloat64Bytes(buf)
+		nbs.ReadFloat64Bytes(buf)
 	}
 }
 
@@ -156,7 +158,7 @@ func TestReadFloat32Bytes(t *testing.T) {
 	en.WriteFloat32(3.1)
 	en.Flush()
 
-	out, left, err := ReadFloat32Bytes(buf.Bytes())
+	out, left, err := nbs.ReadFloat32Bytes(buf.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +178,7 @@ func BenchmarkReadFloat32Bytes(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ReadFloat32Bytes(buf)
+		nbs.ReadFloat32Bytes(buf)
 	}
 }
 
@@ -190,7 +192,7 @@ func TestReadBoolBytes(t *testing.T) {
 		buf.Reset()
 		en.WriteBool(v)
 		en.Flush()
-		out, left, err := ReadBoolBytes(buf.Bytes())
+		out, left, err := nbs.ReadBoolBytes(buf.Bytes())
 
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
@@ -213,7 +215,7 @@ func BenchmarkReadBoolBytes(b *testing.B) {
 	b.ResetTimer()
 	o := buf
 	for i := 0; i < b.N; i++ {
-		_, buf, _ = ReadBoolBytes(buf)
+		_, buf, _ = nbs.ReadBoolBytes(buf)
 		if len(buf) == 0 {
 			buf = o
 		}
@@ -230,7 +232,7 @@ func TestReadInt64Bytes(t *testing.T) {
 		buf.Reset()
 		en.WriteInt64(v)
 		en.Flush()
-		out, left, err := ReadInt64Bytes(buf.Bytes())
+		out, left, err := nbs.ReadInt64Bytes(buf.Bytes())
 
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
@@ -256,7 +258,7 @@ func TestReadUint64Bytes(t *testing.T) {
 		buf.Reset()
 		en.WriteUint64(v)
 		en.Flush()
-		out, left, err := ReadUint64Bytes(buf.Bytes())
+		out, left, err := nbs.ReadUint64Bytes(buf.Bytes())
 
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
@@ -283,7 +285,7 @@ func TestReadBytesBytes(t *testing.T) {
 		buf.Reset()
 		en.WriteBytes(v)
 		en.Flush()
-		out, left, err := ReadBytesBytes(buf.Bytes(), scratch)
+		out, left, err := nbs.ReadBytesBytes(buf.Bytes(), scratch)
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
@@ -306,7 +308,7 @@ func TestReadZCBytes(t *testing.T) {
 		buf.Reset()
 		en.WriteBytes(v)
 		en.Flush()
-		out, left, err := ReadBytesZC(buf.Bytes())
+		out, left, err := nbs.ReadBytesZC(buf.Bytes())
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
@@ -330,7 +332,7 @@ func TestReadZCString(t *testing.T) {
 		en.WriteString(v)
 		en.Flush()
 
-		out, left, err := ReadStringZC(buf.Bytes())
+		out, left, err := nbs.ReadStringZC(buf.Bytes())
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
@@ -354,7 +356,7 @@ func TestReadStringBytes(t *testing.T) {
 		en.WriteString(v)
 		en.Flush()
 
-		out, left, err := ReadStringBytes(buf.Bytes())
+		out, left, err := nbs.ReadStringBytes(buf.Bytes())
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
@@ -378,7 +380,7 @@ func TestReadComplex128Bytes(t *testing.T) {
 		en.WriteComplex128(v)
 		en.Flush()
 
-		out, left, err := ReadComplex128Bytes(buf.Bytes())
+		out, left, err := nbs.ReadComplex128Bytes(buf.Bytes())
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
@@ -402,7 +404,7 @@ func TestReadComplex64Bytes(t *testing.T) {
 		en.WriteComplex64(v)
 		en.Flush()
 
-		out, left, err := ReadComplex64Bytes(buf.Bytes())
+		out, left, err := nbs.ReadComplex64Bytes(buf.Bytes())
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
@@ -422,7 +424,7 @@ func TestReadTimeBytes(t *testing.T) {
 	now := time.Now()
 	en.WriteTime(now)
 	en.Flush()
-	out, left, err := ReadTimeBytes(buf.Bytes())
+	out, left, err := nbs.ReadTimeBytes(buf.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -441,7 +443,7 @@ func BenchmarkReadTimeBytes(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ReadTimeBytes(data)
+		nbs.ReadTimeBytes(data)
 	}
 }
 
@@ -467,7 +469,7 @@ func TestReadIntfBytes(t *testing.T) {
 		}
 		en.Flush()
 
-		out, left, err := ReadIntfBytes(buf.Bytes())
+		out, left, err := nbs.ReadIntfBytes(buf.Bytes())
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}

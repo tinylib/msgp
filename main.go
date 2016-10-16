@@ -29,41 +29,42 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tinylib/msgp/cfg"
 	"github.com/tinylib/msgp/gen"
 	"github.com/tinylib/msgp/parse"
 	"github.com/tinylib/msgp/printer"
 	"github.com/ttacon/chalk"
 )
 
-var (
-	out        = flag.String("o", "", "output file")
-	file       = flag.String("file", "", "input file")
-	encode     = flag.Bool("io", true, "create Encode and Decode methods")
-	marshal    = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
-	tests      = flag.Bool("tests", true, "create tests and benchmarks")
-	unexported = flag.Bool("unexported", false, "also process unexported types")
-)
-
 func main() {
-	flag.Parse()
+	myflags := flag.NewFlagSet("msgp", flag.ExitOnError)
+	c := &cfg.MsgpConfig{}
+	c.DefineFlags(myflags)
+
+	err := myflags.Parse(os.Args[1:])
+	err = c.ValidateConfig()
+	if err != nil {
+		fmt.Println(chalk.Red.Color(fmt.Sprintf("msgp command line flag error: '%s'\n", err)))
+		os.Exit(1)
+	}
 
 	// GOFILE is set by go generate
-	if *file == "" {
-		*file = os.Getenv("GOFILE")
-		if *file == "" {
+	if c.GoFile == "" {
+		c.GoFile = os.Getenv("GOFILE")
+		if c.GoFile == "" {
 			fmt.Println(chalk.Red.Color("No file to parse."))
 			os.Exit(1)
 		}
 	}
 
 	var mode gen.Method
-	if *encode {
-		mode |= (gen.Encode | gen.Decode | gen.Size)
+	if c.Encode {
+		mode |= (gen.Encode | gen.Decode | gen.Size | gen.FieldsEmpty)
 	}
-	if *marshal {
-		mode |= (gen.Marshal | gen.Unmarshal | gen.Size)
+	if c.Marshal {
+		mode |= (gen.Marshal | gen.Unmarshal | gen.Size | gen.FieldsEmpty)
 	}
-	if *tests {
+	if c.Tests {
 		mode |= gen.Test
 	}
 
@@ -72,7 +73,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := Run(*file, mode, *unexported); err != nil {
+	if err := Run(mode, c); err != nil {
 		fmt.Println(chalk.Red.Color(err.Error()))
 		os.Exit(1)
 	}
@@ -82,13 +83,13 @@ func main() {
 //
 //	err := msgp.Run("path/to/myfile.go", gen.Size|gen.Marshal|gen.Unmarshal|gen.Test, false)
 //
-func Run(gofile string, mode gen.Method, unexported bool) error {
+func Run(mode gen.Method, c *cfg.MsgpConfig) error {
 	if mode&^gen.Test == 0 {
 		return nil
 	}
-	fmt.Println(chalk.Magenta.Color("======== MessagePack Code Generator ======="))
-	fmt.Printf(chalk.Magenta.Color(">>> Input: \"%s\"\n"), gofile)
-	fs, err := parse.File(gofile, unexported)
+	fmt.Println(chalk.Magenta.Color("======== MessagePack Code Generator  ======="))
+	fmt.Printf(chalk.Magenta.Color(">>> Input: \"%s\"\n"), c.GoFile)
+	fs, err := parse.File(c)
 	if err != nil {
 		return err
 	}
@@ -98,17 +99,17 @@ func Run(gofile string, mode gen.Method, unexported bool) error {
 		return nil
 	}
 
-	return printer.PrintFile(newFilename(gofile, fs.Package), fs, mode)
+	return printer.PrintFile(newFilename(c.Out, c.GoFile, fs.Package), fs, mode)
 }
 
 // picks a new file name based on input flags and input filename(s).
-func newFilename(old string, pkg string) string {
-	if *out != "" {
-		if pre := strings.TrimPrefix(*out, old); len(pre) > 0 &&
-			!strings.HasSuffix(*out, ".go") {
-			return filepath.Join(old, *out)
+func newFilename(out, old, pkg string) string {
+	if out != "" {
+		if pre := strings.TrimPrefix(out, old); len(pre) > 0 &&
+			!strings.HasSuffix(out, ".go") {
+			return filepath.Join(old, out)
 		}
-		return *out
+		return out
 	}
 
 	if fi, err := os.Stat(old); err == nil && fi.IsDir() {

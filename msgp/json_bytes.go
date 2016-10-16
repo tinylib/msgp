@@ -81,7 +81,8 @@ func writeNext(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 }
 
 func rwArrayBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
-	sz, msg, err := ReadArrayHeaderBytes(msg)
+	var nbs *NilBitsStack
+	sz, msg, err := nbs.ReadArrayHeaderBytes(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -106,7 +107,8 @@ func rwArrayBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error
 }
 
 func rwMapBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
-	sz, msg, err := ReadMapHeaderBytes(msg)
+	var nbs *NilBitsStack
+	sz, msg, err := nbs.ReadMapHeaderBytes(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -149,7 +151,8 @@ func rwMapKeyBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, erro
 }
 
 func rwStringBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
-	str, msg, err := ReadStringZC(msg)
+	var nbs *NilBitsStack
+	str, msg, err := nbs.ReadStringZC(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -158,7 +161,8 @@ func rwStringBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, erro
 }
 
 func rwBytesBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
-	bts, msg, err := ReadBytesZC(msg)
+	var nbs *NilBitsStack
+	bts, msg, err := nbs.ReadBytesZC(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -182,7 +186,8 @@ func rwBytesBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error
 }
 
 func rwNullBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
-	msg, err := ReadNilBytes(msg)
+	var nbs *NilBitsStack
+	msg, err := nbs.ReadNilBytes(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -191,7 +196,8 @@ func rwNullBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error)
 }
 
 func rwBoolBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
-	b, msg, err := ReadBoolBytes(msg)
+	var nbs *NilBitsStack
+	b, msg, err := nbs.ReadBoolBytes(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -204,7 +210,8 @@ func rwBoolBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error)
 }
 
 func rwIntBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
-	i, msg, err := ReadInt64Bytes(msg)
+	var nbs *NilBitsStack
+	i, msg, err := nbs.ReadInt64Bytes(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -214,7 +221,8 @@ func rwIntBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) 
 }
 
 func rwUintBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
-	u, msg, err := ReadUint64Bytes(msg)
+	var nbs *NilBitsStack
+	u, msg, err := nbs.ReadUint64Bytes(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -224,16 +232,17 @@ func rwUintBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error)
 }
 
 func rwFloatBytes(w jsWriter, msg []byte, f64 bool, scratch []byte) ([]byte, []byte, error) {
+	var nbs *NilBitsStack
 	var f float64
 	var err error
 	var sz int
 	if f64 {
 		sz = 64
-		f, msg, err = ReadFloat64Bytes(msg)
+		f, msg, err = nbs.ReadFloat64Bytes(msg)
 	} else {
 		sz = 32
 		var v float32
-		v, msg, err = ReadFloat32Bytes(msg)
+		v, msg, err = nbs.ReadFloat32Bytes(msg)
 		f = float64(v)
 	}
 	if err != nil {
@@ -245,9 +254,10 @@ func rwFloatBytes(w jsWriter, msg []byte, f64 bool, scratch []byte) ([]byte, []b
 }
 
 func rwFloat32Bytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
+	var nbs *NilBitsStack
 	var f float32
 	var err error
-	f, msg, err = ReadFloat32Bytes(msg)
+	f, msg, err = nbs.ReadFloat32Bytes(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -257,9 +267,10 @@ func rwFloat32Bytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, err
 }
 
 func rwFloat64Bytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
+	var nbs *NilBitsStack
 	var f float64
 	var err error
-	f, msg, err = ReadFloat64Bytes(msg)
+	f, msg, err = nbs.ReadFloat64Bytes(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -269,9 +280,10 @@ func rwFloat64Bytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, err
 }
 
 func rwTimeBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
+	var nbs *NilBitsStack
 	var t time.Time
 	var err error
-	t, msg, err = ReadTimeBytes(msg)
+	t, msg, err = nbs.ReadTimeBytes(msg)
 	if err != nil {
 		return msg, scratch, err
 	}
@@ -284,6 +296,7 @@ func rwTimeBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error)
 }
 
 func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
+	var nbs *NilBitsStack
 	var err error
 	var et int8
 	et, err = peekExtension(msg)
@@ -294,7 +307,7 @@ func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, e
 	// if it's time.Time
 	if et == TimeExtension {
 		var tm time.Time
-		tm, msg, err = ReadTimeBytes(msg)
+		tm, msg, err = nbs.ReadTimeBytes(msg)
 		if err != nil {
 			return msg, scratch, err
 		}
@@ -310,7 +323,7 @@ func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, e
 	// use its canonical JSON form
 	if f, ok := extensionReg[et]; ok {
 		e := f()
-		msg, err = ReadExtensionBytes(msg, e)
+		msg, err = nbs.ReadExtensionBytes(msg, e)
 		if err != nil {
 			return msg, scratch, err
 		}
@@ -325,7 +338,7 @@ func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, e
 	// otherwise, write `{"type": <num>, "data": "<base64data>"}`
 	r := RawExtension{}
 	r.Type = et
-	msg, err = ReadExtensionBytes(msg, &r)
+	msg, err = nbs.ReadExtensionBytes(msg, &r)
 	if err != nil {
 		return msg, scratch, err
 	}

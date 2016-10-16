@@ -50,6 +50,9 @@ func PrintFile(file string, f *parse.FileSet, mode gen.Method) error {
 func format(file string, data []byte) error {
 	out, err := imports.Process(file, data, nil)
 	if err != nil {
+		fmt.Printf("\n\n debug: problem file:\n%s\n", file)
+		ioutil.WriteFile(file, data, 0600)
+		panic(err)
 		return err
 	}
 	return ioutil.WriteFile(file, out, 0600)
@@ -80,7 +83,7 @@ func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, 
 	outbuf := bytes.NewBuffer(make([]byte, 0, 4096))
 	writePkgHeader(outbuf, f.Package)
 
-	myImports := []string{"github.com/tinylib/msgp/msgp"}
+	myImports := []string{"github.com/tinylib/msgp/msgp", "fmt"}
 	for _, imp := range f.Imports {
 		if imp.Name != nil {
 			// have an alias, include it.
@@ -104,7 +107,7 @@ func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, 
 		}
 		testwr = testbuf
 	}
-	return outbuf, testbuf, f.PrintTo(gen.NewPrinter(mode, outbuf, testwr))
+	return outbuf, testbuf, f.PrintTo(gen.NewPrinter(mode, outbuf, testwr, f.Cfg))
 }
 
 func writePkgHeader(b *bytes.Buffer, name string) {

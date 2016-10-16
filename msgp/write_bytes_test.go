@@ -9,7 +9,7 @@ import (
 
 func TestIssue116(t *testing.T) {
 	data := AppendInt64(nil, math.MinInt64)
-	i, _, err := ReadInt64Bytes(data)
+	i, _, err := nbs.ReadInt64Bytes(data)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,6 +7,7 @@ import (
 )
 
 func TestRemove(t *testing.T) {
+	var nbs *NilBitsStack
 	var buf bytes.Buffer
 	w := NewWriter(&buf)
 	w.WriteMapHeader(3)
@@ -20,7 +21,7 @@ func TestRemove(t *testing.T) {
 
 	raw := Remove("second", buf.Bytes())
 
-	m, _, err := ReadMapStrIntfBytes(raw, nil)
+	m, _, err := nbs.ReadMapStrIntfBytes(raw, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,6 +92,7 @@ func TestReplace(t *testing.T) {
 	//  - new value is larger than old, but fits within cap(b)
 	//  - new value is larger than old, and doesn't fit within cap(b)
 
+	var nbs *NilBitsStack
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 	en.WriteMapHeader(3)
@@ -115,7 +117,7 @@ func TestReplace(t *testing.T) {
 	}
 	var err error
 	m := make(map[string]interface{})
-	m, _, err = ReadMapStrIntfBytes(raw, m)
+	m, _, err = nbs.ReadMapStrIntfBytes(raw, m)
 	if err != nil {
 		t.Logf("%q", raw)
 		t.Fatal(err)
@@ -135,7 +137,7 @@ func TestReplace(t *testing.T) {
 		t.Fatal("field not found")
 	}
 
-	m, _, err = ReadMapStrIntfBytes(raw, m)
+	m, _, err = nbs.ReadMapStrIntfBytes(raw, m)
 	if err != nil {
 		t.Logf("%q", raw)
 		t.Fatal(err)
@@ -155,7 +157,7 @@ func TestReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m, _, err = ReadMapStrIntfBytes(raw, m)
+	m, _, err = nbs.ReadMapStrIntfBytes(raw, m)
 	if err != nil {
 		t.Logf("%q", raw)
 		t.Fatal(err)
