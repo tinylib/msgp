@@ -1089,7 +1089,7 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (err error) {
 
 // ReadMapIntfIntf reads a MessagePack map into a map[interface{}]interface{}.
 // (You must pass a non-nil map into the function.)
-func (m *Reader) ReadMapIntfIntf(mp map[string]interface{}) (err error) {
+func (m *Reader) ReadMapIntfIntf(mp map[interface{}]interface{}) (err error) {
 	var sz uint32
 	sz, err = m.ReadMapHeader()
 	if err != nil {
