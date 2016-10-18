@@ -56,7 +56,6 @@ func (u *unmarshalGen) nextTypeAndCheck(name string) {
 		return
 	}
 	u.p.printf("\n%s = msgp.NextType(bts)", name)
-	u.p.print(errcheck)
 }
 
 func (u *unmarshalGen) skipAndCheck() {
