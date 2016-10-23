@@ -1,0 +1,4 @@
+# pack-refs with: peeled fully-peeled 
+f7af10954f2cb6deea7cf242c1ecaefbb79cc872 refs/remotes/origin/feature/sanitized_anchor_name_context
+d965ea7b46a9b956810f9a150ca043591acfddc0 refs/remotes/origin/master
+97ea4cdf3fcebee620c5df4abf3c31912ea17f04 refs/remotes/origin/unfinished-attempt/alternative-sort-order-for-Go-Package-list
