@@ -149,7 +149,10 @@ func (r *Raw) MarshalJSON() ([]byte, error) {
 // Possible errors:
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a map)
-func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
+func (nbs *NilBitsStack) ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
 	l := len(b)
 	if l < 1 {
 		err = ErrShortBytes
@@ -193,11 +196,15 @@ func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 // Possible errors:
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a str or bin)
-func ReadMapKeyZC(b []byte) ([]byte, []byte, error) {
-	o, b, err := ReadStringZC(b)
+func (nbs *NilBitsStack) ReadMapKeyZC(b []byte) ([]byte, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return nil, b, nil
+	}
+
+	o, b, err := nbs.ReadStringZC(b)
 	if err != nil {
 		if tperr, ok := err.(TypeError); ok && tperr.Encoded == BinType {
-			return ReadBytesZC(b)
+			return nbs.ReadBytesZC(b)
 		}
 		return nil, b, err
 	}
@@ -210,7 +217,11 @@ func ReadMapKeyZC(b []byte) ([]byte, []byte, error) {
 // Possible errors:
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not an array)
-func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
+func (nbs *NilBitsStack) ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
 	if len(b) < 1 {
 		return 0, nil, ErrShortBytes
 	}
@@ -252,7 +263,10 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a 'nil')
 // - InvalidPrefixError
-func ReadNilBytes(b []byte) ([]byte, error) {
+func (nbs *NilBitsStack) ReadNilBytes(b []byte) ([]byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return b, nil
+	}
 	if len(b) < 1 {
 		return nil, ErrShortBytes
 	}
@@ -267,11 +281,15 @@ func ReadNilBytes(b []byte) ([]byte, error) {
 // Possible errors:
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a float64)
-func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
+func (nbs *NilBitsStack) ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
 	if len(b) < 9 {
 		if len(b) >= 5 && b[0] == mfloat32 {
 			var tf float32
-			tf, o, err = ReadFloat32Bytes(b)
+			tf, o, err = nbs.ReadFloat32Bytes(b)
 			f = float64(tf)
 			return
 		}
@@ -282,7 +300,7 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 	if b[0] != mfloat64 {
 		if b[0] == mfloat32 {
 			var tf float32
-			tf, o, err = ReadFloat32Bytes(b)
+			tf, o, err = nbs.ReadFloat32Bytes(b)
 			f = float64(tf)
 			return
 		}
@@ -300,7 +318,11 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 // Possible errors:
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a float32)
-func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
+func (nbs *NilBitsStack) ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
 	if len(b) < 5 {
 		err = ErrShortBytes
 		return
@@ -316,12 +338,16 @@ func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 	return
 }
 
-// ReadBoolBytes tries to read a float64
+// ReadBoolBytes tries to read a bool
 // from 'b' and return the value and the remaining bytes.
 // Possible errors:
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a bool)
-func ReadBoolBytes(b []byte) (bool, []byte, error) {
+func (nbs *NilBitsStack) ReadBoolBytes(b []byte) (bool, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return false, b, nil
+	}
+
 	if len(b) < 1 {
 		return false, b, ErrShortBytes
 	}
@@ -340,7 +366,11 @@ func ReadBoolBytes(b []byte) (bool, []byte, error) {
 // Possible errors:
 // - ErrShortBytes (too few bytes)
 // - TypeError (not a int)
-func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
+func (nbs *NilBitsStack) ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
 	l := len(b)
 	if l < 1 {
 		return 0, nil, ErrShortBytes
@@ -407,8 +437,12 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a int)
 // - IntOverflow{} (value doesn't fit in int32)
-func ReadInt32Bytes(b []byte) (int32, []byte, error) {
-	i, o, err := ReadInt64Bytes(b)
+func (nbs *NilBitsStack) ReadInt32Bytes(b []byte) (int32, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
+	i, o, err := nbs.ReadInt64Bytes(b)
 	if i > math.MaxInt32 || i < math.MinInt32 {
 		return 0, o, IntOverflow{Value: i, FailedBitsize: 32}
 	}
@@ -421,8 +455,12 @@ func ReadInt32Bytes(b []byte) (int32, []byte, error) {
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a int)
 // - IntOverflow{} (value doesn't fit in int16)
-func ReadInt16Bytes(b []byte) (int16, []byte, error) {
-	i, o, err := ReadInt64Bytes(b)
+func (nbs *NilBitsStack) ReadInt16Bytes(b []byte) (int16, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
+	i, o, err := nbs.ReadInt64Bytes(b)
 	if i > math.MaxInt16 || i < math.MinInt16 {
 		return 0, o, IntOverflow{Value: i, FailedBitsize: 16}
 	}
@@ -435,8 +473,12 @@ func ReadInt16Bytes(b []byte) (int16, []byte, error) {
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a int)
 // - IntOverflow{} (value doesn't fit in int8)
-func ReadInt8Bytes(b []byte) (int8, []byte, error) {
-	i, o, err := ReadInt64Bytes(b)
+func (nbs *NilBitsStack) ReadInt8Bytes(b []byte) (int8, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
+	i, o, err := nbs.ReadInt64Bytes(b)
 	if i > math.MaxInt8 || i < math.MinInt8 {
 		return 0, o, IntOverflow{Value: i, FailedBitsize: 8}
 	}
@@ -449,12 +491,19 @@ func ReadInt8Bytes(b []byte) (int8, []byte, error) {
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a int)
 // - IntOverflow{} (value doesn't fit in int; 32-bit platforms only)
-func ReadIntBytes(b []byte) (int, []byte, error) {
+func (nbs *NilBitsStack) ReadIntBytes(b []byte) (int, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
+	if nbs.AlwaysNil {
+		return 0, b, nil
+	}
 	if smallint {
-		i, b, err := ReadInt32Bytes(b)
+		i, b, err := nbs.ReadInt32Bytes(b)
 		return int(i), b, err
 	}
-	i, b, err := ReadInt64Bytes(b)
+	i, b, err := nbs.ReadInt64Bytes(b)
 	return int(i), b, err
 }
 
@@ -463,7 +512,11 @@ func ReadIntBytes(b []byte) (int, []byte, error) {
 // Possible errors:
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a uint)
-func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
+func (nbs *NilBitsStack) ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
 	l := len(b)
 	if l < 1 {
 		return 0, nil, ErrShortBytes
@@ -525,8 +578,12 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a uint)
 // - UintOverflow{} (value too large for uint32)
-func ReadUint32Bytes(b []byte) (uint32, []byte, error) {
-	v, o, err := ReadUint64Bytes(b)
+func (nbs *NilBitsStack) ReadUint32Bytes(b []byte) (uint32, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
+	v, o, err := nbs.ReadUint64Bytes(b)
 	if v > math.MaxUint32 {
 		return 0, nil, UintOverflow{Value: v, FailedBitsize: 32}
 	}
@@ -539,8 +596,12 @@ func ReadUint32Bytes(b []byte) (uint32, []byte, error) {
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a uint)
 // - UintOverflow{} (value too large for uint16)
-func ReadUint16Bytes(b []byte) (uint16, []byte, error) {
-	v, o, err := ReadUint64Bytes(b)
+func (nbs *NilBitsStack) ReadUint16Bytes(b []byte) (uint16, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
+	v, o, err := nbs.ReadUint64Bytes(b)
 	if v > math.MaxUint16 {
 		return 0, nil, UintOverflow{Value: v, FailedBitsize: 16}
 	}
@@ -553,8 +614,12 @@ func ReadUint16Bytes(b []byte) (uint16, []byte, error) {
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a uint)
 // - UintOverflow{} (value too large for uint8)
-func ReadUint8Bytes(b []byte) (uint8, []byte, error) {
-	v, o, err := ReadUint64Bytes(b)
+func (nbs *NilBitsStack) ReadUint8Bytes(b []byte) (uint8, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
+	v, o, err := nbs.ReadUint64Bytes(b)
 	if v > math.MaxUint8 {
 		return 0, nil, UintOverflow{Value: v, FailedBitsize: 8}
 	}
@@ -567,18 +632,26 @@ func ReadUint8Bytes(b []byte) (uint8, []byte, error) {
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a uint)
 // - UintOverflow{} (value too large for uint; 32-bit platforms only)
-func ReadUintBytes(b []byte) (uint, []byte, error) {
+func (nbs *NilBitsStack) ReadUintBytes(b []byte) (uint, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
 	if smallint {
-		u, b, err := ReadUint32Bytes(b)
+		u, b, err := nbs.ReadUint32Bytes(b)
 		return uint(u), b, err
 	}
-	u, b, err := ReadUint64Bytes(b)
+	u, b, err := nbs.ReadUint64Bytes(b)
 	return uint(u), b, err
 }
 
 // ReadByteBytes is analogous to ReadUint8Bytes
-func ReadByteBytes(b []byte) (byte, []byte, error) {
-	return ReadUint8Bytes(b)
+func (nbs *NilBitsStack) ReadByteBytes(b []byte) (byte, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
+	return nbs.ReadUint8Bytes(b)
 }
 
 // ReadBytesBytes reads a 'bin' object
@@ -587,7 +660,11 @@ func ReadByteBytes(b []byte) (byte, []byte, error) {
 // Possible errors:
 // - ErrShortBytes (too few bytes)
 // - TypeError{} (not a 'bin' object)
-func ReadBytesBytes(b []byte, scratch []byte) (v []byte, o []byte, err error) {
+func (nbs *NilBitsStack) ReadBytesBytes(b []byte, scratch []byte) (v []byte, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return nil, b, nil
+	}
+
 	return readBytesBytes(b, scratch, false)
 }
 
@@ -658,11 +735,21 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 // Possible errors:
 // - ErrShortBytes (b not long enough)
 // - TypeError{} (object not 'bin')
-func ReadBytesZC(b []byte) (v []byte, o []byte, err error) {
+func (nbs *NilBitsStack) ReadBytesZC(b []byte) (v []byte, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return nil, b, nil
+	}
 	return readBytesBytes(b, nil, true)
 }
 
-func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
+func (nbs *NilBitsStack) ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		for i := range into {
+			into[i] = 0
+		}
+		return b, nil
+	}
+
 	l := len(b)
 	if l < 1 {
 		err = ErrShortBytes
@@ -718,7 +805,11 @@ func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
 // Possible errors:
 // - ErrShortBytes (b not long enough)
 // - TypeError{} (object not 'str')
-func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
+func (nbs *NilBitsStack) ReadStringZC(b []byte) (v []byte, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return nil, b, nil
+	}
+
 	l := len(b)
 	if l < 1 {
 		return nil, nil, ErrShortBytes
@@ -779,8 +870,11 @@ func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 // - ErrShortBytes (b not long enough)
 // - TypeError{} (not 'str' type)
 // - InvalidPrefixError
-func ReadStringBytes(b []byte) (string, []byte, error) {
-	v, o, err := ReadStringZC(b)
+func (nbs *NilBitsStack) ReadStringBytes(b []byte) (string, []byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return "", b, nil
+	}
+	v, o, err := nbs.ReadStringZC(b)
 	return string(v), o, err
 }
 
@@ -793,9 +887,13 @@ func ReadStringBytes(b []byte) (string, []byte, error) {
 // - ErrShortBytes (b not long enough)
 // - TypeError{} (not 'str' type)
 // - InvalidPrefixError (unknown type marker)
-func ReadStringAsBytes(b []byte, scratch []byte) (v []byte, o []byte, err error) {
+func (nbs *NilBitsStack) ReadStringAsBytes(b []byte, scratch []byte) (v []byte, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return nil, b, nil
+	}
+
 	var tmp []byte
-	tmp, o, err = ReadStringZC(b)
+	tmp, o, err = nbs.ReadStringZC(b)
 	v = append(scratch[:0], tmp...)
 	return
 }
@@ -808,7 +906,11 @@ func ReadStringAsBytes(b []byte, scratch []byte) (v []byte, o []byte, err error)
 // - TypeError{} (object not a complex128)
 // - InvalidPrefixError
 // - ExtensionTypeError{} (object an extension of the correct size, but not a complex128)
-func ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
+func (nbs *NilBitsStack) ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
 	if len(b) < 18 {
 		err = ErrShortBytes
 		return
@@ -834,7 +936,11 @@ func ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
 // - ErrShortBytes (not enough bytes in 'b')
 // - TypeError{} (object not a complex64)
 // - ExtensionTypeError{} (object an extension of the correct size, but not a complex64)
-func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
+func (nbs *NilBitsStack) ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return 0, b, nil
+	}
+
 	if len(b) < 10 {
 		err = ErrShortBytes
 		return
@@ -860,7 +966,11 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 // - ErrShortBytes (not enough bytes in 'b')
 // - TypeError{} (object not a complex64)
 // - ExtensionTypeError{} (object an extension of the correct size, but not a time.Time)
-func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
+func (nbs *NilBitsStack) ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return time.Time{}, b, nil
+	}
+
 	if len(b) < 15 {
 		err = ErrShortBytes
 		return
@@ -882,10 +992,19 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 // ReadMapStrIntfBytes reads a map[string]interface{}
 // out of 'b' and returns the map and remaining bytes.
 // If 'old' is non-nil, the values will be read into that map.
-func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]interface{}, o []byte, err error) {
+func (nbs *NilBitsStack) ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]interface{}, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		if old != nil {
+			for key := range old {
+				delete(old, key)
+			}
+		}
+		return old, b, nil
+	}
+
 	var sz uint32
 	o = b
-	sz, o, err = ReadMapHeaderBytes(o)
+	sz, o, err = nbs.ReadMapHeaderBytes(o)
 
 	if err != nil {
 		return
@@ -906,12 +1025,12 @@ func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]int
 			return
 		}
 		var key []byte
-		key, o, err = ReadMapKeyZC(o)
+		key, o, err = nbs.ReadMapKeyZC(o)
 		if err != nil {
 			return
 		}
 		var val interface{}
-		val, o, err = ReadIntfBytes(o)
+		val, o, err = nbs.ReadIntfBytes(o)
 		if err != nil {
 			return
 		}
@@ -923,7 +1042,11 @@ func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]int
 // ReadIntfBytes attempts to read
 // the next object out of 'b' as a raw interface{} and
 // return the remaining bytes.
-func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
+func (nbs *NilBitsStack) ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return nil, b, nil
+	}
+
 	if len(b) < 1 {
 		err = ErrShortBytes
 		return
@@ -933,19 +1056,19 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 
 	switch k {
 	case MapType:
-		i, o, err = ReadMapStrIntfBytes(b, nil)
+		i, o, err = nbs.ReadMapStrIntfBytes(b, nil)
 		return
 
 	case ArrayType:
 		var sz uint32
-		sz, o, err = ReadArrayHeaderBytes(b)
+		sz, o, err = nbs.ReadArrayHeaderBytes(b)
 		if err != nil {
 			return
 		}
 		j := make([]interface{}, int(sz))
 		i = j
 		for d := range j {
-			j[d], o, err = ReadIntfBytes(o)
+			j[d], o, err = nbs.ReadIntfBytes(o)
 			if err != nil {
 				return
 			}
@@ -953,35 +1076,35 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		return
 
 	case Float32Type:
-		i, o, err = ReadFloat32Bytes(b)
+		i, o, err = nbs.ReadFloat32Bytes(b)
 		return
 
 	case Float64Type:
-		i, o, err = ReadFloat64Bytes(b)
+		i, o, err = nbs.ReadFloat64Bytes(b)
 		return
 
 	case IntType:
-		i, o, err = ReadInt64Bytes(b)
+		i, o, err = nbs.ReadInt64Bytes(b)
 		return
 
 	case UintType:
-		i, o, err = ReadUint64Bytes(b)
+		i, o, err = nbs.ReadUint64Bytes(b)
 		return
 
 	case BoolType:
-		i, o, err = ReadBoolBytes(b)
+		i, o, err = nbs.ReadBoolBytes(b)
 		return
 
 	case TimeType:
-		i, o, err = ReadTimeBytes(b)
+		i, o, err = nbs.ReadTimeBytes(b)
 		return
 
 	case Complex64Type:
-		i, o, err = ReadComplex64Bytes(b)
+		i, o, err = nbs.ReadComplex64Bytes(b)
 		return
 
 	case Complex128Type:
-		i, o, err = ReadComplex128Bytes(b)
+		i, o, err = nbs.ReadComplex128Bytes(b)
 		return
 
 	case ExtensionType:
@@ -995,27 +1118,27 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		f, ok := extensionReg[t]
 		if ok {
 			e := f()
-			o, err = ReadExtensionBytes(b, e)
+			o, err = nbs.ReadExtensionBytes(b, e)
 			i = e
 			return
 		}
 		// last resort is a raw extension
 		e := RawExtension{}
 		e.Type = int8(t)
-		o, err = ReadExtensionBytes(b, &e)
+		o, err = nbs.ReadExtensionBytes(b, &e)
 		i = &e
 		return
 
 	case NilType:
-		o, err = ReadNilBytes(b)
+		o, err = nbs.ReadNilBytes(b)
 		return
 
 	case BinType:
-		i, o, err = ReadBytesBytes(b, nil)
+		i, o, err = nbs.ReadBytesBytes(b, nil)
 		return
 
 	case StrType:
-		i, o, err = ReadStringBytes(b)
+		i, o, err = nbs.ReadStringBytes(b)
 		return
 
 	default:

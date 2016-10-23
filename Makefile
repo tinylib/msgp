@@ -7,7 +7,7 @@
 # generated integration test files
 GGEN = ./_generated/generated.go ./_generated/generated_test.go
 # generated unit test files
-MGEN = ./msgp/defgen_test.go
+MGEN = ./msgp/defgen_test.go ./msgp/nestedgen_test.go
 
 SHELL := /bin/bash
 

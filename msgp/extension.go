@@ -477,7 +477,11 @@ func AppendExtension(b []byte, e Extension) ([]byte, error) {
 // - TypeErorr{} (next object not an extension)
 // - InvalidPrefixError
 // - An umarshal error returned from e.UnmarshalBinary
-func ReadExtensionBytes(b []byte, e Extension) ([]byte, error) {
+func (nbs *NilBitsStack) ReadExtensionBytes(b []byte, e Extension) ([]byte, error) {
+	if nbs != nil && nbs.AlwaysNil {
+		return b, nil
+	}
+
 	l := len(b)
 	if l < 3 {
 		return b, ErrShortBytes

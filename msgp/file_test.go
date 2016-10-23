@@ -22,7 +22,8 @@ func (r rawBytes) Msgsize() int {
 }
 
 func (r *rawBytes) UnmarshalMsg(b []byte) ([]byte, error) {
-	tmp, out, err := msgp.ReadBytesBytes(b, (*(*[]byte)(r))[:0])
+	var nbs *msgp.NilBitsStack
+	tmp, out, err := nbs.ReadBytesBytes(b, (*(*[]byte)(r))[:0])
 	*r = rawBytes(tmp)
 	return out, err
 }

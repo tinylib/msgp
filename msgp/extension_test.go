@@ -35,13 +35,15 @@ func TestReadWriteExtension(t *testing.T) {
 }
 
 func TestReadWriteExtensionBytes(t *testing.T) {
+	var nbs *NilBitsStack
+
 	var bts []byte
 	rand.Seed(time.Now().Unix())
 
 	for i := 0; i < 24; i++ {
 		e := randomExt()
 		bts, _ = AppendExtension(bts[0:0], &e)
-		_, err := ReadExtensionBytes(bts, &e)
+		_, err := nbs.ReadExtensionBytes(bts, &e)
 		if err != nil {
 			t.Errorf("error with extension (length %d): %s", len(bts), err)
 		}

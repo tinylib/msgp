@@ -97,12 +97,23 @@ func (m *marshalGen) tuple(s *Struct) {
 
 func (m *marshalGen) mapstruct(s *Struct) {
 	data := make([]byte, 0, 64)
-	data = msgp.AppendMapHeader(data, uint32(len(s.Fields)))
-	m.p.printf("\n// map header, size %d", len(s.Fields))
-	m.Fuse(data)
+	nfields := len(s.Fields)
+	if s.hasOmitEmptyTags {
+		m.p.printf("\n\n// honor the omitempty tags\n")
+		m.p.printf("var empty [%d]bool\n", nfields)
+		m.p.printf("fieldsInUse := %s.fieldsNotEmpty(empty[:])\n", s.vname)
+		m.p.printf("	o = msgp.AppendMapHeader(o, fieldsInUse)\n")
+	} else {
+		data = msgp.AppendMapHeader(data, uint32(len(s.Fields)))
+		m.p.printf("\n// map header, size %d", len(s.Fields))
+		m.Fuse(data)
+	}
 	for i := range s.Fields {
 		if !m.p.ok() {
 			return
+		}
+		if s.hasOmitEmptyTags && s.Fields[i].OmitEmpty {
+			m.p.printf("\n if !empty[%d] {", i)
 		}
 		data = msgp.AppendString(nil, s.Fields[i].FieldTag)
 
@@ -110,6 +121,10 @@ func (m *marshalGen) mapstruct(s *Struct) {
 		m.Fuse(data)
 
 		next(m, s.Fields[i].FieldElem)
+
+		if s.hasOmitEmptyTags && s.Fields[i].OmitEmpty {
+			m.p.printf("\n }\n")
+		}
 	}
 }
 

@@ -2,11 +2,13 @@ package gen
 
 import (
 	"fmt"
+	"github.com/tinylib/msgp/cfg"
 	"io"
 )
 
 const (
-	errcheck    = "\nif err != nil { return }"
+	//errcheck    = "\nif err != nil { return }"
+	errcheck    = "\nif err != nil { panic(err) }"
 	lenAsUint32 = "uint32(len(%s))"
 	literalFmt  = "%s"
 	intFmt      = "%d"
@@ -20,7 +22,7 @@ const (
 
 // Method is a bitfield representing something that the
 // generator knows how to print.
-type Method uint8
+type Method uint16
 
 // are the bits in 'f' set in 'm'?
 func (m Method) isset(f Method) bool { return (m&f == f) }
@@ -42,6 +44,8 @@ func (m Method) String() string {
 		return "size"
 	case Test:
 		return "test"
+	case FieldsEmpty:
+		return "fieldsempty"
 	default:
 		// return e.g. "decode+encode+test"
 		modes := [...]Method{Decode, Encode, Marshal, Unmarshal, Size, Test}
@@ -76,34 +80,44 @@ func strtoMeth(s string) Method {
 		return Size
 	case "test":
 		return Test
+	case "fieldsempty":
+		return FieldsEmpty
 	default:
 		return 0
 	}
 }
 
 const (
-	Decode      Method                       = 1 << iota // msgp.Decodable
-	Encode                                               // msgp.Encodable
-	Marshal                                              // msgp.Marshaler
-	Unmarshal                                            // msgp.Unmarshaler
-	Size                                                 // msgp.Sizer
-	Test                                                 // generate tests
-	invalidmeth                                          // this isn't a method
-	encodetest  = Encode | Decode | Test                 // tests for Encodable and Decodable
-	marshaltest = Marshal | Unmarshal | Test             // tests for Marshaler and Unmarshaler
+	Decode      Method = 1 << iota // msgp.Decodable
+	Encode                         // msgp.Encodable
+	Marshal                        // msgp.Marshaler
+	Unmarshal                      // msgp.Unmarshaler
+	Size                           // msgp.Sizer
+	Test                           // generate tests
+	FieldsEmpty                    // support omitempty tag
+	invalidmeth                    // this isn't a method
+
+	encodetest  = Encode | Decode | Test | FieldsEmpty     // tests for Encodable and Decodable
+	marshaltest = Marshal | Unmarshal | Test | FieldsEmpty // tests for Marshaler and Unmarshaler
 )
 
 type Printer struct {
 	gens []generator
+	cfg  *cfg.MsgpConfig
 }
 
-func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
+func NewPrinter(m Method, out io.Writer, tests io.Writer, cfg *cfg.MsgpConfig) *Printer {
 	if m.isset(Test) && tests == nil {
 		panic("cannot print tests with 'nil' tests argument!")
 	}
-	gens := make([]generator, 0, 7)
+	gens := make([]generator, 0, 8)
 	if m.isset(Decode) {
-		gens = append(gens, decode(out))
+		gens = append(gens, decode(out, cfg))
+	}
+	// must run FieldsEmpty before Encode/Marshal, so as
+	// to set Struct.hasOmitEmptyTags
+	if m.isset(FieldsEmpty) {
+		gens = append(gens, fieldsempty(out))
 	}
 	if m.isset(Encode) {
 		gens = append(gens, encode(out))
@@ -112,7 +126,7 @@ func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
 		gens = append(gens, marshal(out))
 	}
 	if m.isset(Unmarshal) {
-		gens = append(gens, unmarshal(out))
+		gens = append(gens, unmarshal(out, cfg))
 	}
 	if m.isset(Size) {
 		gens = append(gens, sizes(out))
@@ -126,7 +140,7 @@ func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
 	if len(gens) == 0 {
 		panic("NewPrinter called with invalid method flags")
 	}
-	return &Printer{gens: gens}
+	return &Printer{gens: gens, cfg: cfg}
 }
 
 // TransformPass is a pass that transforms individual
@@ -287,7 +301,7 @@ func (p *printer) declare(name string, typ string) {
 
 // does:
 //
-// if m != nil && size > 0 {
+// if m == nil && size > 0 {
 //     m = make(type, size)
 // } else if len(m) > 0 {
 //     for key, _ := range m { delete(m, key) }
@@ -322,8 +336,8 @@ func (p *printer) resizeSlice(size string, s *Slice) {
 	p.printf("\nif cap(%[1]s) >= int(%[2]s) { %[1]s = (%[1]s)[:%[2]s] } else { %[1]s = make(%[3]s, %[2]s) }", s.Varname(), size, s.TypeName())
 }
 
-func (p *printer) arrayCheck(want string, got string) {
-	p.printf("\nif %[1]s != %[2]s { err = msgp.ArrayError{Wanted: %[2]s, Got: %[1]s}; return }", got, want)
+func (p *printer) arrayCheck(want string, got string, additionalGuard string) {
+	p.printf("\nif %[3]s %[1]s != %[2]s { err = msgp.ArrayError{Wanted: %[2]s, Got: %[1]s}; return }", got, want, additionalGuard)
 }
 
 func (p *printer) closeblock() { p.print("\n}") }

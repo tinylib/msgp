@@ -3,5 +3,6 @@ _generated/generated_test.go
 _generated/*_gen.go
 _generated/*_gen_test.go
 msgp/defgen_test.go
+msgp/nestedgen_test.go
 msgp/cover.out
 *~
