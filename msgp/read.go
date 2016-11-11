@@ -169,7 +169,7 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 		// Fallthrough
 	} else {
 		// Intentional "else no error" branch due to fallthrough above.
-		// Otherwise,
+		// Just write the buffer.
 		var nInt int
 		nInt, err = w.Write(buf)
 		n = int64(nInt)
@@ -178,7 +178,6 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 		} else if n != int64(sz) {
 			return n, io.ErrShortWrite
 		}
-
 	}
 
 	// for maps and slices, read elements

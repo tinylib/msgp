@@ -763,12 +763,6 @@ func TestCopyNext(t *testing.T) {
 			n, buf.Len())
 	}
 
-	// p := make([]byte, 0, len(buf.Bytes()))
-	// n, err := de.ReadNext(p)
-	// if err != nil {
-	// t.Fatal(err)
-	// }
-
 	if !bytes.Equal(buf.Bytes(), w.Bytes()) {
 		t.Fatalf("not equal! %v, %v", buf.Bytes(), w.Bytes())
 	}
