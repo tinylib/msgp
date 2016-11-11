@@ -154,10 +154,31 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 		return 0, err
 	}
 
-	// avoids allocating because m.R implements WriteTo.
-	n, err := io.CopyN(w, m.R, int64(sz))
+	// Opportunistic optimization: if we can fit the whole thing in the m.R
+	// buffer, then just get a pointer to that, and pass it to w.Write,
+	// avoiding an allocation.
+	buf, err := m.R.Next(int(sz))
+	n := int64(len(buf))
 	if err != nil {
-		return 0, err
+		// Fall back to io.CopyN.
+		// May avoid allocating if w is a ReaderFrom (e.g. bytes.Buffer)
+		n, err = io.CopyN(w, m.R, int64(sz))
+		if err != nil {
+			return 0, err
+		}
+		// Fallthrough
+	} else {
+		// Intentional "else no error" branch due to fallthrough above.
+		// Otherwise,
+		var nInt int
+		nInt, err = w.Write(buf)
+		n = int64(nInt)
+		if err != nil {
+			return 0, err
+		} else if n != int64(sz) {
+			return n, io.ErrShortWrite
+		}
+
 	}
 
 	// for maps and slices, read elements
