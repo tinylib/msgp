@@ -1,7 +1,6 @@
 package msgp
 
 import (
-	"fmt"
 	"io"
 	"math"
 	"sync"
@@ -145,39 +144,6 @@ type Reader struct {
 // Read implements `io.Reader`
 func (m *Reader) Read(p []byte) (int, error) {
 	return m.R.Read(p)
-}
-
-// ReadNext reads the raw bytes for the next object on the wire into p.
-// If p is not large enough, an error is returned. See GetNextSize.
-func (m *Reader) ReadNext(p []byte) (int, error) {
-	sz, o, err := getNextSize(m.R)
-	if err != nil {
-		return 0, err
-	}
-	if uintptr(cap(p)) < sz {
-		return 0, ReadNextError{uintptr(len(p)), uintptr(sz)}
-	}
-	n, err := m.R.ReadFull(p[:sz])
-	if err != nil {
-		return 0, err
-	}
-	if uintptr(n) != sz {
-		return 0, fmt.Errorf("wrong # bytes read (%d != %d)", n, int64(sz))
-	}
-
-	p = p[n:n:cap(p)]
-	tot := n
-
-	// for maps and slices, read elements
-	for x := uintptr(0); x < o; x++ {
-		n, err = m.ReadNext(p)
-		if err != nil {
-			return 0, err
-		}
-		p = p[n:n:cap(p)]
-		tot += n
-	}
-	return tot, nil
 }
 
 // CopyNext reads the next object from m without decoding it and writes it to w.
