@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"fmt"
 	"io"
 	"math"
 	"sync"
@@ -146,6 +147,65 @@ func (m *Reader) Read(p []byte) (int, error) {
 	return m.R.Read(p)
 }
 
+// ReadNext reads the raw bytes for the next object on the wire into p.
+// If p is not large enough, an error is returned. See GetNextSize.
+func (m *Reader) ReadNext(p []byte) (int, error) {
+	sz, o, err := getNextSize(m.R)
+	if err != nil {
+		return 0, err
+	}
+	if uintptr(cap(p)) < sz {
+		return 0, ReadNextError{uintptr(len(p)), uintptr(sz)}
+	}
+	n, err := m.R.ReadFull(p[:sz])
+	if err != nil {
+		return 0, err
+	}
+	if uintptr(n) != sz {
+		return 0, fmt.Errorf("wrong # bytes read (%d != %d)", n, int64(sz))
+	}
+
+	p = p[n:n:cap(p)]
+	tot := n
+
+	// for maps and slices, read elements
+	for x := uintptr(0); x < o; x++ {
+		n, err = m.ReadNext(p)
+		if err != nil {
+			return 0, err
+		}
+		p = p[n:n:cap(p)]
+		tot += n
+	}
+	return tot, nil
+}
+
+// CopyNext reads the next object from m without decoding it and writes it to w.
+// It avoids unnecessary copies internally.
+func (m *Reader) CopyNext(w io.Writer) (int64, error) {
+	sz, o, err := getNextSize(m.R)
+	if err != nil {
+		return 0, err
+	}
+
+	// avoids allocating because m.R implements WriteTo.
+	n, err := io.CopyN(w, m.R, int64(sz))
+	if err != nil {
+		return 0, err
+	}
+
+	// for maps and slices, read elements
+	for x := uintptr(0); x < o; x++ {
+		var n2 int64
+		n2, err = m.CopyNext(w)
+		if err != nil {
+			return n, err
+		}
+		n += n2
+	}
+	return n, nil
+}
+
 // ReadFull implements `io.ReadFull`
 func (m *Reader) ReadFull(p []byte) (int, error) {
 	return m.R.ReadFull(p)
@@ -194,8 +254,10 @@ func (m *Reader) IsNil() bool {
 	return err == nil && p[0] == mnil
 }
 
+// getNextSize returns the size of the next object on the wire.
 // returns (obj size, obj elements, error)
 // only maps and arrays have non-zero obj elements
+// for maps and arrays, obj size does not include elements
 //
 // use uintptr b/c it's guaranteed to be large enough
 // to hold whatever we can fit in memory.

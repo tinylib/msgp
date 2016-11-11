@@ -140,3 +140,19 @@ func (e *ErrUnsupportedType) Error() string { return fmt.Sprintf("msgp: type %q 
 
 // Resumable returns 'true' for ErrUnsupportedType
 func (e *ErrUnsupportedType) Resumable() bool { return true }
+
+// ReadNextError is returned the buffer passed to ReadNext is not large enough.
+type ReadNextError struct {
+	Got    uintptr
+	Wanted uintptr
+}
+
+// Error implements the error interface
+func (err ReadNextError) Error() string {
+	return fmt.Sprintf("msgp: slice not big enough (%d < %d)",
+		err.Got, err.Wanted)
+}
+
+// Resumable is always 'false' for ReadNextError, since we may be inside a
+// recursive call which has already partially consumed the stream.
+func (err ReadNextError) Resumable() bool { return false }
