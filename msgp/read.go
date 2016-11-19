@@ -1087,6 +1087,34 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (err error) {
 	return
 }
 
+// ReadMapIntfIntf reads a MessagePack map into a map[interface{}]interface{}.
+// (You must pass a non-nil map into the function.)
+func (m *Reader) ReadMapIntfIntf(mp map[interface{}]interface{}) (err error) {
+	var sz uint32
+	sz, err = m.ReadMapHeader()
+	if err != nil {
+		return
+	}
+	for key := range mp {
+		delete(mp, key)
+	}
+
+	for i := uint32(0); i < sz; i++ {
+		var key interface{}
+		var val interface{}
+		key, err = m.ReadIntf()
+		if err != nil {
+			return
+		}
+		val, err = m.ReadIntf()
+		if err != nil {
+			return
+		}
+		mp[key] = val
+	}
+	return
+}
+
 // ReadTime reads a time.Time object from the reader.
 // The returned time's location will be set to time.Local.
 func (m *Reader) ReadTime() (t time.Time, err error) {
