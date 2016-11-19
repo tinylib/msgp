@@ -558,7 +558,7 @@ func (mw *Writer) WriteMapStrStr(mp map[string]string) (err error) {
 	return nil
 }
 
-// WriteMapStrIntf writes a map[string]interface to the writer
+// WriteMapStrIntf writes a map[string]interface{} to the writer.
 func (mw *Writer) WriteMapStrIntf(mp map[string]interface{}) (err error) {
 	err = mw.WriteMapHeader(uint32(len(mp)))
 	if err != nil {
@@ -566,6 +566,25 @@ func (mw *Writer) WriteMapStrIntf(mp map[string]interface{}) (err error) {
 	}
 	for key, val := range mp {
 		err = mw.WriteString(key)
+		if err != nil {
+			return
+		}
+		err = mw.WriteIntf(val)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+// WriteMapIntfIntf writes a map[interface{}]interface{} to the writer.
+func (mw *Writer) WriteMapIntfIntf(mp map[interface{}]interface{}) (err error) {
+	err = mw.WriteMapHeader(uint32(len(mp)))
+	if err != nil {
+		return
+	}
+	for key, val := range mp {
+		err = mw.WriteIntf(key)
 		if err != nil {
 			return
 		}
@@ -665,6 +684,8 @@ func (mw *Writer) WriteIntf(v interface{}) error {
 		return mw.WriteMapStrStr(v)
 	case map[string]interface{}:
 		return mw.WriteMapStrIntf(v)
+	case map[interface{}]interface{}:
+		return mw.WriteMapIntfIntf(v)
 	case time.Time:
 		return mw.WriteTime(v)
 	}

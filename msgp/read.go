@@ -1098,7 +1098,6 @@ func (m *Reader) ReadMapIntfIntf(mp map[interface{}]interface{}) (err error) {
 	for key := range mp {
 		delete(mp, key)
 	}
-
 	for i := uint32(0); i < sz; i++ {
 		var key interface{}
 		var val interface{}
@@ -1139,7 +1138,7 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 
 // ReadIntf reads out the next object as a raw interface{}.
 // Arrays are decoded as []interface{}, and maps are decoded
-// as map[string]interface{}. Integers are decoded as int64
+// as map[interface{}]interface{}. Integers are decoded as int64
 // and unsigned integers are decoded as uint64.
 func (m *Reader) ReadIntf() (i interface{}, err error) {
 	var t Type
@@ -1200,8 +1199,8 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 		return
 
 	case MapType:
-		mp := make(map[string]interface{})
-		err = m.ReadMapStrIntf(mp)
+		mp := make(map[interface{}]interface{})
+		err = m.ReadMapIntfIntf(mp)
 		i = mp
 		return
 
