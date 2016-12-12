@@ -123,3 +123,15 @@ func Test1EncodeDecode(t *testing.T) {
 		t.Fatal("objects not equal")
 	}
 }
+
+func TestIssue168(t *testing.T) {
+	buf := bytes.Buffer{}
+	test := TestObj{}
+
+	msgp.Encode(&buf, &TestObj{ID1: "1", ID2: "2"})
+	msgp.Decode(&buf, &test)
+
+	if test.ID1 != "1" || test.ID2 != "2" {
+		t.Fatalf("got back %+v", test)
+	}
+}

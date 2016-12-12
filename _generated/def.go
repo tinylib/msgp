@@ -115,6 +115,14 @@ type Things struct {
 	Oext  msgp.RawExtension                 `msg:"oext,extension"` // test extension reference
 }
 
+//msgp:shim SpecialID as:[]byte using:toBytes/fromBytes
+
+type SpecialID string
+type TestObj struct{ ID1, ID2 SpecialID }
+
+func toBytes(id SpecialID) []byte   { return []byte(string(id)) }
+func fromBytes(id []byte) SpecialID { return SpecialID(string(id)) }
+
 type MyEnum byte
 
 const (
