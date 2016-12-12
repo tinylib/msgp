@@ -55,7 +55,9 @@ func (f *FileSet) findShim(id string, be *gen.BaseElem) {
 
 func (f *FileSet) nextShim(ref *gen.Elem, id string, be *gen.BaseElem) {
 	if (*ref).TypeName() == id {
-		*ref = be
+		vn := (*ref).Varname()
+		*ref = be.Copy()
+		(*ref).SetVarname(vn)
 	} else {
 		switch el := (*ref).(type) {
 		case *gen.Struct:
