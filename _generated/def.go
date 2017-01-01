@@ -207,4 +207,5 @@ type Wrapper struct {
 type Tree struct {
 	Children []Tree
 	Element  int
+	Parent   *Wrapper
 }
