@@ -199,3 +199,12 @@ type FileHandle struct {
 
 type CustomInt int
 type CustomBytes []byte
+
+type Wrapper struct {
+	Tree *Tree
+}
+
+type Tree struct {
+	Children []Tree
+	Element  int
+}
