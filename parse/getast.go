@@ -8,10 +8,11 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
-	"github.com/ttacon/chalk"
+	"github.com/tinylib/msgp/internal/log"
 )
 
 // A FileSet is the in-memory representation of a
@@ -31,8 +32,8 @@ type FileSet struct {
 // If unexport is false, only exported identifiers are included in the FileSet.
 // If the resulting FileSet would be empty, an error is returned.
 func File(name string, unexported bool) (*FileSet, error) {
-	pushstate(name)
-	defer popstate()
+	log.PushState(name)
+	defer log.PopState()
 	fs := &FileSet{
 		Specs:      make(map[string]ast.Expr),
 		Identities: make(map[string]gen.Elem),
@@ -58,13 +59,13 @@ func File(name string, unexported bool) (*FileSet, error) {
 		}
 		fs.Package = one.Name
 		for _, fl := range one.Files {
-			pushstate(fl.Name.Name)
+			log.PushState(fl.Name.Name)
 			fs.Directives = append(fs.Directives, yieldComments(fl.Comments)...)
 			if !unexported {
 				ast.FileExports(fl)
 			}
 			fs.getTypeSpecs(fl)
-			popstate()
+			log.PopState()
 		}
 	} else {
 		f, err := parser.ParseFile(fset, name, nil, parser.ParseComments)
@@ -99,12 +100,12 @@ func (f *FileSet) applyDirectives() {
 		chunks := strings.Split(d, " ")
 		if len(chunks) > 0 {
 			if fn, ok := directives[chunks[0]]; ok {
-				pushstate(chunks[0])
+				log.PushState(chunks[0])
 				err := fn(chunks, f)
 				if err != nil {
-					warnln(err.Error())
+					log.Warnln(err.Error())
 				}
-				popstate()
+				log.PopState()
 			} else {
 				newdirs = append(newdirs, d)
 			}
@@ -158,7 +159,7 @@ func (f *FileSet) resolve(ls linkset) {
 
 	// what's left can't be resolved
 	for name, elem := range ls {
-		warnf("couldn't resolve type %s (%s)\n", name, elem.TypeName())
+		log.Warnf("couldn't resolve type %s (%s)\n", name, elem.TypeName())
 	}
 }
 
@@ -169,11 +170,11 @@ func (f *FileSet) process() {
 	deferred := make(linkset)
 parse:
 	for name, def := range f.Specs {
-		pushstate(name)
+		log.PushState(name)
 		el := f.parseExpr(def)
 		if el == nil {
-			warnln("failed to parse")
-			popstate()
+			log.Warnln("failed to parse")
+			log.PopState()
 			continue parse
 		}
 		// push unresolved identities into
@@ -181,12 +182,12 @@ parse:
 		// we've handled every possible named type.
 		if be, ok := el.(*gen.BaseElem); ok && be.Value == gen.IDENT {
 			deferred[name] = be
-			popstate()
+			log.PopState()
 			continue parse
 		}
 		el.Alias(name)
 		f.Identities[name] = el
-		popstate()
+		log.PopState()
 	}
 
 	if len(deferred) > 0 {
@@ -227,21 +228,21 @@ loop:
 			}
 			m := strToMethod(chunks[0])
 			if m == 0 {
-				warnf("unknown pass name: %q\n", chunks[0])
+				log.Warnf("unknown pass name: %q\n", chunks[0])
 				continue loop
 			}
 			if fn, ok := passDirectives[chunks[1]]; ok {
-				pushstate(chunks[1])
+				log.PushState(chunks[1])
 				err := fn(m, chunks[2:], p)
 				if err != nil {
-					warnf("error applying directive: %s\n", err)
+					log.Warnf("error applying directive: %s\n", err)
 				}
-				popstate()
+				log.PopState()
 			} else {
-				warnf("unrecognized directive %q\n", chunks[1])
+				log.Warnf("unrecognized directive %q\n", chunks[1])
 			}
 		} else {
-			warnf("empty directive: %q\n", d)
+			log.Warnf("empty directive: %q\n", d)
 		}
 	}
 }
@@ -256,9 +257,9 @@ func (f *FileSet) PrintTo(p *gen.Printer) error {
 	for _, name := range names {
 		el := f.Identities[name]
 		el.SetVarname("z")
-		pushstate(el.TypeName())
+		log.PushState(el.TypeName())
 		err := p.Print(el)
-		popstate()
+		log.PopState()
 		if err != nil {
 			return err
 		}
@@ -319,14 +320,14 @@ func (fs *FileSet) parseFieldList(fl *ast.FieldList) []gen.StructField {
 	}
 	out := make([]gen.StructField, 0, fl.NumFields())
 	for _, field := range fl.List {
-		pushstate(fieldName(field))
+		log.PushState(fieldName(field))
 		fds := fs.getField(field)
 		if len(fds) > 0 {
 			out = append(out, fds...)
 		} else {
-			warnln("ignored.")
+			log.Warnln("ignored")
 		}
-		popstate()
+		log.PopState()
 	}
 	return out
 }
@@ -339,14 +340,32 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 	if f.Tag != nil {
 		body := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("msg")
 		tags := strings.Split(body, ",")
-		if len(tags) == 2 && tags[1] == "extension" {
-			extension = true
-		}
+
 		// ignore "-" fields
 		if tags[0] == "-" {
 			return nil
 		}
-		sf[0].FieldTag = tags[0]
+
+		if tags[0] != "" {
+			sf[0].FieldTag = tags[0]
+		}
+
+		if len(tags) > 1 {
+			last := len(tags) - 1
+			extension = tags[last] == "extension"
+
+			var err error
+			switch tags[1] {
+			case "uint":
+				sf[0].FieldTag, err = strconv.ParseUint(tags[0], 0, 64)
+			case "int":
+				sf[0].FieldTag, err = strconv.ParseInt(tags[0], 0, 64)
+			}
+			if err != nil {
+				log.Warnf("could not parse field label %q as msgp.%s: %s\n", tags[0], tags[1], err)
+				return nil
+			}
+		}
 	}
 
 	ex := fs.parseExpr(f.Type)
@@ -374,7 +393,7 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 		return sf
 	}
 	sf[0].FieldElem = ex
-	if sf[0].FieldTag == "" {
+	if sf[0].FieldTag == nil {
 		sf[0].FieldTag = sf[0].FieldName
 	}
 
@@ -385,13 +404,13 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 			if b, ok := ex.Value.(*gen.BaseElem); ok {
 				b.Value = gen.Ext
 			} else {
-				warnln("couldn't cast to extension.")
+				log.Warnln("couldn't cast to extension.")
 				return nil
 			}
 		case *gen.BaseElem:
 			ex.Value = gen.Ext
 		default:
-			warnln("couldn't cast to extension.")
+			log.Warnln("couldn't cast to extension.")
 			return nil
 		}
 	}
@@ -456,9 +475,12 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	switch e := e.(type) {
 
 	case *ast.MapType:
-		if k, ok := e.Key.(*ast.Ident); ok && k.Name == "string" {
-			if in := fs.parseExpr(e.Value); in != nil {
-				return &gen.Map{Value: in}
+		key := fs.parseExpr(e.Key)
+		val := fs.parseExpr(e.Value)
+		if key != nil && val != nil {
+			return &gen.Map{
+				Key:   key,
+				Value: val,
 			}
 		}
 		return nil
@@ -466,12 +488,12 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	case *ast.Ident:
 		b := gen.Ident(e.Name)
 
-		// work to resove this expression
+		// work to resolve this expression
 		// can be done later, once we've resolved
 		// everything else.
 		if b.Value == gen.IDENT {
 			if _, ok := fs.Specs[e.Name]; !ok {
-				warnf("non-local identifier: %s\n", e.Name)
+				log.Warnf("non-local identifier: %s\n", e.Name)
 			}
 		}
 		return b
@@ -544,46 +566,4 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	default: // other types not supported
 		return nil
 	}
-}
-
-func infof(s string, v ...interface{}) {
-	pushstate(s)
-	fmt.Printf(chalk.Green.Color(strings.Join(logctx, ": ")), v...)
-	popstate()
-}
-
-func infoln(s string) {
-	pushstate(s)
-	fmt.Println(chalk.Green.Color(strings.Join(logctx, ": ")))
-	popstate()
-}
-
-func warnf(s string, v ...interface{}) {
-	pushstate(s)
-	fmt.Printf(chalk.Yellow.Color(strings.Join(logctx, ": ")), v...)
-	popstate()
-}
-
-func warnln(s string) {
-	pushstate(s)
-	fmt.Println(chalk.Yellow.Color(strings.Join(logctx, ": ")))
-	popstate()
-}
-
-func fatalf(s string, v ...interface{}) {
-	pushstate(s)
-	fmt.Printf(chalk.Red.Color(strings.Join(logctx, ": ")), v...)
-	popstate()
-}
-
-var logctx []string
-
-// push logging state
-func pushstate(s string) {
-	logctx = append(logctx, s)
-}
-
-// pop logging state
-func popstate() {
-	logctx = logctx[:len(logctx)-1]
 }

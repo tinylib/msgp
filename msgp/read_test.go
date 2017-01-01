@@ -2,6 +2,7 @@ package msgp
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"math"
 	"math/rand"
@@ -31,11 +32,15 @@ func TestReadIntf(t *testing.T) {
 		time.Now(),
 		"hello!",
 		[]byte("hello!"),
-		map[string]interface{}{
+		map[interface{}]interface{}{
 			"thing-1": "thing-1-value",
 			"thing-2": int64(800),
 			"thing-3": []byte("some inner bytes..."),
 			"thing-4": false,
+			int64(1):  "thing-1-value",
+			int64(2):  int64(800),
+			int64(3):  []byte("some inner bytes..."),
+			int64(4):  false,
 		},
 	}
 
@@ -60,10 +65,28 @@ func TestReadIntf(t *testing.T) {
 			t.Errorf("Test case: %d: %s", i, err)
 		}
 		if !reflect.DeepEqual(v, ts) {
-			t.Errorf("%v in; %v out", ts, v)
+			// if v and ts are maps
+			if m, ok := v.(map[interface{}]interface{}); ok {
+				t.Errorf(
+					"\n%s\n%s\n",
+					dumpMap("v", m),
+					dumpMap("ts", ts.(map[interface{}]interface{})),
+				)
+			} else {
+				t.Errorf("in: %#v; out: %#v", ts, v)
+			}
 		}
 	}
 
+}
+
+func dumpMap(label string, m map[interface{}]interface{}) string {
+	buf := &bytes.Buffer{}
+	fmt.Fprintf(buf, "map %q contents:\n", label)
+	for k, v := range m {
+		fmt.Fprintf(buf, "%#v (%t) -> %#v (%t)\n", k, k, v, v)
+	}
+	return buf.String()
 }
 
 func TestReadMapHeader(t *testing.T) {

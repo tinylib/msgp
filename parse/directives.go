@@ -2,9 +2,11 @@ package parse
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/gen"
 	"go/ast"
 	"strings"
+
+	"github.com/tinylib/msgp/gen"
+	"github.com/tinylib/msgp/internal/log"
 )
 
 const linePrefix = "//msgp:"
@@ -30,12 +32,12 @@ var passDirectives = map[string]passDirective{
 }
 
 func passignore(m gen.Method, text []string, p *gen.Printer) error {
-	pushstate(m.String())
+	log.PushState(m.String())
 	for _, a := range text {
 		p.ApplyDirective(m, gen.IgnoreTypename(a))
-		infof("ignoring %s\n", a)
+		log.Infof("ignoring %s\n", a)
 	}
-	popstate()
+	log.PopState()
 	return nil
 }
 
@@ -76,7 +78,7 @@ func applyShim(text []string, f *FileSet) error {
 	be.ShimToBase = methods[0]
 	be.ShimFromBase = methods[1]
 
-	infof("%s -> %s\n", name, be.Value.String())
+	log.Infof("%s -> %s\n", name, be.Value.String())
 	f.findShim(name, be)
 
 	return nil
@@ -91,7 +93,7 @@ func ignore(text []string, f *FileSet) error {
 		name := strings.TrimSpace(item)
 		if _, ok := f.Identities[name]; ok {
 			delete(f.Identities, name)
-			infof("ignoring %s\n", name)
+			log.Infof("ignoring %s\n", name)
 		}
 	}
 	return nil
@@ -107,9 +109,9 @@ func astuple(text []string, f *FileSet) error {
 		if el, ok := f.Identities[name]; ok {
 			if st, ok := el.(*gen.Struct); ok {
 				st.AsTuple = true
-				infoln(name)
+				log.Infoln(name)
 			} else {
-				warnf("%s: only structs can be tuples\n", name)
+				log.Warnf("%s: only structs can be tuples\n", name)
 			}
 		}
 	}

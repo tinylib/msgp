@@ -2,9 +2,10 @@ package gen
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/msgp"
 	"io"
 	"strconv"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 type sizeState uint8
@@ -109,7 +110,7 @@ func (s *sizeGen) gStruct(st *Struct) {
 		s.addConstant(strconv.Itoa(len(data)))
 		for i := range st.Fields {
 			data = data[:0]
-			data = msgp.AppendString(data, st.Fields[i].FieldTag)
+			data, s.p.err = msgp.AppendIntf(data, st.Fields[i].FieldTag)
 			s.addConstant(strconv.Itoa(len(data)))
 			next(s, st.Fields[i].FieldElem)
 		}
@@ -170,9 +171,10 @@ func (s *sizeGen) gMap(m *Map) {
 	vn := m.Varname()
 	s.p.printf("\nif %s != nil {", vn)
 	s.p.printf("\nfor %s, %s := range %s {", m.Keyidx, m.Validx, vn)
+	s.p.printf("\n_ = %s", m.Keyidx) // we may not use the key
 	s.p.printf("\n_ = %s", m.Validx) // we may not use the value
-	s.p.printf("\ns += msgp.StringPrefixSize + len(%s)", m.Keyidx)
-	s.state = expr
+	s.state = add
+	next(s, m.Key)
 	next(s, m.Value)
 	s.p.closeblock()
 	s.p.closeblock()
@@ -240,8 +242,12 @@ func fixedsizeExpr(e Elem) (string, bool) {
 		mhdr := msgp.AppendMapHeader(nil, uint32(len(e.Fields)))
 		hdrlen += len(mhdr)
 		var strbody []byte
+		var err error
 		for _, f := range e.Fields {
-			strbody = msgp.AppendString(strbody[:0], f.FieldTag)
+			strbody, err = msgp.AppendIntf(strbody[:0], f.FieldTag)
+			if err != nil {
+				return "", false
+			}
 			hdrlen += len(strbody)
 		}
 		return fmt.Sprintf("%d + %s", hdrlen, str), true

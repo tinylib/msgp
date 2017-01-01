@@ -1139,6 +1139,33 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (err error) {
 	return
 }
 
+// ReadMapIntfIntf reads a MessagePack map into a map[interface{}]interface{}.
+// (You must pass a non-nil map into the function.)
+func (m *Reader) ReadMapIntfIntf(mp map[interface{}]interface{}) (err error) {
+	var sz uint32
+	sz, err = m.ReadMapHeader()
+	if err != nil {
+		return
+	}
+	for key := range mp {
+		delete(mp, key)
+	}
+	for i := uint32(0); i < sz; i++ {
+		var key interface{}
+		var val interface{}
+		key, err = m.ReadIntf()
+		if err != nil {
+			return
+		}
+		val, err = m.ReadIntf()
+		if err != nil {
+			return
+		}
+		mp[key] = val
+	}
+	return
+}
+
 // ReadTime reads a time.Time object from the reader.
 // The returned time's location will be set to time.Local.
 func (m *Reader) ReadTime() (t time.Time, err error) {
@@ -1163,7 +1190,7 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 
 // ReadIntf reads out the next object as a raw interface{}.
 // Arrays are decoded as []interface{}, and maps are decoded
-// as map[string]interface{}. Integers are decoded as int64
+// as map[interface{}]interface{}. Integers are decoded as int64
 // and unsigned integers are decoded as uint64.
 func (m *Reader) ReadIntf() (i interface{}, err error) {
 	var t Type
@@ -1224,8 +1251,8 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 		return
 
 	case MapType:
-		mp := make(map[string]interface{})
-		err = m.ReadMapStrIntf(mp)
+		mp := make(map[interface{}]interface{})
+		err = m.ReadMapIntfIntf(mp)
 		i = mp
 		return
 

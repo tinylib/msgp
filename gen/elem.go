@@ -236,6 +236,7 @@ type Map struct {
 	common
 	Keyidx string // key variable name
 	Validx string // value variable name
+	Key    Elem   // key element
 	Value  Elem   // value element
 }
 
@@ -250,6 +251,7 @@ ridx:
 		goto ridx
 	}
 
+	m.Key.SetVarname(m.Keyidx)
 	m.Value.SetVarname(m.Validx)
 }
 
@@ -257,7 +259,7 @@ func (m *Map) TypeName() string {
 	if m.common.alias != "" {
 		return m.common.alias
 	}
-	m.common.Alias("map[string]" + m.Value.TypeName())
+	m.common.Alias("map[" + m.Key.TypeName() + "]" + m.Value.TypeName())
 	return m.common.alias
 }
 
@@ -401,9 +403,9 @@ func (s *Struct) Complexity() int {
 }
 
 type StructField struct {
-	FieldTag  string // the string inside the `msg:""` tag
-	FieldName string // the name of the struct field
-	FieldElem Elem   // the field type
+	FieldTag  interface{} // the label of the struct field in msgpack
+	FieldName string      // the name of the struct field
+	FieldElem Elem        // the field type
 }
 
 // BaseElem is an element that

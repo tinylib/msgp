@@ -13,22 +13,14 @@ func unmarshal(w io.Writer) *unmarshalGen {
 
 type unmarshalGen struct {
 	passes
-	p        printer
-	hasfield bool
+	fields
+	p printer
 }
 
 func (u *unmarshalGen) Method() Method { return Unmarshal }
 
-func (u *unmarshalGen) needsField() {
-	if u.hasfield {
-		return
-	}
-	u.p.print("\nvar field []byte; _ = field")
-	u.hasfield = true
-}
-
 func (u *unmarshalGen) Execute(p Elem) error {
-	u.hasfield = false
+	u.fields.drop()
 	if !u.p.ok() {
 		return u.p.err
 	}
@@ -51,7 +43,23 @@ func (u *unmarshalGen) assignAndCheck(name string, base string) {
 	if !u.p.ok() {
 		return
 	}
-	u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", name, base)
+	if base == mapKey {
+		u.p.printf("\n%s, bts, err = msgp.ReadMapKeyZC(bts)", name)
+	} else {
+		u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", name, base)
+	}
+	u.p.print(errcheck)
+}
+
+func (u *unmarshalGen) nextTypeAndCheck(name string) {
+	if !u.p.ok() {
+		return
+	}
+	u.p.printf("\n%s = msgp.NextType(bts)", name)
+}
+
+func (u *unmarshalGen) skipAndCheck() {
+	u.p.print("\nbts, err = msgp.Skip(bts)")
 	u.p.print(errcheck)
 }
 
@@ -68,7 +76,6 @@ func (u *unmarshalGen) gStruct(s *Struct) {
 }
 
 func (u *unmarshalGen) tuple(s *Struct) {
-
 	// open block
 	sz := randIdent()
 	u.p.declare(sz, u32)
@@ -83,25 +90,7 @@ func (u *unmarshalGen) tuple(s *Struct) {
 }
 
 func (u *unmarshalGen) mapstruct(s *Struct) {
-	u.needsField()
-	sz := randIdent()
-	u.p.declare(sz, u32)
-	u.assignAndCheck(sz, mapHeader)
-
-	u.p.printf("\nfor %s > 0 {", sz)
-	u.p.printf("\n%s--; field, bts, err = msgp.ReadMapKeyZC(bts)", sz)
-	u.p.print(errcheck)
-	u.p.print("\nswitch msgp.UnsafeString(field) {")
-	for i := range s.Fields {
-		if !u.p.ok() {
-			return
-		}
-		u.p.printf("\ncase \"%s\":", s.Fields[i].FieldTag)
-		next(u, s.Fields[i].FieldElem)
-	}
-	u.p.print("\ndefault:\nbts, err = msgp.Skip(bts)")
-	u.p.print(errcheck)
-	u.p.print("\n}\n}") // close switch and for loop
+	genStructFieldsParser(u, u.p, s.Fields)
 }
 
 func (u *unmarshalGen) gBase(b *BaseElem) {
@@ -180,8 +169,10 @@ func (u *unmarshalGen) gMap(m *Map) {
 
 	// loop and get key,value
 	u.p.printf("\nfor %s > 0 {", sz)
-	u.p.printf("\nvar %s string; var %s %s; %s--", m.Keyidx, m.Validx, m.Value.TypeName(), sz)
-	u.assignAndCheck(m.Keyidx, stringTyp)
+	u.p.printf("\n%s--", sz)
+	u.p.declare(m.Keyidx, m.Key.TypeName())
+	u.p.declare(m.Validx, m.Value.TypeName())
+	next(u, m.Key)
 	next(u, m.Value)
 	u.p.mapAssign(m)
 	u.p.closeblock()

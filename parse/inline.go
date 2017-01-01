@@ -2,6 +2,7 @@ package parse
 
 import (
 	"github.com/tinylib/msgp/gen"
+	"github.com/tinylib/msgp/internal/log"
 )
 
 // This file defines when and how we
@@ -32,7 +33,7 @@ const maxComplex = 5
 // given name and replace them with be
 func (f *FileSet) findShim(id string, be *gen.BaseElem) {
 	for name, el := range f.Identities {
-		pushstate(name)
+		log.PushState(name)
 		switch el := el.(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
@@ -47,7 +48,7 @@ func (f *FileSet) findShim(id string, be *gen.BaseElem) {
 		case *gen.Ptr:
 			f.nextShim(&el.Value, id, be)
 		}
-		popstate()
+		log.PopState()
 	}
 	// we'll need this at the top level as well
 	f.Identities[id] = be
@@ -79,7 +80,7 @@ func (f *FileSet) nextShim(ref *gen.Elem, id string, be *gen.BaseElem) {
 // propInline identifies and inlines candidates
 func (f *FileSet) propInline() {
 	for name, el := range f.Identities {
-		pushstate(name)
+		log.PushState(name)
 		switch el := el.(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
@@ -94,7 +95,7 @@ func (f *FileSet) propInline() {
 		case *gen.Ptr:
 			f.nextInline(&el.Value, name)
 		}
-		popstate()
+		log.PopState()
 	}
 }
 
@@ -111,7 +112,7 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 		typ := el.TypeName()
 		if el.Value == gen.IDENT && typ != root {
 			if node, ok := f.Identities[typ]; ok && node.Complexity() < maxComplex {
-				infof("inlining %s\n", typ)
+				log.Infof("inlining %s\n", typ)
 
 				// This should never happen; it will cause
 				// infinite recursion.
@@ -125,7 +126,7 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 				// this is the point at which we're sure that
 				// we've got a type that isn't a primitive,
 				// a library builtin, or a processed type
-				warnf("unresolved identifier: %s\n", typ)
+				log.Warnf("unresolved identifier: %s\n", typ)
 			}
 		}
 	case *gen.Struct:
