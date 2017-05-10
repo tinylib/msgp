@@ -32,6 +32,10 @@ func (u *unmarshalGen) Execute(p Elem) error {
 	if !u.p.ok() {
 		return u.p.err
 	}
+	p = u.applyall(p)
+	if p == nil {
+		return nil
+	}
 	if !IsPrintable(p) {
 		return nil
 	}

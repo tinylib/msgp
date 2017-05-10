@@ -59,7 +59,13 @@ func TestReadIntf(t *testing.T) {
 		if err != nil {
 			t.Errorf("Test case: %d: %s", i, err)
 		}
-		if !reflect.DeepEqual(v, ts) {
+
+		/* for time, use time.Equal instead of reflect.DeepEqual */
+		if tm, ok := v.(time.Time); ok {
+			if !tm.Equal(v.(time.Time)) {
+				t.Errorf("%v != %v", ts, v)
+			}
+		} else if !reflect.DeepEqual(v, ts) {
 			t.Errorf("%v in; %v out", ts, v)
 		}
 	}
@@ -632,11 +638,6 @@ func TestTime(t *testing.T) {
 	// check for equivalence
 	if !now.Equal(out) {
 		t.Fatalf("%s in; %s out", now, out)
-	}
-
-	// check for time.Local zone
-	if now != out {
-		t.Error("returned time.Time not set to time.Local")
 	}
 }
 
