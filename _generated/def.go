@@ -37,6 +37,8 @@ type Fixed struct {
 	B bool
 }
 
+type Empty struct{}
+
 type TestType struct {
 	F   *float64          `msg:"float"`
 	Els map[string]string `msg:"elements"`
