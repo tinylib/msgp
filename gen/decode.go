@@ -192,7 +192,7 @@ func (d *decodeGen) gArray(a *Array) {
 
 	// special case if we have [const]byte
 	if be, ok := a.Els.(*BaseElem); ok && (be.Value == Byte || be.Value == Uint8) {
-		d.p.printf("\nerr = dc.ReadExactBytes(%s[:])", a.Varname())
+		d.p.printf("\nerr = dc.ReadExactBytes((%s)[:])", a.Varname())
 		d.p.print(errcheck)
 		return
 	}
