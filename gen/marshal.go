@@ -151,7 +151,7 @@ func (m *marshalGen) gArray(a *Array) {
 	}
 	m.fuseHook()
 	if be, ok := a.Els.(*BaseElem); ok && be.Value == Byte {
-		m.rawAppend("Bytes", "%s[:]", a.Varname())
+		m.rawAppend("Bytes", "(%s)[:]", a.Varname())
 		return
 	}
 

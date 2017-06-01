@@ -156,7 +156,7 @@ func (e *encodeGen) gArray(a *Array) {
 	e.fuseHook()
 	// shortcut for [const]byte
 	if be, ok := a.Els.(*BaseElem); ok && (be.Value == Byte || be.Value == Uint8) {
-		e.p.printf("\nerr = en.WriteBytes(%s[:])", a.Varname())
+		e.p.printf("\nerr = en.WriteBytes((%s)[:])", a.Varname())
 		e.p.print(errcheck)
 		return
 	}

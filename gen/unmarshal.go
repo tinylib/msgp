@@ -148,7 +148,7 @@ func (u *unmarshalGen) gArray(a *Array) {
 	// special case for [const]byte objects
 	// see decode.go for symmetry
 	if be, ok := a.Els.(*BaseElem); ok && be.Value == Byte {
-		u.p.printf("\nbts, err = msgp.ReadExactBytes(bts, %s[:])", a.Varname())
+		u.p.printf("\nbts, err = msgp.ReadExactBytes(bts, (%s)[:])", a.Varname())
 		u.p.print(errcheck)
 		return
 	}
