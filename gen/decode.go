@@ -146,7 +146,11 @@ func (d *decodeGen) gBase(b *BaseElem) {
 
 	// close block for 'tmp'
 	if b.Convert {
-		d.p.printf("\n%s = %s(%s)\n}", vname, b.FromBase(), tmp)
+		if b.ShimMode == Cast {
+			d.p.printf("\n%s = %s(%s)\n}", vname, b.FromBase(), tmp)
+		} else {
+			d.p.printf("\n%s, err = %s(%s)\n}", vname, b.FromBase(), tmp)
+		}
 	}
 
 	d.p.print(errcheck)

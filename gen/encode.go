@@ -2,8 +2,9 @@ package gen
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/msgp"
 	"io"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 func encode(w io.Writer) *encodeGen {
@@ -172,7 +173,14 @@ func (e *encodeGen) gBase(b *BaseElem) {
 	e.fuseHook()
 	vname := b.Varname()
 	if b.Convert {
-		vname = tobaseConvert(b)
+		if b.ShimMode == Cast {
+			vname = tobaseConvert(b)
+		} else {
+			vname = randIdent()
+			e.p.printf("\nvar %s %s", vname, b.BaseType())
+			e.p.printf("\n%s, err = %s", vname, tobaseConvert(b))
+			e.p.printf(errcheck)
+		}
 	}
 
 	if b.Value == IDENT { // unknown identity

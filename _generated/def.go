@@ -1,9 +1,10 @@
 package _generated
 
 import (
-	"github.com/tinylib/msgp/msgp"
 	"os"
 	"time"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 //go:generate msgp -o generated.go

@@ -2,8 +2,9 @@ package gen
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/msgp"
 	"io"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 func marshal(w io.Writer) *marshalGen {
@@ -177,7 +178,14 @@ func (m *marshalGen) gBase(b *BaseElem) {
 	vname := b.Varname()
 
 	if b.Convert {
-		vname = tobaseConvert(b)
+		if b.ShimMode == Cast {
+			vname = tobaseConvert(b)
+		} else {
+			vname = randIdent()
+			m.p.printf("\nvar %s %s", vname, b.BaseType())
+			m.p.printf("\n%s, err = %s", vname, tobaseConvert(b))
+			m.p.printf(errcheck)
+		}
 	}
 
 	var echeck bool

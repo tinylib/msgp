@@ -406,11 +406,19 @@ type StructField struct {
 	FieldElem Elem   // the field type
 }
 
+type ShimMode int
+
+const (
+	Cast ShimMode = iota
+	Convert
+)
+
 // BaseElem is an element that
 // can be represented by a primitive
 // MessagePack type.
 type BaseElem struct {
 	common
+	ShimMode     ShimMode  // Method used to shim
 	ShimToBase   string    // shim to base type, or empty
 	ShimFromBase string    // shim from base type, or empty
 	Value        Primitive // Type of element
