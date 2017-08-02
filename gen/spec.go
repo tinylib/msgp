@@ -158,9 +158,7 @@ func (p *Printer) ApplyDirective(pass Method, t TransformPass) {
 // Print prints an Elem.
 func (p *Printer) Print(e Elem) error {
 	for _, g := range p.gens {
-		randPush()
 		err := g.Execute(e)
-		randPop()
 		if err != nil {
 			return err
 		}

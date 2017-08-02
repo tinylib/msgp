@@ -15,6 +15,7 @@ type unmarshalGen struct {
 	passes
 	p        printer
 	hasfield bool
+	idgen    idgen
 }
 
 func (u *unmarshalGen) Method() Method { return Unmarshal }
@@ -28,6 +29,8 @@ func (u *unmarshalGen) needsField() {
 }
 
 func (u *unmarshalGen) Execute(p Elem) error {
+	(&u.idgen).seed(p.TypeName(), p.Varname())
+
 	u.hasfield = false
 	if !u.p.ok() {
 		return u.p.err
@@ -74,7 +77,7 @@ func (u *unmarshalGen) gStruct(s *Struct) {
 func (u *unmarshalGen) tuple(s *Struct) {
 
 	// open block
-	sz := randIdent()
+	sz := u.idgen.ident()
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, arrayHeader)
 	u.p.arrayCheck(strconv.Itoa(len(s.Fields)), sz)
@@ -88,7 +91,7 @@ func (u *unmarshalGen) tuple(s *Struct) {
 
 func (u *unmarshalGen) mapstruct(s *Struct) {
 	u.needsField()
-	sz := randIdent()
+	sz := u.idgen.ident()
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, mapHeader)
 
@@ -117,7 +120,7 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 	lowered := b.Varname() // passed as argument
 	if b.Convert {
 		// begin 'tmp' block
-		refname = randIdent()
+		refname = u.idgen.ident()
 		lowered = b.ToBase() + "(" + lowered + ")"
 		u.p.printf("\n{\nvar %s %s", refname, b.BaseType())
 	}
@@ -153,7 +156,7 @@ func (u *unmarshalGen) gArray(a *Array) {
 		return
 	}
 
-	sz := randIdent()
+	sz := u.idgen.ident()
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, arrayHeader)
 	u.p.arrayCheck(a.Size, sz)
@@ -164,7 +167,7 @@ func (u *unmarshalGen) gSlice(s *Slice) {
 	if !u.p.ok() {
 		return
 	}
-	sz := randIdent()
+	sz := u.idgen.ident()
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, arrayHeader)
 	u.p.resizeSlice(sz, s)
@@ -175,7 +178,7 @@ func (u *unmarshalGen) gMap(m *Map) {
 	if !u.p.ok() {
 		return
 	}
-	sz := randIdent()
+	sz := u.idgen.ident()
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, mapHeader)
 
