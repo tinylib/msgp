@@ -132,12 +132,18 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 	default:
 		u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", refname, b.BaseName())
 	}
+	u.p.print(errcheck)
+
 	if b.Convert {
 		// close 'tmp' block
-		u.p.printf("\n%s = %s(%s)\n}", b.Varname(), b.FromBase(), refname)
+		if b.ShimMode == Cast {
+			u.p.printf("\n%s = %s(%s)\n", b.Varname(), b.FromBase(), refname)
+		} else {
+			u.p.printf("\n%s, err = %s(%s)", b.Varname(), b.FromBase(), refname)
+			u.p.print(errcheck)
+		}
+		u.p.printf("}")
 	}
-
-	u.p.print(errcheck)
 }
 
 func (u *unmarshalGen) gArray(a *Array) {

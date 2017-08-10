@@ -143,13 +143,17 @@ func (d *decodeGen) gBase(b *BaseElem) {
 			d.p.printf("\n%s, err = dc.Read%s()", vname, bname)
 		}
 	}
+	d.p.print(errcheck)
 
 	// close block for 'tmp'
 	if b.Convert {
-		d.p.printf("\n%s = %s(%s)\n}", vname, b.FromBase(), tmp)
+		if b.ShimMode == Cast {
+			d.p.printf("\n%s = %s(%s)\n}", vname, b.FromBase(), tmp)
+		} else {
+			d.p.printf("\n%s, err = %s(%s)\n}", vname, b.FromBase(), tmp)
+			d.p.print(errcheck)
+		}
 	}
-
-	d.p.print(errcheck)
 }
 
 func (d *decodeGen) gMap(m *Map) {
