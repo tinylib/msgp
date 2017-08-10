@@ -782,6 +782,19 @@ func (m *Reader) ReadByte() (b byte, err error) {
 	return
 }
 
+// ReadRune is analogous to ReadInt32.
+// ReadRune is a protected method name in golang, go vet warns about this.
+func (m *Reader) ReadRune() (r rune, err error) {
+	var in int64
+	in, err = m.ReadInt64()
+	if in > math.MaxInt32 || in < math.MinInt32 {
+		err = IntOverflow{Value: in, FailedBitsize: 32}
+		return
+	}
+	r = rune(in)
+	return
+}
+
 // ReadBytes reads a MessagePack 'bin' object
 // from the reader and returns its value. It may
 // use 'scratch' for storage if it is non-nil.

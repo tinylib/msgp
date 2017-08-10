@@ -84,6 +84,7 @@ const (
 	Uint32
 	Uint64
 	Byte
+	Rune
 	Int
 	Int8
 	Int16
@@ -112,6 +113,7 @@ var primitives = map[string]Primitive{
 	"uint32":         Uint32,
 	"uint64":         Uint64,
 	"byte":           Byte,
+	"rune":           Rune,
 	"int":            Int,
 	"int8":           Int8,
 	"int16":          Int16,
@@ -572,6 +574,8 @@ func (k Primitive) String() string {
 		return "Uint64"
 	case Byte:
 		return "Byte"
+	case Rune:
+		return "Rune"
 	case Int:
 		return "Int"
 	case Int8:

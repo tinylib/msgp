@@ -581,6 +581,11 @@ func ReadByteBytes(b []byte) (byte, []byte, error) {
 	return ReadUint8Bytes(b)
 }
 
+// ReadRuneBytes is analogous to ReadInt32Bytes
+func ReadRuneBytes(b []byte) (rune, []byte, error) {
+	return ReadInt32Bytes(b)
+}
+
 // ReadBytesBytes reads a 'bin' object
 // from 'b' and returns its vaue and
 // the remaining bytes in 'b'.

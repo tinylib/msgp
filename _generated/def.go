@@ -51,6 +51,8 @@ type TestType struct {
 	Any      interface{} `msg:"any"`
 	Appended msgp.Raw    `msg:"appended"`
 	Num      msgp.Number `msg:"num"`
+	Byte     byte
+	Rune     rune
 	Slice1   []string
 	Slice2   []string
 	SlicePtr *[]string
