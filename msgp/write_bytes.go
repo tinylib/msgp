@@ -165,6 +165,9 @@ func AppendUint8(b []byte, u uint8) []byte { return AppendUint64(b, uint64(u)) }
 // AppendByte is analogous to AppendUint8
 func AppendByte(b []byte, u byte) []byte { return AppendUint8(b, uint8(u)) }
 
+// AppendRune is analogous to AppendInt32
+func AppendRune(b []byte, u rune) []byte { return AppendInt32(b, int32(u)) }
+
 // AppendUint16 appends a uint16 to the slice
 func AppendUint16(b []byte, u uint16) []byte { return AppendUint64(b, uint64(u)) }
 

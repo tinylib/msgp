@@ -17,6 +17,7 @@ const (
 	Int32Size      = 5
 	Uint8Size      = 2
 	ByteSize       = Uint8Size
+	RuneSize       = Int32Size
 	Uint16Size     = 3
 	Uint32Size     = 5
 	Uint64Size     = Int64Size
