@@ -46,14 +46,19 @@ type TestType struct {
 		ValueA string `msg:"value_a"`
 		ValueB []byte `msg:"value_b"`
 	} `msg:"object"`
-	Child    *TestType   `msg:"child"`
-	Time     time.Time   `msg:"time"`
-	Any      interface{} `msg:"any"`
-	Appended msgp.Raw    `msg:"appended"`
-	Num      msgp.Number `msg:"num"`
-	Slice1   []string
-	Slice2   []string
-	SlicePtr *[]string
+	Child      *TestType   `msg:"child"`
+	Time       time.Time   `msg:"time"`
+	Any        interface{} `msg:"any"`
+	Appended   msgp.Raw    `msg:"appended"`
+	Num        msgp.Number `msg:"num"`
+	Byte       byte
+	Rune       rune
+	RunePtr    *rune
+	RunePtrPtr **rune
+	RuneSlice  []rune
+	Slice1     []string
+	Slice2     []string
+	SlicePtr   *[]string
 }
 
 //msgp:tuple Object
