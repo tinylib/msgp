@@ -8,9 +8,8 @@ import (
 )
 
 const (
-	idxChars    = "abcdefghijlkmnopqrstuvwxyz"
-	idxCharsLen = int64(len(idxChars))
-	idxLen      = 3
+	idxChars = "abcdefghijlkmnopqrstuvwxyz"
+	idxLen   = 3
 )
 
 type idgen struct {
