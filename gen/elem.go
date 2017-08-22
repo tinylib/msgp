@@ -112,6 +112,7 @@ var primitives = map[string]Primitive{
 	"uint32":         Uint32,
 	"uint64":         Uint64,
 	"byte":           Byte,
+	"rune":           Int32,
 	"int":            Int,
 	"int8":           Int8,
 	"int16":          Int16,
