@@ -16,7 +16,6 @@ type decodeGen struct {
 	passes
 	p        printer
 	hasfield bool
-	idgen    idgen
 }
 
 func (d *decodeGen) Method() Method { return Decode }
@@ -30,8 +29,6 @@ func (d *decodeGen) needsField() {
 }
 
 func (d *decodeGen) Execute(p Elem) error {
-	(&d.idgen).seed(p.TypeName(), p.Varname())
-
 	p = d.applyall(p)
 	if p == nil {
 		return nil
@@ -77,7 +74,7 @@ func (d *decodeGen) assignAndCheck(name string, typ string) {
 func (d *decodeGen) structAsTuple(s *Struct) {
 	nfields := len(s.Fields)
 
-	sz := d.idgen.ident()
+	sz := randIdent()
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
 	d.p.arrayCheck(strconv.Itoa(nfields), sz)
@@ -91,7 +88,7 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 
 func (d *decodeGen) structAsMap(s *Struct) {
 	d.needsField()
-	sz := d.idgen.ident()
+	sz := randIdent()
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, mapHeader)
 
@@ -119,7 +116,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	// open block for 'tmp'
 	var tmp string
 	if b.Convert {
-		tmp = d.idgen.ident()
+		tmp = randIdent()
 		d.p.printf("\n{ var %s %s", tmp, b.BaseType())
 	}
 
@@ -159,7 +156,7 @@ func (d *decodeGen) gMap(m *Map) {
 	if !d.p.ok() {
 		return
 	}
-	sz := d.idgen.ident()
+	sz := randIdent()
 
 	// resize or allocate map
 	d.p.declare(sz, u32)
@@ -181,7 +178,7 @@ func (d *decodeGen) gSlice(s *Slice) {
 	if !d.p.ok() {
 		return
 	}
-	sz := d.idgen.ident()
+	sz := randIdent()
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
 	d.p.resizeSlice(sz, s)
@@ -199,7 +196,7 @@ func (d *decodeGen) gArray(a *Array) {
 		d.p.print(errcheck)
 		return
 	}
-	sz := d.idgen.ident()
+	sz := randIdent()
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
 	d.p.arrayCheck(a.Size, sz)
