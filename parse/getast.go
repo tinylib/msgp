@@ -94,18 +94,6 @@ func File(name string, unexported bool) (*FileSet, error) {
 // are known to the parser. additional method-specific
 // directives remain in f.Directives
 func (f *FileSet) applyDirectives() {
-	{ // shim rune to int32
-		name := "rune"
-		be := gen.Ident("int32")
-		be.Alias(name)
-		be.ShimToBase = "rune"
-		be.ShimFromBase = "int32"
-		be.ShimMode = gen.Cast
-		f.findShim(name, be)
-
-		delete(f.Identities, name)
-	}
-
 	newdirs := make([]string, 0, len(f.Directives))
 	for _, d := range f.Directives {
 		chunks := strings.Split(d, " ")
