@@ -188,6 +188,10 @@ func (s *sizeGen) gBase(b *BaseElem) {
 		s.state = add
 		vname := randIdent()
 		s.p.printf("\nvar %s %s", vname, b.BaseType())
+
+		// ensure we don't get "unused variable" warnings from outer slice iterations
+		s.p.printf("\n_ = %s", b.Varname())
+
 		s.p.printf("\ns += %s", basesizeExpr(b.Value, vname, b.BaseName()))
 		s.state = expr
 

@@ -21,6 +21,14 @@ type ConvertString struct {
 	String ConvertStringVal
 }
 
+type ConvertStringSlice struct {
+	Strings []ConvertStringVal
+}
+
+type ConvertStringMapValue struct {
+	Strings map[string]ConvertStringVal
+}
+
 //msgp:shim ConvertIntfVal as:interface{} using:fromConvertIntfVal/toConvertIntfVal mode:convert
 //msgp:ignore ConvertIntfVal
 
