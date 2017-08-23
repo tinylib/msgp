@@ -28,6 +28,7 @@ $(MGEN): ./msgp/defs_test.go
 
 test: all
 	go test -v ./msgp
+	go test -v ./gen
 	go test -v ./_generated
 
 bench: all
