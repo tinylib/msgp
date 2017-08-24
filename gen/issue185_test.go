@@ -15,81 +15,153 @@ import (
 	"text/template"
 )
 
-const issue185Tpl = `
-package issue185
-
-//go:generate msgp
-
-type Test1 struct {
-	Foo string
-	Bar string
-	{{ if .Extra }}Baz []string{{ end }}
-	Qux string
-}
-
-type Test2 struct {
-	Foo string
-	Bar string
-	Baz string
-}
-`
+// When stuff's going wrong, you'll be glad this is here!
+const debugTemp = false
 
 // Ensure that consistent identifiers are generated on a per-method basis by msgp.
 //
-// Also eusnre that no duplicate identifiers appear in a method.
+// Also ensure that no duplicate identifiers appear in a method.
 //
 // structs are currently processed alphabetically by msgp. this test relies on
 // that property.
 //
 func TestIssue185Idents(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "msgp-")
-	if err != nil {
-		t.Fatalf("could not create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	tfile := filepath.Join(tempDir, "issue185.go")
-	genFile := filepath.Join(tempDir, "issue185_gen.go")
-
-	tpl := template.Must(template.New("").Parse(issue185Tpl))
-	tplData := struct{ Extra bool }{}
-
-	tplData.Extra = false
-	if err := goGenerateTpl(tempDir, tfile, tpl, tplData); err != nil {
-		t.Fatalf("could not generate code: %v", err)
+	var identCases = []struct {
+		tpl             *template.Template
+		expectedChanged []string
+	}{
+		{tpl: issue185IdentsTpl, expectedChanged: []string{"Test1"}},
+		{tpl: issue185ComplexIdentsTpl, expectedChanged: []string{"Test2"}},
 	}
 
-	// generate the code, extract the generated variable names, mapped to function name
-	varsBefore, err := extractVars(genFile)
-	if err != nil {
-		t.Fatalf("could not extract before vars: %v", err)
-	}
+	methods := []string{"DecodeMsg", "EncodeMsg", "Msgsize", "MarshalMsg", "UnmarshalMsg"}
 
-	// regenerate the code with extra field(s), extract the generated variable
-	// names, mapped to function name
-	tplData.Extra = true
-	if err := goGenerateTpl(tempDir, tfile, tpl, tplData); err != nil {
-		t.Fatalf("could not generate code: %v", err)
-	}
-	varsAfter, err := extractVars(genFile)
-	if err != nil {
-		t.Fatalf("could not extract after vars: %v", err)
-	}
-
-	for _, fn := range []string{"Test2.DecodeMsg", "Test2.EncodeMsg", "Test2.Msgsize", "Test2.MarshalMsg", "Test2.UnmarshalMsg"} {
-		if !reflect.DeepEqual(varsBefore.Value(fn), varsAfter.Value(fn)) {
-			t.Fatalf("vars unexpectedly changed for %s", fn)
+	for idx, identCase := range identCases {
+		// generate the code, extract the generated variable names, mapped to function name
+		var tplData issue185TplData
+		varsBefore, err := loadVars(identCase.tpl, tplData)
+		if err != nil {
+			t.Fatalf("%d: could not extract before vars: %v", idx, err)
 		}
-	}
 
-	for fn, vars := range varsAfter {
-		sort.Strings(vars)
-		for i := 0; i < len(vars)-1; i++ {
-			if vars[i] == vars[i+1] {
-				t.Fatalf("duplicate var %s in function %s", vars[i], fn)
+		// regenerate the code with extra field(s), extract the generated variable
+		// names, mapped to function name
+		tplData.Extra = true
+		varsAfter, err := loadVars(identCase.tpl, tplData)
+		if err != nil {
+			t.Fatalf("%d: could not extract after vars: %v", idx, err)
+		}
+
+		// ensure that all declared variable names inside each of the methods we
+		// expect to change have actually changed
+		for _, stct := range identCase.expectedChanged {
+			for _, method := range methods {
+				fn := fmt.Sprintf("%s.%s", stct, method)
+
+				bv, av := varsBefore.Value(fn), varsAfter.Value(fn)
+				if len(bv) > 0 && len(av) > 0 && reflect.DeepEqual(bv, av) {
+					t.Fatalf("%d vars identical! expected vars to change for %s", idx, fn)
+				}
+				delete(varsBefore, fn)
+				delete(varsAfter, fn)
 			}
 		}
+
+		// all of the remaining keys should not have changed
+		for bmethod, bvars := range varsBefore {
+			avars := varsAfter.Value(bmethod)
+
+			if !reflect.DeepEqual(bvars, avars) {
+				t.Fatalf("%d: vars changed! expected vars identical for %s", idx, bmethod)
+			}
+			delete(varsBefore, bmethod)
+			delete(varsAfter, bmethod)
+		}
+
+		if len(varsBefore) > 0 || len(varsAfter) > 0 {
+			t.Fatalf("%d: unexpected methods remaining", idx)
+		}
 	}
+}
+
+type issue185TplData struct {
+	Extra bool
+}
+
+func TestIssue185Overlap(t *testing.T) {
+	var overlapCases = []struct {
+		tpl  *template.Template
+		data issue185TplData
+	}{
+		{tpl: issue185IdentsTpl, data: issue185TplData{Extra: false}},
+		{tpl: issue185IdentsTpl, data: issue185TplData{Extra: true}},
+		{tpl: issue185ComplexIdentsTpl, data: issue185TplData{Extra: false}},
+		{tpl: issue185ComplexIdentsTpl, data: issue185TplData{Extra: true}},
+	}
+
+	for idx, o := range overlapCases {
+		// regenerate the code with extra field(s), extract the generated variable
+		// names, mapped to function name
+		mvars, err := loadVars(o.tpl, o.data)
+		if err != nil {
+			t.Fatalf("%d: could not extract after vars: %v", idx, err)
+		}
+
+		identCnt := 0
+		for fn, vars := range mvars {
+			sort.Strings(vars)
+
+			// Loose sanity check to make sure the tests expectations aren't broken.
+			// If the prefix ever changes, this needs to change.
+			for i := 0; i < len(vars); i++ {
+				if vars[i][0] == 'z' {
+					identCnt++
+				}
+			}
+
+			for i := 0; i < len(vars)-1; i++ {
+				if vars[i] == vars[i+1] {
+					t.Fatalf("%d: duplicate var %s in function %s", idx, vars[i], fn)
+				}
+			}
+		}
+
+		// one last sanity check: if there aren't any vars that start with 'z',
+		// this test's expectations are unsatisfiable.
+		if identCnt == 0 {
+			t.Fatalf("%d: no generated identifiers found", idx)
+		}
+	}
+}
+
+func loadVars(tpl *template.Template, tplData interface{}) (vars extractedVars, err error) {
+	tempDir, err := ioutil.TempDir("", "msgp-")
+	if err != nil {
+		err = fmt.Errorf("could not create temp dir: %v", err)
+		return
+	}
+
+	if !debugTemp {
+		defer os.RemoveAll(tempDir)
+	} else {
+		fmt.Println(tempDir)
+	}
+
+	tfile := filepath.Join(tempDir, "msg.go")
+	genFile := filepath.Join(tempDir, "msg_gen.go")
+
+	if err = goGenerateTpl(tempDir, tfile, tpl, tplData); err != nil {
+		err = fmt.Errorf("could not generate code: %v", err)
+		return
+	}
+
+	vars, err = extractVars(genFile)
+	if err != nil {
+		err = fmt.Errorf("could not extract after vars: %v", err)
+		return
+	}
+
+	return
 }
 
 type varVisitor struct {
@@ -167,3 +239,70 @@ func goGenerateTpl(cwd, tfile string, tpl *template.Template, tplData interface{
 	cmd.Dir = cwd
 	return cmd.Run()
 }
+
+var issue185IdentsTpl = template.Must(template.New("").Parse(`
+package issue185
+
+//go:generate msgp
+
+type Test1 struct {
+	Foo string
+	Bar string
+	{{ if .Extra }}Baz []string{{ end }}
+	Qux string
+}
+
+type Test2 struct {
+	Foo string
+	Bar string
+	Baz string
+}
+`))
+
+var issue185ComplexIdentsTpl = template.Must(template.New("").Parse(`
+package issue185
+
+//go:generate msgp
+
+type Test1 struct {
+	Foo string
+	Bar string
+	Baz string
+}
+
+type Test2 struct {
+	Foo string
+	Bar string
+	Baz []string
+	Qux map[string]string
+	Yep map[string]map[string]string
+	Quack struct {
+		Quack struct {
+			Quack struct {
+				{{ if .Extra }}Extra []string{{ end }}
+				Quack string
+			}
+		}
+	}
+	Nup struct {
+		Foo string
+		Bar string
+		Baz []string
+		Qux map[string]string
+		Yep map[string]map[string]string
+	}
+	Ding struct {
+		Dong struct {
+			Dung struct {
+				Thing string
+			}
+		}
+	}
+}
+
+type Test3 struct {
+	Foo string
+	Bar string
+	Baz string
+}
+`))

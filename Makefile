@@ -27,6 +27,7 @@ $(MGEN): ./msgp/defs_test.go
 	go generate ./msgp
 
 test: all
+	# keep in sync with 'make travis'
 	go test -v ./msgp
 	go test -v ./gen
 	go test -v ./_generated
@@ -52,5 +53,7 @@ travis:
 	go build -o "$${GOPATH%%:*}/bin/msgp" .
 	go generate ./msgp
 	go generate ./_generated
+	# keep in sync with 'make test'
 	go test ./msgp
+	go test ./gen
 	go test ./_generated
