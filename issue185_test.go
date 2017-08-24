@@ -147,9 +147,8 @@ func loadVars(tpl *template.Template, tplData interface{}) (vars extractedVars, 
 	} else {
 		fmt.Println(tempDir)
 	}
-
 	tfile := filepath.Join(tempDir, "msg.go")
-	genFile := filepath.Join(tempDir, "msg_gen.go")
+	genFile := newFilename(tfile, "")
 
 	if err = goGenerateTpl(tempDir, tfile, tpl, tplData); err != nil {
 		err = fmt.Errorf("could not generate code: %v", err)
@@ -236,7 +235,7 @@ func goGenerateTpl(cwd, tfile string, tpl *template.Template, tplData interface{
 		return err
 	}
 
-	var mode = gen.Encode | gen.Decode | gen.Size | gen.Marshal | gen.Unmarshal
+	mode := gen.Encode | gen.Decode | gen.Size | gen.Marshal | gen.Unmarshal
 
 	return Run(tfile, mode, false)
 }
