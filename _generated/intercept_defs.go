@@ -148,6 +148,14 @@ type TestUsesIntfStructProvided struct {
 	Foo TestIntfStructProvided
 }
 
+type TestUsesIntfStructProvidedSlice struct {
+	Foo []TestIntfStructProvided
+}
+
+type TestUsesIntfStructProvidedMap struct {
+	Foo map[string]TestIntfStructProvided
+}
+
 type TestIntfA struct {
 	Foo string
 }

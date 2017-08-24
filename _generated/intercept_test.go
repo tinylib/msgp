@@ -172,3 +172,71 @@ func TestInterceptInterfaceMarshalUnmarshal(t *testing.T) {
 		}
 	}
 }
+
+func TestInterceptInterfaceSliceMarshalUnmarshal(t *testing.T) {
+	cases := []TestUsesIntfStructProvidedSlice{
+		{Foo: []TestIntfStructProvided{
+			&TestIntfA{Foo: "hello"},
+			&TestIntfB{Bar: "world"},
+		}},
+
+		// FIXME: empty slice unmarshals as nil, is this msgp?
+		// {Foo: []TestIntfStructProvided{}},
+	}
+
+	for _, in := range cases {
+		resetIntfStructProvider()
+
+		bts, err := in.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+
+		var out TestUsesIntfStructProvidedSlice
+		if _, err := (&out).UnmarshalMsg(bts); err != nil {
+			t.Fatalf("%v", err)
+		}
+
+		if !reflect.DeepEqual(in, out) {
+			t.Fatalf("provided marshal/unmarshal failed")
+		}
+
+		if !reflect.DeepEqual([]string{"marshal", "marshal", "unmarshal", "unmarshal"}, TestIntfStructProvider().Events) {
+			t.Fatalf("unexpected events: %v", TestIntfStructProvider().Events)
+		}
+	}
+}
+
+func TestInterceptInterfaceMapMarshalUnmarshal(t *testing.T) {
+	cases := []TestUsesIntfStructProvidedMap{
+		{Foo: map[string]TestIntfStructProvided{
+			"a": &TestIntfA{Foo: "hello"},
+			"b": &TestIntfB{Bar: "world"},
+		}},
+
+		// FIXME: empty slice unmarshals as nil, is this msgp?
+		// {Foo: []TestIntfStructProvided{}},
+	}
+
+	for _, in := range cases {
+		resetIntfStructProvider()
+
+		bts, err := in.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+
+		var out TestUsesIntfStructProvidedMap
+		if _, err := (&out).UnmarshalMsg(bts); err != nil {
+			t.Fatalf("%v", err)
+		}
+
+		if !reflect.DeepEqual(in, out) {
+			t.Fatalf("provided marshal/unmarshal failed")
+		}
+
+		if !reflect.DeepEqual([]string{"marshal", "marshal", "unmarshal", "unmarshal"}, TestIntfStructProvider().Events) {
+			t.Fatalf("unexpected events: %v", TestIntfStructProvider().Events)
+		}
+	}
+}
