@@ -1,4 +1,4 @@
-package gen
+package main
 
 import (
 	"fmt"
@@ -7,12 +7,13 @@ import (
 	"go/token"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
 	"text/template"
+
+	"github.com/tinylib/msgp/gen"
 )
 
 // When stuff's going wrong, you'll be glad this is here!
@@ -235,9 +236,9 @@ func goGenerateTpl(cwd, tfile string, tpl *template.Template, tplData interface{
 		return err
 	}
 
-	cmd := exec.Command("go", "generate")
-	cmd.Dir = cwd
-	return cmd.Run()
+	var mode = gen.Encode | gen.Decode | gen.Size | gen.Marshal | gen.Unmarshal
+
+	return Run(tfile, mode, false)
 }
 
 var issue185IdentsTpl = template.Must(template.New("").Parse(`
