@@ -11,12 +11,6 @@ const (
 	idxLen   = 3
 )
 
-// interface checks
-var (
-	_ Intercepted = &BaseElem{}
-	_ Intercepted = &Struct{}
-)
-
 // generate a random identifier name
 func randIdent() string {
 	bts := make([]byte, idxLen)
@@ -28,6 +22,12 @@ func randIdent() string {
 	// Go keywords (such as `int` and `var`).
 	return "z" + string(bts)
 }
+
+// interface checks
+var (
+	_ Intercepted = &BaseElem{}
+	_ Intercepted = &Struct{}
+)
 
 // This code defines the type declaration tree.
 //
