@@ -171,6 +171,14 @@ func (p *testIntfStructProvider) DecodeMsg(dc *msgp.Reader) (t TestIntfStructPro
 		err = dc.ReadNil()
 	} else {
 		var s string
+		var sz uint32
+		if sz, err = dc.ReadArrayHeader(); err != nil {
+			return
+		}
+		if sz != 2 {
+			err = fmt.Errorf("unexpected array length")
+			return
+		}
 		s, err = dc.ReadString()
 		if err != nil {
 			return
@@ -197,6 +205,14 @@ func (p *testIntfStructProvider) UnmarshalMsg(bts []byte) (t TestIntfStructProvi
 		o, err = msgp.ReadNilBytes(o)
 	} else {
 		var s string
+		var sz uint32
+		if sz, o, err = msgp.ReadArrayHeaderBytes(o); err != nil {
+			return
+		}
+		if sz != 2 {
+			err = fmt.Errorf("unexpected array length")
+			return
+		}
 		s, o, err = msgp.ReadStringBytes(o)
 		if err != nil {
 			return
@@ -220,6 +236,9 @@ func (p *testIntfStructProvider) EncodeMsg(t TestIntfStructProvided, en *msgp.Wr
 	if t == nil {
 		return en.WriteNil()
 	} else {
+		if err = en.WriteArrayHeader(2); err != nil {
+			return
+		}
 		var s string
 		switch t.(type) {
 		case *TestIntfA:
@@ -243,6 +262,7 @@ func (p *testIntfStructProvider) MarshalMsg(t TestIntfStructProvided, b []byte) 
 		o = msgp.AppendNil(o)
 		return
 	} else {
+		o = msgp.AppendArrayHeader(o, 2)
 		var s string
 		switch t.(type) {
 		case *TestIntfA:

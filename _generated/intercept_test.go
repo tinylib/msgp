@@ -240,3 +240,32 @@ func TestInterceptInterfaceMapMarshalUnmarshal(t *testing.T) {
 		}
 	}
 }
+
+func TestInterceptInterfaceUnmarshalAsJSON(t *testing.T) {
+	cases := []struct {
+		in  TestUsesIntfStructProvided
+		out string
+	}{
+		{in: TestUsesIntfStructProvided{Foo: &TestIntfA{Foo: "hello"}}, out: `{"Foo":["a",{"Foo":"hello"}]}`},
+		{in: TestUsesIntfStructProvided{Foo: &TestIntfB{Bar: "world"}}, out: `{"Foo":["b",{"Bar":"world"}]}`},
+		{in: TestUsesIntfStructProvided{Foo: nil}, out: `{"Foo":null}`},
+	}
+
+	for idx, tcase := range cases {
+		resetIntfStructProvider()
+
+		bts, err := tcase.in.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+
+		var buf bytes.Buffer
+		if _, err := msgp.UnmarshalAsJSON(&buf, bts); err != nil {
+			t.Fatalf("%v", err)
+		}
+
+		if tcase.out != buf.String() {
+			t.Fatalf("%d: unexpected JSON `%s`", idx, buf.String())
+		}
+	}
+}
