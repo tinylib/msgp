@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 )
 
@@ -604,4 +605,22 @@ func writeStructFields(s []StructField, name string) {
 	for i := range s {
 		s[i].FieldElem.SetVarname(fmt.Sprintf("%s.%s", name, s[i].FieldName))
 	}
+}
+
+// coerceArraySize ensures we can compare constant array lengths.
+//
+// msgpack array headers are 32 bit unsigned, which is reflected in the
+// ArrayHeader implementation in this library using uint32. On the Go side, we
+// can declare array lengths as any constant integer width, which breaks when
+// attempting a direct comparison to an array header's uint32.
+//
+// If we have a string at this point, it represents a constant which could have
+// any integer width so we must coerce it to uint32 to guarantee it is
+// comparable.
+//
+func coerceArraySize(asz string) string {
+	if _, err := strconv.ParseInt(asz, 10, 64); err != nil {
+		asz = fmt.Sprintf("uint32(%s)", asz)
+	}
+	return asz
 }

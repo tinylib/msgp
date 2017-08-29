@@ -203,7 +203,7 @@ func (d *decodeGen) gArray(a *Array) {
 	sz := randIdent()
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
-	d.p.arrayCheck(a.Size, sz)
+	d.p.arrayCheck(coerceArraySize(a.Size), sz)
 
 	d.p.rangeBlock(a.Index, a.Varname(), d, a.Els)
 }
