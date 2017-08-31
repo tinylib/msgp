@@ -242,4 +242,6 @@ type ArrayConstants struct {
 	ConstantUint16 [ConstantUint16]string
 	ConstantUint32 [ConstantUint32]string
 	ConstantUint64 [ConstantUint64]string
+	ConstantHex    [0x16]string
+	ConstantOctal  [07]string
 }

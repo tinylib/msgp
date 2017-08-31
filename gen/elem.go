@@ -619,8 +619,13 @@ func writeStructFields(s []StructField, name string) {
 // comparable.
 //
 func coerceArraySize(asz string) string {
-	if _, err := strconv.ParseInt(asz, 10, 64); err != nil {
-		asz = fmt.Sprintf("uint32(%s)", asz)
+	if _, err := strconv.ParseInt(asz, 10, 64); err == nil {
+		return asz
 	}
-	return asz
+	if strings.HasPrefix(asz, "0x") {
+		if _, err := strconv.ParseInt(asz[2:], 16, 64); err == nil {
+			return asz
+		}
+	}
+	return fmt.Sprintf("uint32(%s)", asz)
 }
