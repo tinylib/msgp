@@ -200,7 +200,7 @@ type Custom struct {
 type Files []*os.File
 
 type FileHandle struct {
-	Relevent Files  `msg:"files"`
+	Relevant Files  `msg:"files"`
 	Name     string `msg:"name"`
 }
 
