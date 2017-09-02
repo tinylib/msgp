@@ -3,7 +3,6 @@ package gen
 import (
 	"fmt"
 	"math/rand"
-	"strconv"
 	"strings"
 )
 
@@ -614,18 +613,6 @@ func writeStructFields(s []StructField, name string) {
 // can declare array lengths as any constant integer width, which breaks when
 // attempting a direct comparison to an array header's uint32.
 //
-// If we have a string at this point, it represents a constant which could have
-// any integer width so we must coerce it to uint32 to guarantee it is
-// comparable.
-//
 func coerceArraySize(asz string) string {
-	if _, err := strconv.ParseInt(asz, 10, 64); err == nil {
-		return asz
-	}
-	if strings.HasPrefix(asz, "0x") {
-		if _, err := strconv.ParseInt(asz[2:], 16, 64); err == nil {
-			return asz
-		}
-	}
 	return fmt.Sprintf("uint32(%s)", asz)
 }
