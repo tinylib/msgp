@@ -106,6 +106,9 @@ func (e *encodeGen) structmap(s *Struct) {
 	data := msgp.AppendMapHeader(nil, uint32(nfields))
 	e.p.printf("\n// map header, size %d", nfields)
 	e.Fuse(data)
+	if len(s.Fields) == 0 {
+		e.fuseHook()
+	}
 	for i := range s.Fields {
 		if !e.p.ok() {
 			return
