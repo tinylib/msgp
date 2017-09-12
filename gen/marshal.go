@@ -159,7 +159,7 @@ func (m *marshalGen) gArray(a *Array) {
 		return
 	}
 
-	m.rawAppend(arrayHeader, literalFmt, a.Size)
+	m.rawAppend(arrayHeader, literalFmt, coerceArraySize(a.Size))
 	m.p.rangeBlock(a.Index, a.Varname(), m, a.Els)
 }
 
