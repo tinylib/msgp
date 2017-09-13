@@ -106,6 +106,9 @@ func (e *encodeGen) structmap(s *Struct) {
 	data := msgp.AppendMapHeader(nil, uint32(nfields))
 	e.p.printf("\n// map header, size %d", nfields)
 	e.Fuse(data)
+	if len(s.Fields) == 0 {
+		e.fuseHook()
+	}
 	for i := range s.Fields {
 		if !e.p.ok() {
 			return
@@ -162,7 +165,7 @@ func (e *encodeGen) gArray(a *Array) {
 		return
 	}
 
-	e.writeAndCheck(arrayHeader, literalFmt, a.Size)
+	e.writeAndCheck(arrayHeader, literalFmt, coerceArraySize(a.Size))
 	e.p.rangeBlock(a.Index, a.Varname(), e, a.Els)
 }
 
