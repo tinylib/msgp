@@ -2,8 +2,9 @@ package gen
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/msgp"
 	"io"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 func marshal(w io.Writer) *marshalGen {
@@ -100,6 +101,9 @@ func (m *marshalGen) mapstruct(s *Struct) {
 	data = msgp.AppendMapHeader(data, uint32(len(s.Fields)))
 	m.p.printf("\n// map header, size %d", len(s.Fields))
 	m.Fuse(data)
+	if len(s.Fields) == 0 {
+		m.fuseHook()
+	}
 	for i := range s.Fields {
 		if !m.p.ok() {
 			return
@@ -155,7 +159,7 @@ func (m *marshalGen) gArray(a *Array) {
 		return
 	}
 
-	m.rawAppend(arrayHeader, literalFmt, a.Size)
+	m.rawAppend(arrayHeader, literalFmt, coerceArraySize(a.Size))
 	m.p.rangeBlock(a.Index, a.Varname(), m, a.Els)
 }
 
@@ -177,7 +181,14 @@ func (m *marshalGen) gBase(b *BaseElem) {
 	vname := b.Varname()
 
 	if b.Convert {
-		vname = tobaseConvert(b)
+		if b.ShimMode == Cast {
+			vname = tobaseConvert(b)
+		} else {
+			vname = randIdent()
+			m.p.printf("\nvar %s %s", vname, b.BaseType())
+			m.p.printf("\n%s, err = %s", vname, tobaseConvert(b))
+			m.p.printf(errcheck)
+		}
 	}
 
 	var echeck bool

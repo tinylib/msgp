@@ -2,9 +2,10 @@ package gen
 
 import (
 	"fmt"
-	"github.com/tinylib/msgp/msgp"
 	"io"
 	"strconv"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 type sizeState uint8
@@ -183,7 +184,24 @@ func (s *sizeGen) gBase(b *BaseElem) {
 	if !s.p.ok() {
 		return
 	}
-	s.addConstant(basesizeExpr(b))
+	if b.Convert && b.ShimMode == Convert {
+		s.state = add
+		vname := randIdent()
+		s.p.printf("\nvar %s %s", vname, b.BaseType())
+
+		// ensure we don't get "unused variable" warnings from outer slice iterations
+		s.p.printf("\n_ = %s", b.Varname())
+
+		s.p.printf("\ns += %s", basesizeExpr(b.Value, vname, b.BaseName()))
+		s.state = expr
+
+	} else {
+		vname := b.Varname()
+		if b.Convert {
+			vname = tobaseConvert(b)
+		}
+		s.addConstant(basesizeExpr(b.Value, vname, b.BaseName()))
+	}
 }
 
 // returns "len(slice)"
@@ -250,12 +268,8 @@ func fixedsizeExpr(e Elem) (string, bool) {
 }
 
 // print size expression of a variable name
-func basesizeExpr(b *BaseElem) string {
-	vname := b.Varname()
-	if b.Convert {
-		vname = tobaseConvert(b)
-	}
-	switch b.Value {
+func basesizeExpr(value Primitive, vname, basename string) string {
+	switch value {
 	case Ext:
 		return "msgp.ExtensionPrefixSize + " + stripRef(vname) + ".Len()"
 	case Intf:
@@ -267,6 +281,6 @@ func basesizeExpr(b *BaseElem) string {
 	case String:
 		return "msgp.StringPrefixSize + len(" + vname + ")"
 	default:
-		return builtinSize(b.BaseName())
+		return builtinSize(basename)
 	}
 }

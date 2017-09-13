@@ -110,6 +110,7 @@ var primitives = map[string]Primitive{
 	"uint32":         Uint32,
 	"uint64":         Uint64,
 	"byte":           Byte,
+	"rune":           Int32,
 	"int":            Int,
 	"int8":           Int8,
 	"int16":          Int16,
@@ -404,11 +405,19 @@ type StructField struct {
 	FieldElem Elem   // the field type
 }
 
+type ShimMode int
+
+const (
+	Cast ShimMode = iota
+	Convert
+)
+
 // BaseElem is an element that
 // can be represented by a primitive
 // MessagePack type.
 type BaseElem struct {
 	common
+	ShimMode     ShimMode  // Method used to shim
 	ShimToBase   string    // shim to base type, or empty
 	ShimFromBase string    // shim from base type, or empty
 	Value        Primitive // Type of element
@@ -593,4 +602,15 @@ func writeStructFields(s []StructField, name string) {
 	for i := range s {
 		s[i].FieldElem.SetVarname(fmt.Sprintf("%s.%s", name, s[i].FieldName))
 	}
+}
+
+// coerceArraySize ensures we can compare constant array lengths.
+//
+// msgpack array headers are 32 bit unsigned, which is reflected in the
+// ArrayHeader implementation in this library using uint32. On the Go side, we
+// can declare array lengths as any constant integer width, which breaks when
+// attempting a direct comparison to an array header's uint32.
+//
+func coerceArraySize(asz string) string {
+	return fmt.Sprintf("uint32(%s)", asz)
 }
