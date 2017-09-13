@@ -88,6 +88,9 @@ func (m *marshalGen) tuple(s *Struct) {
 	data = msgp.AppendArrayHeader(data, uint32(len(s.Fields)))
 	m.p.printf("\n// array header, size %d", len(s.Fields))
 	m.Fuse(data)
+	if len(s.Fields) == 0 {
+		m.fuseHook()
+	}
 	for i := range s.Fields {
 		if !m.p.ok() {
 			return
