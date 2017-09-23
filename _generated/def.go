@@ -254,8 +254,12 @@ type NonMsgStructTags struct {
 	B      string   `json:"barJSON"`
 	C      []string `json:"bazJSON" msg:"-"`
 	Nested []struct {
-		A []string `json:"a"`
-		B string   `json:"b"`
-		C []string `json:"c"`
+		A          []string `json:"a"`
+		B          string   `json:"b"`
+		C          []string `json:"c"`
+		VeryNested []struct {
+			A []string `json:"a"`
+			B []string `msg:"bbbb" xml:"-"`
+		}
 	}
 }
