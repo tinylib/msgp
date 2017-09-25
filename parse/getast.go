@@ -347,6 +347,7 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 			return nil
 		}
 		sf[0].FieldTag = tags[0]
+		sf[0].RawTag = f.Tag.Value
 	}
 
 	ex := fs.parseExpr(f.Type)

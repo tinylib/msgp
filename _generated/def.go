@@ -245,3 +245,21 @@ type ArrayConstants struct {
 	ConstantHex    [0x16]string
 	ConstantOctal  [07]string
 }
+
+// Ensure non-msg struct tags work:
+// https://github.com/tinylib/msgp/issues/201
+
+type NonMsgStructTags struct {
+	A      []string `json:"fooJSON" msg:"fooMsgp"`
+	B      string   `json:"barJSON"`
+	C      []string `json:"bazJSON" msg:"-"`
+	Nested []struct {
+		A          []string `json:"a"`
+		B          string   `json:"b"`
+		C          []string `json:"c"`
+		VeryNested []struct {
+			A []string `json:"a"`
+			B []string `msg:"bbbb" xml:"-"`
+		}
+	}
+}

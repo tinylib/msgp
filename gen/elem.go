@@ -371,7 +371,9 @@ func (s *Struct) TypeName() string {
 	}
 	str := "struct{\n"
 	for i := range s.Fields {
-		str += s.Fields[i].FieldName + " " + s.Fields[i].FieldElem.TypeName() + ";\n"
+		str += s.Fields[i].FieldName +
+			" " + s.Fields[i].FieldElem.TypeName() +
+			" " + s.Fields[i].RawTag + ";\n"
 	}
 	str += "}"
 	s.common.Alias(str)
@@ -403,6 +405,7 @@ func (s *Struct) Complexity() int {
 
 type StructField struct {
 	FieldTag  string // the string inside the `msg:""` tag
+	RawTag    string // the full struct tag
 	FieldName string // the name of the struct field
 	FieldElem Elem   // the field type
 }
