@@ -12,8 +12,8 @@ func TestConvertFromEncodeError(t *testing.T) {
 	var buf bytes.Buffer
 	w := msgp.NewWriter(&buf)
 	err := e.EncodeMsg(w)
-	if err != errConvertFrom {
-		t.Fatalf("expected conversion error, found %v", err.Error())
+	if msgp.Cause(err) != errConvertFrom {
+		t.Fatalf("expected conversion error, found '%v'", err.Error())
 	}
 }
 
@@ -30,7 +30,8 @@ func TestConvertToEncodeError(t *testing.T) {
 
 	r := msgp.NewReader(&buf)
 	err = (&out).DecodeMsg(r)
-	if err != errConvertTo {
+
+	if msgp.Cause(err) != errConvertTo {
 		t.Fatalf("expected conversion error, found %v", err.Error())
 	}
 }
@@ -39,7 +40,7 @@ func TestConvertFromMarshalError(t *testing.T) {
 	e := ConvertErr{ConvertErrVal(fromFailStr)}
 	var b []byte
 	_, err := e.MarshalMsg(b)
-	if err != errConvertFrom {
+	if msgp.Cause(err) != errConvertFrom {
 		t.Fatalf("expected conversion error, found %v", err.Error())
 	}
 }
@@ -53,7 +54,7 @@ func TestConvertToMarshalError(t *testing.T) {
 	}
 
 	_, err = (&out).UnmarshalMsg(b)
-	if err != errConvertTo {
+	if msgp.Cause(err) != errConvertTo {
 		t.Fatalf("expected conversion error, found %v", err.Error())
 	}
 }

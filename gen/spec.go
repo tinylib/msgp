@@ -6,7 +6,6 @@ import (
 )
 
 const (
-	errcheck    = "\nif err != nil { return }"
 	lenAsUint32 = "uint32(len(%s))"
 	literalFmt  = "%s"
 	intFmt      = "%d"
@@ -166,6 +165,49 @@ func (p *Printer) Print(e Elem) error {
 	return nil
 }
 
+type contextItem interface {
+	Arg() string
+}
+
+type contextString string
+
+func (c contextString) Arg() string {
+	return fmt.Sprintf("%q", c)
+}
+
+type contextVar string
+
+func (c contextVar) Arg() string {
+	return string(c)
+}
+
+type Context struct {
+	path []contextItem
+}
+
+func (c *Context) PushString(s string) {
+	c.path = append(c.path, contextString(s))
+}
+
+func (c *Context) PushVar(s string) {
+	c.path = append(c.path, contextVar(s))
+}
+
+func (c *Context) Pop() {
+	c.path = c.path[:len(c.path)-1]
+}
+
+func (c *Context) ArgsStr() string {
+	var out string
+	for idx, p := range c.path {
+		if idx > 0 {
+			out += ", "
+		}
+		out += p.Arg()
+	}
+	return out
+}
+
 // generator is the interface through
 // which code is generated.
 type generator interface {
@@ -318,6 +360,13 @@ func (p *printer) clearMap(name string) {
 	p.printf("\nfor key, _ := range %[1]s { delete(%[1]s, key) }", name)
 }
 
+func (p *printer) wrapErrCheck(ctx string) {
+	p.print("\nif err != nil {")
+	p.printf("\nerr = msgp.WrapError(err, %s)", ctx)
+	p.printf("\nreturn")
+	p.print("\n}")
+}
+
 func (p *printer) resizeSlice(size string, s *Slice) {
 	p.printf("\nif cap(%[1]s) >= int(%[2]s) { %[1]s = (%[1]s)[:%[2]s] } else { %[1]s = make(%[3]s, %[2]s) }", s.Varname(), size, s.TypeName())
 }
@@ -334,10 +383,12 @@ func (p *printer) closeblock() { p.print("\n}") }
 //     {{generate inner}}
 // }
 //
-func (p *printer) rangeBlock(idx string, iter string, t traversal, inner Elem) {
+func (p *printer) rangeBlock(ctx *Context, idx string, iter string, t traversal, inner Elem) {
+	ctx.PushVar(idx)
 	p.printf("\n for %s := range %s {", idx, iter)
 	next(t, inner)
 	p.closeblock()
+	ctx.Pop()
 }
 
 func (p *printer) nakedReturn() {

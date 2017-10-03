@@ -17,6 +17,7 @@ type marshalGen struct {
 	passes
 	p    printer
 	fuse []byte
+	ctx  *Context
 }
 
 func (m *marshalGen) Method() Method { return Marshal }
@@ -36,6 +37,9 @@ func (m *marshalGen) Execute(p Elem) error {
 	if !IsPrintable(p) {
 		return nil
 	}
+
+	m.ctx = &Context{}
+	m.ctx.PushString(p.TypeName())
 
 	m.p.comment("MarshalMsg implements msgp.Marshaler")
 
@@ -95,7 +99,9 @@ func (m *marshalGen) tuple(s *Struct) {
 		if !m.p.ok() {
 			return
 		}
+		m.ctx.PushString(s.Fields[i].FieldName)
 		next(m, s.Fields[i].FieldElem)
+		m.ctx.Pop()
 	}
 }
 
@@ -116,7 +122,9 @@ func (m *marshalGen) mapstruct(s *Struct) {
 		m.p.printf("\n// string %q", s.Fields[i].FieldTag)
 		m.Fuse(data)
 
+		m.ctx.PushString(s.Fields[i].FieldName)
 		next(m, s.Fields[i].FieldElem)
+		m.ctx.Pop()
 	}
 }
 
@@ -138,7 +146,9 @@ func (m *marshalGen) gMap(s *Map) {
 	m.rawAppend(mapHeader, lenAsUint32, vname)
 	m.p.printf("\nfor %s, %s := range %s {", s.Keyidx, s.Validx, vname)
 	m.rawAppend(stringTyp, literalFmt, s.Keyidx)
+	m.ctx.PushVar(s.Keyidx)
 	next(m, s.Value)
+	m.ctx.Pop()
 	m.p.closeblock()
 }
 
@@ -149,7 +159,7 @@ func (m *marshalGen) gSlice(s *Slice) {
 	m.fuseHook()
 	vname := s.Varname()
 	m.rawAppend(arrayHeader, lenAsUint32, vname)
-	m.p.rangeBlock(s.Index, vname, m, s.Els)
+	m.p.rangeBlock(m.ctx, s.Index, vname, m, s.Els)
 }
 
 func (m *marshalGen) gArray(a *Array) {
@@ -163,7 +173,7 @@ func (m *marshalGen) gArray(a *Array) {
 	}
 
 	m.rawAppend(arrayHeader, literalFmt, coerceArraySize(a.Size))
-	m.p.rangeBlock(a.Index, a.Varname(), m, a.Els)
+	m.p.rangeBlock(m.ctx, a.Index, a.Varname(), m, a.Els)
 }
 
 func (m *marshalGen) gPtr(p *Ptr) {
@@ -190,7 +200,7 @@ func (m *marshalGen) gBase(b *BaseElem) {
 			vname = randIdent()
 			m.p.printf("\nvar %s %s", vname, b.BaseType())
 			m.p.printf("\n%s, err = %s", vname, tobaseConvert(b))
-			m.p.printf(errcheck)
+			m.p.wrapErrCheck(m.ctx.ArgsStr())
 		}
 	}
 
@@ -207,6 +217,6 @@ func (m *marshalGen) gBase(b *BaseElem) {
 	}
 
 	if echeck {
-		m.p.print(errcheck)
+		m.p.wrapErrCheck(m.ctx.ArgsStr())
 	}
 }
