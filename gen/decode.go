@@ -44,7 +44,6 @@ func (d *decodeGen) Execute(p Elem) error {
 	}
 
 	d.ctx = &Context{}
-	d.ctx.PushString(p.TypeName())
 
 	d.p.comment("DecodeMsg implements msgp.Decodable")
 

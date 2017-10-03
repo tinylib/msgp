@@ -93,6 +93,14 @@ func ctxString(ctx []interface{}) string {
 	return out
 }
 
+func addCtx(ctx, add string) string {
+	if ctx != "" {
+		return add + "/" + ctx
+	} else {
+		return add
+	}
+}
+
 // errWrapped allows arbitrary errors passed to WrapError to be enhanced with
 // context and unwrapped with Cause()
 type errWrapped struct {
@@ -134,7 +142,7 @@ func (f errFatal) Error() string {
 
 func (f errFatal) Resumable() bool { return false }
 
-func (f errFatal) withContext(ctx string) error { f.ctx = ctx; return f }
+func (f errFatal) withContext(ctx string) error { f.ctx = addCtx(f.ctx, ctx); return f }
 
 // ArrayError is an error returned
 // when decoding a fix-sized array
@@ -157,7 +165,7 @@ func (a ArrayError) Error() string {
 // Resumable is always 'true' for ArrayErrors
 func (a ArrayError) Resumable() bool { return true }
 
-func (a ArrayError) withContext(ctx string) error { a.ctx = ctx; return a }
+func (a ArrayError) withContext(ctx string) error { a.ctx = addCtx(a.ctx, ctx); return a }
 
 // IntOverflow is returned when a call
 // would downcast an integer to a type
@@ -180,7 +188,7 @@ func (i IntOverflow) Error() string {
 // Resumable is always 'true' for overflows
 func (i IntOverflow) Resumable() bool { return true }
 
-func (i IntOverflow) withContext(ctx string) error { i.ctx = ctx; return i }
+func (i IntOverflow) withContext(ctx string) error { i.ctx = addCtx(i.ctx, ctx); return i }
 
 // UintOverflow is returned when a call
 // would downcast an unsigned integer to a type
@@ -203,7 +211,7 @@ func (u UintOverflow) Error() string {
 // Resumable is always 'true' for overflows
 func (u UintOverflow) Resumable() bool { return true }
 
-func (u UintOverflow) withContext(ctx string) error { u.ctx = ctx; return u }
+func (u UintOverflow) withContext(ctx string) error { u.ctx = addCtx(u.ctx, ctx); return u }
 
 // UintBelowZero is returned when a call
 // would cast a signed integer below zero
@@ -252,7 +260,7 @@ func (t TypeError) Error() string {
 // Resumable returns 'true' for TypeErrors
 func (t TypeError) Resumable() bool { return true }
 
-func (t TypeError) withContext(ctx string) error { t.ctx = ctx; return t }
+func (t TypeError) withContext(ctx string) error { t.ctx = addCtx(t.ctx, ctx); return t }
 
 // returns either InvalidPrefixError or
 // TypeError depending on whether or not
@@ -301,6 +309,6 @@ func (e *ErrUnsupportedType) Resumable() bool { return true }
 
 func (e *ErrUnsupportedType) withContext(ctx string) error {
 	o := *e
-	o.ctx = ctx
+	o.ctx = addCtx(o.ctx, ctx)
 	return &o
 }

@@ -9,11 +9,16 @@ type ErrorCtxMapChild struct {
 	Val string
 }
 
+type ErrorCtxMapChildNotInline struct {
+	Val1, Val2, Val3, Val4, Val5 string
+}
+
 type ErrorCtxAsMap struct {
-	Val      string
-	Child    *ErrorCtxMapChild
-	Children []*ErrorCtxMapChild
-	Map      map[string]string
+	Val          string
+	Child        *ErrorCtxMapChild
+	Children     []*ErrorCtxMapChild
+	ComplexChild *ErrorCtxMapChildNotInline
+	Map          map[string]string
 
 	Nest struct {
 		Val      string
@@ -36,13 +41,20 @@ type ErrorCtxTupleChild struct {
 	Val string
 }
 
+//msgp:tuple ErrorCtxTupleChildNotInline
+
+type ErrorCtxTupleChildNotInline struct {
+	Val1, Val2, Val3, Val4, Val5 string
+}
+
 //msgp:tuple ErrorCtxAsTuple
 
 type ErrorCtxAsTuple struct {
-	Val      string
-	Child    *ErrorCtxTupleChild
-	Children []*ErrorCtxTupleChild
-	Map      map[string]string
+	Val          string
+	Child        *ErrorCtxTupleChild
+	Children     []*ErrorCtxTupleChild
+	ComplexChild *ErrorCtxTupleChildNotInline
+	Map          map[string]string
 
 	Nest struct {
 		Val      string
