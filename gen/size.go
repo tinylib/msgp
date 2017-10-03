@@ -32,6 +32,7 @@ type sizeGen struct {
 	passes
 	p     printer
 	state sizeState
+	ctx   *Context
 }
 
 func (s *sizeGen) Method() Method { return Size }
@@ -79,6 +80,9 @@ func (s *sizeGen) Execute(p Elem) error {
 	if !IsPrintable(p) {
 		return nil
 	}
+
+	s.ctx = &Context{}
+	s.ctx.PushString(p.TypeName())
 
 	s.p.comment("Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message")
 
@@ -142,7 +146,7 @@ func (s *sizeGen) gSlice(sl *Slice) {
 
 	// add inside the range block, and immediately after
 	s.state = add
-	s.p.rangeBlock(sl.Index, sl.Varname(), s, sl.Els)
+	s.p.rangeBlock(s.ctx, sl.Index, sl.Varname(), s, sl.Els)
 	s.state = add
 }
 
@@ -162,7 +166,7 @@ func (s *sizeGen) gArray(a *Array) {
 	}
 
 	s.state = add
-	s.p.rangeBlock(a.Index, a.Varname(), s, a.Els)
+	s.p.rangeBlock(s.ctx, a.Index, a.Varname(), s, a.Els)
 	s.state = add
 }
 
@@ -174,7 +178,9 @@ func (s *sizeGen) gMap(m *Map) {
 	s.p.printf("\n_ = %s", m.Validx) // we may not use the value
 	s.p.printf("\ns += msgp.StringPrefixSize + len(%s)", m.Keyidx)
 	s.state = expr
+	s.ctx.PushVar(m.Keyidx)
 	next(s, m.Value)
+	s.ctx.Pop()
 	s.p.closeblock()
 	s.p.closeblock()
 	s.state = add

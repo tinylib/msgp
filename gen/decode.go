@@ -16,6 +16,7 @@ type decodeGen struct {
 	passes
 	p        printer
 	hasfield bool
+	ctx      *Context
 }
 
 func (d *decodeGen) Method() Method { return Decode }
@@ -41,6 +42,9 @@ func (d *decodeGen) Execute(p Elem) error {
 	if !IsPrintable(p) {
 		return nil
 	}
+
+	d.ctx = &Context{}
+	d.ctx.PushString(p.TypeName())
 
 	d.p.comment("DecodeMsg implements msgp.Decodable")
 
@@ -68,7 +72,7 @@ func (d *decodeGen) assignAndCheck(name string, typ string) {
 		return
 	}
 	d.p.printf("\n%s, err = dc.Read%s()", name, typ)
-	d.p.print(errcheck)
+	d.p.wrapErrCheck(d.ctx.ArgsStr())
 }
 
 func (d *decodeGen) structAsTuple(s *Struct) {
@@ -82,7 +86,9 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 		if !d.p.ok() {
 			return
 		}
+		d.ctx.PushString(s.Fields[i].FieldName)
 		next(d, s.Fields[i].FieldElem)
+		d.ctx.Pop()
 	}
 }
 
@@ -96,14 +102,17 @@ func (d *decodeGen) structAsMap(s *Struct) {
 	d.assignAndCheck("field", mapKey)
 	d.p.print("\nswitch msgp.UnsafeString(field) {")
 	for i := range s.Fields {
+		d.ctx.PushString(s.Fields[i].FieldName)
 		d.p.printf("\ncase \"%s\":", s.Fields[i].FieldTag)
 		next(d, s.Fields[i].FieldElem)
+		d.ctx.Pop()
 		if !d.p.ok() {
 			return
 		}
 	}
 	d.p.print("\ndefault:\nerr = dc.Skip()")
-	d.p.print(errcheck)
+	d.p.wrapErrCheck(d.ctx.ArgsStr())
+
 	d.p.closeblock() // close switch
 	d.p.closeblock() // close for loop
 }
@@ -143,7 +152,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 			d.p.printf("\n%s, err = dc.Read%s()", vname, bname)
 		}
 	}
-	d.p.print(errcheck)
+	d.p.wrapErrCheck(d.ctx.ArgsStr())
 
 	// close block for 'tmp'
 	if b.Convert {
@@ -151,7 +160,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 			d.p.printf("\n%s = %s(%s)\n}", vname, b.FromBase(), tmp)
 		} else {
 			d.p.printf("\n%s, err = %s(%s)\n}", vname, b.FromBase(), tmp)
-			d.p.print(errcheck)
+			d.p.wrapErrCheck(d.ctx.ArgsStr())
 		}
 	}
 }
@@ -173,8 +182,10 @@ func (d *decodeGen) gMap(m *Map) {
 	d.p.declare(m.Keyidx, "string")
 	d.p.declare(m.Validx, m.Value.TypeName())
 	d.assignAndCheck(m.Keyidx, stringTyp)
+	d.ctx.PushVar(m.Keyidx)
 	next(d, m.Value)
 	d.p.mapAssign(m)
+	d.ctx.Pop()
 	d.p.closeblock()
 }
 
@@ -186,7 +197,7 @@ func (d *decodeGen) gSlice(s *Slice) {
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
 	d.p.resizeSlice(sz, s)
-	d.p.rangeBlock(s.Index, s.Varname(), d, s.Els)
+	d.p.rangeBlock(d.ctx, s.Index, s.Varname(), d, s.Els)
 }
 
 func (d *decodeGen) gArray(a *Array) {
@@ -197,15 +208,14 @@ func (d *decodeGen) gArray(a *Array) {
 	// special case if we have [const]byte
 	if be, ok := a.Els.(*BaseElem); ok && (be.Value == Byte || be.Value == Uint8) {
 		d.p.printf("\nerr = dc.ReadExactBytes((%s)[:])", a.Varname())
-		d.p.print(errcheck)
+		d.p.wrapErrCheck(d.ctx.ArgsStr())
 		return
 	}
 	sz := randIdent()
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
 	d.p.arrayCheck(coerceArraySize(a.Size), sz)
-
-	d.p.rangeBlock(a.Index, a.Varname(), d, a.Els)
+	d.p.rangeBlock(d.ctx, a.Index, a.Varname(), d, a.Els)
 }
 
 func (d *decodeGen) gPtr(p *Ptr) {
@@ -214,7 +224,7 @@ func (d *decodeGen) gPtr(p *Ptr) {
 	}
 	d.p.print("\nif dc.IsNil() {")
 	d.p.print("\nerr = dc.ReadNil()")
-	d.p.print(errcheck)
+	d.p.wrapErrCheck(d.ctx.ArgsStr())
 	d.p.printf("\n%s = nil\n} else {", p.Varname())
 	d.p.initPtr(p)
 	next(d, p.Value)
