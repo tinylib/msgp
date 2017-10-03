@@ -3,9 +3,6 @@ package _generated
 import (
 	"bytes"
 	"io"
-	"reflect"
-	"sort"
-	"strings"
 	"testing"
 
 	"github.com/tinylib/msgp/msgp"
@@ -14,6 +11,7 @@ import (
 func fillErrorCtxAsMap() *ErrorCtxAsMap {
 	v := &ErrorCtxAsMap{}
 	v.Val = "foo"
+	v.ComplexChild = &ErrorCtxMapChildNotInline{Val1: "a", Val2: "b", Val3: "c", Val4: "d", Val5: "e"}
 	v.Child = &ErrorCtxMapChild{Val: "foo"}
 	v.Children = []*ErrorCtxMapChild{{Val: "foo"}, {Val: "bar"}}
 	v.Map = map[string]string{"foo": "bar", "baz": "qux"}
@@ -31,6 +29,7 @@ func fillErrorCtxAsMap() *ErrorCtxAsMap {
 func fillErrorCtxAsTuple() *ErrorCtxAsTuple {
 	v := &ErrorCtxAsTuple{}
 	v.Val = "foo"
+	v.ComplexChild = &ErrorCtxTupleChildNotInline{Val1: "a", Val2: "b", Val3: "c", Val4: "d", Val5: "e"}
 	v.Child = &ErrorCtxTupleChild{Val: "foo"}
 	v.Children = []*ErrorCtxTupleChild{{Val: "foo"}, {Val: "bar"}}
 	v.Map = map[string]string{"foo": "bar", "baz": "qux"}
@@ -45,13 +44,13 @@ func fillErrorCtxAsTuple() *ErrorCtxAsTuple {
 	return v
 }
 
-type outBuf struct {
+type dodgifierBuf struct {
 	*bytes.Buffer
 	dodgifyString int
 	strIdx        int
 }
 
-func (o *outBuf) Write(b []byte) (n int, err error) {
+func (o *dodgifierBuf) Write(b []byte) (n int, err error) {
 	ilen := len(b)
 	if msgp.NextType(b) == msgp.StrType {
 		if o.strIdx == o.dodgifyString {
@@ -100,7 +99,7 @@ func marshalErrorCtx(m msgp.Marshaler) []byte {
 // so that it raises an error when decoded or unmarshaled.
 func dodgifyMsgpString(bts []byte, idx int) []byte {
 	r := msgp.NewReader(bytes.NewReader(bts))
-	out := &outBuf{Buffer: &bytes.Buffer{}, dodgifyString: idx}
+	out := &dodgifierBuf{Buffer: &bytes.Buffer{}, dodgifyString: idx}
 	for {
 		_, err := r.CopyNext(out)
 		if err == io.EOF {
@@ -122,17 +121,12 @@ func TestErrorCtxAsMapUnmarshal(t *testing.T) {
 
 		var ec ErrorCtxAsMap
 		_, err := (&ec).UnmarshalMsg(dodgeBts)
-		words := strings.Split(err.Error(), " ")
-		last := words[len(words)-1]
-		as = append(as, last)
+		as = append(as, err.Error())
 	}
 
-	// Map key iteration order is not consistent
-	sort.Strings(expectedAsMap)
-	sort.Strings(as)
-
-	if !reflect.DeepEqual(expectedAsMap, as) {
-		t.Fatal()
+	ok, a, b := diffstrs(as, expectedAsMap())
+	if !ok {
+		t.Fatal(a, b)
 	}
 }
 
@@ -147,17 +141,12 @@ func TestErrorCtxAsMapDecode(t *testing.T) {
 		r := msgp.NewReader(bytes.NewReader(dodgeBts))
 		var ec ErrorCtxAsMap
 		err := (&ec).DecodeMsg(r)
-		words := strings.Split(err.Error(), " ")
-		last := words[len(words)-1]
-		as = append(as, last)
+		as = append(as, err.Error())
 	}
 
-	// Map key iteration order is not consistent
-	sort.Strings(expectedAsMap)
-	sort.Strings(as)
-
-	if !reflect.DeepEqual(expectedAsMap, as) {
-		t.Fatal()
+	ok, a, b := diffstrs(as, expectedAsMap())
+	if !ok {
+		t.Fatal(a, b)
 	}
 }
 
@@ -171,17 +160,12 @@ func TestErrorCtxAsTupleUnmarshal(t *testing.T) {
 
 		var ec ErrorCtxAsTuple
 		_, err := (&ec).UnmarshalMsg(dodgeBts)
-		words := strings.Split(err.Error(), " ")
-		last := words[len(words)-1]
-		as = append(as, last)
+		as = append(as, err.Error())
 	}
 
-	// Map key iteration order is not consistent
-	sort.Strings(expectedAsTuple)
-	sort.Strings(as)
-
-	if !reflect.DeepEqual(expectedAsTuple, as) {
-		t.Fatal()
+	ok, a, b := diffstrs(as, expectedAsTuple())
+	if !ok {
+		t.Fatal(a, b)
 	}
 }
 
@@ -196,106 +180,159 @@ func TestErrorCtxAsTupleDecode(t *testing.T) {
 		r := msgp.NewReader(bytes.NewReader(dodgeBts))
 		var ec ErrorCtxAsTuple
 		err := (&ec).DecodeMsg(r)
-		words := strings.Split(err.Error(), " ")
-		last := words[len(words)-1]
-		as = append(as, last)
+		as = append(as, err.Error())
 	}
 
-	// Map key iteration order is not consistent
-	sort.Strings(expectedAsTuple)
-	sort.Strings(as)
-
-	if !reflect.DeepEqual(expectedAsTuple, as) {
-		t.Fatal()
+	ok, a, b := diffstrs(as, expectedAsTuple())
+	if !ok {
+		t.Fatal(a, b)
 	}
 }
 
-var expectedAsTuple = []string{
-	"ErrorCtxAsTuple/Val",
-	"ErrorCtxAsTuple/Child/Val",
-	"ErrorCtxAsTuple/Children/0/Val",
-	"ErrorCtxAsTuple/Children/1/Val",
-	"ErrorCtxAsTuple/Map",
-	"ErrorCtxAsTuple/Map/baz",
-	"ErrorCtxAsTuple/Map",
-	"ErrorCtxAsTuple/Map/foo",
-	"ErrorCtxAsTuple/Nest",
-	"ErrorCtxAsTuple/Nest/Val",
-	"ErrorCtxAsTuple/Nest",
-	"ErrorCtxAsTuple/Nest/Child/Val",
-	"ErrorCtxAsTuple/Nest",
-	"ErrorCtxAsTuple/Nest/Children/0/Val",
-	"ErrorCtxAsTuple/Nest/Children/1/Val",
-	"ErrorCtxAsTuple/Nest",
-	"ErrorCtxAsTuple/Nest/Map",
-	"ErrorCtxAsTuple/Nest/Map/foo",
-	"ErrorCtxAsTuple/Nest/Map",
-	"ErrorCtxAsTuple/Nest/Map/baz",
-	"ErrorCtxAsTuple/Nest",
-	"ErrorCtxAsTuple/Nest/Nest",
-	"ErrorCtxAsTuple/Nest/Nest/Val",
-	"ErrorCtxAsTuple/Nest/Nest",
-	"ErrorCtxAsTuple/Nest/Nest/Child/Val",
-	"ErrorCtxAsTuple/Nest/Nest",
-	"ErrorCtxAsTuple/Nest/Nest/Children/0/Val",
-	"ErrorCtxAsTuple/Nest/Nest/Children/1/Val",
-	"ErrorCtxAsTuple/Nest/Nest",
-	"ErrorCtxAsTuple/Nest/Nest/Map",
-	"ErrorCtxAsTuple/Nest/Nest/Map/foo",
-	"ErrorCtxAsTuple/Nest/Nest/Map",
-	"ErrorCtxAsTuple/Nest/Nest/Map/baz",
+func diffstrs(a, b []string) (ok bool, as, bs []string) {
+	ma := map[string]bool{}
+	mb := map[string]bool{}
+	for _, x := range a {
+		ma[x] = true
+	}
+	for _, x := range b {
+		mb[x] = true
+	}
+	for _, x := range a {
+		if !mb[x] {
+			as = append(as, x)
+		}
+	}
+	for _, x := range b {
+		if !ma[x] {
+			bs = append(bs, x)
+		}
+	}
+	return len(as)+len(bs) == 0, as, bs
+}
+
+var errPrefix = `msgp: attempted to decode type "int" with method for "str"`
+
+func expectedAsTuple() []string {
+	var out []string
+	for _, s := range []string{
+		`Val`,
+		`Child/Val`,
+		`Children/0/Val`,
+		`Children/1/Val`,
+		`ComplexChild/Val1`,
+		`ComplexChild/Val2`,
+		`ComplexChild/Val3`,
+		`ComplexChild/Val4`,
+		`ComplexChild/Val5`,
+		`Map`,
+		`Map/baz`,
+		`Map`,
+		`Map/foo`,
+		`Nest`,
+		`Nest/Val`,
+		`Nest`,
+		`Nest/Child/Val`,
+		`Nest`,
+		`Nest/Children/0/Val`,
+		`Nest/Children/1/Val`,
+		`Nest`,
+		`Nest/Map`,
+		`Nest/Map/foo`,
+		`Nest/Map`,
+		`Nest/Map/baz`,
+		`Nest`,
+		`Nest/Nest`,
+		`Nest/Nest/Val`,
+		`Nest/Nest`,
+		`Nest/Nest/Child/Val`,
+		`Nest/Nest`,
+		`Nest/Nest/Children/0/Val`,
+		`Nest/Nest/Children/1/Val`,
+		`Nest/Nest`,
+		`Nest/Nest/Map`,
+		`Nest/Nest/Map/foo`,
+		`Nest/Nest/Map`,
+		`Nest/Nest/Map/baz`,
+	} {
+		if s == "" {
+			out = append(out, errPrefix)
+		} else {
+			out = append(out, errPrefix+" at "+s)
+		}
+	}
+	return out
 }
 
 // there are a lot of extra errors in here at the struct level because we are
 // not discriminating between dodgy struct field map key strings and
 // values. dodgy struct field map keys have no field context available when
 // they are read.
-var expectedAsMap = []string{
-	"ErrorCtxAsMap",
-	"ErrorCtxAsMap/Val",
-	"ErrorCtxAsMap",
-	"ErrorCtxAsMap/Child",
-	"ErrorCtxAsMap/Child/Val",
-	"ErrorCtxAsMap",
-	"ErrorCtxAsMap/Children/0",
-	"ErrorCtxAsMap/Children/0/Val",
-	"ErrorCtxAsMap/Children/1",
-	"ErrorCtxAsMap/Children/1/Val",
-	"ErrorCtxAsMap",
-	"ErrorCtxAsMap/Map",
-	"ErrorCtxAsMap/Map/foo",
-	"ErrorCtxAsMap/Map",
-	"ErrorCtxAsMap/Map/baz",
-	"ErrorCtxAsMap",
-	"ErrorCtxAsMap/Nest",
-	"ErrorCtxAsMap/Nest/Val",
-	"ErrorCtxAsMap/Nest",
-	"ErrorCtxAsMap/Nest/Child",
-	"ErrorCtxAsMap/Nest/Child/Val",
-	"ErrorCtxAsMap/Nest",
-	"ErrorCtxAsMap/Nest/Children/0",
-	"ErrorCtxAsMap/Nest/Children/0/Val",
-	"ErrorCtxAsMap/Nest/Children/1",
-	"ErrorCtxAsMap/Nest/Children/1/Val",
-	"ErrorCtxAsMap/Nest",
-	"ErrorCtxAsMap/Nest/Map",
-	"ErrorCtxAsMap/Nest/Map/foo",
-	"ErrorCtxAsMap/Nest/Map",
-	"ErrorCtxAsMap/Nest/Map/baz",
-	"ErrorCtxAsMap/Nest",
-	"ErrorCtxAsMap/Nest/Nest",
-	"ErrorCtxAsMap/Nest/Nest/Val",
-	"ErrorCtxAsMap/Nest/Nest",
-	"ErrorCtxAsMap/Nest/Nest/Child",
-	"ErrorCtxAsMap/Nest/Nest/Child/Val",
-	"ErrorCtxAsMap/Nest/Nest",
-	"ErrorCtxAsMap/Nest/Nest/Children/0",
-	"ErrorCtxAsMap/Nest/Nest/Children/0/Val",
-	"ErrorCtxAsMap/Nest/Nest/Children/1",
-	"ErrorCtxAsMap/Nest/Nest/Children/1/Val",
-	"ErrorCtxAsMap/Nest/Nest",
-	"ErrorCtxAsMap/Nest/Nest/Map",
-	"ErrorCtxAsMap/Nest/Nest/Map/baz",
-	"ErrorCtxAsMap/Nest/Nest/Map",
-	"ErrorCtxAsMap/Nest/Nest/Map/foo",
+func expectedAsMap() []string {
+	var out []string
+	for _, s := range []string{
+		``,
+		`Val`,
+		``,
+		`Child`,
+		`Child/Val`,
+		``,
+		`Children/0`,
+		`Children/0/Val`,
+		`Children/1`,
+		`Children/1/Val`,
+		`ComplexChild`,
+		`ComplexChild/Val1`,
+		`ComplexChild`,
+		`ComplexChild/Val2`,
+		`ComplexChild`,
+		`ComplexChild/Val3`,
+		`ComplexChild`,
+		`ComplexChild/Val4`,
+		`ComplexChild`,
+		`ComplexChild/Val5`,
+		`Map`,
+		`Map/foo`,
+		`Map`,
+		`Map/baz`,
+		``,
+		`Nest`,
+		`Nest/Val`,
+		`Nest`,
+		`Nest/Child`,
+		`Nest/Child/Val`,
+		`Nest`,
+		`Nest/Children/0`,
+		`Nest/Children/0/Val`,
+		`Nest/Children/1`,
+		`Nest/Children/1/Val`,
+		`Nest`,
+		`Nest/Map`,
+		`Nest/Map/foo`,
+		`Nest/Map`,
+		`Nest/Map/baz`,
+		`Nest`,
+		`Nest/Nest`,
+		`Nest/Nest/Val`,
+		`Nest/Nest`,
+		`Nest/Nest/Child`,
+		`Nest/Nest/Child/Val`,
+		`Nest/Nest`,
+		`Nest/Nest/Children/0`,
+		`Nest/Nest/Children/0/Val`,
+		`Nest/Nest/Children/1`,
+		`Nest/Nest/Children/1/Val`,
+		`Nest/Nest`,
+		`Nest/Nest/Map`,
+		`Nest/Nest/Map/baz`,
+		`Nest/Nest/Map`,
+		`Nest/Nest/Map/foo`,
+	} {
+		if s == "" {
+			out = append(out, errPrefix)
+		} else {
+			out = append(out, errPrefix+" at "+s)
+		}
+	}
+	return out
 }

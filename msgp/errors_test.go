@@ -50,6 +50,15 @@ func TestWrapResumableError(t *testing.T) {
 	}
 }
 
+func TestWrapMultiple(t *testing.T) {
+	err := &TypeError{}
+	w := WrapError(WrapError(err, "b"), "a")
+	expected := `msgp: attempted to decode type "<invalid>" with method for "<invalid>" at a/b`
+	if expected != w.Error() {
+		t.Fatal()
+	}
+}
+
 func TestCause(t *testing.T) {
 	for idx, err := range []error{
 		errors.New("test"),

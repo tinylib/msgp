@@ -59,7 +59,6 @@ func (e *encodeGen) Execute(p Elem) error {
 	}
 
 	e.ctx = &Context{}
-	e.ctx.PushString(p.TypeName())
 
 	e.p.comment("EncodeMsg implements msgp.Encodable")
 

@@ -39,7 +39,6 @@ func (m *marshalGen) Execute(p Elem) error {
 	}
 
 	m.ctx = &Context{}
-	m.ctx.PushString(p.TypeName())
 
 	m.p.comment("MarshalMsg implements msgp.Marshaler")
 

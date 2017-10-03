@@ -42,7 +42,6 @@ func (u *unmarshalGen) Execute(p Elem) error {
 	}
 
 	u.ctx = &Context{}
-	u.ctx.PushString(p.TypeName())
 
 	u.p.comment("UnmarshalMsg implements msgp.Unmarshaler")
 
