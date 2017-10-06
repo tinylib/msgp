@@ -82,15 +82,16 @@ func strtoMeth(s string) Method {
 }
 
 const (
-	Decode      Method                       = 1 << iota // msgp.Decodable
-	Encode                                               // msgp.Encodable
-	Marshal                                              // msgp.Marshaler
-	Unmarshal                                            // msgp.Unmarshaler
-	Size                                                 // msgp.Sizer
-	Test                                                 // generate tests
-	invalidmeth                                          // this isn't a method
-	encodetest  = Encode | Decode | Test                 // tests for Encodable and Decodable
-	marshaltest = Marshal | Unmarshal | Test             // tests for Marshaler and Unmarshaler
+	Decode    Method = 1 << iota // msgp.Decodable
+	Encode                       // msgp.Encodable
+	Marshal                      // msgp.Marshaler
+	Unmarshal                    // msgp.Unmarshaler
+	Size                         // msgp.Sizer
+	OmitEmpty
+	Test                                     // generate tests
+	invalidmeth                              // this isn't a method
+	encodetest  = Encode | Decode | Test     // tests for Encodable and Decodable
+	marshaltest = Marshal | Unmarshal | Test // tests for Marshaler and Unmarshaler
 )
 
 type Printer struct {
@@ -116,6 +117,9 @@ func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
 	}
 	if m.isset(Size) {
 		gens = append(gens, sizes(out))
+	}
+	if m.isset(OmitEmpty) {
+		gens = append(gens, omitempies(out))
 	}
 	if m.isset(marshaltest) {
 		gens = append(gens, mtest(tests))
