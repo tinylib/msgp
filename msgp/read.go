@@ -639,6 +639,7 @@ func (m *Reader) ReadInt64() (i int64, err error) {
 		u := getMuint64(p)
 		if u > math.MaxInt64 {
 			err = UintOverflow{Value: u, FailedBitsize: 64}
+			return
 		}
 		i = int64(u)
 		return
