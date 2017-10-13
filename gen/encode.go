@@ -101,7 +101,7 @@ func (e *encodeGen) appendraw(bts []byte) {
 		}
 		e.p.printf("0x%x", b)
 	}
-	e.p.print(")\nif err != nil { return err }")
+	e.p.print(")\nif err != nil { return }")
 }
 
 func (e *encodeGen) structmap(s *Struct) {

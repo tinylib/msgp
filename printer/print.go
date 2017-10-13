@@ -3,13 +3,14 @@ package printer
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"strings"
+
 	"github.com/tinylib/msgp/gen"
 	"github.com/tinylib/msgp/parse"
 	"github.com/ttacon/chalk"
 	"golang.org/x/tools/imports"
-	"io"
-	"io/ioutil"
-	"strings"
 )
 
 func infof(s string, v ...interface{}) {
