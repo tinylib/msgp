@@ -36,14 +36,8 @@ func (s *omitemptyGen) Execute(p Elem) error {
 	}
 
 	s.p.comment("ShouldOmitAsEmpty returns true if all struct fields have default value")
-
 	s.p.printf("\nfunc (%s %s) ShouldOmitAsEmpty() (bool) {", p.Varname(), imutMethodReceiver(p))
-	next(s, p)
-	if s.expr != "" {
-		s.p.printf("\nreturn %s", s.expr)
-	} else {
-		s.p.printf("\nreturn true")
-	}
+	s.p.printf("\nreturn false")
 	s.p.closeblock()
 	return s.p.err
 }

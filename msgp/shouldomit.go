@@ -2,6 +2,12 @@ package msgp
 
 import "time"
 
+// Implement this interface to enable struct type to be omitted by `omitempty`.
+type OmitEmptyAware interface {
+	// This method should return true if the object should not be serialized with `omitempty` marker.
+	ShouldOmitAsEmpty() bool
+}
+
 func ShouldOmitAsEmptyBytes(v []byte) bool {
 	return len(v) == 0
 }
