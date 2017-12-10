@@ -297,7 +297,7 @@ func (p *printer) declare(name string, typ string) {
 // if m != nil && size > 0 {
 //     m = make(type, size)
 // } else if len(m) > 0 {
-//     for key, _ := range m { delete(m, key) }
+//     for key := range m { delete(m, key) }
 // }
 //
 func (p *printer) resizeMap(size string, m *Map) {
