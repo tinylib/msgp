@@ -49,7 +49,7 @@ func (e *encodeGen) Execute(p Elem) error {
 	if !e.p.ok() {
 		return e.p.err
 	}
-	p = e.applyall(p)
+	p = e.applyAll(p)
 	if p == nil {
 		return nil
 	}

@@ -29,7 +29,7 @@ func (m *marshalGen) Execute(p Elem) error {
 	if !m.p.ok() {
 		return m.p.err
 	}
-	p = m.applyall(p)
+	p = m.applyAll(p)
 	if p == nil {
 		return nil
 	}

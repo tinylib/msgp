@@ -93,40 +93,39 @@ const (
 	marshaltest = Marshal | Unmarshal | Test             // tests for Marshaler and Unmarshaler
 )
 
-type Printer struct {
-	gens []generator
-}
+// A GeneratorSet is a slice of generators to use for a type.
+type GeneratorSet []generator
 
-func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
+func NewGeneratorSet(m Method, out io.Writer, tests io.Writer) *GeneratorSet {
 	if m.isset(Test) && tests == nil {
 		panic("cannot print tests with 'nil' tests argument!")
 	}
-	gens := make([]generator, 0, 7)
+	p := make(GeneratorSet, 0, 7)
 	if m.isset(Decode) {
-		gens = append(gens, decode(out))
+		p = append(p, decode(out))
 	}
 	if m.isset(Encode) {
-		gens = append(gens, encode(out))
+		p = append(p, encode(out))
 	}
 	if m.isset(Marshal) {
-		gens = append(gens, marshal(out))
+		p = append(p, marshal(out))
 	}
 	if m.isset(Unmarshal) {
-		gens = append(gens, unmarshal(out))
+		p = append(p, unmarshal(out))
 	}
 	if m.isset(Size) {
-		gens = append(gens, sizes(out))
+		p = append(p, sizes(out))
 	}
 	if m.isset(marshaltest) {
-		gens = append(gens, mtest(tests))
+		p = append(p, mtest(tests))
 	}
 	if m.isset(encodetest) {
-		gens = append(gens, etest(tests))
+		p = append(p, etest(tests))
 	}
-	if len(gens) == 0 {
+	if len(p) == 0 {
 		panic("NewPrinter called with invalid method flags")
 	}
-	return &Printer{gens: gens}
+	return &p
 }
 
 // TransformPass is a pass that transforms individual
@@ -147,25 +146,24 @@ func IgnoreTypename(name string) TransformPass {
 
 // ApplyDirective applies a directive to a named pass
 // and all of its dependents.
-func (p *Printer) ApplyDirective(pass Method, t TransformPass) {
-	for _, g := range p.gens {
-		if g.Method().isset(pass) {
-			g.Add(t)
+func (p *GeneratorSet) ApplyDirective(pass Method, t TransformPass) {
+	for _, gen := range *p {
+		if gen.Method().isset(pass) {
+			gen.Add(t)
 		}
 	}
 }
 
 // Print prints an Elem.
-func (p *Printer) Print(e Elem) error {
-	for _, g := range p.gens {
+func (p *GeneratorSet) Print(e Elem) error {
+	for i := range *p {
 		// Elem.SetVarname() is called before the Print() step in parse.FileSet.PrintTo().
 		// Elem.SetVarname() generates identifiers as it walks the Elem. This can cause
 		// collisions between idents created during SetVarname and idents created during Print,
 		// hence the separate prefixes.
 		resetIdent("zb")
-		err := g.Execute(e)
+		err := (*p)[i].Execute(e)
 		resetIdent("za")
-
 		if err != nil {
 			return err
 		}
@@ -187,7 +185,7 @@ func (p *passes) Add(t TransformPass) {
 	*p = append(*p, t)
 }
 
-func (p *passes) applyall(e Elem) Elem {
+func (p *passes) applyAll(e Elem) Elem {
 	for _, t := range *p {
 		e = t(e)
 		if e == nil {

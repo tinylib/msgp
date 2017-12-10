@@ -32,7 +32,7 @@ func (u *unmarshalGen) Execute(p Elem) error {
 	if !u.p.ok() {
 		return u.p.err
 	}
-	p = u.applyall(p)
+	p = u.applyAll(p)
 	if p == nil {
 		return nil
 	}

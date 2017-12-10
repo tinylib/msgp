@@ -29,7 +29,7 @@ func (d *decodeGen) needsField() {
 }
 
 func (d *decodeGen) Execute(p Elem) error {
-	p = d.applyall(p)
+	p = d.applyAll(p)
 	if p == nil {
 		return nil
 	}
