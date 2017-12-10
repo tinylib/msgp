@@ -322,7 +322,7 @@ func (p *printer) mapAssign(m *Map) {
 
 // clear map keys
 func (p *printer) clearMap(name string) {
-	p.printf("\nfor key, _ := range %[1]s { delete(%[1]s, key) }", name)
+	p.printf("\nfor key := range %[1]s { delete(%[1]s, key) }", name)
 }
 
 func (p *printer) resizeSlice(size string, s *Slice) {
