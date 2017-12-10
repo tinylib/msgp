@@ -30,30 +30,30 @@ const maxComplex = 5
 
 // begin recursive search for identities with the
 // given name and replace them with be
-func (f *FileSet) findShim(id string, be *gen.BaseElem) {
-	for name, el := range f.Identities {
+func (fs *FileSet) findShim(id string, be *gen.BaseElem) {
+	for name, el := range fs.Identities {
 		pushstate(name)
 		switch el := el.(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
-				f.nextShim(&el.Fields[i].FieldElem, id, be)
+				fs.nextShim(&el.Fields[i].FieldElem, id, be)
 			}
 		case *gen.Array:
-			f.nextShim(&el.Els, id, be)
+			fs.nextShim(&el.Els, id, be)
 		case *gen.Slice:
-			f.nextShim(&el.Els, id, be)
+			fs.nextShim(&el.Els, id, be)
 		case *gen.Map:
-			f.nextShim(&el.Value, id, be)
+			fs.nextShim(&el.Value, id, be)
 		case *gen.Ptr:
-			f.nextShim(&el.Value, id, be)
+			fs.nextShim(&el.Value, id, be)
 		}
 		popstate()
 	}
 	// we'll need this at the top level as well
-	f.Identities[id] = be
+	fs.Identities[id] = be
 }
 
-func (f *FileSet) nextShim(ref *gen.Elem, id string, be *gen.BaseElem) {
+func (fs *FileSet) nextShim(ref *gen.Elem, id string, be *gen.BaseElem) {
 	if (*ref).TypeName() == id {
 		vn := (*ref).Varname()
 		*ref = be.Copy()
@@ -62,37 +62,37 @@ func (f *FileSet) nextShim(ref *gen.Elem, id string, be *gen.BaseElem) {
 		switch el := (*ref).(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
-				f.nextShim(&el.Fields[i].FieldElem, id, be)
+				fs.nextShim(&el.Fields[i].FieldElem, id, be)
 			}
 		case *gen.Array:
-			f.nextShim(&el.Els, id, be)
+			fs.nextShim(&el.Els, id, be)
 		case *gen.Slice:
-			f.nextShim(&el.Els, id, be)
+			fs.nextShim(&el.Els, id, be)
 		case *gen.Map:
-			f.nextShim(&el.Value, id, be)
+			fs.nextShim(&el.Value, id, be)
 		case *gen.Ptr:
-			f.nextShim(&el.Value, id, be)
+			fs.nextShim(&el.Value, id, be)
 		}
 	}
 }
 
 // propInline identifies and inlines candidates
-func (f *FileSet) propInline() {
-	for name, el := range f.Identities {
+func (fs *FileSet) propInline() {
+	for name, el := range fs.Identities {
 		pushstate(name)
 		switch el := el.(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
-				f.nextInline(&el.Fields[i].FieldElem, name)
+				fs.nextInline(&el.Fields[i].FieldElem, name)
 			}
 		case *gen.Array:
-			f.nextInline(&el.Els, name)
+			fs.nextInline(&el.Els, name)
 		case *gen.Slice:
-			f.nextInline(&el.Els, name)
+			fs.nextInline(&el.Els, name)
 		case *gen.Map:
-			f.nextInline(&el.Value, name)
+			fs.nextInline(&el.Value, name)
 		case *gen.Ptr:
-			f.nextInline(&el.Value, name)
+			fs.nextInline(&el.Value, name)
 		}
 		popstate()
 	}
@@ -103,14 +103,14 @@ Please file a bug at github.com/tinylib/msgp/issues!
 Thanks!
 `
 
-func (f *FileSet) nextInline(ref *gen.Elem, root string) {
+func (fs *FileSet) nextInline(ref *gen.Elem, root string) {
 	switch el := (*ref).(type) {
 	case *gen.BaseElem:
 		// ensure that we're not inlining
 		// a type into itself
 		typ := el.TypeName()
 		if el.Value == gen.IDENT && typ != root {
-			if node, ok := f.Identities[typ]; ok && node.Complexity() < maxComplex {
+			if node, ok := fs.Identities[typ]; ok && node.Complexity() < maxComplex {
 				infof("inlining %s\n", typ)
 
 				// This should never happen; it will cause
@@ -120,7 +120,7 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 				}
 
 				*ref = node.Copy()
-				f.nextInline(ref, node.TypeName())
+				fs.nextInline(ref, node.TypeName())
 			} else if !ok && !el.Resolved() {
 				// this is the point at which we're sure that
 				// we've got a type that isn't a primitive,
@@ -130,16 +130,16 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 		}
 	case *gen.Struct:
 		for i := range el.Fields {
-			f.nextInline(&el.Fields[i].FieldElem, root)
+			fs.nextInline(&el.Fields[i].FieldElem, root)
 		}
 	case *gen.Array:
-		f.nextInline(&el.Els, root)
+		fs.nextInline(&el.Els, root)
 	case *gen.Slice:
-		f.nextInline(&el.Els, root)
+		fs.nextInline(&el.Els, root)
 	case *gen.Map:
-		f.nextInline(&el.Value, root)
+		fs.nextInline(&el.Value, root)
 	case *gen.Ptr:
-		f.nextInline(&el.Value, root)
+		fs.nextInline(&el.Value, root)
 	default:
 		panic("bad elem type")
 	}

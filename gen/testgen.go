@@ -27,7 +27,7 @@ type mtestGen struct {
 }
 
 func (m *mtestGen) Execute(p Elem) error {
-	p = m.applyall(p)
+	p = m.applyAll(p)
 	if p != nil && IsPrintable(p) {
 		switch p.(type) {
 		case *Struct, *Array, *Slice, *Map:
@@ -49,7 +49,7 @@ func etest(w io.Writer) *etestGen {
 }
 
 func (e *etestGen) Execute(p Elem) error {
-	p = e.applyall(p)
+	p = e.applyAll(p)
 	if p != nil && IsPrintable(p) {
 		switch p.(type) {
 		case *Struct, *Array, *Slice, *Map:
