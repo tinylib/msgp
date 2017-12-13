@@ -26,13 +26,15 @@ var directives = map[string]directive{
 	"tuple":  astuple,
 }
 
+// passDirectives lists the directives that can be used together
+// with a pass name. See func applyDirs for context.
 var passDirectives = map[string]passDirective{
 	"ignore": passignore,
 }
 
-func passignore(m gen.Method, text []string, p *gen.Printer) error {
+func passignore(m gen.Method, typeNamePatterns []string, p *gen.Printer) error {
 	pushstate(m.String())
-	for _, a := range text {
+	for _, a := range typeNamePatterns {
 		p.ApplyDirective(m, gen.IgnoreTypename(a))
 		infof("ignoring %s\n", a)
 	}
@@ -96,15 +98,19 @@ func applyShim(text []string, f *FileSet) error {
 }
 
 //msgp:ignore {TypeA} {TypeB}...
+// Parameter "text" includes the string "ignore" and possibly more
+// strings that represent either exact type names or regexp patterns.
 func ignore(text []string, f *FileSet) error {
 	if len(text) < 2 {
 		return nil
 	}
-	for _, item := range text[1:] {
-		name := strings.TrimSpace(item)
-		if _, ok := f.Identities[name]; ok {
-			delete(f.Identities, name)
-			infof("ignoring %s\n", name)
+	for _, typeNamePattern := range text[1:] {
+		typeNamePattern = strings.TrimSpace(typeNamePattern)
+		for k := range f.Identities {
+			if gen.TypeNameMatches(typeNamePattern, f.Identities[k].TypeName()) {
+				infof("ignoring %s\n", f.Identities[k].TypeName())
+				delete(f.Identities, k)
+			}
 		}
 	}
 	return nil
