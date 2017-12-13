@@ -20,7 +20,7 @@ type FileSet struct {
 	Package    string              // package name
 	Specs      map[string]ast.Expr // type specs in file
 	Identities map[string]gen.Elem // processed from specs
-	Directives []string            // raw preprocessor directives
+	Directives []string            // raw preprocessor directives (lines of comments)
 	Imports    []*ast.ImportSpec   // imports
 }
 
@@ -223,9 +223,11 @@ loop:
 		chunks := strings.Split(d, " ")
 		if len(chunks) > 1 {
 			for i := range chunks {
+				// Remove spacing around each word (type name) in
+				// case there is any spacing.
 				chunks[i] = strings.TrimSpace(chunks[i])
 			}
-			m := strToMethod(chunks[0])
+			m := strToMethod(chunks[0]) // m is the directive's gen.Method
 			if m == 0 {
 				warnf("unknown pass name: %q\n", chunks[0])
 				continue loop

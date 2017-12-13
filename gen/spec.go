@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"io"
+	"regexp"
 )
 
 const (
@@ -136,13 +137,37 @@ type TransformPass func(Elem) Elem
 
 // IgnoreTypename is a pass that just ignores
 // types of a given name.
-func IgnoreTypename(name string) TransformPass {
+func IgnoreTypename(pattern string) TransformPass {
 	return func(e Elem) Elem {
-		if e.TypeName() == name {
+		// Check if the type name is a regexp.
+		if TypeNameMatches(pattern, e.TypeName()) {
 			return nil
 		}
 		return e
 	}
+}
+
+// TypeNameMatches compares the pattern to the typeName to see if the type
+// name satisfies the pattern. The pattern can be either simply the type
+// name itself or a regexp pattern. A regexp pattern is extracted by taking
+// everything that follows either "reg=" or "reg!=" in the pattern string.
+// Pattern "reg=expr" returns true if and only if typeName matches expr.
+// Pattern "reg!=expr" returns true if and only if typeName does NOT match expr.
+func TypeNameMatches(pattern, typeName string) bool {
+	if len(pattern) > 4 && pattern[:3] == "reg" {
+		if string(pattern[3]) == "!" {
+			if !regexp.MustCompile(pattern[5:]).MatchString(typeName) {
+				fmt.Printf("Matched negated regexp %q to type name %q\n", pattern[5:], typeName)
+				return true
+			}
+		} else if regexp.MustCompile(pattern[4:]).MatchString(typeName) {
+			fmt.Printf("Matched regexp %q to type name %q\n", pattern[4:], typeName)
+			return true
+		}
+		return false
+	}
+	// Concrete type names compare by simple equality:
+	return pattern == typeName
 }
 
 // ApplyDirective applies a directive to a named pass
