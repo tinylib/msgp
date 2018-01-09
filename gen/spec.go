@@ -317,7 +317,7 @@ func (p *printer) mapAssign(m *Map) {
 	if !p.ok() {
 		return
 	}
-	p.printf("\n%s[%s] = %s", m.Varname(), m.Keyidx, m.Validx)
+	p.printf("\n(%s)[%s] = %s", m.Varname(), m.Keyidx, m.Validx)
 }
 
 // clear map keys

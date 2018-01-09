@@ -607,6 +607,30 @@ func (m *Reader) ReadInt64() (i int64, err error) {
 		i = getMint64(p)
 		return
 
+	case muint8:
+		p, err = m.R.Next(2)
+		if err != nil {
+			return
+		}
+		i = int64(getMuint8(p))
+		return
+
+	case muint16:
+		p, err = m.R.Next(3)
+		if err != nil {
+			return
+		}
+		i = int64(getMuint16(p))
+		return
+
+	case muint32:
+		p, err = m.R.Next(5)
+		if err != nil {
+			return
+		}
+		i = int64(getMuint32(p))
+		return
+
 	default:
 		err = badPrefix(IntType, lead)
 		return
@@ -709,6 +733,39 @@ func (m *Reader) ReadUint64() (u uint64, err error) {
 		}
 		u = getMuint64(p)
 		return
+
+	case mint8:
+		p, err = m.R.Next(2)
+		if err != nil {
+			return
+		}
+		u = uint64(getMint8(p))
+		return
+
+	case mint16:
+		p, err = m.R.Next(3)
+		if err != nil {
+			return
+		}
+		u = uint64(getMint16(p))
+		return
+
+	case mint32:
+		p, err = m.R.Next(5)
+		if err != nil {
+			return
+		}
+		u = uint64(getMint32(p))
+		return
+
+	case mint64:
+		p, err = m.R.Next(9)
+		if err != nil {
+			return
+		}
+		u = getMuint64(p)
+		return
+
 
 	default:
 		err = badPrefix(UintType, lead)

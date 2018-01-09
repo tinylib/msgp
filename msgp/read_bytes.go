@@ -395,6 +395,33 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 		o = b[9:]
 		return
 
+	case muint8:
+		if l < 2 {
+			err = ErrShortBytes
+			return
+		}
+		i = int64(getMuint8(b))
+		o = b[2:]
+		return
+
+	case muint16:
+		if l < 3 {
+			err = ErrShortBytes
+			return
+		}
+		i = int64(getMuint16(b))
+		o = b[3:]
+		return
+
+	case muint32:
+		if l < 5 {
+			err = ErrShortBytes
+			return
+		}
+		i = int64(getMuint32(b))
+		o = b[5:]
+		return
+
 	default:
 		err = badPrefix(IntType, lead)
 		return
@@ -505,6 +532,42 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 		return
 
 	case muint64:
+		if l < 9 {
+			err = ErrShortBytes
+			return
+		}
+		u = getMuint64(b)
+		o = b[9:]
+		return
+
+	case mint8:
+		if l < 2 {
+			err = ErrShortBytes
+			return
+		}
+		u = uint64(getMint8(b))
+		o = b[2:]
+		return
+
+	case mint16:
+		if l < 3 {
+			err = ErrShortBytes
+			return
+		}
+		u = uint64(getMint16(b))
+		o = b[3:]
+		return
+
+	case mint32:
+		if l < 5 {
+			err = ErrShortBytes
+			return
+		}
+		u = uint64(getMint32(b))
+		o = b[5:]
+		return
+
+	case mint64:
 		if l < 9 {
 			err = ErrShortBytes
 			return
