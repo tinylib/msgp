@@ -377,9 +377,9 @@ func TestReadIntOverflows(t *testing.T) {
 		failBits int
 		errCheck func(err error, failBits int) bool
 	}{
-		{math.MaxInt64, i32, 32, overflowErr},
-		{math.MaxInt64, i16, 16, overflowErr},
-		{math.MaxInt64, i8, 8, overflowErr},
+		{uint64(math.MaxInt64), i32, 32, overflowErr},
+		{uint64(math.MaxInt64), i16, 16, overflowErr},
+		{uint64(math.MaxInt64), i8, 8, overflowErr},
 
 		{uint64(math.MaxUint64), i64, 64, overflowErr},
 		{uint64(math.MaxUint64), i32, 64, overflowErr},
