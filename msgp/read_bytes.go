@@ -79,6 +79,9 @@ func (r *Raw) UnmarshalMsg(b []byte) ([]byte, error) {
 		return b, err
 	}
 	rlen := l - len(out)
+	if IsNil(b[:rlen]) {
+		rlen = 0
+	}
 	if cap(*r) < rlen {
 		*r = make(Raw, rlen)
 	} else {
@@ -104,7 +107,11 @@ func (r Raw) EncodeMsg(w *Writer) error {
 // next object on the wire.
 func (r *Raw) DecodeMsg(f *Reader) error {
 	*r = (*r)[:0]
-	return appendNext(f, (*[]byte)(r))
+	err := appendNext(f, (*[]byte)(r))
+	if IsNil(*r) {
+		*r = (*r)[:0]
+	}
+	return err
 }
 
 // Msgsize implements msgp.Sizer
