@@ -294,7 +294,7 @@ func (p *printer) declare(name string, typ string) {
 
 // does:
 //
-// if m != nil && size > 0 {
+// if m == nil {
 //     m = make(type, size)
 // } else if len(m) > 0 {
 //     for key := range m { delete(m, key) }
@@ -305,7 +305,7 @@ func (p *printer) resizeMap(size string, m *Map) {
 	if !p.ok() {
 		return
 	}
-	p.printf("\nif %s == nil && %s > 0 {", vn, size)
+	p.printf("\nif %s == nil {", vn)
 	p.printf("\n%s = make(%s, %s)", vn, m.TypeName(), size)
 	p.printf("\n} else if len(%s) > 0 {", vn)
 	p.clearMap(vn)
