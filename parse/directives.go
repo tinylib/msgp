@@ -31,12 +31,9 @@ var passDirectives = map[string]passDirective{
 }
 
 func passignore(m gen.Method, text []string, p *gen.Printer) error {
-	pushstate(m.String())
 	for _, a := range text {
 		p.ApplyDirective(m, gen.IgnoreTypename(a))
-		infof("ignoring %s\n", a)
 	}
-	popstate()
 	return nil
 }
 
@@ -89,7 +86,7 @@ func applyShim(text []string, f *FileSet) error {
 		}
 	}
 
-	infof("%s -> %s\n", name, be.Value.String())
+	f.infof("%s -> %s\n", name, be.Value.String())
 	f.findShim(name, be)
 
 	return nil
@@ -104,7 +101,7 @@ func ignore(text []string, f *FileSet) error {
 		name := strings.TrimSpace(item)
 		if _, ok := f.Identities[name]; ok {
 			delete(f.Identities, name)
-			infof("ignoring %s\n", name)
+			f.infof("ignoring %s\n", name)
 		}
 	}
 	return nil
@@ -120,9 +117,9 @@ func astuple(text []string, f *FileSet) error {
 		if el, ok := f.Identities[name]; ok {
 			if st, ok := el.(*gen.Struct); ok {
 				st.AsTuple = true
-				infoln(name)
+				f.infoln(name)
 			} else {
-				warnf("%s: only structs can be tuples\n", name)
+				return fmt.Errorf("%s: only structs can be tuples\n", name)
 			}
 		}
 	}

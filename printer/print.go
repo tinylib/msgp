@@ -9,13 +9,8 @@ import (
 
 	"github.com/tinylib/msgp/gen"
 	"github.com/tinylib/msgp/parse"
-	"github.com/ttacon/chalk"
 	"golang.org/x/tools/imports"
 )
-
-func infof(s string, v ...interface{}) {
-	fmt.Printf(chalk.Magenta.Color(s), v...)
-}
 
 // PrintFile prints the methods for the provided list
 // of elements to the given file name and canonical
@@ -39,7 +34,6 @@ func PrintFile(file string, f *parse.FileSet, mode gen.Method) error {
 		if err != nil {
 			return err
 		}
-		infof(">>> Wrote and formatted \"%s\"\n", testfile)
 	}
 	err = <-res
 	if err != nil {
@@ -60,7 +54,6 @@ func goformat(file string, data []byte) <-chan error {
 	out := make(chan error, 1)
 	go func(file string, data []byte, end chan error) {
 		end <- format(file, data)
-		infof(">>> Wrote and formatted \"%s\"\n", file)
 	}(file, data, out)
 	return out
 }

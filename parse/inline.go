@@ -34,7 +34,7 @@ const maxComplex = 5
 // given name and replace them with be
 func (f *FileSet) findShim(id string, be *gen.BaseElem) {
 	for name, el := range f.Identities {
-		pushstate(name)
+		f.pushstate(name)
 		switch el := el.(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
@@ -49,7 +49,7 @@ func (f *FileSet) findShim(id string, be *gen.BaseElem) {
 		case *gen.Ptr:
 			f.nextShim(&el.Value, id, be)
 		}
-		popstate()
+		f.popstate()
 	}
 	// we'll need this at the top level as well
 	f.Identities[id] = be
@@ -117,7 +117,7 @@ func (f *FileSet) propInline() {
 		case *gen.Ptr:
 			f.nextInline(&el.Value, name)
 		}
-		popstate()
+		f.popstate()
 	}
 }
 
@@ -134,7 +134,7 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 		typ := el.TypeName()
 		if el.Value == gen.IDENT && typ != root {
 			if node, ok := f.Identities[typ]; ok && node.Complexity() < maxComplex {
-				infof("inlining %s\n", typ)
+				f.infof("inlining %s\n", typ)
 
 				// This should never happen; it will cause
 				// infinite recursion.
@@ -148,7 +148,7 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 				// this is the point at which we're sure that
 				// we've got a type that isn't a primitive,
 				// a library builtin, or a processed type
-				warnf("unresolved identifier: %s\n", typ)
+				f.infof("unresolved identifier: %s\n", typ)
 			}
 		}
 	case *gen.Struct:

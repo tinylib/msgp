@@ -32,17 +32,45 @@ import (
 	"github.com/tinylib/msgp/gen"
 	"github.com/tinylib/msgp/parse"
 	"github.com/tinylib/msgp/printer"
-	"github.com/ttacon/chalk"
 )
 
 var (
 	out        = flag.String("o", "", "output file")
+	verbose    = flag.Bool("v", false, "verbose")
 	file       = flag.String("file", "", "input file")
 	encode     = flag.Bool("io", true, "create Encode and Decode methods")
 	marshal    = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
 	tests      = flag.Bool("tests", true, "create tests and benchmarks")
 	unexported = flag.Bool("unexported", false, "also process unexported types")
 )
+
+func fatalf(f string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, f, args...)
+	os.Exit(1)
+}
+
+func fatalln(line string) {
+	fmt.Fprintln(os.Stderr, line)
+	os.Exit(1)
+}
+
+func logf(f string, args ...interface{}) {
+	if *verbose {
+		fmt.Fprintf(os.Stderr, f, args...)
+	}
+}
+
+func logln(line string) {
+	if *verbose {
+		fmt.Fprintln(os.Stderr, line)
+	}
+}
+
+type logger struct{}
+
+func (l *logger) Logf(f string, args ...interface{}) {
+	logf(f, args...)
+}
 
 func main() {
 	flag.Parse()
@@ -51,8 +79,7 @@ func main() {
 	if *file == "" {
 		*file = os.Getenv("GOFILE")
 		if *file == "" {
-			fmt.Println(chalk.Red.Color("No file to parse."))
-			os.Exit(1)
+			fatalln("msgp: no input file given")
 		}
 	}
 
@@ -68,13 +95,12 @@ func main() {
 	}
 
 	if mode&^gen.Test == 0 {
-		fmt.Println(chalk.Red.Color("No methods to generate; -io=false && -marshal=false"))
+		fatalln("msgp: no methods to generate; -io=false && -marshal=false")
 		os.Exit(1)
 	}
 
 	if err := Run(*file, mode, *unexported); err != nil {
-		fmt.Println(chalk.Red.Color(err.Error()))
-		os.Exit(1)
+		fatalln("msgp: " + err.Error())
 	}
 }
 
@@ -84,21 +110,23 @@ func main() {
 //
 func Run(gofile string, mode gen.Method, unexported bool) error {
 	if mode&^gen.Test == 0 {
+		logln("msgp: no code to generate?")
 		return nil
 	}
-	fmt.Println(chalk.Magenta.Color("======== MessagePack Code Generator ======="))
-	fmt.Printf(chalk.Magenta.Color(">>> Input: \"%s\"\n"), gofile)
-	fs, err := parse.File(gofile, unexported)
+	logf("msgp: input: \"%s\"\n", gofile)
+	fs, err := parse.File(gofile, &logger{}, unexported)
 	if err != nil {
 		return err
 	}
 
 	if len(fs.Identities) == 0 {
-		fmt.Println(chalk.Magenta.Color("No types requiring code generation were found!"))
+		logln("msgp: no types requiring code generation were found")
 		return nil
 	}
 
-	return printer.PrintFile(newFilename(gofile, fs.Package), fs, mode)
+	outfile := newFilename(gofile, fs.Package)
+	logf("msgp: writing %s\n", outfile)
+	return printer.PrintFile(outfile, fs, mode)
 }
 
 // picks a new file name based on input flags and input filename(s).
