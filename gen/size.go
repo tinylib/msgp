@@ -5,7 +5,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )
 
 type sizeState uint8
