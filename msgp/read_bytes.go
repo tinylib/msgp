@@ -314,8 +314,7 @@ func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 	}
 
 	if b[0] != mfloat32 {
-		err = TypeError{Method: Float32Type, Encoded: getType(b[0])}
-		return
+		return 0, b, TypeError{Method: Float32Type, Encoded: getType(b[0])}
 	}
 
 	f = math.Float32frombits(getMuint32(b))
@@ -865,8 +864,7 @@ func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 			b = b[5:]
 
 		default:
-			err = TypeError{Method: StrType, Encoded: getType(lead)}
-			return
+			return nil, b, TypeError{Method: StrType, Encoded: getType(lead)}
 		}
 	}
 

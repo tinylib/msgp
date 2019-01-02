@@ -677,3 +677,14 @@ func BenchmarkSkipBytes(b *testing.B) {
 		}
 	}
 }
+
+func TestReadMapKeyZC(t *testing.T) {
+	b := []byte{196, 1, 97}
+	if a, r, err := ReadMapKeyZC(b); err != nil {
+		t.Fatal(err)
+	} else if bytes.Compare(a, []byte("a")) != 0 {
+		t.Fatalf(`expected "a" got %q`, a)
+	} else if len(r) != 0 {
+		t.Fatalf("expected 0 got %d", len(r))
+	}
+}
