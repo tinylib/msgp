@@ -552,6 +552,44 @@ func TestReadComplex128Bytes(t *testing.T) {
 	}
 }
 
+// both the 'str' and 'bin' types are acceptable map keys
+func TestReadMapKey(t *testing.T) {
+	args := []string{
+		"a",
+		"ab",
+		"qwertyuiop",
+	}
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+
+	for i := range args {
+		en.WriteString(args[i])
+		en.WriteBytes([]byte(args[i]))
+	}
+	en.Flush()
+	b := buf.Bytes()
+
+	for i := range args {
+		var s0, s1 []byte
+		var err error
+
+		s0, b, err = ReadMapKeyZC(b)
+		if err != nil {
+			t.Fatalf("couldn't read string as map key: %q", err)
+		}
+		s1, b, err = ReadMapKeyZC(b)
+		if err != nil {
+			t.Fatalf("couldn't read bytes as map key: %q", err)
+		}
+		if !bytes.Equal(s0, s1) {
+			t.Fatalf("%q != %q", s0, s1)
+		}
+		if string(s0) != args[i] {
+			t.Fatalf("%q != %q", s0, args[i])
+		}
+	}
+}
+
 func TestReadComplex64Bytes(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
