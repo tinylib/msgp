@@ -335,6 +335,7 @@ func (fs *FileSet) parseFieldList(fl *ast.FieldList) []gen.StructField {
 func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 	sf := make([]gen.StructField, 1)
 	var extension bool
+	var flatten bool
 	// parse tag; otherwise field name is field tag
 	if f.Tag != nil {
 		body := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("msg")
@@ -344,6 +345,9 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 		tags := strings.Split(body, ",")
 		if len(tags) == 2 && tags[1] == "extension" {
 			extension = true
+		}
+		if len(tags) == 2 && tags[1] == "flatten" {
+			flatten = true
 		}
 		// ignore "-" fields
 		if tags[0] == "-" {
@@ -361,7 +365,11 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 	// parse field name
 	switch len(f.Names) {
 	case 0:
-		sf[0].FieldName = embedded(f.Type)
+		if flatten {
+			return fs.getFieldsFromEmbeddedStruct(f.Type)
+		} else {
+			sf[0].FieldName = embedded(f.Type)
+		}
 	case 1:
 		sf[0].FieldName = f.Names[0].Name
 	default:
@@ -400,6 +408,22 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 		}
 	}
 	return sf
+}
+
+func (fs *FileSet) getFieldsFromEmbeddedStruct(f ast.Expr) []gen.StructField {
+	switch f := f.(type) {
+	case *ast.Ident:
+		s := fs.Specs[f.Name]
+		switch s := s.(type) {
+		case *ast.StructType:
+			return fs.parseFieldList(s.Fields)
+		default:
+			return nil
+		}
+	default:
+		// other possibilities are disallowed
+		return nil
+	}
 }
 
 // extract embedded field name
