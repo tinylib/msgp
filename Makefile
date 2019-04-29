@@ -27,7 +27,7 @@ $(MGEN): ./msgp/defs_test.go
 	go generate ./msgp
 
 test: all
-	go test -v ./...
+	go test ./... ./_generated
 
 bench: all
 	go test -bench ./...
@@ -49,4 +49,5 @@ travis:
 	go build -o "$${GOPATH%%:*}/bin/msgp" .
 	go generate ./msgp
 	go generate ./_generated
-	go test -v ./...
+	go generate ./_generated/embeddedStruct
+	go test -v ./... ./_generated ./_generated/embeddedStruct
