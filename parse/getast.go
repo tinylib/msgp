@@ -19,6 +19,7 @@ import (
 type FileSet struct {
 	Package    string              // package name
 	Specs      map[string]ast.Expr // type specs in file
+	Aliases    map[string]ast.Expr // alias specs in file
 	Identities map[string]gen.Elem // processed from specs
 	Directives []string            // raw preprocessor directives
 	Imports    []*ast.ImportSpec   // imports
@@ -35,6 +36,7 @@ func File(name string, unexported bool) (*FileSet, error) {
 	defer popstate()
 	fs := &FileSet{
 		Specs:      make(map[string]ast.Expr),
+		Aliases:    make(map[string]ast.Expr),
 		Identities: make(map[string]gen.Elem),
 	}
 
@@ -293,8 +295,11 @@ func (fs *FileSet) getTypeSpecs(f *ast.File) {
 						*ast.StarExpr,
 						*ast.MapType,
 						*ast.Ident:
-						fs.Specs[ts.Name.Name] = ts.Type
-
+						if ts.Assign > 0 {
+							fs.Aliases[ts.Name.Name] = ts.Type
+						} else {
+							fs.Specs[ts.Name.Name] = ts.Type
+						}
 					}
 				}
 			}
@@ -353,7 +358,16 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 		sf[0].RawTag = f.Tag.Value
 	}
 
-	ex := fs.parseExpr(f.Type)
+	var ex gen.Elem
+	if i, ok := f.Type.(*ast.Ident); ok {
+		if at, ok := fs.Aliases[i.Name]; ok {
+			ex = fs.parseExpr(at)
+		} else {
+			ex = fs.parseExpr(f.Type)
+		}
+	} else {
+		ex = fs.parseExpr(f.Type)
+	}
 	if ex == nil {
 		return nil
 	}
