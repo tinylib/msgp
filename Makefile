@@ -49,5 +49,4 @@ travis:
 	go build -o "$${GOPATH%%:*}/bin/msgp" .
 	go generate ./msgp
 	go generate ./_generated
-	go generate ./_generated/embeddedStruct
-	go test -v ./... ./_generated ./_generated/embeddedStruct
+	go test -v ./... ./_generated
