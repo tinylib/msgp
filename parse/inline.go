@@ -1,7 +1,7 @@
 package parse
 
 import (
-	"github.com/tinylib/msgp/gen"
+	"github.com/GannettDigital/msgp/gen"
 )
 
 // This file defines when and how we

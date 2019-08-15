@@ -29,9 +29,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tinylib/msgp/gen"
-	"github.com/tinylib/msgp/parse"
-	"github.com/tinylib/msgp/printer"
+	"github.com/GannettDigital/msgp/gen"
+	"github.com/GannettDigital/msgp/parse"
+	"github.com/GannettDigital/msgp/printer"
 	"github.com/ttacon/chalk"
 )
 
@@ -98,7 +98,14 @@ func Run(gofile string, mode gen.Method, unexported bool) error {
 		return nil
 	}
 
-	return printer.PrintFile(newFilename(gofile, fs.Package), fs, mode)
+	if err := printer.PrintFile(newFilename(gofile, fs.Package), fs, mode); err != nil {
+		return err
+	}
+
+	fmt.Printf(chalk.Magenta.Color(">>> Wrote and formatted \"%s\"\n"), gofile)
+	fmt.Printf(chalk.Magenta.Color(">>> Wrote and formatted \"%s\"\n"), strings.TrimSuffix(gofile, ".go")+"_test.go")
+
+	return nil
 }
 
 // picks a new file name based on input flags and input filename(s).
