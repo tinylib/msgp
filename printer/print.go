@@ -7,15 +7,10 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/tinylib/msgp/gen"
-	"github.com/tinylib/msgp/parse"
-	"github.com/ttacon/chalk"
+	"github.com/GannettDigital/msgp/gen"
+	"github.com/GannettDigital/msgp/parse"
 	"golang.org/x/tools/imports"
 )
-
-func infof(s string, v ...interface{}) {
-	fmt.Printf(chalk.Magenta.Color(s), v...)
-}
 
 // PrintFile prints the methods for the provided list
 // of elements to the given file name and canonical
@@ -39,7 +34,6 @@ func PrintFile(file string, f *parse.FileSet, mode gen.Method) error {
 		if err != nil {
 			return err
 		}
-		infof(">>> Wrote and formatted \"%s\"\n", testfile)
 	}
 	err = <-res
 	if err != nil {
@@ -60,7 +54,6 @@ func goformat(file string, data []byte) <-chan error {
 	out := make(chan error, 1)
 	go func(file string, data []byte, end chan error) {
 		end <- format(file, data)
-		infof(">>> Wrote and formatted \"%s\"\n", file)
 	}(file, data, out)
 	return out
 }
@@ -81,7 +74,7 @@ func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, 
 	outbuf := bytes.NewBuffer(make([]byte, 0, 4096))
 	writePkgHeader(outbuf, f.Package)
 
-	myImports := []string{"github.com/tinylib/msgp/msgp"}
+	myImports := []string{"github.com/GannettDigital/msgp/msgp"}
 	for _, imp := range f.Imports {
 		if imp.Name != nil {
 			// have an alias, include it.
@@ -99,9 +92,9 @@ func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, 
 		testbuf = bytes.NewBuffer(make([]byte, 0, 4096))
 		writePkgHeader(testbuf, f.Package)
 		if mode&(gen.Encode|gen.Decode) != 0 {
-			writeImportHeader(testbuf, "bytes", "github.com/tinylib/msgp/msgp", "testing")
+			writeImportHeader(testbuf, "bytes", "github.com/GannettDigital/msgp/msgp", "testing")
 		} else {
-			writeImportHeader(testbuf, "github.com/tinylib/msgp/msgp", "testing")
+			writeImportHeader(testbuf, "github.com/GannettDigital/msgp/msgp", "testing")
 		}
 		testwr = testbuf
 	}
