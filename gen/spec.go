@@ -1,8 +1,10 @@
 package gen
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"math"
 )
 
 const (
@@ -431,4 +433,92 @@ func (p *printer) ok() bool { return p.err == nil }
 
 func tobaseConvert(b *BaseElem) string {
 	return b.ToBase() + "(" + b.Varname() + ")"
+}
+
+func (p *printer) varMapHeader(pre, post string, sizeVarname string, maxSize int) {
+
+	if maxSize <= 15 {
+		p.printf("\n%s 0x80 | (uint8(%s)&0x0F) %s", pre, sizeVarname, post)
+	} else if maxSize <= math.MaxUint16 {
+		p.print("\nswitch {")
+		p.printf("\ncase %s <= 15:", sizeVarname)
+		p.printf("\n%s 0x80 | (uint8(%s)&0x0F) %s", pre, sizeVarname, post)
+		p.print("\ndefault:")
+		p.printf("\n%s 0xde, uint8(%s>>8), uint8(%s) %s", pre, sizeVarname, sizeVarname, post)
+		p.print("\n}")
+	} else {
+		p.print("\nswitch {")
+		p.printf("\ncase %s <= 15:", sizeVarname)
+		p.printf("\n%s 0x80 | (uint8(%s)&0x0F) %s", pre, sizeVarname, post)
+		p.printf("\ncase %s <= %d:", sizeVarname, math.MaxUint16)
+		p.printf("\n%s 0xde, uint8(%s>>8), uint8(%s) %s", pre, sizeVarname, sizeVarname, post)
+		p.print("\ndefault:")
+		p.printf("\n%s 0xdf, uint8(%s>>24), uint8(%s>>16), uint8(%s>>8) uint8(%s) %s", pre, sizeVarname, sizeVarname, sizeVarname, sizeVarname, post)
+		p.print("\n}")
+	}
+
+}
+
+// bmask is a bitmask of a the specified number of bits
+type bmask struct {
+	bitlen  int
+	varname string
+}
+
+// typeDecl returns the variable declaration as a var statement
+func (b *bmask) typeDecl() string {
+	return fmt.Sprintf("var %s %s /* %d bits */", b.varname, b.typeName(), b.bitlen)
+}
+
+// typeName returns the type, e.g. "uint8" or "[2]uint64"
+func (b *bmask) typeName() string {
+
+	if b.bitlen <= 8 {
+		return "uint8"
+	}
+	if b.bitlen <= 16 {
+		return "uint16"
+	}
+	if b.bitlen <= 32 {
+		return "uint32"
+	}
+	if b.bitlen <= 64 {
+		return "uint64"
+	}
+
+	return fmt.Sprintf("[%d]uint64", (b.bitlen>>6)+1) // (bitlen/64)+1
+}
+
+// readExpr returns the expression to read from a position in the bitmask.
+// Compare ==0 for false or !=0 for true.
+func (b *bmask) readExpr(bitoffset int) string {
+
+	var buf bytes.Buffer
+	buf.Grow(len(b.varname) + 16)
+	buf.WriteByte('(')
+	buf.WriteString(b.varname)
+	if b.bitlen > 64 {
+		fmt.Fprintf(&buf, "[%d]", (bitoffset >> 6))
+	}
+	buf.WriteByte('&')
+	fmt.Fprintf(&buf, "0x%X", (uint64(1) << (uint64(bitoffset) & 0x3F)))
+	buf.WriteByte(')')
+
+	return buf.String()
+
+}
+
+// setStmt returns the statement to set the specified bit in the bitmask.
+func (b *bmask) setStmt(bitoffset int) string {
+
+	var buf bytes.Buffer
+	buf.Grow(len(b.varname) + 16)
+	buf.WriteString(b.varname)
+	if b.bitlen > 64 {
+		fmt.Fprintf(&buf, "[%d]", (bitoffset >> 6))
+	}
+	fmt.Fprintf(&buf, " |= 0x%X", (uint64(1) << (uint64(bitoffset) & 0x3F)))
+
+	return buf.String()
+
 }

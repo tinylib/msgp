@@ -178,6 +178,18 @@ type Elem interface {
 	// or equal to 1.)
 	Complexity() int
 
+	// ZeroExpr returns the expression for the correct zero/empty
+	// value.  Can be used for assignment.
+	// Returns "" if zero/empty not supported for this Elem.
+	ZeroExpr() string
+
+	// IfZeroExpr returns the expression to compare to zero/empty
+	// for this type.  It is meant to be used in an if statement
+	// and may include the simple statement form followed by
+	// semicolon and then the expression.
+	// Returns "" if zero/empty not supported for this Elem.
+	IfZeroExpr() string
+
 	hidden()
 }
 
@@ -230,6 +242,12 @@ func (a *Array) Copy() Elem {
 
 func (a *Array) Complexity() int { return 1 + a.Els.Complexity() }
 
+// ZeroExpr returns the zero/empty expression or empty string if not supported.  Unsupported for this case.
+func (a *Array) ZeroExpr() string { return "" }
+
+// IfZeroExpr unsupported
+func (a *Array) IfZeroExpr() string { return "" }
+
 // Map is a map[string]Elem
 type Map struct {
 	common
@@ -268,6 +286,12 @@ func (m *Map) Copy() Elem {
 
 func (m *Map) Complexity() int { return 2 + m.Value.Complexity() }
 
+// ZeroExpr returns the zero/empty expression or empty string if not supported.  Always "nil" for this case.
+func (m *Map) ZeroExpr() string { return "nil" }
+
+// IfZeroExpr returns the expression to compare to zero/empty.
+func (m *Map) IfZeroExpr() string { return m.Varname() + " == nil" }
+
 type Slice struct {
 	common
 	Index string
@@ -302,6 +326,12 @@ func (s *Slice) Copy() Elem {
 func (s *Slice) Complexity() int {
 	return 1 + s.Els.Complexity()
 }
+
+// ZeroExpr returns the zero/empty expression or empty string if not supported.  Always "nil" for this case.
+func (s *Slice) ZeroExpr() string { return "nil" }
+
+// IfZeroExpr returns the expression to compare to zero/empty.
+func (s *Slice) IfZeroExpr() string { return s.Varname() + " == nil" }
 
 type Ptr struct {
 	common
@@ -357,6 +387,12 @@ func (s *Ptr) Needsinit() bool {
 	return true
 }
 
+// ZeroExpr returns the zero/empty expression or empty string if not supported.  Always "nil" for this case.
+func (s *Ptr) ZeroExpr() string { return "nil" }
+
+// IfZeroExpr returns the expression to compare to zero/empty.
+func (s *Ptr) IfZeroExpr() string { return s.Varname() + " == nil" }
+
 type Struct struct {
 	common
 	Fields  []StructField // field list
@@ -401,11 +437,51 @@ func (s *Struct) Complexity() int {
 	return c
 }
 
+// ZeroExpr returns the zero/empty expression or empty string if not supported.
+func (s *Struct) ZeroExpr() string {
+	if s.alias == "" {
+		return "" // structs with no names not supported (for now)
+	}
+	return "(" + s.TypeName() + "{})"
+}
+
+// IfZeroExpr returns the expression to compare to zero/empty.
+func (s *Struct) IfZeroExpr() string {
+	if s.alias == "" {
+		return "" // structs with no names not supported (for now)
+	}
+	return s.Varname() + " == " + s.ZeroExpr()
+}
+
+// AnyHasTagPart returns true if HasTagPart(p) is true for any field.
+func (s *Struct) AnyHasTagPart(pname string) bool {
+	for _, sf := range s.Fields {
+		if sf.HasTagPart(pname) {
+			return true
+		}
+	}
+	return false
+}
+
 type StructField struct {
-	FieldTag  string // the string inside the `msg:""` tag
-	RawTag    string // the full struct tag
-	FieldName string // the name of the struct field
-	FieldElem Elem   // the field type
+	FieldTag      string   // the string inside the `msg:""` tag up to the first comma
+	FieldTagParts []string // the string inside the `msg:""` tag split by commas
+	RawTag        string   // the full struct tag
+	FieldName     string   // the name of the struct field
+	FieldElem     Elem     // the field type
+}
+
+// HasTagPart returns true if the specified tag part (option) is present.
+func (sf *StructField) HasTagPart(pname string) bool {
+	if len(sf.FieldTagParts) < 2 {
+		return false
+	}
+	for _, p := range sf.FieldTagParts[1:] {
+		if p == pname {
+			return true
+		}
+	}
+	return false
 }
 
 type ShimMode int
@@ -546,6 +622,50 @@ func (s *BaseElem) Resolved() bool {
 		return ok
 	}
 	return true
+}
+
+// ZeroExpr returns the zero/empty expression or empty string if not supported.
+func (s *BaseElem) ZeroExpr() string {
+
+	switch s.Value {
+	case Bytes:
+		return "nil"
+	case String:
+		return "\"\""
+	case Complex64, Complex128:
+		return "complex(0,0)"
+	case Float32,
+		Float64,
+		Uint,
+		Uint8,
+		Uint16,
+		Uint32,
+		Uint64,
+		Byte,
+		Int,
+		Int8,
+		Int16,
+		Int32,
+		Int64:
+		return "0"
+	case Bool:
+		return "false"
+
+	case Time:
+		return "(time.Time{})"
+
+	}
+
+	return ""
+}
+
+// IfZeroExpr returns the expression to compare to zero/empty.
+func (s *BaseElem) IfZeroExpr() string {
+	z := s.ZeroExpr()
+	if z == "" {
+		return ""
+	}
+	return s.Varname() + " == " + z
 }
 
 func (k Primitive) String() string {
