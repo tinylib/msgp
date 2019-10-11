@@ -128,7 +128,7 @@ func (e *encodeGen) structmap(s *Struct) {
 		fieldNVar = oeIdentPrefix + "Len"
 
 		e.p.printf("\n// omitempty: check for empty values")
-		e.p.printf("\n%s := %d", fieldNVar, nfields)
+		e.p.printf("\n%s := uint32(%d)", fieldNVar, nfields)
 		e.p.printf("\n%s", bm.typeDecl())
 		for i, sf := range s.Fields {
 			if !e.p.ok() {
@@ -143,7 +143,7 @@ func (e *encodeGen) structmap(s *Struct) {
 		}
 
 		e.p.printf("\n// variable map header, size %s", fieldNVar)
-		e.p.varMapHeader("err = en.Append(", ")", fieldNVar, nfields)
+		e.p.varWriteMapHeader("en", fieldNVar, nfields)
 		e.p.print("\nif err != nil { return }")
 		if !e.p.ok() {
 			return

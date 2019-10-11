@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"math"
 )
 
 const (
@@ -435,28 +434,20 @@ func tobaseConvert(b *BaseElem) string {
 	return b.ToBase() + "(" + b.Varname() + ")"
 }
 
-func (p *printer) varMapHeader(pre, post string, sizeVarname string, maxSize int) {
-
+func (p *printer) varWriteMapHeader(receiver string, sizeVarname string, maxSize int) {
 	if maxSize <= 15 {
-		p.printf("\n%s 0x80 | (uint8(%s)&0x0F) %s", pre, sizeVarname, post)
-	} else if maxSize <= math.MaxUint16 {
-		p.print("\nswitch {")
-		p.printf("\ncase %s <= 15:", sizeVarname)
-		p.printf("\n%s 0x80 | (uint8(%s)&0x0F) %s", pre, sizeVarname, post)
-		p.print("\ndefault:")
-		p.printf("\n%s 0xde, uint8(%s>>8), uint8(%s) %s", pre, sizeVarname, sizeVarname, post)
-		p.print("\n}")
+		p.printf("\nerr = %s.Append(0x80 | uint8(%s))", receiver, sizeVarname)
 	} else {
-		p.print("\nswitch {")
-		p.printf("\ncase %s <= 15:", sizeVarname)
-		p.printf("\n%s 0x80 | (uint8(%s)&0x0F) %s", pre, sizeVarname, post)
-		p.printf("\ncase %s <= %d:", sizeVarname, math.MaxUint16)
-		p.printf("\n%s 0xde, uint8(%s>>8), uint8(%s) %s", pre, sizeVarname, sizeVarname, post)
-		p.print("\ndefault:")
-		p.printf("\n%s 0xdf, uint8(%s>>24), uint8(%s>>16), uint8(%s>>8) uint8(%s) %s", pre, sizeVarname, sizeVarname, sizeVarname, sizeVarname, post)
-		p.print("\n}")
+		p.printf("\nerr = %s.WriteMapHeader(%s)", receiver, sizeVarname)
 	}
+}
 
+func (p *printer) varAppendMapHeader(sliceVarname string, sizeVarname string, maxSize int) {
+	if maxSize <= 15 {
+		p.printf("\n%s = append(%s, 0x80 | uint8(%s))", sliceVarname, sliceVarname, sizeVarname)
+	} else {
+		p.printf("\n%s = msgp.AppendMapHeader(%s, %s)", sliceVarname, sliceVarname, sizeVarname)
+	}
 }
 
 // bmask is a bitmask of a the specified number of bits
@@ -486,22 +477,26 @@ func (b *bmask) typeName() string {
 		return "uint64"
 	}
 
-	return fmt.Sprintf("[%d]uint64", (b.bitlen>>6)+1) // (bitlen/64)+1
+	return fmt.Sprintf("[%d]uint64", (b.bitlen+64-1)/64)
 }
 
 // readExpr returns the expression to read from a position in the bitmask.
 // Compare ==0 for false or !=0 for true.
 func (b *bmask) readExpr(bitoffset int) string {
 
+	if bitoffset < 0 || bitoffset >= b.bitlen {
+		panic(fmt.Errorf("bitoffset %d out of range for bitlen %d", bitoffset, b.bitlen))
+	}
+
 	var buf bytes.Buffer
 	buf.Grow(len(b.varname) + 16)
 	buf.WriteByte('(')
 	buf.WriteString(b.varname)
 	if b.bitlen > 64 {
-		fmt.Fprintf(&buf, "[%d]", (bitoffset >> 6))
+		fmt.Fprintf(&buf, "[%d]", (bitoffset / 64))
 	}
 	buf.WriteByte('&')
-	fmt.Fprintf(&buf, "0x%X", (uint64(1) << (uint64(bitoffset) & 0x3F)))
+	fmt.Fprintf(&buf, "0x%X", (uint64(1) << (uint64(bitoffset) % 64)))
 	buf.WriteByte(')')
 
 	return buf.String()
@@ -515,9 +510,9 @@ func (b *bmask) setStmt(bitoffset int) string {
 	buf.Grow(len(b.varname) + 16)
 	buf.WriteString(b.varname)
 	if b.bitlen > 64 {
-		fmt.Fprintf(&buf, "[%d]", (bitoffset >> 6))
+		fmt.Fprintf(&buf, "[%d]", (bitoffset / 64))
 	}
-	fmt.Fprintf(&buf, " |= 0x%X", (uint64(1) << (uint64(bitoffset) & 0x3F)))
+	fmt.Fprintf(&buf, " |= 0x%X", (uint64(1) << (uint64(bitoffset) % 64)))
 
 	return buf.String()
 

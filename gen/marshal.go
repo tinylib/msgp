@@ -123,7 +123,7 @@ func (m *marshalGen) mapstruct(s *Struct) {
 		fieldNVar = oeIdentPrefix + "Len"
 
 		m.p.printf("\n// omitempty: check for empty values")
-		m.p.printf("\n%s := %d", fieldNVar, nfields)
+		m.p.printf("\n%s := uint32(%d)", fieldNVar, nfields)
 		m.p.printf("\n%s", bm.typeDecl())
 		for i, sf := range s.Fields {
 			if !m.p.ok() {
@@ -138,7 +138,7 @@ func (m *marshalGen) mapstruct(s *Struct) {
 		}
 
 		m.p.printf("\n// variable map header, size %s", fieldNVar)
-		m.p.varMapHeader("o = append(o,", ")", fieldNVar, nfields)
+		m.p.varAppendMapHeader("o", fieldNVar, nfields)
 		if !m.p.ok() {
 			return
 		}
