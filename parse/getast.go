@@ -355,6 +355,7 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 			return nil
 		}
 		sf[0].FieldTag = tags[0]
+		sf[0].FieldTagParts = tags
 		sf[0].RawTag = f.Tag.Value
 	}
 
@@ -389,6 +390,7 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 	sf[0].FieldElem = ex
 	if sf[0].FieldTag == "" {
 		sf[0].FieldTag = sf[0].FieldName
+		sf[0].FieldTagParts = []string{sf[0].FieldName}
 	}
 
 	// validate extension

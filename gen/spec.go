@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 )
@@ -431,4 +432,88 @@ func (p *printer) ok() bool { return p.err == nil }
 
 func tobaseConvert(b *BaseElem) string {
 	return b.ToBase() + "(" + b.Varname() + ")"
+}
+
+func (p *printer) varWriteMapHeader(receiver string, sizeVarname string, maxSize int) {
+	if maxSize <= 15 {
+		p.printf("\nerr = %s.Append(0x80 | uint8(%s))", receiver, sizeVarname)
+	} else {
+		p.printf("\nerr = %s.WriteMapHeader(%s)", receiver, sizeVarname)
+	}
+}
+
+func (p *printer) varAppendMapHeader(sliceVarname string, sizeVarname string, maxSize int) {
+	if maxSize <= 15 {
+		p.printf("\n%s = append(%s, 0x80 | uint8(%s))", sliceVarname, sliceVarname, sizeVarname)
+	} else {
+		p.printf("\n%s = msgp.AppendMapHeader(%s, %s)", sliceVarname, sliceVarname, sizeVarname)
+	}
+}
+
+// bmask is a bitmask of a the specified number of bits
+type bmask struct {
+	bitlen  int
+	varname string
+}
+
+// typeDecl returns the variable declaration as a var statement
+func (b *bmask) typeDecl() string {
+	return fmt.Sprintf("var %s %s /* %d bits */", b.varname, b.typeName(), b.bitlen)
+}
+
+// typeName returns the type, e.g. "uint8" or "[2]uint64"
+func (b *bmask) typeName() string {
+
+	if b.bitlen <= 8 {
+		return "uint8"
+	}
+	if b.bitlen <= 16 {
+		return "uint16"
+	}
+	if b.bitlen <= 32 {
+		return "uint32"
+	}
+	if b.bitlen <= 64 {
+		return "uint64"
+	}
+
+	return fmt.Sprintf("[%d]uint64", (b.bitlen+64-1)/64)
+}
+
+// readExpr returns the expression to read from a position in the bitmask.
+// Compare ==0 for false or !=0 for true.
+func (b *bmask) readExpr(bitoffset int) string {
+
+	if bitoffset < 0 || bitoffset >= b.bitlen {
+		panic(fmt.Errorf("bitoffset %d out of range for bitlen %d", bitoffset, b.bitlen))
+	}
+
+	var buf bytes.Buffer
+	buf.Grow(len(b.varname) + 16)
+	buf.WriteByte('(')
+	buf.WriteString(b.varname)
+	if b.bitlen > 64 {
+		fmt.Fprintf(&buf, "[%d]", (bitoffset / 64))
+	}
+	buf.WriteByte('&')
+	fmt.Fprintf(&buf, "0x%X", (uint64(1) << (uint64(bitoffset) % 64)))
+	buf.WriteByte(')')
+
+	return buf.String()
+
+}
+
+// setStmt returns the statement to set the specified bit in the bitmask.
+func (b *bmask) setStmt(bitoffset int) string {
+
+	var buf bytes.Buffer
+	buf.Grow(len(b.varname) + 16)
+	buf.WriteString(b.varname)
+	if b.bitlen > 64 {
+		fmt.Fprintf(&buf, "[%d]", (bitoffset / 64))
+	}
+	fmt.Fprintf(&buf, " |= 0x%X", (uint64(1) << (uint64(bitoffset) % 64)))
+
+	return buf.String()
+
 }

@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -110,24 +111,85 @@ func (e *encodeGen) appendraw(bts []byte) {
 }
 
 func (e *encodeGen) structmap(s *Struct) {
+
+	oeIdentPrefix := randIdent()
+
+	var data []byte
 	nfields := len(s.Fields)
-	data := msgp.AppendMapHeader(nil, uint32(nfields))
-	e.p.printf("\n// map header, size %d", nfields)
-	e.Fuse(data)
-	if len(s.Fields) == 0 {
-		e.fuseHook()
+	bm := bmask{
+		bitlen:  nfields,
+		varname: oeIdentPrefix + "Mask",
 	}
+
+	omitempty := s.AnyHasTagPart("omitempty")
+	var fieldNVar string
+	if omitempty {
+
+		fieldNVar = oeIdentPrefix + "Len"
+
+		e.p.printf("\n// omitempty: check for empty values")
+		e.p.printf("\n%s := uint32(%d)", fieldNVar, nfields)
+		e.p.printf("\n%s", bm.typeDecl())
+		for i, sf := range s.Fields {
+			if !e.p.ok() {
+				return
+			}
+			if ize := sf.FieldElem.IfZeroExpr(); ize != "" && sf.HasTagPart("omitempty") {
+				e.p.printf("\nif %s {", ize)
+				e.p.printf("\n%s--", fieldNVar)
+				e.p.printf("\n%s", bm.setStmt(i))
+				e.p.printf("\n}")
+			}
+		}
+
+		e.p.printf("\n// variable map header, size %s", fieldNVar)
+		e.p.varWriteMapHeader("en", fieldNVar, nfields)
+		e.p.print("\nif err != nil { return }")
+		if !e.p.ok() {
+			return
+		}
+
+		// quick return for the case where the entire thing is empty, but only at the top level
+		if !strings.Contains(s.Varname(), ".") {
+			e.p.printf("\nif %s == 0 { return }", fieldNVar)
+		}
+
+	} else {
+
+		// non-omitempty version
+		data = msgp.AppendMapHeader(nil, uint32(nfields))
+		e.p.printf("\n// map header, size %d", nfields)
+		e.Fuse(data)
+		if len(s.Fields) == 0 {
+			e.fuseHook()
+		}
+
+	}
+
 	for i := range s.Fields {
 		if !e.p.ok() {
 			return
 		}
+
+		// if field is omitempty, wrap with if statement based on the emptymask
+		oeField := s.Fields[i].HasTagPart("omitempty") && s.Fields[i].FieldElem.IfZeroExpr() != ""
+		if oeField {
+			e.p.printf("\nif %s == 0 { // if not empty", bm.readExpr(i))
+		}
+
 		data = msgp.AppendString(nil, s.Fields[i].FieldTag)
 		e.p.printf("\n// write %q", s.Fields[i].FieldTag)
 		e.Fuse(data)
+		e.fuseHook()
 
 		e.ctx.PushString(s.Fields[i].FieldName)
 		next(e, s.Fields[i].FieldElem)
 		e.ctx.Pop()
+
+		if oeField {
+			e.p.print("\n}") // close if statement
+		}
+
 	}
 }
 
