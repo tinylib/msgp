@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestCopyJSON(t *testing.T) {
@@ -66,6 +67,33 @@ func TestCopyJSON(t *testing.T) {
 		if !ok || !reflect.DeepEqual(inm1, "blah") {
 			t.Errorf("inner map field %q should be %q, not %q", "internal_one", "blah", inm1)
 		}
+	}
+}
+
+// Encoder should generate valid utf-8 even if passed bad input
+func TestCopyJSONNegativeUTF8(t *testing.T) {
+	// Single string with non-compliant utf-8 byte
+	stringWithBadUTF8 := []byte{
+		0xa1, 0xe0,
+	}
+
+	src := bytes.NewBuffer(stringWithBadUTF8)
+
+	var js bytes.Buffer
+	_, err := CopyToJSON(&js, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Even though we provided bad input, should have escaped the naughty character
+	if !utf8.Valid(js.Bytes()) {
+		t.Errorf("Expected JSON to be valid utf-8 even when provided bad input")
+	}
+
+	// Expect a bad character string
+	expected := `"\ufffd"`
+	if js.String() != expected {
+		t.Errorf("Expected: '%s', got: '%s'", expected, js.String())
 	}
 }
 
