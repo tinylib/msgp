@@ -3,6 +3,7 @@ package msgp
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 )
@@ -86,4 +87,45 @@ func TestCauseShortByte(t *testing.T) {
 	if Cause(err) != err {
 		t.Fatal()
 	}
+}
+
+func TestUnwrap(t *testing.T) {
+
+	// check errors that get wrapped
+	for idx, err := range []error{
+		errors.New("test"),
+		io.EOF,
+	} {
+		t.Run(fmt.Sprintf("wrapped_%d", idx), func(t *testing.T) {
+			cerr := WrapError(err, "test")
+			if cerr == err {
+				t.Fatal()
+			}
+			uwerr := errors.Unwrap(cerr)
+			if uwerr != err {
+				t.Fatal()
+			}
+			if !errors.Is(cerr, err) {
+				t.Fatal()
+			}
+		})
+	}
+
+	// check errors where only context is applied
+	for idx, err := range []error{
+		ArrayError{},
+		&ErrUnsupportedType{},
+	} {
+		t.Run(fmt.Sprintf("ctx_only_%d", idx), func(t *testing.T) {
+			cerr := WrapError(err, "test")
+			if cerr == err {
+				t.Fatal()
+			}
+			if errors.Unwrap(cerr) != nil {
+				t.Fatal()
+			}
+
+		})
+	}
+
 }
