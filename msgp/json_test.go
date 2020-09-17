@@ -11,7 +11,8 @@ import (
 func TestCopyJSON(t *testing.T) {
 	var buf bytes.Buffer
 	enc := NewWriter(&buf)
-	enc.WriteMapHeader(5)
+	const mapLength = 6
+	enc.WriteMapHeader(mapLength)
 
 	enc.WriteString("thing_1")
 	enc.WriteString("a string object")
@@ -33,6 +34,9 @@ func TestCopyJSON(t *testing.T) {
 		"internal_one": "blah",
 		"internal_two": "blahhh...",
 	})
+	enc.WriteString("float64")
+	const encodedFloat64 = 1672209023
+	enc.WriteFloat64(encodedFloat64)
 	enc.Flush()
 
 	var js bytes.Buffer
@@ -47,8 +51,8 @@ func TestCopyJSON(t *testing.T) {
 		t.Fatalf("Error unmarshaling: %s", err)
 	}
 
-	if len(mp) != 5 {
-		t.Errorf("map length should be %d, not %d", 4, len(mp))
+	if len(mp) != mapLength {
+		t.Errorf("map length should be %d, not %d", mapLength, len(mp))
 	}
 
 	so, ok := mp["thing_1"]
@@ -67,6 +71,9 @@ func TestCopyJSON(t *testing.T) {
 		if !ok || !reflect.DeepEqual(inm1, "blah") {
 			t.Errorf("inner map field %q should be %q, not %q", "internal_one", "blah", inm1)
 		}
+	}
+	if actual := mp["float64"]; float64(encodedFloat64) != actual.(float64) {
+		t.Errorf("expected %G, got %G", float64(encodedFloat64), actual)
 	}
 }
 
