@@ -3,22 +3,15 @@ language: go
 arch:
   - amd64
   - ppc64le
+  - arm64
 go:
   - 1.14.x
+  - 1.15.x
   - tip
 
-env:
-  - GIMME_ARCH=amd64
-  - GIMME_ARCH=386
-  - GIMME_ARCH=ppc64le
-jobs: 
-  exclude:
-    - arch: ppc64le
-      env:  GIMME_ARCH=amd64
-    - arch: ppc64le
-      env:  GIMME_ARCH=386
+jobs:
+  include:
     - arch: amd64
-      env:  GIMME_ARCH=ppc64le
-
+      env: GIMME_ARCH=386
 
 script: "make travis"
