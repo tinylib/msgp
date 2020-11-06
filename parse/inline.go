@@ -102,7 +102,7 @@ func (fs *FileSet) propInline() {
 	// make sure we process inlining determinstically:
 	// start with the least-complex elems;
 	// use identifier names as a tie-breaker
-	sort.Slice(all, func(i, j int) bool {
+	sort.SliceStable(all, func(i, j int) bool {
 		ig, jg := &all[i], &all[j]
 		ic, jc := ig.el.Complexity(), jg.el.Complexity()
 		return ic < jc || (ic == jc && ig.name < jg.name)
