@@ -10,6 +10,8 @@ go:
   - tip
 
 jobs:
+  allow_failures:
+    - go: 'tip'
   include:
     - arch: amd64
       env: GIMME_ARCH=386
