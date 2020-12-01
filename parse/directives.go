@@ -120,7 +120,7 @@ func astuple(text []string, f *FileSet) error {
 		if el, ok := f.Identities[name]; ok {
 			if st, ok := el.(*gen.Struct); ok {
 				st.AsTuple = true
-				infoln(name)
+				infof(name)
 			} else {
 				warnf("%s: only structs can be tuples\n", name)
 			}
