@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
-	"github.com/ttacon/chalk"
 )
 
 // A FileSet is the in-memory representation of a
@@ -102,7 +101,7 @@ func (f *FileSet) applyDirectives() {
 				pushstate(chunks[0])
 				err := fn(chunks, f)
 				if err != nil {
-					warnln(err.Error())
+					warnf("directive error: %s", err)
 				}
 				popstate()
 			} else {
@@ -172,7 +171,7 @@ parse:
 		pushstate(name)
 		el := f.parseExpr(def)
 		if el == nil {
-			warnln("failed to parse")
+			warnf("failed to parse")
 			popstate()
 			continue parse
 		}
@@ -324,7 +323,7 @@ func (fs *FileSet) parseFieldList(fl *ast.FieldList) []gen.StructField {
 		if len(fds) > 0 {
 			out = append(out, fds...)
 		} else {
-			warnln("ignored.")
+			warnf("ignored")
 		}
 		popstate()
 	}
@@ -400,13 +399,13 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 			if b, ok := ex.Value.(*gen.BaseElem); ok {
 				b.Value = gen.Ext
 			} else {
-				warnln("couldn't cast to extension.")
+				warnf("couldn't cast to extension.")
 				return nil
 			}
 		case *gen.BaseElem:
 			ex.Value = gen.Ext
 		default:
-			warnln("couldn't cast to extension.")
+			warnf("couldn't cast to extension.")
 			return nil
 		}
 	}
@@ -574,34 +573,22 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	}
 }
 
-func infof(s string, v ...interface{}) {
-	pushstate(s)
-	fmt.Printf(chalk.Green.Color(strings.Join(logctx, ": ")), v...)
-	popstate()
-}
+var Logf func(s string, v ...interface{})
 
-func infoln(s string) {
-	pushstate(s)
-	fmt.Println(chalk.Green.Color(strings.Join(logctx, ": ")))
-	popstate()
+func infof(s string, v ...interface{}) {
+	if Logf != nil {
+		pushstate(s)
+		Logf("info: " + strings.Join(logctx, ": "), v...)
+		popstate()
+	}
 }
 
 func warnf(s string, v ...interface{}) {
-	pushstate(s)
-	fmt.Printf(chalk.Yellow.Color(strings.Join(logctx, ": ")), v...)
-	popstate()
-}
-
-func warnln(s string) {
-	pushstate(s)
-	fmt.Println(chalk.Yellow.Color(strings.Join(logctx, ": ")))
-	popstate()
-}
-
-func fatalf(s string, v ...interface{}) {
-	pushstate(s)
-	fmt.Printf(chalk.Red.Color(strings.Join(logctx, ": ")), v...)
-	popstate()
+	if Logf != nil {
+		pushstate(s)
+		Logf("warn: " + strings.Join(logctx, ": "), v...)
+		popstate()
+	}
 }
 
 var logctx []string
@@ -615,3 +602,4 @@ func pushstate(s string) {
 func popstate() {
 	logctx = logctx[:len(logctx)-1]
 }
+

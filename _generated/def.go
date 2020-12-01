@@ -7,7 +7,7 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-//go:generate msgp -o generated.go
+//go:generate msgp -v -o generated.go
 
 // All of the struct
 // definitions in this

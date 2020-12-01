@@ -32,7 +32,6 @@ import (
 	"github.com/tinylib/msgp/gen"
 	"github.com/tinylib/msgp/parse"
 	"github.com/tinylib/msgp/printer"
-	"github.com/ttacon/chalk"
 )
 
 var (
@@ -42,17 +41,37 @@ var (
 	marshal    = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
 	tests      = flag.Bool("tests", true, "create tests and benchmarks")
 	unexported = flag.Bool("unexported", false, "also process unexported types")
+	verbose    = flag.Bool("v", false, "verbose diagnostics")
 )
+
+func diagf(f string, args ...interface{}) {
+	if !*verbose {
+		return
+	}
+	if f[len(f)-1] != '\n' {
+		f += "\n"
+	}
+	fmt.Fprintf(os.Stderr, f, args...)
+}
+
+func exitln(res string) {
+	fmt.Fprintln(os.Stderr, res)
+	os.Exit(1)
+}
 
 func main() {
 	flag.Parse()
+
+	if *verbose {
+		printer.Logf = diagf
+		parse.Logf = diagf
+	}
 
 	// GOFILE is set by go generate
 	if *file == "" {
 		*file = os.Getenv("GOFILE")
 		if *file == "" {
-			fmt.Println(chalk.Red.Color("No file to parse."))
-			os.Exit(1)
+			exitln("No file to parse.")
 		}
 	}
 
@@ -68,13 +87,11 @@ func main() {
 	}
 
 	if mode&^gen.Test == 0 {
-		fmt.Println(chalk.Red.Color("No methods to generate; -io=false && -marshal=false"))
-		os.Exit(1)
+		exitln("No methods to generate; -io=false && -marshal=false")
 	}
 
 	if err := Run(*file, mode, *unexported); err != nil {
-		fmt.Println(chalk.Red.Color(err.Error()))
-		os.Exit(1)
+		exitln(err.Error())
 	}
 }
 
@@ -86,16 +103,14 @@ func Run(gofile string, mode gen.Method, unexported bool) error {
 	if mode&^gen.Test == 0 {
 		return nil
 	}
-	fmt.Println(chalk.Magenta.Color("======== MessagePack Code Generator ======="))
-	fmt.Printf(chalk.Magenta.Color(">>> Input: \"%s\"\n"), gofile)
+	diagf("Input: \"%s\"\n", gofile)
 	fs, err := parse.File(gofile, unexported)
 	if err != nil {
 		return err
 	}
 
 	if len(fs.Identities) == 0 {
-		fmt.Println(chalk.Magenta.Color("No types requiring code generation were found!"))
-		return nil
+		diagf("No types requiring code generation were found!")
 	}
 
 	return printer.PrintFile(newFilename(gofile, fs.Package), fs, mode)
