@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
@@ -37,6 +38,7 @@ import (
 var (
 	out        = flag.String("o", "", "output file")
 	file       = flag.String("file", "", "input file")
+	dir        = flag.String("dir", "", "input directory")
 	encode     = flag.Bool("io", true, "create Encode and Decode methods")
 	marshal    = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
 	tests      = flag.Bool("tests", true, "create tests and benchmarks")
@@ -67,14 +69,6 @@ func main() {
 		parse.Logf = diagf
 	}
 
-	// GOFILE is set by go generate
-	if *file == "" {
-		*file = os.Getenv("GOFILE")
-		if *file == "" {
-			exitln("No file to parse.")
-		}
-	}
-
 	var mode gen.Method
 	if *encode {
 		mode |= (gen.Encode | gen.Decode | gen.Size)
@@ -90,8 +84,63 @@ func main() {
 		exitln("No methods to generate; -io=false && -marshal=false")
 	}
 
+	if *dir != "" {
+		*out = "" // cannot use specific file for directory compilation
+		compileDir(*dir, mode)
+		return
+	}
+
+	// GOFILE is set by go generate
+	if *file == "" {
+		*file = os.Getenv("GOFILE")
+		if *file == "" {
+			exitln("No file to parse.")
+		}
+	}
+
 	if err := Run(*file, mode, *unexported); err != nil {
 		exitln(err.Error())
+	}
+}
+
+func compileDir(dir string, mode gen.Method) {
+	fi, err := os.Stat(dir)
+	if err != nil {
+		exitln("Cannot compile files in " + dir + ": " + err.Error())
+	}
+	if !fi.IsDir() {
+		exitln("Cannot compile files in " + dir + ": it is not directory")
+	}
+	d, err := os.Open(dir)
+	if err != nil {
+		exitln("Cannot compile files in " + dir + ": " + err.Error())
+	}
+	defer d.Close()
+
+	fis, err := d.Readdir(-1)
+	if err != nil {
+		exitln("Cannot read files in " + dir + ": " + err.Error())
+	}
+
+	var names []string
+	for _, fi = range fis {
+		name := fi.Name()
+		if name == "." || name == ".." || filepath.Ext(name) != ".go" || strings.HasSuffix(name, "_gen.go") {
+			continue
+		}
+		if !fi.IsDir() {
+			names = append(names, filepath.Join(dir, name))
+		} else {
+			subPath := filepath.Join(dir, name)
+			compileDir(subPath, mode)
+		}
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		if err := Run(name, mode, *unexported); err != nil {
+			exitln(err.Error())
+		}
 	}
 }
 
