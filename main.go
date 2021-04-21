@@ -117,20 +117,20 @@ func compileDir(dir string, mode gen.Method) {
 	}
 	defer d.Close()
 
-	fid, err := d.ReadDir(-1)
+	fis, err := d.Readdir(-1)
 	if err != nil {
 		exitln("Cannot read files in " + dir + ": " + err.Error())
 	}
 
 	var names []string
-	for _, entry := range fid {
-		name := entry.Name()
-		skip := !entry.IsDir() &&
+	for _, fi = range fis {
+		name := fi.Name()
+		skip := !fi.IsDir() &&
 			(name == "." || name == ".." || filepath.Ext(name) != ".go" || strings.HasSuffix(name, "_gen.go"))
 		if skip {
 			continue
 		}
-		if !entry.IsDir() {
+		if !fi.IsDir() {
 			names = append(names, filepath.Join(dir, name))
 		} else {
 			subPath := filepath.Join(dir, name)
