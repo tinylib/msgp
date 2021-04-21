@@ -117,18 +117,20 @@ func compileDir(dir string, mode gen.Method) {
 	}
 	defer d.Close()
 
-	fis, err := d.Readdir(-1)
+	fid, err := d.ReadDir(-1)
 	if err != nil {
 		exitln("Cannot read files in " + dir + ": " + err.Error())
 	}
 
 	var names []string
-	for _, fi = range fis {
-		name := fi.Name()
-		if name == "." || name == ".." || filepath.Ext(name) != ".go" || strings.HasSuffix(name, "_gen.go") {
+	for _, entry := range fid {
+		name := entry.Name()
+		skip := !entry.IsDir() &&
+			(name == "." || name == ".." || filepath.Ext(name) != ".go" || strings.HasSuffix(name, "_gen.go"))
+		if skip {
 			continue
 		}
-		if !fi.IsDir() {
+		if !entry.IsDir() {
 			names = append(names, filepath.Join(dir, name))
 		} else {
 			subPath := filepath.Join(dir, name)
@@ -139,6 +141,10 @@ func compileDir(dir string, mode gen.Method) {
 
 	for _, name := range names {
 		if err := Run(name, mode, *unexported); err != nil {
+			// ignore Go files without definitions
+			if strings.HasPrefix(err.Error(), "no definitions in ") {
+				continue
+			}
 			exitln(err.Error())
 		}
 	}
