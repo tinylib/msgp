@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/desertbit/msgp/msgp"
 )
 
 func TestRuneEncodeDecode(t *testing.T) {

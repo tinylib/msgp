@@ -4,7 +4,7 @@ package msgp
 	integer encoding utilities
 	(inline-able)
 
-	TODO(tinylib): there are faster,
+	TODO(desertbit): there are faster,
 	albeit non-portable solutions
 	to the code below. implement
 	byteswap?
