@@ -93,6 +93,37 @@ func BenchmarkAppendArrayHeader(b *testing.B) {
 	}
 }
 
+func TestAppendBytesHeader(t *testing.T) {
+	szs := []uint32{0, 1, uint32(tint8), uint32(tint16), tuint32, math.MaxUint32}
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+
+	var bts []byte
+	for _, sz := range szs {
+		buf.Reset()
+		en.WriteBytesHeader(sz)
+		en.Flush()
+		bts = AppendBytesHeader(bts[0:0], sz)
+
+		if !bytes.Equal(buf.Bytes(), bts) {
+			t.Errorf("for size %d, encoder wrote %q and append wrote %q", sz, buf.Bytes(), bts)
+		}
+	}
+}
+
+func BenchmarkAppendBytesHeader(b *testing.B) {
+	buf := make([]byte, 0, 9)
+	N := b.N / 4
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < N; i++ {
+		AppendBytesHeader(buf[:0], 0)
+		AppendBytesHeader(buf[:0], uint32(tint8))
+		AppendBytesHeader(buf[:0], tuint16)
+		AppendBytesHeader(buf[:0], tuint32)
+	}
+}
+
 func TestAppendNil(t *testing.T) {
 	var bts []byte
 	bts = AppendNil(bts[0:0])
