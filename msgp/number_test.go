@@ -80,6 +80,9 @@ func TestNumber(t *testing.T) {
 			t.Fatal("marshal error:", err)
 		}
 		err = dout[i].EncodeMsg(wr)
+		if err != nil {
+			t.Fatal("encode error", err)
+		}
 	}
 	wr.Flush()
 
