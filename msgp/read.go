@@ -262,7 +262,7 @@ func getNextSize(r *fwd.Reader) (uintptr, uintptr, error) {
 		return 0, 0, err
 	}
 	lead := b[0]
-	spec := &sizes[lead]
+	spec := getBytespec(lead)
 	size, mode := spec.size, spec.extra
 	if size == 0 {
 		return 0, 0, InvalidPrefixError(lead)

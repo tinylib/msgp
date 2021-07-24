@@ -17,7 +17,7 @@ func NextType(b []byte) Type {
 	if len(b) == 0 {
 		return InvalidType
 	}
-	spec := sizes[b[0]]
+	spec := getBytespec(b[0])
 	t := spec.typ
 	if t == ExtensionType && len(b) > int(spec.size) {
 		var tp int8
@@ -1205,7 +1205,7 @@ func getSize(b []byte) (uintptr, uintptr, error) {
 		return 0, 0, ErrShortBytes
 	}
 	lead := b[0]
-	spec := &sizes[lead] // get type information
+	spec := getBytespec(lead) // get type information
 	size, mode := spec.size, spec.extra
 	if size == 0 {
 		return 0, 0, InvalidPrefixError(lead)
