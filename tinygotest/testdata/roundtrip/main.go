@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/desertbit/msgp/msgp"
 )
 
 //go:generate msgp
