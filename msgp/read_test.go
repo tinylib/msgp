@@ -507,6 +507,9 @@ func TestReadUint64(t *testing.T) {
 			t.Fatal(err)
 		}
 		out, err := rd.ReadUint64()
+		if err != nil {
+			t.Fatal(err)
+		}
 		if out != num {
 			t.Errorf("Test case %d: put %d in and got %d out", i, num, out)
 		}

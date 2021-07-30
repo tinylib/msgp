@@ -98,6 +98,50 @@ func BenchmarkReadArrayHeaderBytes(b *testing.B) {
 	}
 }
 
+func TestReadBytesHeader(t *testing.T) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+
+	tests := []uint32{0, 1, 5, 49082, 1 << 16, math.MaxUint32}
+
+	for i, v := range tests {
+		buf.Reset()
+		en.WriteBytesHeader(v)
+		en.Flush()
+
+		out, left, err := ReadBytesHeader(buf.Bytes())
+		if err != nil {
+			t.Errorf("test case %d: %s", i, err)
+		}
+
+		if len(left) != 0 {
+			t.Errorf("expected 0 bytes left; found %d", len(left))
+		}
+
+		if out != v {
+			t.Errorf("%d in; %d out", v, out)
+		}
+	}
+}
+
+func BenchmarkTestReadBytesHeader(b *testing.B) {
+	sizes := []uint32{1, 100, tuint16, tuint32}
+	buf := make([]byte, 0, 5*len(sizes))
+	for _, sz := range sizes {
+		buf = AppendBytesHeader(buf, sz)
+	}
+	b.SetBytes(int64(len(buf) / len(sizes)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	o := buf
+	for i := 0; i < b.N; i++ {
+		_, buf, _ = ReadBytesHeader(buf)
+		if len(buf) == 0 {
+			buf = o
+		}
+	}
+}
+
 func TestReadNilBytes(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)

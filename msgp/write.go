@@ -2,7 +2,6 @@ package msgp
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"math"
 	"reflect"
@@ -687,7 +686,7 @@ func (mw *Writer) WriteIntf(v interface{}) error {
 
 	val := reflect.ValueOf(v)
 	if !isSupported(val.Kind()) || !val.IsValid() {
-		return fmt.Errorf("msgp: type %s not supported", val)
+		return errors.New("msgp: type " + val.String() + " not supported")
 	}
 
 	switch val.Kind() {
@@ -751,12 +750,12 @@ func (mw *Writer) writeStruct(v reflect.Value) error {
 	if enc, ok := v.Interface().(Encodable); ok {
 		return enc.EncodeMsg(mw)
 	}
-	return fmt.Errorf("msgp: unsupported type: %s", v.Type())
+	return errors.New("msgp: unsupported type: " + v.Type().String())
 }
 
 func (mw *Writer) writeVal(v reflect.Value) error {
 	if !isSupported(v.Kind()) {
-		return fmt.Errorf("msgp: msgp/enc: type %q not supported", v.Type())
+		return errors.New("msgp: msgp/enc: type not supported: " + v.Type().String())
 	}
 
 	// shortcut for nil values
@@ -798,7 +797,7 @@ func (mw *Writer) writeVal(v reflect.Value) error {
 		return mw.writeStruct(v)
 
 	}
-	return fmt.Errorf("msgp: msgp/enc: type %q not supported", v.Type())
+	return errors.New("msgp: msgp/enc: type not supported: " + v.Type().String())
 }
 
 // is the reflect.Kind encodable?

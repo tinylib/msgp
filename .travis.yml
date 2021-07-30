@@ -1,3 +1,5 @@
+dist: bionic
+
 language: go
 
 arch:
@@ -5,8 +7,8 @@ arch:
   - ppc64le
   - arm64
 go:
-  - 1.14.x
   - 1.15.x
+  - 1.16.x
   - tip
 
 jobs:
@@ -17,3 +19,4 @@ jobs:
       env: GIMME_ARCH=386
 
 script: "make travis"
+
