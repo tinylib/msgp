@@ -17,7 +17,7 @@ func NextType(b []byte) Type {
 	if len(b) == 0 {
 		return InvalidType
 	}
-	spec := sizes[b[0]]
+	spec := getBytespec(b[0])
 	t := spec.typ
 	if t == ExtensionType && len(b) > int(spec.size) {
 		var tp int8
@@ -249,6 +249,46 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 
 	default:
 		err = badPrefix(ArrayType, lead)
+		return
+	}
+}
+
+// ReadBytesHeader reads the 'bin' header size
+// off of 'b' and returns the size and remaining bytes.
+// Possible errors:
+// - ErrShortBytes (too few bytes)
+// - TypeError{} (not a bin object)
+func ReadBytesHeader(b []byte) (sz uint32, o []byte, err error) {
+	if len(b) < 1 {
+		return 0, nil, ErrShortBytes
+	}
+	switch b[0] {
+	case mbin8:
+		if len(b) < 2 {
+			err = ErrShortBytes
+			return
+		}
+		sz = uint32(b[1])
+		o = b[2:]
+		return
+	case mbin16:
+		if len(b) < 3 {
+			err = ErrShortBytes
+			return
+		}
+		sz = uint32(big.Uint16(b[1:]))
+		o = b[3:]
+		return
+	case mbin32:
+		if len(b) < 5 {
+			err = ErrShortBytes
+			return
+		}
+		sz = big.Uint32(b[1:])
+		o = b[5:]
+		return
+	default:
+		err = badPrefix(BinType, b[0])
 		return
 	}
 }
@@ -1165,7 +1205,7 @@ func getSize(b []byte) (uintptr, uintptr, error) {
 		return 0, 0, ErrShortBytes
 	}
 	lead := b[0]
-	spec := &sizes[lead] // get type information
+	spec := getBytespec(lead) // get type information
 	size, mode := spec.size, spec.extra
 	if size == 0 {
 		return 0, 0, InvalidPrefixError(lead)
