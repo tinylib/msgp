@@ -136,7 +136,11 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	switch b.Value {
 	case Bytes:
 		if b.Convert {
-			d.p.printf("\n%s, err = dc.ReadBytes([]byte(%s))", tmp, vname)
+			if b.ShimMode == Cast {
+				d.p.printf("\n%s, err = dc.ReadBytes(%s(%s))", tmp, b.ToBase(), vname)
+			} else {
+				d.p.printf("\n%s, err = dc.ReadBytes([]byte(%s))", tmp, vname)
+			}
 		} else {
 			d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
 		}
