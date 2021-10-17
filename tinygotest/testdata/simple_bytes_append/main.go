@@ -1,6 +1,6 @@
 package main
 
-import "github.com/tinylib/msgp/msgp"
+import "github.com/piyongcai/msgp/msgp"
 
 type Example struct {
 	I int

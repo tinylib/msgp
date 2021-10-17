@@ -5,10 +5,11 @@ package msgp_test
 import (
 	"bytes"
 	"crypto/rand"
-	"github.com/tinylib/msgp/msgp"
 	prand "math/rand"
 	"os"
 	"testing"
+
+	"github.com/piyongcai/msgp/msgp"
 )
 
 type rawBytes []byte

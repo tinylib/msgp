@@ -82,7 +82,7 @@ func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, 
 	outbuf := bytes.NewBuffer(make([]byte, 0, 4096))
 	writePkgHeader(outbuf, f.Package)
 
-	myImports := []string{"github.com/tinylib/msgp/msgp"}
+	myImports := []string{"github.com/piyongcai/msgp/msgp"}
 	for _, imp := range f.Imports {
 		if imp.Name != nil {
 			// have an alias, include it.
@@ -100,9 +100,9 @@ func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, 
 		testbuf = bytes.NewBuffer(make([]byte, 0, 4096))
 		writePkgHeader(testbuf, f.Package)
 		if mode&(gen.Encode|gen.Decode) != 0 {
-			writeImportHeader(testbuf, "bytes", "github.com/tinylib/msgp/msgp", "testing")
+			writeImportHeader(testbuf, "bytes", "github.com/piyongcai/msgp/msgp", "testing")
 		} else {
-			writeImportHeader(testbuf, "github.com/tinylib/msgp/msgp", "testing")
+			writeImportHeader(testbuf, "github.com/piyongcai/msgp/msgp", "testing")
 		}
 		testwr = testbuf
 	}
