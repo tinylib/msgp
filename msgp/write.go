@@ -615,7 +615,7 @@ func (mw *Writer) WriteTime(t time.Time) error {
 	mw.buf[o] = mext8
 	mw.buf[o+1] = 12
 	mw.buf[o+2] = TimeExtension
-	putUnix(mw.buf[o+3:], t.Unix(), int32(t.Nanosecond()))
+	putUnix(mw.buf[o+3:], t.Unix(), uint32(t.Nanosecond()))
 	return nil
 }
 
