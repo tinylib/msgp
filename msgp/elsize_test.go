@@ -47,7 +47,7 @@ func TestBytespec(t *testing.T) {
 		mmap32:    {size: 5, extra: map32v, typ: MapType},
 	}
 
-	//func init() {
+	// func init() {
 	// set up fixed fields
 
 	// fixint
@@ -75,7 +75,7 @@ func TestBytespec(t *testing.T) {
 	for i := mfixarray; i < 0xa0; i++ {
 		sizes[i] = bytespec{size: 1, extra: varmode(rfixarray(i)), typ: ArrayType}
 	}
-	//}
+	// }
 
 	// compare all values to calcBytespec
 	for i := 0; i < 256; i++ {

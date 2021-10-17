@@ -20,11 +20,11 @@ func NextType(b []byte) Type {
 	spec := getBytespec(b[0])
 	t := spec.typ
 	if t == ExtensionType && len(b) > int(spec.size) {
-		var tp int8
+		var tp int16
 		if spec.extra == constsize {
-			tp = int8(b[1])
+			tp = int16(b[1])
 		} else {
-			tp = int8(b[spec.size-1])
+			tp = int16(b[spec.size-1])
 		}
 		switch tp {
 		case TimeExtension:
@@ -65,7 +65,7 @@ func (r Raw) MarshalMsg(b []byte) ([]byte, error) {
 		return AppendNil(b), nil
 	}
 	o, l := ensure(b, i)
-	copy(o[l:], []byte(r))
+	copy(o[l:], r)
 	return o, nil
 }
 
@@ -98,7 +98,7 @@ func (r Raw) EncodeMsg(w *Writer) error {
 	if len(r) == 0 {
 		return w.WriteNil()
 	}
-	_, err := w.Write([]byte(r))
+	_, err := w.Write(r)
 	return err
 }
 
@@ -147,7 +147,7 @@ func appendNext(f *Reader, d *[]byte) error {
 // MarshalJSON implements json.Marshaler
 func (r *Raw) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
-	_, err := UnmarshalAsJSON(&buf, []byte(*r))
+	_, err := UnmarshalAsJSON(&buf, *r)
 	return buf.Bytes(), err
 }
 
@@ -465,7 +465,7 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		i = int64(getMint64(b))
+		i = getMint64(b)
 		o = b[9:]
 		return
 
@@ -639,7 +639,7 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		v := int64(getMint64(b))
+		v := getMint64(b)
 		if v < 0 {
 			err = UintBelowZero{Value: v}
 			return
@@ -843,7 +843,7 @@ func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
 			err = ErrShortBytes
 			return
 		}
-		read = uint32(big.Uint32(b[1:]))
+		read = big.Uint32(b[1:])
 		skip = 5
 
 	default:
@@ -966,7 +966,7 @@ func ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
 		return
 	}
 	if int8(b[1]) != Complex128Extension {
-		err = errExt(int8(b[1]), Complex128Extension)
+		err = errExt(b[1], Complex128Extension)
 		return
 	}
 	c = complex(math.Float64frombits(big.Uint64(b[2:])),
@@ -992,7 +992,7 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 		return
 	}
 	if b[1] != Complex64Extension {
-		err = errExt(int8(b[1]), Complex64Extension)
+		err = errExt(b[1], Complex64Extension)
 		return
 	}
 	c = complex(math.Float32frombits(big.Uint32(b[2:])),
@@ -1009,21 +1009,64 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 // - TypeError{} (object not a complex64)
 // - ExtensionTypeError{} (object an extension of the correct size, but not a time.Time)
 func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
-	if len(b) < 15 {
+	// Timestamp spec
+	// https://github.com/msgpack/msgpack/pull/209
+	// FixExt4(-1) => seconds |  [1970-01-01 00:00:00 UTC, 2106-02-07 06:28:16 UTC) range
+	// FixExt8(-1) => nanoseconds + seconds | [1970-01-01 00:00:00.000000000 UTC, 2514-05-30 01:53:04.000000000 UTC) range
+	// Ext8(12,-1) => nanoseconds + seconds | [-584554047284-02-23 16:59:44 UTC, 584554051223-11-09 07:00:16.000000000 UTC) range
+
+	// case 4:
+	// 	ThrowInsufficientBufferUnless(this.reader.TryReadBigEndian(out int intValue));
+	// 	return DateTimeConstants.UnixEpoch.AddSeconds(unchecked((uint)intValue));
+	// case 8:
+	// 	ThrowInsufficientBufferUnless(this.reader.TryReadBigEndian(out long longValue));
+	// 	ulong ulongValue = unchecked((ulong)longValue);
+	// 	long nanoseconds = (long)(ulongValue >> 34);
+	// 	ulong seconds = ulongValue & 0x00000003ffffffffL;
+	// 	return DateTimeConstants.UnixEpoch.AddSeconds(seconds).AddTicks(nanoseconds / DateTimeConstants.NanosecondsPerTick);
+	// case 12:
+	// 	ThrowInsufficientBufferUnless(this.reader.TryReadBigEndian(out intValue));
+	// 	nanoseconds = unchecked((uint)intValue);
+	// 	ThrowInsufficientBufferUnless(this.reader.TryReadBigEndian(out longValue));
+	// 	return DateTimeConstants.UnixEpoch.AddSeconds(longValue).AddTicks(nanoseconds / DateTimeConstants.NanosecondsPerTick);
+
+	if len(b) < 6 {
 		err = ErrShortBytes
 		return
+	} else if b[0] == mfixext4 {
+		if b[1] != TimeExtension {
+			err = errExt(b[1], TimeExtension)
+			return
+		}
+		sec := getMuint32(b[1:])
+		t = time.Unix(int64(sec), 0)
+	} else if b[0] == mfixext8 {
+		if len(b) < 10 {
+			err = ErrShortBytes
+			return
+		} else if b[1] != TimeExtension {
+			err = errExt(b[1], TimeExtension)
+			return
+		}
+		val := getMuint64(b[1:])
+		nsec := int64(val >> 34)
+		sec := int64(val & 0x00000003ffffffff)
+		t = time.Unix(sec, nsec)
+	} else {
+		if len(b) < 15 {
+			err = ErrShortBytes
+			return
+		} else if b[0] != mext8 || b[1] != 12 {
+			err = badPrefix(TimeType, b[0])
+			return
+		} else if int16(b[2]) != TimeExtension {
+			err = errExt(b[2], TimeExtension)
+			return
+		}
+		sec, nsec := getUnix(b[2:])
+		t = time.Unix(sec, int64(nsec)).Local()
+		o = b[15:]
 	}
-	if b[0] != mext8 || b[1] != 12 {
-		err = badPrefix(TimeType, b[0])
-		return
-	}
-	if int8(b[2]) != TimeExtension {
-		err = errExt(int8(b[2]), TimeExtension)
-		return
-	}
-	sec, nsec := getUnix(b[3:])
-	t = time.Unix(sec, int64(nsec)).Local()
-	o = b[15:]
 	return
 }
 
@@ -1133,7 +1176,7 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		return
 
 	case ExtensionType:
-		var t int8
+		var t uint8
 		t, err = peekExtension(b)
 		if err != nil {
 			return
@@ -1149,7 +1192,7 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		}
 		// last resort is a raw extension
 		e := RawExtension{}
-		e.Type = int8(t)
+		e.Type = t
 		o, err = ReadExtensionBytes(b, &e)
 		i = &e
 		return

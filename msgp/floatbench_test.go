@@ -15,7 +15,7 @@ func BenchmarkReadWriteFloat32(b *testing.B) {
 }
 
 func BenchmarkReadWriteFloat64(b *testing.B) {
-	var f float64 = 3.9081
+	var f = 3.9081
 	bts := AppendFloat64([]byte{}, f)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

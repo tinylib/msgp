@@ -285,7 +285,7 @@ func rwTimeBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error)
 
 func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte) ([]byte, []byte, error) {
 	var err error
-	var et int8
+	var et uint8
 	et, err = peekExtension(msg)
 	if err != nil {
 		return msg, scratch, err

@@ -40,7 +40,7 @@ func TestRaw(t *testing.T) {
 	if len(extra) != 0 {
 		t.Errorf("expected 0 bytes left; found %d", len(extra))
 	}
-	if !bytes.Equal([]byte(r), bts) {
+	if !bytes.Equal(r, bts) {
 		t.Fatal("value of raw and input slice are not equal after UnmarshalMsg")
 	}
 
@@ -56,7 +56,7 @@ func TestRaw(t *testing.T) {
 		t.Fatal("error from DecodeMsg:", err)
 	}
 
-	if !bytes.Equal([]byte(r), bts) {
+	if !bytes.Equal(r, bts) {
 		t.Fatal("value of raw and input slice are not equal after DecodeMsg")
 	}
 

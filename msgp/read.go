@@ -1180,7 +1180,7 @@ func (m *Reader) ReadComplex64() (f complex64, err error) {
 		return
 	}
 	if int8(p[1]) != Complex64Extension {
-		err = errExt(int8(p[1]), Complex64Extension)
+		err = errExt(p[1], Complex64Extension)
 		return
 	}
 	f = complex(math.Float32frombits(big.Uint32(p[2:])),
@@ -1201,7 +1201,7 @@ func (m *Reader) ReadComplex128() (f complex128, err error) {
 		return
 	}
 	if int8(p[1]) != Complex128Extension {
-		err = errExt(int8(p[1]), Complex128Extension)
+		err = errExt(p[1], Complex128Extension)
 		return
 	}
 	f = complex(math.Float64frombits(big.Uint64(p[2:])),
@@ -1249,8 +1249,8 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 		err = badPrefix(TimeType, p[0])
 		return
 	}
-	if int8(p[2]) != TimeExtension {
-		err = errExt(int8(p[2]), TimeExtension)
+	if p[2] != TimeExtension {
+		err = errExt(p[2], TimeExtension)
 		return
 	}
 	sec, nsec := getUnix(p[3:])
@@ -1303,7 +1303,7 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 		return
 
 	case ExtensionType:
-		var t int8
+		var t uint8
 		t, err = m.peekExtensionType()
 		if err != nil {
 			return
