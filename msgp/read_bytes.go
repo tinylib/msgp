@@ -1040,6 +1040,7 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 		}
 		sec := getMuint32(b[1:])
 		t = time.Unix(int64(sec), 0)
+		o = b[6:]
 	} else if b[0] == mfixext8 {
 		if len(b) < 10 {
 			err = ErrShortBytes
@@ -1052,6 +1053,7 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 		nsec := int64(val >> 34)
 		sec := int64(val & 0x00000003ffffffff)
 		t = time.Unix(sec, nsec)
+		o = b[10:]
 	} else {
 		if len(b) < 15 {
 			err = ErrShortBytes
