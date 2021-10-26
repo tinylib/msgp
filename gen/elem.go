@@ -137,6 +137,7 @@ func (c *common) SetVarname(s string) { c.vname = s }
 func (c *common) Varname() string     { return c.vname }
 func (c *common) Alias(typ string)    { c.alias = typ }
 func (c *common) hidden()             {}
+func (c *common) AllowNil() bool      { return false }
 
 func IsPrintable(e Elem) bool {
 	if be, ok := e.(*BaseElem); ok && !be.Printable() {
@@ -182,6 +183,10 @@ type Elem interface {
 	// value.  Can be used for assignment.
 	// Returns "" if zero/empty not supported for this Elem.
 	ZeroExpr() string
+
+	// AllowNil will return true for types that can be nil but doesn't automatically check.
+	// This is true for slices and maps.
+	AllowNil() bool
 
 	// IfZeroExpr returns the expression to compare to zero/empty
 	// for this type.  It is meant to be used in an if statement
@@ -292,6 +297,9 @@ func (m *Map) ZeroExpr() string { return "nil" }
 // IfZeroExpr returns the expression to compare to zero/empty.
 func (m *Map) IfZeroExpr() string { return m.Varname() + " == nil" }
 
+// AllowNil is true for maps.
+func (m *Map) AllowNil() bool { return true }
+
 type Slice struct {
 	common
 	Index string
@@ -332,6 +340,9 @@ func (s *Slice) ZeroExpr() string { return "nil" }
 
 // IfZeroExpr returns the expression to compare to zero/empty.
 func (s *Slice) IfZeroExpr() string { return s.Varname() + " == nil" }
+
+// AllowNil is true for slices.
+func (s *Slice) AllowNil() bool { return true }
 
 type Ptr struct {
 	common
