@@ -247,7 +247,7 @@ type ArrayConstants struct {
 }
 
 // Ensure non-msg struct tags work:
-// https://github.com/tinylib/msgp/issues/201
+// https://github.com/piyongcai/msgp/issues/201
 
 type NonMsgStructTags struct {
 	A      []string `json:"fooJSON" msg:"fooMsgp"`

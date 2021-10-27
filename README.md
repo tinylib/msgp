@@ -1,14 +1,14 @@
 MessagePack Code Generator [![Build Status](https://travis-ci.org/tinylib/msgp.svg?branch=master)](https://travis-ci.org/tinylib/msgp)
 =======
 
-This is a code generation tool and serialization library for [MessagePack](http://msgpack.org). You can read more about MessagePack [in the wiki](http://github.com/tinylib/msgp/wiki), or at [msgpack.org](http://msgpack.org).
+This is a code generation tool and serialization library for [MessagePack](http://msgpack.org). You can read more about MessagePack [in the wiki](http://github.com/piyongcai/msgp/wiki), or at [msgpack.org](http://msgpack.org).
 
 ### Why?
 
 - Use Go as your schema language
 - Performance
-- [JSON interop](http://godoc.org/github.com/tinylib/msgp/msgp#CopyToJSON)
-- [User-defined extensions](http://github.com/tinylib/msgp/wiki/Using-Extensions)
+- [JSON interop](http://godoc.org/github.com/piyongcai/msgp/msgp#CopyToJSON)
+- [User-defined extensions](http://github.com/piyongcai/msgp/wiki/Using-Extensions)
 - Type safety
 - Encoding flexibility
 
@@ -22,7 +22,7 @@ In a source file, include the following directive:
 
 The `msgp` command will generate serialization methods for all exported type declarations in the file.
 
-You can [read more about the code generation options here](http://github.com/tinylib/msgp/wiki/Using-the-Code-Generator).
+You can [read more about the code generation options here](http://github.com/piyongcai/msgp/wiki/Using-the-Code-Generator).
 
 ### Use
 
@@ -56,7 +56,7 @@ of `*bufio.Writer` and `*bufio.Reader`, respectively.)
  - Native support for Go's `time.Time`, `complex64`, and `complex128` types 
  - Generation of both `[]byte`-oriented and `io.Reader/io.Writer`-oriented methods
  - Support for arbitrary type system extensions
- - [Preprocessor directives](http://github.com/tinylib/msgp/wiki/Preprocessor-Directives)
+ - [Preprocessor directives](http://github.com/piyongcai/msgp/wiki/Preprocessor-Directives)
  - File-based dependency model means fast codegen regardless of source tree size.
 
 Consider the following:
@@ -76,7 +76,7 @@ As long as the declarations of `MyInt` and `Data` are in the same file as `Struc
 #### Extensions
 
 MessagePack supports defining your own types through "extensions," which are just a tuple of
-the data "type" (`int8`) and the raw binary. You [can see a worked example in the wiki.](http://github.com/tinylib/msgp/wiki/Using-Extensions)
+the data "type" (`int8`) and the raw binary. You [can see a worked example in the wiki.](http://github.com/piyongcai/msgp/wiki/Using-Extensions)
 
 ### Status
 
@@ -84,7 +84,7 @@ Mostly stable, in that no breaking changes have been made to the `/msgp` library
 of the code may generate different code than older versions for performance reasons. I (@philhofer) am aware of a
 number of stability-critical commercial applications that use this code with good results. But, caveat emptor.
 
-You can read more about how `msgp` maps MessagePack types onto Go types [in the wiki](http://github.com/tinylib/msgp/wiki).
+You can read more about how `msgp` maps MessagePack types onto Go types [in the wiki](http://github.com/piyongcai/msgp/wiki).
 
 Here some of the known limitations/restrictions:
 
