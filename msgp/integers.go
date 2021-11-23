@@ -103,24 +103,43 @@ func getMuint16(b []byte) uint16 {
 
 func putMuint8(b []byte, u uint8) {
 	b[0] = muint8
-	b[1] = byte(u)
+	b[1] = u
 }
 
 func getMuint8(b []byte) uint8 {
-	return uint8(b[1])
+	return b[1]
 }
 
 func getUnix(b []byte) (sec int64, nsec int32) {
-	sec = (int64(b[0]) << 56) | (int64(b[1]) << 48) |
-		(int64(b[2]) << 40) | (int64(b[3]) << 32) |
-		(int64(b[4]) << 24) | (int64(b[5]) << 16) |
-		(int64(b[6]) << 8) | (int64(b[7]))
-
-	nsec = (int32(b[8]) << 24) | (int32(b[9]) << 16) | (int32(b[10]) << 8) | (int32(b[11]))
+	sec = getMint64(b[0:])
+	nsec = getMint32(b[8:])
 	return
 }
 
-func putUnix(b []byte, sec int64, nsec int32) {
+func putUnix(b []byte, sec int64, nsec uint32) {
+	b[0] = byte(nsec >> 24)
+	b[1] = byte(nsec >> 16)
+	b[2] = byte(nsec >> 8)
+	b[3] = byte(nsec)
+
+	b[4] = byte(sec >> 56)
+	b[5] = byte(sec >> 48)
+	b[6] = byte(sec >> 40)
+	b[7] = byte(sec >> 32)
+	b[8] = byte(sec >> 24)
+	b[9] = byte(sec >> 16)
+	b[10] = byte(sec >> 8)
+	b[11] = byte(sec)
+}
+
+func putUnixMin(b []byte, sec uint32) {
+	b[0] = byte(sec >> 24)
+	b[1] = byte(sec >> 16)
+	b[2] = byte(sec >> 8)
+	b[3] = byte(sec)
+}
+
+func putUnixMed(b []byte, sec uint64) {
 	b[0] = byte(sec >> 56)
 	b[1] = byte(sec >> 48)
 	b[2] = byte(sec >> 40)
@@ -129,10 +148,6 @@ func putUnix(b []byte, sec int64, nsec int32) {
 	b[5] = byte(sec >> 16)
 	b[6] = byte(sec >> 8)
 	b[7] = byte(sec)
-	b[8] = byte(nsec >> 24)
-	b[9] = byte(nsec >> 16)
-	b[10] = byte(nsec >> 8)
-	b[11] = byte(nsec)
 }
 
 /* -----------------------------
@@ -142,7 +157,7 @@ func putUnix(b []byte, sec int64, nsec int32) {
 // write prefix and uint8
 func prefixu8(b []byte, pre byte, sz uint8) {
 	b[0] = pre
-	b[1] = byte(sz)
+	b[1] = sz
 }
 
 // write prefix and big-endian uint16

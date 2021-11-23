@@ -350,7 +350,7 @@ l: // loop through string bytes (not UTF-8 characters)
 			}
 			// anything else is \x
 			sb = append(sb, `\x`...)
-			sb = append(sb, lowerhex[byte(b)>>4])
+			sb = append(sb, lowerhex[b>>4])
 			sb = append(sb, lowerhex[byte(b)&0xF])
 			continue l
 		}

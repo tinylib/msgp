@@ -11,7 +11,7 @@ var extSizes = [...]int{0, 1, 2, 4, 8, 16, int(tint8), int(tuint16), int(tuint32
 
 func randomExt() RawExtension {
 	e := RawExtension{}
-	e.Type = int8(rand.Int())
+	e.Type = uint8(rand.Int())
 	e.Data = RandBytes(extSizes[rand.Intn(len(extSizes))])
 	return e
 }

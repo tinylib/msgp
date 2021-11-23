@@ -295,14 +295,37 @@ func AppendComplex128(b []byte, c complex128) []byte {
 }
 
 // AppendTime appends a time.Time to the slice as a MessagePack extension
+// Timestamp spec
+// https://github.com/msgpack/msgpack/pull/209
+// FixExt4(-1) => seconds |  [1970-01-01 00:00:00 UTC, 2106-02-07 06:28:16 UTC) range
+// FixExt8(-1) => nanoseconds + seconds | [1970-01-01 00:00:00.000000000 UTC, 2514-05-30 01:53:04.000000000 UTC) range
+// Ext8(12,-1) => nanoseconds + seconds | [-584554047284-02-23 16:59:44 UTC, 584554051223-11-09 07:00:16.000000000 UTC) range
 func AppendTime(b []byte, t time.Time) []byte {
-	o, n := ensure(b, TimeSize)
-	t = t.UTC()
-	o[n] = mext8
-	o[n+1] = 12
-	o[n+2] = TimeExtension
-	putUnix(o[n+3:], t.Unix(), int32(t.Nanosecond()))
-	return o
+	sec := t.Unix()
+	nsec := t.Nanosecond()
+	if sec>>34 == 0 {
+		var data64 = uint64(int64(nsec<<34) | sec)
+		if data64&0xffffffff00000000 == 0 {
+			o, n := ensure(b, 6)
+			o[n] = mfixext4
+			o[n+1] = TimeExtension
+			putUnixMin(o[n+2:], uint32(data64))
+			return o
+		} else {
+			o, n := ensure(b, 10)
+			o[n] = mfixext8
+			o[n+1] = TimeExtension
+			putUnixMed(o[n+2:], data64)
+			return o
+		}
+	} else {
+		o, n := ensure(b, TimeSize)
+		o[n] = mext8
+		o[n+1] = 12
+		o[n+2] = TimeExtension
+		putUnix(o[n+3:], sec, uint32(nsec))
+		return o
+	}
 }
 
 // AppendMapStrStr appends a map[string]string to the slice

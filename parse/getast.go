@@ -578,7 +578,7 @@ var Logf func(s string, v ...interface{})
 func infof(s string, v ...interface{}) {
 	if Logf != nil {
 		pushstate(s)
-		Logf("info: " + strings.Join(logctx, ": "), v...)
+		Logf("info: "+strings.Join(logctx, ": "), v...)
 		popstate()
 	}
 }
@@ -586,7 +586,7 @@ func infof(s string, v ...interface{}) {
 func warnf(s string, v ...interface{}) {
 	if Logf != nil {
 		pushstate(s)
-		Logf("warn: " + strings.Join(logctx, ": "), v...)
+		Logf("warn: "+strings.Join(logctx, ": "), v...)
 		popstate()
 	}
 }
@@ -602,4 +602,3 @@ func pushstate(s string) {
 func popstate() {
 	logctx = logctx[:len(logctx)-1]
 }
-

@@ -413,7 +413,7 @@ func (mw *Writer) WriteUint64(u uint64) error {
 }
 
 // WriteByte is analogous to WriteUint8
-func (mw *Writer) WriteByte(u byte) error { return mw.WriteUint8(uint8(u)) }
+func (mw *Writer) WriteByte(u byte) error { return mw.WriteUint8(u) }
 
 // WriteUint8 writes a uint8 to the writer
 func (mw *Writer) WriteUint8(u uint8) error { return mw.WriteUint64(uint64(u)) }
@@ -615,7 +615,7 @@ func (mw *Writer) WriteTime(t time.Time) error {
 	mw.buf[o] = mext8
 	mw.buf[o+1] = 12
 	mw.buf[o+2] = TimeExtension
-	putUnix(mw.buf[o+3:], t.Unix(), int32(t.Nanosecond()))
+	putUnix(mw.buf[o+3:], t.Unix(), uint32(t.Nanosecond()))
 	return nil
 }
 
