@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/piyongcai/msgp/msgp"
+	"github.com/tinylib/msgp/msgp"
 )
 
 func mustEncodeToJSON(o msgp.Encodable) string {

@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/piyongcai/msgp/msgp"
+	"github.com/tinylib/msgp/msgp"
 )
 
 func marshal(w io.Writer) *marshalGen {
