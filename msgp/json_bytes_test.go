@@ -12,6 +12,9 @@ func TestUnmarshalJSON(t *testing.T) {
 	enc := NewWriter(&buf)
 	enc.WriteMapHeader(5)
 
+	enc.WriteString("now")
+	enc.WriteTime(time.Now())
+
 	enc.WriteString("thing_1")
 	enc.WriteString("a string object")
 
@@ -30,10 +33,9 @@ func TestUnmarshalJSON(t *testing.T) {
 	enc.WriteString("some bytes")
 	enc.WriteBytes([]byte("here are some bytes"))
 
-	enc.WriteString("now")
-	enc.WriteTime(time.Now())
-
 	enc.Flush()
+
+	t.Log(buf.String())
 
 	var js bytes.Buffer
 	_, err := UnmarshalAsJSON(&js, buf.Bytes())
@@ -41,6 +43,9 @@ func TestUnmarshalJSON(t *testing.T) {
 		t.Logf("%s", js.Bytes())
 		t.Fatal(err)
 	}
+
+	println(js.String())
+
 	mp := make(map[string]interface{})
 	err = json.Unmarshal(js.Bytes(), &mp)
 	if err != nil {

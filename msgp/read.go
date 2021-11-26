@@ -1239,24 +1239,61 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (err error) {
 
 // ReadTime reads a time.Time object from the reader.
 // The returned time's location will be set to time.Local.
+// // Timestamp spec
+//	// https://github.com/msgpack/msgpack/pull/209
+//	// FixExt4(-1) => seconds |  [1970-01-01 00:00:00 UTC, 2106-02-07 06:28:16 UTC) range
+//	// FixExt8(-1) => nanoseconds + seconds | [1970-01-01 00:00:00.000000000 UTC, 2514-05-30 01:53:04.000000000 UTC) range
+//	// Ext8(12,-1) => nanoseconds + seconds | [-584554047284-02-23 16:59:44 UTC, 584554051223-11-09 07:00:16.000000000 UTC) range
 func (m *Reader) ReadTime() (t time.Time, err error) {
-	var p []byte
-	p, err = m.R.Peek(15)
+	b, err := m.R.Peek(1)
 	if err != nil {
 		return
 	}
-	if p[0] != mext8 || p[1] != 12 {
-		err = badPrefix(TimeType, p[0])
-		return
+
+	if b[0] == mfixext4 {
+		b, err = m.R.Next(6)
+		if err != nil {
+			return
+		}
+		m.R.Skip(6)
+		if b[1] != TimeExtension {
+			err = errExt(b[1], TimeExtension)
+			return
+		}
+		sec := getMuint32(b[1:])
+		t = time.Unix(int64(sec), 0).Local()
+	} else if b[0] == mfixext8 {
+		b, err = m.R.Peek(10)
+		if err != nil {
+			return
+		}
+		m.R.Skip(10)
+		if b[1] != TimeExtension {
+			err = errExt(b[1], TimeExtension)
+			return
+		}
+		val := getMuint64(b[1:])
+		nsec := int64(val >> 34)
+		sec := int64(val & 0x00000003ffffffff)
+		t = time.Unix(sec, nsec).Local()
+	} else {
+		b, err = m.R.Peek(15)
+		if err != nil {
+			return
+		}
+		m.R.Skip(15)
+		if b[0] != mext8 || b[1] != 12 {
+			err = badPrefix(TimeType, b[0])
+			return
+		} else if int16(b[2]) != TimeExtension {
+			err = errExt(b[2], TimeExtension)
+			return
+		}
+		sec, nsec := getUnix(b[2:])
+		t = time.Unix(sec, int64(nsec)).Local()
 	}
-	if p[2] != TimeExtension {
-		err = errExt(p[2], TimeExtension)
-		return
-	}
-	sec, nsec := getUnix(p[3:])
-	t = time.Unix(sec, int64(nsec)).Local()
-	_, err = m.R.Skip(15)
 	return
+
 }
 
 // ReadIntf reads out the next object as a raw interface{}.

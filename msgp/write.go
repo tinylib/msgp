@@ -594,28 +594,43 @@ func (mw *Writer) WriteMapStrIntf(mp map[string]interface{}) (err error) {
 
 // WriteTime writes a time.Time object to the wire.
 //
-// Time is encoded as Unix time, which means that
-// location (time zone) data is removed from the object.
-// The encoded object itself is 12 bytes: 8 bytes for
-// a big-endian 64-bit integer denoting seconds
-// elapsed since "zero" Unix time, followed by 4 bytes
-// for a big-endian 32-bit signed integer denoting
-// the nanosecond offset of the time. This encoding
-// is intended to ease portability across languages.
-// (Note that this is *not* the standard time.Time
-// binary encoding, because its implementation relies
-// heavily on the internal representation used by the
-// time package.)
+// Timestamp spec
+// https://github.com/msgpack/msgpack/pull/209
+// FixExt4(-1) => seconds |  [1970-01-01 00:00:00 UTC, 2106-02-07 06:28:16 UTC) range
+// FixExt8(-1) => nanoseconds + seconds | [1970-01-01 00:00:00.000000000 UTC, 2514-05-30 01:53:04.000000000 UTC) range
+// Ext8(12,-1) => nanoseconds + seconds | [-584554047284-02-23 16:59:44 UTC, 584554051223-11-09 07:00:16.000000000 UTC) range
 func (mw *Writer) WriteTime(t time.Time) error {
-	t = t.UTC()
-	o, err := mw.require(15)
-	if err != nil {
-		return err
+	sec := t.Unix()
+	nsec := t.Nanosecond()
+	if sec>>34 == 0 {
+		var data64 = uint64(int64(nsec<<34) | sec)
+		if data64&0xffffffff00000000 == 0 {
+			n, err := mw.require(6)
+			if err != nil {
+				return err
+			}
+			mw.buf[n] = mfixext4
+			mw.buf[n+1] = TimeExtension
+			putUnixMin(mw.buf[n+2:], uint32(data64))
+		} else {
+			n, err := mw.require(10)
+			if err != nil {
+				return err
+			}
+			mw.buf[n] = mfixext8
+			mw.buf[n+1] = TimeExtension
+			putUnixMed(mw.buf[n+2:], data64)
+		}
+	} else {
+		n, err := mw.require(TimeSize)
+		if err != nil {
+			return err
+		}
+		mw.buf[n] = mext8
+		mw.buf[n+1] = 12
+		mw.buf[n+2] = TimeExtension
+		putUnix(mw.buf[n+3:], sec, uint32(nsec))
 	}
-	mw.buf[o] = mext8
-	mw.buf[o+1] = 12
-	mw.buf[o+2] = TimeExtension
-	putUnix(mw.buf[o+3:], t.Unix(), uint32(t.Nanosecond()))
 	return nil
 }
 

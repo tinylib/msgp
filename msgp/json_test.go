@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+	"time"
 	"unicode/utf8"
 )
 
 func TestCopyJSON(t *testing.T) {
 	var buf bytes.Buffer
 	enc := NewWriter(&buf)
-	const mapLength = 6
+	const mapLength = 7
 	enc.WriteMapHeader(mapLength)
 
 	enc.WriteString("thing_1")
@@ -34,16 +35,26 @@ func TestCopyJSON(t *testing.T) {
 		"internal_one": "blah",
 		"internal_two": "blahhh...",
 	})
+
 	enc.WriteString("float64")
 	const encodedFloat64 = 1672209023
 	enc.WriteFloat64(encodedFloat64)
+
+	enc.WriteString("now")
+	enc.WriteTime(time.Now())
+
 	enc.Flush()
+
+	println(string(buf.Bytes()))
 
 	var js bytes.Buffer
 	_, err := CopyToJSON(&js, &buf)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	println(string(js.Bytes()))
+
 	mp := make(map[string]interface{})
 	err = json.Unmarshal(js.Bytes(), &mp)
 	if err != nil {
@@ -92,6 +103,7 @@ func TestCopyJSONNegativeUTF8(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	println(js.String())
 	// Even though we provided bad input, should have escaped the naughty character
 	if !utf8.Valid(js.Bytes()) {
 		t.Errorf("Expected JSON to be valid utf-8 even when provided bad input")
@@ -123,6 +135,8 @@ func BenchmarkCopyToJSON(b *testing.B) {
 	enc.WriteArrayHeader(2)
 	enc.WriteBool(true)
 	enc.WriteUint(2089)
+
+	// todo: write Decimal
 
 	enc.WriteString("a_second_map")
 	enc.WriteMapStrStr(map[string]string{
