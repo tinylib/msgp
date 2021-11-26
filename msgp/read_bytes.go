@@ -1002,12 +1002,16 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 }
 
 // ReadTimeBytes reads a time.Time
-// extension object from 'b' and returns the
-// remaining bytes.
+//  The returned time's location will be set to time.Local.
+//  Timestamp spec
+//  https://github.com/msgpack/msgpack/pull/209
+//  FixExt4(-1) => seconds               | [1970-01-01 00:00:00 UTC, 2106-02-07 06:28:16 UTC) range
+//  FixExt8(-1) => nanoseconds + seconds | [1970-01-01 00:00:00.000000000 UTC, 2514-05-30 01:53:04.000000000 UTC) range
+//  Ext8(12,-1) => nanoseconds + seconds | [-584554047284-02-23 16:59:44 UTC, 584554051223-11-09 07:00:16.000000000 UTC) range
 // Possible errors:
-// - ErrShortBytes (not enough bytes in 'b')
-// - TypeError{} (object not a complex64)
-// - ExtensionTypeError{} (object an extension of the correct size, but not a time.Time)
+//  - ErrShortBytes (not enough bytes in 'b')
+//  - TypeError{} (object not a complex64)
+//  - ExtensionTypeError{} (object an extension of the correct size, but not a time.Time)
 func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 	// Timestamp spec
 	// https://github.com/msgpack/msgpack/pull/209
@@ -1039,7 +1043,7 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 			return
 		}
 		sec := getMuint32(b[1:])
-		t = time.Unix(int64(sec), 0)
+		t = time.Unix(int64(sec), 0).Local()
 		o = b[6:]
 	} else if b[0] == mfixext8 {
 		if len(b) < 10 {
@@ -1052,7 +1056,7 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 		val := getMuint64(b[1:])
 		nsec := int64(val >> 34)
 		sec := int64(val & 0x00000003ffffffff)
-		t = time.Unix(sec, nsec)
+		t = time.Unix(sec, nsec).Local()
 		o = b[10:]
 	} else {
 		if len(b) < 15 {
@@ -1066,7 +1070,7 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 			return
 		}
 		sec, nsec := getUnix(b[2:])
-		t = time.Unix(sec, int64(nsec)).Local()
+		t = time.Unix(sec, int64(nsec)).Local().Local()
 		o = b[15:]
 	}
 	return
