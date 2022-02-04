@@ -348,6 +348,17 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 			tf, o, err = ReadFloat32Bytes(b)
 			f = float64(tf)
 			return
+		} else if isfixstr(b[0]) || b[0] == mstr8 || b[0] == mstr16 || b[0] == mstr32 {
+			var sf string
+			sf, o, err = ReadStringBytes(b)
+			if err != nil {
+				return
+			} else if len(sf) == 0 {
+				f = 0
+			} else {
+				f, err = strconv.ParseFloat(sf, 64)
+			}
+			return
 		}
 		err = badPrefix(Float64Type, b[0])
 		return

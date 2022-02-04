@@ -601,6 +601,17 @@ func (m *Reader) ReadFloat64() (f float64, err error) {
 		if p[0] == mfloat32 {
 			ef, err := m.ReadFloat32()
 			return float64(ef), err
+		} else if isfixstr(p[0]) || p[0] == mstr8 || p[0] == mstr16 || p[0] == mstr32 {
+			var sf string
+			sf, err = m.ReadString()
+			if err != nil {
+				return
+			} else if len(sf) == 0 {
+				f = 0
+			} else {
+				f, err = strconv.ParseFloat(sf, 64)
+			}
+			return
 		}
 		err = badPrefix(Float64Type, p[0])
 		return
