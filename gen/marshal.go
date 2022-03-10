@@ -221,9 +221,19 @@ func (m *marshalGen) gMap(s *Map) {
 	m.fuseHook()
 	vname := s.Varname()
 	m.rawAppend(mapHeader, lenAsUint32, vname)
-	m.p.printf("\nfor %s, %s := range %s {", s.Keyidx, s.Validx, vname)
-	m.rawAppend(stringTyp, literalFmt, s.Keyidx)
-	m.ctx.PushVar(s.Keyidx)
+
+	keys := fmt.Sprintf("keys_%s", s.Keyidx)
+	m.p.printf("\n%s := make([]string, 0, len(%s))", keys, vname)
+	m.p.printf("\nfor k := range %s {", vname)
+	m.p.printf("\n%s = append(%s, k)", keys, keys)
+	m.p.printf("\n}")
+	m.p.printf("\nmsgp.Sort(%s)", keys)
+
+	m.p.printf("\nfor _, k := range %s {", keys)
+	m.p.printf("\n%s := %s[k]", s.Validx, vname)
+	m.rawAppend(stringTyp, "%s", "k")
+
+	m.ctx.PushVar("k")
 	next(m, s.Value)
 	m.ctx.Pop()
 	m.p.closeblock()
