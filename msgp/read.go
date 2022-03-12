@@ -44,6 +44,7 @@ const (
 	Complex64Type
 	Complex128Type
 	TimeType
+	// DurationType
 
 	_maxtype
 )
@@ -1257,6 +1258,16 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 	t = time.Unix(sec, int64(nsec)).Local()
 	_, err = m.R.Skip(15)
 	return
+}
+
+func (m *Reader) ReadDuration() (d time.Duration, err error) {
+	var i int64
+	i, err = m.ReadInt64()
+	if err != nil {
+		return
+	}
+
+	return time.Duration(i), nil
 }
 
 // ReadIntf reads out the next object as a raw interface{}.

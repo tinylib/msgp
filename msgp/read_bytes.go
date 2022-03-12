@@ -1027,6 +1027,13 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 	return
 }
 
+func ReadDurationBytes(b []byte) (d time.Duration, o []byte, err error) {
+	var v int64
+	v, o, err = ReadInt64Bytes(b)
+	d = time.Duration(v)
+	return
+}
+
 // ReadMapStrIntfBytes reads a map[string]interface{}
 // out of 'b' and returns the map and remaining bytes.
 // If 'old' is non-nil, the values will be read into that map.
@@ -1123,6 +1130,12 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 	case TimeType:
 		i, o, err = ReadTimeBytes(b)
 		return
+
+	// case DurationType:
+	// 	var v int64
+	// 	v, o, err = ReadInt64Bytes(b)
+	// 	i = time.Duration(v)
+	// 	return
 
 	case Complex64Type:
 		i, o, err = ReadComplex64Bytes(b)

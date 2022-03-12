@@ -620,6 +620,10 @@ func (mw *Writer) WriteTime(t time.Time) error {
 	return nil
 }
 
+func (mw *Writer) WriteDuration(t time.Duration) error {
+	return mw.WriteInt64(int64(t))
+}
+
 // WriteIntf writes the concrete type of 'v'.
 // WriteIntf will error if 'v' is not one of the following:
 //  - A bool, float, string, []byte, int, uint, or complex
@@ -683,6 +687,8 @@ func (mw *Writer) WriteIntf(v interface{}) error {
 		return mw.WriteMapStrIntf(v)
 	case time.Time:
 		return mw.WriteTime(v)
+	case time.Duration:
+		return mw.WriteDuration(v)
 	}
 
 	val := reflect.ValueOf(v)
