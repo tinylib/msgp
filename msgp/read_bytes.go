@@ -382,6 +382,16 @@ func ReadBoolBytes(b []byte) (bool, []byte, error) {
 	}
 }
 
+// ReadDurationBytes tries to read a time.Duration
+// from 'b' and return the value and the remaining bytes.
+// Possible errors:
+// - ErrShortBytes (too few bytes)
+// - TypeError (not a int)
+func ReadDurationBytes(b []byte) (d time.Duration, o []byte, err error) {
+	i, o, err := ReadInt64Bytes(b)
+	return time.Duration(i), o, err
+}
+
 // ReadInt64Bytes tries to read an int64
 // from 'b' and return the value and the remaining bytes.
 // Possible errors:
