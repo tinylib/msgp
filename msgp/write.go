@@ -356,6 +356,11 @@ func (mw *Writer) WriteFloat32(f float32) error {
 	return mw.prefix32(mfloat32, math.Float32bits(f))
 }
 
+// WriteDuration writes a time.Duration to the writer
+func (mw *Writer) WriteDuration(d time.Duration) error {
+	return mw.WriteInt64(int64(d))
+}
+
 // WriteInt64 writes an int64 to the writer
 func (mw *Writer) WriteInt64(i int64) error {
 	if i >= 0 {
