@@ -559,6 +559,12 @@ func (m *Reader) ReadBool() (b bool, err error) {
 	return
 }
 
+// ReadDuration reads a time.Duration from the reader
+func (m *Reader) ReadDuration() (d time.Duration, err error) {
+	i, err := m.ReadInt64()
+	return time.Duration(i), err
+}
+
 // ReadInt64 reads an int64 from the reader
 func (m *Reader) ReadInt64() (i int64, err error) {
 	var p []byte
