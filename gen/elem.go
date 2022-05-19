@@ -88,9 +88,10 @@ const (
 	Int32
 	Int64
 	Bool
-	Intf // interface{}
-	Time // time.Time
-	Ext  // extension
+	Intf     // interface{}
+	Time     // time.Time
+	Duration // time.Duration
+	Ext      // extension
 
 	IDENT // IDENT means an unrecognized identifier
 )
@@ -119,6 +120,7 @@ var primitives = map[string]Primitive{
 	"bool":           Bool,
 	"interface{}":    Intf,
 	"time.Time":      Time,
+	"time.Duration":  Duration,
 	"msgp.Extension": Ext,
 }
 
@@ -573,10 +575,13 @@ func (s *BaseElem) FromBase() string {
 // BaseName returns the string form of the
 // base type (e.g. Float64, Ident, etc)
 func (s *BaseElem) BaseName() string {
-	// time is a special case;
+	// time.Time and time.Duration are special cases;
 	// we strip the package prefix
 	if s.Value == Time {
 		return "Time"
+	}
+	if s.Value == Duration {
+		return "Duration"
 	}
 	return s.Value.String()
 }
@@ -594,6 +599,8 @@ func (s *BaseElem) BaseType() string {
 		return "[]byte"
 	case Time:
 		return "time.Time"
+	case Duration:
+		return "time.Duration"
 	case Ext:
 		return "msgp.Extension"
 
@@ -657,7 +664,8 @@ func (s *BaseElem) ZeroExpr() string {
 		Int8,
 		Int16,
 		Int32,
-		Int64:
+		Int64,
+		Duration:
 		return "0"
 	case Bool:
 		return "false"
@@ -721,6 +729,8 @@ func (k Primitive) String() string {
 		return "Intf"
 	case Time:
 		return "time.Time"
+	case Duration:
+		return "time.Duration"
 	case Ext:
 		return "Extension"
 	case IDENT:
