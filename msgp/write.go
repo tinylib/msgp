@@ -687,6 +687,8 @@ func (mw *Writer) WriteIntf(v interface{}) error {
 		return mw.WriteMapStrIntf(v)
 	case time.Time:
 		return mw.WriteTime(v)
+	case time.Duration:
+		return mw.WriteDuration(v)
 	}
 
 	val := reflect.ValueOf(v)
