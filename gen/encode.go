@@ -139,6 +139,7 @@ func (e *encodeGen) structmap(s *Struct) {
 		e.p.printf("\n// omitempty: check for empty values")
 		e.p.printf("\n%s := uint32(%d)", fieldNVar, nfields)
 		e.p.printf("\n%s", bm.typeDecl())
+		e.p.printf("\n_ = %s", bm.varname)
 		for i, sf := range s.Fields {
 			if !e.p.ok() {
 				return

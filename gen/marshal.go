@@ -134,6 +134,7 @@ func (m *marshalGen) mapstruct(s *Struct) {
 		m.p.printf("\n// omitempty: check for empty values")
 		m.p.printf("\n%s := uint32(%d)", fieldNVar, nfields)
 		m.p.printf("\n%s", bm.typeDecl())
+		m.p.printf("\n_ = %s", bm.varname)
 		for i, sf := range s.Fields {
 			if !m.p.ok() {
 				return
