@@ -156,7 +156,8 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	switch b.Value {
 	case Bytes:
 		if b.Convert {
-			d.p.printf("\n%s, err = dc.ReadBytes([]byte(%s))", tmp, vname)
+			lowered := b.ToBase() + "(" + vname + ")"
+			d.p.printf("\n%s, err = dc.ReadBytes(%s)", tmp, lowered)
 		} else {
 			d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
 		}
