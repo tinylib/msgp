@@ -449,6 +449,18 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 		o = b
 		return
 	}
+	if isfixstr(lead) || lead == mstr8 || lead == mstr16 || lead == mstr32 {
+		var si string
+		si, o, err = ReadStringBytes(b)
+		if err != nil {
+			return
+		} else if len(si) == 0 {
+			i = 0
+		} else {
+			i, err = strconv.ParseInt(si, 10, 64)
+		}
+		return
+	}
 
 	switch lead {
 	case mint8:

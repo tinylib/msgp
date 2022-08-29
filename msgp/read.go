@@ -678,6 +678,17 @@ func (m *Reader) ReadInt64() (i int64, err error) {
 		i = int64(rnfixint(lead))
 		_, err = m.R.Skip(1)
 		return
+	} else if isfixstr(lead) || lead == mstr8 || lead == mstr16 || lead == mstr32 {
+		var si string
+		si, err = m.ReadString()
+		if err != nil {
+			return
+		} else if len(si) == 0 {
+			i = 0
+		} else {
+			i, err = strconv.ParseInt(si, 10, 64)
+		}
+		return
 	}
 
 	switch lead {
