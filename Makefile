@@ -13,7 +13,7 @@ SHELL := /bin/bash
 
 BIN = $(GOBIN)/msgp
 
-.PHONY: clean wipe install get-deps bench all
+.PHONY: clean wipe install get-deps bench all ci prepare
 
 $(BIN): */*.go
 	@go install ./...
@@ -43,8 +43,14 @@ get-deps:
 
 all: install $(GGEN) $(MGEN)
 
-# travis CI enters here
-travis:
+# Prepare generated code to be used for linting and testing in CI
+prepare:
+	go install .
+	go generate ./msgp
+	go generate ./_generated
+
+# CI enters here
+ci: prepare
 	arch
 	if [ `arch` == 'x86_64' ]; then \
 		sudo apt-get -y -q update; \
@@ -53,8 +59,4 @@ travis:
 		sudo dpkg -i tinygo_0.26.0_amd64.deb; \
 		export PATH=$$PATH:/usr/local/tinygo/bin; \
 	fi
-	go get -d -t ./...
-	go build -o "$${GOPATH%%:*}/bin/msgp" .
-	go generate ./msgp
-	go generate ./_generated
 	go test -v ./... ./_generated
