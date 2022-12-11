@@ -12,7 +12,7 @@ var big = binary.BigEndian
 // NextType returns the type of the next
 // object in the slice. If the length
 // of the input is zero, it returns
-// InvalidType.
+// [InvalidType].
 func NextType(b []byte) Type {
 	if len(b) == 0 {
 		return InvalidType
@@ -55,7 +55,7 @@ func IsNil(b []byte) bool {
 // data without interpreting its contents.
 type Raw []byte
 
-// MarshalMsg implements msgp.Marshaler.
+// MarshalMsg implements [Marshaler].
 // It appends the raw contents of 'raw'
 // to the provided byte slice. If 'raw'
 // is 0 bytes, 'nil' will be appended instead.
@@ -69,7 +69,7 @@ func (r Raw) MarshalMsg(b []byte) ([]byte, error) {
 	return o, nil
 }
 
-// UnmarshalMsg implements msgp.Unmarshaler.
+// UnmarshalMsg implements [Unmarshaler].
 // It sets the contents of *Raw to be the next
 // object in the provided byte slice.
 func (r *Raw) UnmarshalMsg(b []byte) ([]byte, error) {
@@ -91,7 +91,7 @@ func (r *Raw) UnmarshalMsg(b []byte) ([]byte, error) {
 	return out, nil
 }
 
-// EncodeMsg implements msgp.Encodable.
+// EncodeMsg implements [Encodable].
 // It writes the raw bytes to the writer.
 // If r is empty, it writes 'nil' instead.
 func (r Raw) EncodeMsg(w *Writer) error {
@@ -102,7 +102,7 @@ func (r Raw) EncodeMsg(w *Writer) error {
 	return err
 }
 
-// DecodeMsg implements msgp.Decodable.
+// DecodeMsg implements [Decodable].
 // It sets the value of *Raw to be the
 // next object on the wire.
 func (r *Raw) DecodeMsg(f *Reader) error {
@@ -114,7 +114,7 @@ func (r *Raw) DecodeMsg(f *Reader) error {
 	return err
 }
 
-// Msgsize implements msgp.Sizer
+// Msgsize implements [Sizer].
 func (r Raw) Msgsize() int {
 	l := len(r)
 	if l == 0 {
@@ -144,7 +144,7 @@ func appendNext(f *Reader, d *[]byte) error {
 	return nil
 }
 
-// MarshalJSON implements json.Marshaler
+// MarshalJSON implements [json.Marshaler].
 func (r *Raw) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	_, err := UnmarshalAsJSON(&buf, []byte(*r))
@@ -156,8 +156,8 @@ func (r *Raw) MarshalJSON() ([]byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a map)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a map)
 func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 	l := len(b)
 	if l < 1 {
@@ -202,8 +202,8 @@ func ReadMapHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a str or bin)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a str or bin)
 func ReadMapKeyZC(b []byte) ([]byte, []byte, error) {
 	o, x, err := ReadStringZC(b)
 	if err != nil {
@@ -221,8 +221,8 @@ func ReadMapKeyZC(b []byte) ([]byte, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not an array)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not an array)
 func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 	if len(b) < 1 {
 		return 0, nil, ErrShortBytes
@@ -264,8 +264,8 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a bin object)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a bin object)
 func ReadBytesHeader(b []byte) (sz uint32, o []byte, err error) {
 	if len(b) < 1 {
 		return 0, nil, ErrShortBytes
@@ -306,9 +306,9 @@ func ReadBytesHeader(b []byte) (sz uint32, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a 'nil')
-//   - InvalidPrefixError
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a 'nil')
+//   - [InvalidPrefixError]
 func ReadNilBytes(b []byte) ([]byte, error) {
 	if len(b) < 1 {
 		return nil, ErrShortBytes
@@ -324,8 +324,8 @@ func ReadNilBytes(b []byte) ([]byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a float64)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a float64)
 func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 	if len(b) < 9 {
 		if len(b) >= 5 && b[0] == mfloat32 {
@@ -359,8 +359,8 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a float32)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a float32)
 func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 	if len(b) < 5 {
 		err = ErrShortBytes
@@ -382,8 +382,8 @@ func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a bool)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a bool)
 func ReadBoolBytes(b []byte) (bool, []byte, error) {
 	if len(b) < 1 {
 		return false, b, ErrShortBytes
@@ -403,7 +403,7 @@ func ReadBoolBytes(b []byte) (bool, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
+//   - [ErrShortBytes] (too few bytes)
 //   - TypeError (not a int)
 func ReadDurationBytes(b []byte) (d time.Duration, o []byte, err error) {
 	i, o, err := ReadInt64Bytes(b)
@@ -415,8 +415,8 @@ func ReadDurationBytes(b []byte) (d time.Duration, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError (not a int)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a int)
 func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 	l := len(b)
 	if l < 1 {
@@ -524,9 +524,9 @@ func ReadInt64Bytes(b []byte) (i int64, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a int)
-//   - IntOverflow{} (value doesn't fit in int32)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a int)
+//   - [IntOverflow] (value doesn't fit in int32)
 func ReadInt32Bytes(b []byte) (int32, []byte, error) {
 	i, o, err := ReadInt64Bytes(b)
 	if i > math.MaxInt32 || i < math.MinInt32 {
@@ -540,9 +540,9 @@ func ReadInt32Bytes(b []byte) (int32, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a int)
-//   - IntOverflow{} (value doesn't fit in int16)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a int)
+//   - [IntOverflow] (value doesn't fit in int16)
 func ReadInt16Bytes(b []byte) (int16, []byte, error) {
 	i, o, err := ReadInt64Bytes(b)
 	if i > math.MaxInt16 || i < math.MinInt16 {
@@ -556,9 +556,9 @@ func ReadInt16Bytes(b []byte) (int16, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a int)
-//   - IntOverflow{} (value doesn't fit in int8)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a int)
+//   - [IntOverflow] (value doesn't fit in int8)
 func ReadInt8Bytes(b []byte) (int8, []byte, error) {
 	i, o, err := ReadInt64Bytes(b)
 	if i > math.MaxInt8 || i < math.MinInt8 {
@@ -572,9 +572,9 @@ func ReadInt8Bytes(b []byte) (int8, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a int)
-//   - IntOverflow{} (value doesn't fit in int; 32-bit platforms only)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a int)
+//   - [IntOverflow] (value doesn't fit in int; 32-bit platforms only)
 func ReadIntBytes(b []byte) (int, []byte, error) {
 	if smallint {
 		i, b, err := ReadInt32Bytes(b)
@@ -589,8 +589,8 @@ func ReadIntBytes(b []byte) (int, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a uint)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a uint)
 func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 	l := len(b)
 	if l < 1 {
@@ -712,9 +712,9 @@ func ReadUint64Bytes(b []byte) (u uint64, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a uint)
-//   - UintOverflow{} (value too large for uint32)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a uint)
+//   - [UintOverflow] (value too large for uint32)
 func ReadUint32Bytes(b []byte) (uint32, []byte, error) {
 	v, o, err := ReadUint64Bytes(b)
 	if v > math.MaxUint32 {
@@ -728,9 +728,9 @@ func ReadUint32Bytes(b []byte) (uint32, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a uint)
-//   - UintOverflow{} (value too large for uint16)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a uint)
+//   - [UintOverflow] (value too large for uint16)
 func ReadUint16Bytes(b []byte) (uint16, []byte, error) {
 	v, o, err := ReadUint64Bytes(b)
 	if v > math.MaxUint16 {
@@ -744,9 +744,9 @@ func ReadUint16Bytes(b []byte) (uint16, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a uint)
-//   - UintOverflow{} (value too large for uint8)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a uint)
+//   - [UintOverflow] (value too large for uint8)
 func ReadUint8Bytes(b []byte) (uint8, []byte, error) {
 	v, o, err := ReadUint64Bytes(b)
 	if v > math.MaxUint8 {
@@ -760,9 +760,9 @@ func ReadUint8Bytes(b []byte) (uint8, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a uint)
-//   - UintOverflow{} (value too large for uint; 32-bit platforms only)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a uint)
+//   - [UintOverflow] (value too large for uint; 32-bit platforms only)
 func ReadUintBytes(b []byte) (uint, []byte, error) {
 	if smallint {
 		u, b, err := ReadUint32Bytes(b)
@@ -783,8 +783,8 @@ func ReadByteBytes(b []byte) (byte, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (too few bytes)
-//   - TypeError{} (not a 'bin' object)
+//   - [ErrShortBytes] (too few bytes)
+//   - [TypeError] (not a 'bin' object)
 func ReadBytesBytes(b []byte, scratch []byte) (v []byte, o []byte, err error) {
 	return readBytesBytes(b, scratch, false)
 }
@@ -856,8 +856,8 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 //
 // Possible errors:
 //
-//   - ErrShortBytes (b not long enough)
-//   - TypeError{} (object not 'bin')
+//   - [ErrShortBytes] (b not long enough)
+//   - [TypeError] (object not 'bin')
 func ReadBytesZC(b []byte) (v []byte, o []byte, err error) {
 	return readBytesBytes(b, nil, true)
 }
@@ -918,8 +918,8 @@ func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (b not long enough)
-//   - TypeError{} (object not 'str')
+//   - [ErrShortBytes] (b not long enough)
+//   - [TypeError] (object not 'str')
 func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 	l := len(b)
 	if l < 1 {
@@ -980,9 +980,9 @@ func ReadStringZC(b []byte) (v []byte, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (b not long enough)
-//   - TypeError{} (not 'str' type)
-//   - InvalidPrefixError
+//   - [ErrShortBytes] (b not long enough)
+//   - [TypeError] (not 'str' type)
+//   - [InvalidPrefixError]
 func ReadStringBytes(b []byte) (string, []byte, error) {
 	v, o, err := ReadStringZC(b)
 	return string(v), o, err
@@ -996,9 +996,9 @@ func ReadStringBytes(b []byte) (string, []byte, error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (b not long enough)
-//   - TypeError{} (not 'str' type)
-//   - InvalidPrefixError (unknown type marker)
+//   - [ErrShortBytes] (b not long enough)
+//   - [TypeError] (not 'str' type)
+//   - [InvalidPrefixError] (unknown type marker)
 func ReadStringAsBytes(b []byte, scratch []byte) (v []byte, o []byte, err error) {
 	var tmp []byte
 	tmp, o, err = ReadStringZC(b)
@@ -1012,10 +1012,10 @@ func ReadStringAsBytes(b []byte, scratch []byte) (v []byte, o []byte, err error)
 //
 // Possible errors:
 //
-//   - ErrShortBytes (not enough bytes in 'b')
-//   - TypeError{} (object not a complex128)
-//   - InvalidPrefixError
-//   - ExtensionTypeError{} (object an extension of the correct size, but not a complex128)
+//   - [ErrShortBytes] (not enough bytes in 'b')
+//   - [TypeError] (object not a complex128)
+//   - [InvalidPrefixError]
+//   - [ExtensionTypeError] (object an extension of the correct size, but not a complex128)
 func ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
 	if len(b) < 18 {
 		err = ErrShortBytes
@@ -1041,9 +1041,9 @@ func ReadComplex128Bytes(b []byte) (c complex128, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (not enough bytes in 'b')
-//   - TypeError{} (object not a complex64)
-//   - ExtensionTypeError{} (object an extension of the correct size, but not a complex64)
+//   - [ErrShortBytes] (not enough bytes in 'b')
+//   - [TypeError] (object not a complex64)
+//   - [ExtensionTypeError] (object an extension of the correct size, but not a complex64)
 func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 	if len(b) < 10 {
 		err = ErrShortBytes
@@ -1069,9 +1069,9 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (not enough bytes in 'b')
-//   - TypeError{} (object not a complex64)
-//   - ExtensionTypeError{} (object an extension of the correct size, but not a time.Time)
+//   - [ErrShortBytes] (not enough bytes in 'b')
+//   - [TypeError] (object not a complex64)
+//   - [ExtensionTypeError] (object an extension of the correct size, but not a time.Time)
 func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 	if len(b) < 15 {
 		err = ErrShortBytes
@@ -1243,8 +1243,8 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 //
 // Possible errors:
 //
-//   - ErrShortBytes (not enough bytes in b)
-//   - InvalidPrefixError (bad encoding)
+//   - [ErrShortBytes] (not enough bytes in b)
+//   - [InvalidPrefixError] (bad encoding)
 func Skip(b []byte) ([]byte, error) {
 	sz, asz, err := getSize(b)
 	if err != nil {
