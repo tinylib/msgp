@@ -1,6 +1,7 @@
 MessagePack Code Generator
 =======
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/tinylib/msgp.svg)](https://pkg.go.dev/github.com/tinylib/msgp)
 [![test](https://github.com/tinylib/msgp/actions/workflows/test.yml/badge.svg)](https://github.com/tinylib/msgp/actions/workflows/test.yml)
 [![validate](https://github.com/tinylib/msgp/actions/workflows/validate.yml/badge.svg)](https://github.com/tinylib/msgp/actions/workflows/validate.yml)
 
@@ -10,7 +11,7 @@ This is a code generation tool and serialization library for [MessagePack](http:
 
 - Use Go as your schema language
 - Performance
-- [JSON interop](http://godoc.org/github.com/tinylib/msgp/msgp#CopyToJSON)
+- [JSON interop](https://pkg.go.dev/github.com/tinylib/msgp/msgp#CopyToJSON)
 - [User-defined extensions](http://github.com/tinylib/msgp/wiki/Using-Extensions)
 - Type safety
 - Encoding flexibility
