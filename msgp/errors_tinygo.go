@@ -1,3 +1,4 @@
+//go:build tinygo
 // +build tinygo
 
 package msgp
@@ -24,7 +25,6 @@ type stringer interface {
 }
 
 func ifToStr(i interface{}) string {
-
 	switch v := i.(type) {
 	case stringer:
 		return v.String()
@@ -35,7 +35,6 @@ func ifToStr(i interface{}) string {
 	default:
 		return reflect.ValueOf(i).String()
 	}
-
 }
 
 func quoteStr(s string) string {

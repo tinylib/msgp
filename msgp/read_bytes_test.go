@@ -238,7 +238,6 @@ func TestReadBoolBytes(t *testing.T) {
 		en.WriteBool(v)
 		en.Flush()
 		out, left, err := ReadBoolBytes(buf.Bytes())
-
 		if err != nil {
 			t.Errorf("test case %d: %s", i, err)
 		}
@@ -481,7 +480,7 @@ func TestReadBytesBytes(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 
-	tests := [][]byte{[]byte{}, []byte("some bytes"), []byte("some more bytes")}
+	tests := [][]byte{{}, []byte("some bytes"), []byte("some more bytes")}
 	var scratch []byte
 
 	for i, v := range tests {
@@ -505,7 +504,7 @@ func TestReadZCBytes(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 
-	tests := [][]byte{[]byte{}, []byte("some bytes"), []byte("some more bytes")}
+	tests := [][]byte{{}, []byte("some bytes"), []byte("some more bytes")}
 
 	for i, v := range tests {
 		buf.Reset()
@@ -721,7 +720,6 @@ func TestReadIntfBytes(t *testing.T) {
 			t.Errorf("ReadIntf(): %v in; %v out", v, out)
 		}
 	}
-
 }
 
 func BenchmarkSkipBytes(b *testing.B) {

@@ -119,7 +119,6 @@ func (e *encodeGen) appendraw(bts []byte) {
 }
 
 func (e *encodeGen) structmap(s *Struct) {
-
 	oeIdentPrefix := randIdent()
 
 	var data []byte

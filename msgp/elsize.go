@@ -1,7 +1,6 @@
 package msgp
 
 func calcBytespec(v byte) bytespec {
-
 	// single byte values
 	switch v {
 
@@ -97,7 +96,6 @@ func calcBytespec(v byte) bytespec {
 	// everything else is covered above
 
 	return bytespec{}
-
 }
 
 func getType(v byte) Type {

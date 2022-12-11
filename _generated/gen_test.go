@@ -2,10 +2,11 @@ package _generated
 
 import (
 	"bytes"
-	"github.com/tinylib/msgp/msgp"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 // benchmark encoding a small, "fast" type.
@@ -76,12 +77,11 @@ func (a *TestType) Equal(b *TestType) bool {
 }
 
 // This covers the following cases:
-//  - Recursive types
-//  - Non-builtin identifiers (and recursive types)
-//  - time.Time
-//  - map[string]string
-//  - anonymous structs
-//
+//   - Recursive types
+//   - Non-builtin identifiers (and recursive types)
+//   - time.Time
+//   - map[string]string
+//   - anonymous structs
 func Test1EncodeDecode(t *testing.T) {
 	f := 32.00
 	tt := &TestType{

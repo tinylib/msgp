@@ -1,3 +1,4 @@
+//go:build (amd64 && go1.18) || (darwin && go1.18)
 // +build amd64,go1.18 darwin,go1.18
 
 package tinygotest
@@ -68,7 +69,6 @@ func TestSimpleRoundtripBuild(t *testing.T) {
 	if sz > 20000 {
 		t.Errorf("arduino-nano33.bin is larger than expected: %d", sz)
 	}
-
 }
 
 // simple_marshal is just the MarshalMsg part
@@ -183,7 +183,6 @@ func goGenerate(t *testing.T, dir string) {
 }
 
 func tinygoBuild(t *testing.T, dir string, targets ...string) {
-
 	t.Helper()
 
 	wd, err := os.Getwd()
@@ -222,7 +221,6 @@ func tinygoBuild(t *testing.T, dir string, targets ...string) {
 			t.Fatal(err)
 		}
 	}
-
 }
 
 var spacePad = strings.Repeat(" ", 64)

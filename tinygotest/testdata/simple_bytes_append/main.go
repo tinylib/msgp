@@ -10,7 +10,6 @@ type Example struct {
 var buf [64]byte
 
 func main() {
-
 	e := Example{
 		I: 1,
 		S: "2",
@@ -28,5 +27,4 @@ func main() {
 		print(b[i], " ")
 	}
 	println()
-
 }

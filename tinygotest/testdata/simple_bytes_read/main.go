@@ -8,7 +8,6 @@ type Example struct {
 }
 
 func main() {
-
 	b := []byte{130, 161, 105, 1, 161, 115, 161, 50}
 
 	e := Example{}
@@ -53,5 +52,4 @@ func main() {
 	}
 
 	println("done")
-
 }
