@@ -18,5 +18,5 @@ jobs:
     - arch: amd64
       env: GIMME_ARCH=386
 
-script: "make travis"
+script: "make ci"
 
