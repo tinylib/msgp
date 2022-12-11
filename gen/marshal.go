@@ -114,7 +114,6 @@ func (m *marshalGen) tuple(s *Struct) {
 }
 
 func (m *marshalGen) mapstruct(s *Struct) {
-
 	oeIdentPrefix := randIdent()
 
 	var data []byte

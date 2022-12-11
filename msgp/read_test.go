@@ -77,7 +77,6 @@ func TestReadIntf(t *testing.T) {
 			t.Errorf("%v in; %v out", ts, v)
 		}
 	}
-
 }
 
 func TestReadMapHeader(t *testing.T) {
@@ -857,7 +856,6 @@ func TestSkip(t *testing.T) {
 		t.Errorf("expected %q; got %q", io.EOF, err)
 		t.Errorf("returned type %q", tp)
 	}
-
 }
 
 func BenchmarkSkip(b *testing.B) {

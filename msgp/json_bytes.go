@@ -12,7 +12,6 @@ import (
 var unfuns [_maxtype]func(jsWriter, []byte, []byte) ([]byte, []byte, error)
 
 func init() {
-
 	// NOTE(pmh): this is best expressed as a jump table,
 	// but gc doesn't do that yet. revisit post-go1.5.
 	unfuns = [_maxtype]func(jsWriter, []byte, []byte) ([]byte, []byte, error){

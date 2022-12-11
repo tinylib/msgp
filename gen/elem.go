@@ -128,8 +128,8 @@ var primitives = map[string]Primitive{
 // that satisfy all of the
 // interfaces.
 var builtins = map[string]struct{}{
-	"msgp.Raw":    struct{}{},
-	"msgp.Number": struct{}{},
+	"msgp.Raw":    {},
+	"msgp.Number": {},
 }
 
 // common data/methods for every Elem
@@ -644,7 +644,6 @@ func (s *BaseElem) Resolved() bool {
 
 // ZeroExpr returns the zero/empty expression or empty string if not supported.
 func (s *BaseElem) ZeroExpr() string {
-
 	switch s.Value {
 	case Bytes:
 		return "nil"
@@ -754,7 +753,6 @@ func writeStructFields(s []StructField, name string) {
 // ArrayHeader implementation in this library using uint32. On the Go side, we
 // can declare array lengths as any constant integer width, which breaks when
 // attempting a direct comparison to an array header's uint32.
-//
 func coerceArraySize(asz string) string {
 	return fmt.Sprintf("uint32(%s)", asz)
 }

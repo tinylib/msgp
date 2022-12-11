@@ -74,7 +74,6 @@ func (u *unmarshalGen) gStruct(s *Struct) {
 }
 
 func (u *unmarshalGen) tuple(s *Struct) {
-
 	// open block
 	sz := randIdent()
 	u.p.declare(sz, u32)

@@ -318,12 +318,12 @@ func (p *printer) declare(name string, typ string) {
 
 // does:
 //
-// if m == nil {
-//     m = make(type, size)
-// } else if len(m) > 0 {
-//     for key := range m { delete(m, key) }
-// }
+//	if m == nil {
+//	    m = make(type, size)
+//	} else if len(m) > 0 {
 //
+//	    for key := range m { delete(m, key) }
+//	}
 func (p *printer) resizeMap(size string, m *Map) {
 	vn := m.Varname()
 	if !p.ok() {
@@ -368,10 +368,9 @@ func (p *printer) closeblock() { p.print("\n}") }
 
 // does:
 //
-// for idx := range iter {
-//     {{generate inner}}
-// }
-//
+//	for idx := range iter {
+//	    {{generate inner}}
+//	}
 func (p *printer) rangeBlock(ctx *Context, idx string, iter string, t traversal, inner Elem) {
 	ctx.PushVar(idx)
 	p.printf("\n for %s := range %s {", idx, iter)
@@ -444,7 +443,6 @@ func (b *bmask) typeDecl() string {
 
 // typeName returns the type, e.g. "uint8" or "[2]uint64"
 func (b *bmask) typeName() string {
-
 	if b.bitlen <= 8 {
 		return "uint8"
 	}
@@ -464,7 +462,6 @@ func (b *bmask) typeName() string {
 // readExpr returns the expression to read from a position in the bitmask.
 // Compare ==0 for false or !=0 for true.
 func (b *bmask) readExpr(bitoffset int) string {
-
 	if bitoffset < 0 || bitoffset >= b.bitlen {
 		panic(fmt.Errorf("bitoffset %d out of range for bitlen %d", bitoffset, b.bitlen))
 	}
@@ -481,12 +478,10 @@ func (b *bmask) readExpr(bitoffset int) string {
 	buf.WriteByte(')')
 
 	return buf.String()
-
 }
 
 // setStmt returns the statement to set the specified bit in the bitmask.
 func (b *bmask) setStmt(bitoffset int) string {
-
 	var buf bytes.Buffer
 	buf.Grow(len(b.varname) + 16)
 	buf.WriteString(b.varname)
@@ -496,5 +491,4 @@ func (b *bmask) setStmt(bitoffset int) string {
 	fmt.Fprintf(&buf, " |= 0x%X", (uint64(1) << (uint64(bitoffset) % 64)))
 
 	return buf.String()
-
 }

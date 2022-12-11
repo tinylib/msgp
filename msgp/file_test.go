@@ -1,3 +1,4 @@
+//go:build linux || darwin || dragonfly || freebsd || netbsd || openbsd
 // +build linux darwin dragonfly freebsd netbsd openbsd
 
 package msgp_test
@@ -64,10 +65,9 @@ func TestReadWriteFile(t *testing.T) {
 var blobstrings = []string{"", "a string", "a longer string here!"}
 var blobfloats = []float64{0.0, -1.0, 1.0, 3.1415926535}
 var blobints = []int64{0, 1, -1, 80000, 1 << 30}
-var blobbytes = [][]byte{[]byte{}, []byte("hello"), []byte("{\"is_json\":true,\"is_compact\":\"unable to determine\"}")}
+var blobbytes = [][]byte{{}, []byte("hello"), []byte("{\"is_json\":true,\"is_compact\":\"unable to determine\"}")}
 
 func BenchmarkWriteReadFile(b *testing.B) {
-
 	// let's not run out of disk space...
 	if b.N > 10000000 {
 		b.N = 10000000 //nolint:staticcheck // ignoring "SA3001: should not assign to b.N (staticcheck)" as this should not usually happen.

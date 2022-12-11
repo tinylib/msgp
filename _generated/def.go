@@ -243,7 +243,7 @@ type ArrayConstants struct {
 	ConstantUint32 [ConstantUint32]string
 	ConstantUint64 [ConstantUint64]string
 	ConstantHex    [0x16]string
-	ConstantOctal  [07]string
+	ConstantOctal  [0o7]string
 }
 
 // Ensure non-msg struct tags work:

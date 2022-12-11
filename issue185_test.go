@@ -25,7 +25,6 @@ const debugTemp = false
 //
 // structs are currently processed alphabetically by msgp. this test relies on
 // that property.
-//
 func TestIssue185Idents(t *testing.T) {
 	var identCases = []struct {
 		tpl             *template.Template
@@ -225,7 +224,7 @@ func extractVars(file string) (extractedVars, error) {
 }
 
 func goGenerateTpl(cwd, tfile string, tpl *template.Template, tplData interface{}) error {
-	outf, err := os.OpenFile(tfile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
+	outf, err := os.OpenFile(tfile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}

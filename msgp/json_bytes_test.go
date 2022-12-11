@@ -72,7 +72,6 @@ func TestUnmarshalJSON(t *testing.T) {
 		} else {
 			t.Error(`can't type-assert "c" to map[string]interface{}`)
 		}
-
 	}
 
 	t.Logf("JSON: %s", js.Bytes())

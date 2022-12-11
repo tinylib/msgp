@@ -90,7 +90,6 @@ func TestCauseShortByte(t *testing.T) {
 }
 
 func TestUnwrap(t *testing.T) {
-
 	// check errors that get wrapped
 	for idx, err := range []error{
 		errors.New("test"),
@@ -124,14 +123,11 @@ func TestUnwrap(t *testing.T) {
 			if errors.Unwrap(cerr) != nil {
 				t.Fatal()
 			}
-
 		})
 	}
-
 }
 
 func TestSimpleQuoteStr(t *testing.T) {
-
 	// check some cases for simpleQuoteStr
 	type tcase struct {
 		in  string
@@ -181,5 +177,4 @@ func TestSimpleQuoteStr(t *testing.T) {
 			}
 		})
 	}
-
 }
