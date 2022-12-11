@@ -395,7 +395,7 @@ func (m *Reader) ReadMapKey(scratch []byte) ([]byte, error) {
 	return out, nil
 }
 
-// MapKeyPtr returns a []byte pointing to the contents
+// ReadMapKeyPtr returns a []byte pointing to the contents
 // of a valid map key. The key cannot be empty, and it
 // must be shorter than the total buffer size of the
 // *Reader. Additionally, the returned slice is only
