@@ -24,7 +24,7 @@ func TestReadIntf(t *testing.T) {
 	// always read out as int64, and
 	// unsigned integers as uint64
 
-	var testCases = []interface{}{
+	testCases := []interface{}{
 		float64(128.032),
 		float32(9082.092),
 		int64(-40),

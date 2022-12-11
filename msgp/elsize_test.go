@@ -12,7 +12,7 @@ func TestBytespec(t *testing.T) {
 	// constant-time type information
 	// for traversing composite objects.
 	//
-	var sizes = [256]bytespec{
+	sizes := [256]bytespec{
 		mnil:      {size: 1, extra: constsize, typ: NilType},
 		mfalse:    {size: 1, extra: constsize, typ: BoolType},
 		mtrue:     {size: 1, extra: constsize, typ: BoolType},

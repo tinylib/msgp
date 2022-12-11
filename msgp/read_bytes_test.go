@@ -270,8 +270,10 @@ func TestReadInt64Bytes(t *testing.T) {
 	var buf bytes.Buffer
 	wr := NewWriter(&buf)
 
-	ints := []int64{-100000, -5000, -5, 0, 8, 240, int64(tuint16), int64(tuint32), int64(tuint64),
-		-5, -30, 0, 1, 127, 300, 40921, 34908219}
+	ints := []int64{
+		-100000, -5000, -5, 0, 8, 240, int64(tuint16), int64(tuint32), int64(tuint64),
+		-5, -30, 0, 1, 127, 300, 40921, 34908219,
+	}
 
 	uints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), uint64(tuint64)}
 

@@ -26,11 +26,13 @@
 // the wiki at http://github.com/tinylib/msgp
 package msgp
 
-const last4 = 0x0f
-const first4 = 0xf0
-const last5 = 0x1f
-const first3 = 0xe0
-const last7 = 0x7f
+const (
+	last4  = 0x0f
+	first4 = 0xf0
+	last5  = 0x1f
+	first3 = 0xe0
+	last7  = 0x7f
+)
 
 func isfixint(b byte) bool {
 	return b>>7 == 0

@@ -88,15 +88,19 @@ type TestFast struct {
 }
 
 // Test nested aliases
-type FastAlias TestFast
-type AliasContainer struct {
-	Fast FastAlias
-}
+type (
+	FastAlias      TestFast
+	AliasContainer struct {
+		Fast FastAlias
+	}
+)
 
 // Test dependency resolution
-type IntA int
-type IntB IntA
-type IntC IntB
+type (
+	IntA int
+	IntB IntA
+	IntC IntB
+)
 
 type TestHidden struct {
 	A   string
@@ -124,8 +128,10 @@ type Things struct {
 
 //msgp:shim SpecialID as:[]byte using:toBytes/fromBytes
 
-type SpecialID string
-type TestObj struct{ ID1, ID2 SpecialID }
+type (
+	SpecialID string
+	TestObj   struct{ ID1, ID2 SpecialID }
+)
 
 func toBytes(id SpecialID) []byte   { return []byte(string(id)) }
 func fromBytes(id []byte) SpecialID { return SpecialID(string(id)) }
@@ -204,8 +210,10 @@ type FileHandle struct {
 	Name     string `msg:"name"`
 }
 
-type CustomInt int
-type CustomBytes []byte
+type (
+	CustomInt   int
+	CustomBytes []byte
+)
 
 type Wrapper struct {
 	Tree *Tree

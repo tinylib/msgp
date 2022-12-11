@@ -26,7 +26,7 @@ const debugTemp = false
 // structs are currently processed alphabetically by msgp. this test relies on
 // that property.
 func TestIssue185Idents(t *testing.T) {
-	var identCases = []struct {
+	identCases := []struct {
 		tpl             *template.Template
 		expectedChanged []string
 	}{
@@ -89,7 +89,7 @@ type issue185TplData struct {
 }
 
 func TestIssue185Overlap(t *testing.T) {
-	var overlapCases = []struct {
+	overlapCases := []struct {
 		tpl  *template.Template
 		data issue185TplData
 	}{

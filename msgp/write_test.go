@@ -34,8 +34,10 @@ func TestWriteMapHeader(t *testing.T) {
 		{0, []byte{mfixmap}},
 		{1, []byte{mfixmap | byte(1)}},
 		{100, []byte{mmap16, byte(uint16(100) >> 8), byte(uint16(100))}},
-		{tuint32,
-			[]byte{mmap32,
+		{
+			tuint32,
+			[]byte{
+				mmap32,
 				byte(tuint32 >> 24),
 				byte(tuint32 >> 16),
 				byte(tuint32 >> 8),
