@@ -1,6 +1,6 @@
 module github.com/tinylib/msgp
 
-go 1.14
+go 1.15
 
 require (
 	github.com/philhofer/fwd v1.1.2-0.20210722190033-5c56ac6d0bb9
