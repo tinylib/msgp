@@ -1,4 +1,4 @@
-// +build amd64 darwin
+// +build amd64,go1.18 darwin,go1.18
 
 package tinygotest
 
