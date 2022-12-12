@@ -68,7 +68,7 @@ func BenchmarkWriteReadFile(b *testing.B) {
 
 	// let's not run out of disk space...
 	if b.N > 10000000 {
-		b.N = 10000000
+		b.N = 10000000 //nolint:staticcheck // ignoring "SA3001: should not assign to b.N (staticcheck)" as this should not usually happen.
 	}
 
 	fname := "bench-tmpfile"
