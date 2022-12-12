@@ -5,10 +5,12 @@ package msgp_test
 import (
 	"bytes"
 	"crypto/rand"
-	"github.com/tinylib/msgp/msgp"
+	"io"
 	prand "math/rand"
 	"os"
 	"testing"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 type rawBytes []byte
@@ -48,7 +50,7 @@ func TestReadWriteFile(t *testing.T) {
 	}
 
 	var out rawBytes
-	f.Seek(0, os.SEEK_SET)
+	f.Seek(0, io.SeekStart)
 	err = msgp.ReadFile(&out, f)
 	if err != nil {
 		t.Fatal(err)

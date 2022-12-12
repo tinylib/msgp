@@ -78,7 +78,6 @@ func (e *encodeGen) gStruct(s *Struct) {
 	} else {
 		e.structmap(s)
 	}
-	return
 }
 
 func (e *encodeGen) tuple(s *Struct) {
