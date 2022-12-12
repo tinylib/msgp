@@ -63,7 +63,6 @@ func (d *decodeGen) gStruct(s *Struct) {
 	} else {
 		d.structAsMap(s)
 	}
-	return
 }
 
 func (d *decodeGen) assignAndCheck(name string, typ string) {

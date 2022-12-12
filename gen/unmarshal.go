@@ -71,7 +71,6 @@ func (u *unmarshalGen) gStruct(s *Struct) {
 	} else {
 		u.mapstruct(s)
 	}
-	return
 }
 
 func (u *unmarshalGen) tuple(s *Struct) {

@@ -364,10 +364,7 @@ func TestReadIntOverflows(t *testing.T) {
 		case UintOverflow:
 			bits = err.FailedBitsize
 		}
-		if bits == failBits {
-			return true
-		}
-		return false
+		return bits == failBits
 	}
 
 	belowZeroErr := func(err error, failBits int) bool {
