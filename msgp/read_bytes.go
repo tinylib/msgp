@@ -17,7 +17,7 @@ func NextType(b []byte) Type {
 	if len(b) == 0 {
 		return InvalidType
 	}
-	spec := sizes[b[0]]
+	spec := getBytespec(b[0])
 	t := spec.typ
 	if t == ExtensionType && len(b) > int(spec.size) {
 		var tp int8
@@ -380,6 +380,16 @@ func ReadBoolBytes(b []byte) (bool, []byte, error) {
 	default:
 		return false, b, badPrefix(BoolType, b[0])
 	}
+}
+
+// ReadDurationBytes tries to read a time.Duration
+// from 'b' and return the value and the remaining bytes.
+// Possible errors:
+// - ErrShortBytes (too few bytes)
+// - TypeError (not a int)
+func ReadDurationBytes(b []byte) (d time.Duration, o []byte, err error) {
+	i, o, err := ReadInt64Bytes(b)
+	return time.Duration(i), o, err
 }
 
 // ReadInt64Bytes tries to read an int64
@@ -1205,7 +1215,7 @@ func getSize(b []byte) (uintptr, uintptr, error) {
 		return 0, 0, ErrShortBytes
 	}
 	lead := b[0]
-	spec := &sizes[lead] // get type information
+	spec := getBytespec(lead) // get type information
 	size, mode := spec.size, spec.extra
 	if size == 0 {
 		return 0, 0, InvalidPrefixError(lead)

@@ -30,6 +30,7 @@ func TestReadIntf(t *testing.T) {
 		int64(-40),
 		uint64(9082981),
 		time.Now(),
+		48*time.Hour + 3*time.Minute + 2*time.Second + 3*time.Nanosecond,
 		"hello!",
 		[]byte("hello!"),
 		map[string]interface{}{
@@ -65,6 +66,12 @@ func TestReadIntf(t *testing.T) {
 		if tm, ok := v.(time.Time); ok {
 			if !tm.Equal(v.(time.Time)) {
 				t.Errorf("%v != %v", ts, v)
+			}
+		} else if intd, ok := ts.(time.Duration); ok {
+			/* for time.Duration, cast before comparing */
+			outtd := time.Duration(v.(int64))
+			if intd != outtd {
+				t.Errorf("%v in; %v out", intd, outtd)
 			}
 		} else if !reflect.DeepEqual(v, ts) {
 			t.Errorf("%v in; %v out", ts, v)
@@ -357,10 +364,7 @@ func TestReadIntOverflows(t *testing.T) {
 		case UintOverflow:
 			bits = err.FailedBitsize
 		}
-		if bits == failBits {
-			return true
-		}
-		return false
+		return bits == failBits
 	}
 
 	belowZeroErr := func(err error, failBits int) bool {

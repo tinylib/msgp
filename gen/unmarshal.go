@@ -71,7 +71,6 @@ func (u *unmarshalGen) gStruct(s *Struct) {
 	} else {
 		u.mapstruct(s)
 	}
-	return
 }
 
 func (u *unmarshalGen) tuple(s *Struct) {
@@ -86,8 +85,15 @@ func (u *unmarshalGen) tuple(s *Struct) {
 			return
 		}
 		u.ctx.PushString(s.Fields[i].FieldName)
+		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		if anField {
+			u.p.printf("\nif msgp.IsNil(bts) {\nbts = bts[1:]\n%s = nil\n} else {", s.Fields[i].FieldElem.Varname())
+		}
 		next(u, s.Fields[i].FieldElem)
 		u.ctx.Pop()
+		if anField {
+			u.p.printf("\n}")
+		}
 	}
 }
 
@@ -107,8 +113,16 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 		}
 		u.p.printf("\ncase \"%s\":", s.Fields[i].FieldTag)
 		u.ctx.PushString(s.Fields[i].FieldName)
+
+		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		if anField {
+			u.p.printf("\nif msgp.IsNil(bts) {\nbts = bts[1:]\n%s = nil\n} else {", s.Fields[i].FieldElem.Varname())
+		}
 		next(u, s.Fields[i].FieldElem)
 		u.ctx.Pop()
+		if anField {
+			u.p.printf("\n}")
+		}
 	}
 	u.p.print("\ndefault:\nbts, err = msgp.Skip(bts)")
 	u.p.wrapErrCheck(u.ctx.ArgsStr())

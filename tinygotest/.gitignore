@@ -1,0 +1,10 @@
+*_gen.go
+*_gen_test.go
+*.out
+*.bin
+*.hex
+*.wasm
+*.wasi
+nativebin
+tmp*
+

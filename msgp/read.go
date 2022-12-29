@@ -36,6 +36,7 @@ const (
 	IntType
 	UintType
 	NilType
+	DurationType
 	ExtensionType
 
 	// pseudo-types provided
@@ -262,7 +263,7 @@ func getNextSize(r *fwd.Reader) (uintptr, uintptr, error) {
 		return 0, 0, err
 	}
 	lead := b[0]
-	spec := &sizes[lead]
+	spec := getBytespec(lead)
 	size, mode := spec.size, spec.extra
 	if size == 0 {
 		return 0, 0, InvalidPrefixError(lead)
@@ -557,6 +558,12 @@ func (m *Reader) ReadBool() (b bool, err error) {
 	}
 	_, err = m.R.Skip(1)
 	return
+}
+
+// ReadDuration reads a time.Duration from the reader
+func (m *Reader) ReadDuration() (d time.Duration, err error) {
+	i, err := m.ReadInt64()
+	return time.Duration(i), err
 }
 
 // ReadInt64 reads an int64 from the reader
@@ -1300,6 +1307,10 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 
 	case TimeType:
 		i, err = m.ReadTime()
+		return
+
+	case DurationType:
+		i, err = m.ReadDuration()
 		return
 
 	case ExtensionType:

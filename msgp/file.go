@@ -1,5 +1,5 @@
 // +build linux darwin dragonfly freebsd netbsd openbsd
-// +build !appengine
+// +build !appengine,!tinygo
 
 package msgp
 

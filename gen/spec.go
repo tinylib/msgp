@@ -62,25 +62,6 @@ func (m Method) String() string {
 	}
 }
 
-func strtoMeth(s string) Method {
-	switch s {
-	case "encode":
-		return Encode
-	case "decode":
-		return Decode
-	case "marshal":
-		return Marshal
-	case "unmarshal":
-		return Unmarshal
-	case "size":
-		return Size
-	case "test":
-		return Test
-	default:
-		return 0
-	}
-}
-
 const (
 	Decode      Method                       = 1 << iota // msgp.Decodable
 	Encode                                               // msgp.Encodable

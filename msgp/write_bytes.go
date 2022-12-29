@@ -73,6 +73,11 @@ func AppendFloat32(b []byte, f float32) []byte {
 	return o
 }
 
+// AppendDuration appends a time.Duration to the slice
+func AppendDuration(b []byte, d time.Duration) []byte {
+	return AppendInt64(b, int64(d))
+}
+
 // AppendInt64 appends an int64 to the slice
 func AppendInt64(b []byte, i int64) []byte {
 	if i >= 0 {

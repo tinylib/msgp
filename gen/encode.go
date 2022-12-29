@@ -78,7 +78,6 @@ func (e *encodeGen) gStruct(s *Struct) {
 	} else {
 		e.structmap(s)
 	}
-	return
 }
 
 func (e *encodeGen) tuple(s *Struct) {
@@ -93,9 +92,18 @@ func (e *encodeGen) tuple(s *Struct) {
 		if !e.p.ok() {
 			return
 		}
+		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		if anField {
+			e.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr())
+			e.p.printf("\nerr = en.WriteNil(); if err != nil { return; }")
+			e.p.printf("\n} else {")
+		}
 		e.ctx.PushString(s.Fields[i].FieldName)
 		next(e, s.Fields[i].FieldElem)
 		e.ctx.Pop()
+		if anField {
+			e.p.print("\n}") // close if statement
+		}
 	}
 }
 
@@ -130,6 +138,7 @@ func (e *encodeGen) structmap(s *Struct) {
 		e.p.printf("\n// omitempty: check for empty values")
 		e.p.printf("\n%s := uint32(%d)", fieldNVar, nfields)
 		e.p.printf("\n%s", bm.typeDecl())
+		e.p.printf("\n_ = %s", bm.varname)
 		for i, sf := range s.Fields {
 			if !e.p.ok() {
 				return
@@ -172,7 +181,7 @@ func (e *encodeGen) structmap(s *Struct) {
 		}
 
 		// if field is omitempty, wrap with if statement based on the emptymask
-		oeField := s.Fields[i].HasTagPart("omitempty") && s.Fields[i].FieldElem.IfZeroExpr() != ""
+		oeField := omitempty && s.Fields[i].HasTagPart("omitempty") && s.Fields[i].FieldElem.IfZeroExpr() != ""
 		if oeField {
 			e.p.printf("\nif %s == 0 { // if not empty", bm.readExpr(i))
 		}
@@ -182,11 +191,18 @@ func (e *encodeGen) structmap(s *Struct) {
 		e.Fuse(data)
 		e.fuseHook()
 
+		anField := !oeField && s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		if anField {
+			e.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr())
+			e.p.printf("\nerr = en.WriteNil(); if err != nil { return; }")
+			e.p.printf("\n} else {")
+		}
+
 		e.ctx.PushString(s.Fields[i].FieldName)
 		next(e, s.Fields[i].FieldElem)
 		e.ctx.Pop()
 
-		if oeField {
+		if oeField || anField {
 			e.p.print("\n}") // close if statement
 		}
 

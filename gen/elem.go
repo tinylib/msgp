@@ -88,9 +88,10 @@ const (
 	Int32
 	Int64
 	Bool
-	Intf // interface{}
-	Time // time.Time
-	Ext  // extension
+	Intf     // interface{}
+	Time     // time.Time
+	Duration // time.Duration
+	Ext      // extension
 
 	IDENT // IDENT means an unrecognized identifier
 )
@@ -119,6 +120,7 @@ var primitives = map[string]Primitive{
 	"bool":           Bool,
 	"interface{}":    Intf,
 	"time.Time":      Time,
+	"time.Duration":  Duration,
 	"msgp.Extension": Ext,
 }
 
@@ -137,6 +139,7 @@ func (c *common) SetVarname(s string) { c.vname = s }
 func (c *common) Varname() string     { return c.vname }
 func (c *common) Alias(typ string)    { c.alias = typ }
 func (c *common) hidden()             {}
+func (c *common) AllowNil() bool      { return false }
 
 func IsPrintable(e Elem) bool {
 	if be, ok := e.(*BaseElem); ok && !be.Printable() {
@@ -182,6 +185,10 @@ type Elem interface {
 	// value.  Can be used for assignment.
 	// Returns "" if zero/empty not supported for this Elem.
 	ZeroExpr() string
+
+	// AllowNil will return true for types that can be nil but doesn't automatically check.
+	// This is true for slices and maps.
+	AllowNil() bool
 
 	// IfZeroExpr returns the expression to compare to zero/empty
 	// for this type.  It is meant to be used in an if statement
@@ -292,6 +299,9 @@ func (m *Map) ZeroExpr() string { return "nil" }
 // IfZeroExpr returns the expression to compare to zero/empty.
 func (m *Map) IfZeroExpr() string { return m.Varname() + " == nil" }
 
+// AllowNil is true for maps.
+func (m *Map) AllowNil() bool { return true }
+
 type Slice struct {
 	common
 	Index string
@@ -332,6 +342,9 @@ func (s *Slice) ZeroExpr() string { return "nil" }
 
 // IfZeroExpr returns the expression to compare to zero/empty.
 func (s *Slice) IfZeroExpr() string { return s.Varname() + " == nil" }
+
+// AllowNil is true for slices.
+func (s *Slice) AllowNil() bool { return true }
 
 type Ptr struct {
 	common
@@ -562,10 +575,13 @@ func (s *BaseElem) FromBase() string {
 // BaseName returns the string form of the
 // base type (e.g. Float64, Ident, etc)
 func (s *BaseElem) BaseName() string {
-	// time is a special case;
+	// time.Time and time.Duration are special cases;
 	// we strip the package prefix
 	if s.Value == Time {
 		return "Time"
+	}
+	if s.Value == Duration {
+		return "Duration"
 	}
 	return s.Value.String()
 }
@@ -583,6 +599,8 @@ func (s *BaseElem) BaseType() string {
 		return "[]byte"
 	case Time:
 		return "time.Time"
+	case Duration:
+		return "time.Duration"
 	case Ext:
 		return "msgp.Extension"
 
@@ -646,7 +664,8 @@ func (s *BaseElem) ZeroExpr() string {
 		Int8,
 		Int16,
 		Int32,
-		Int64:
+		Int64,
+		Duration:
 		return "0"
 	case Bool:
 		return "false"
@@ -710,6 +729,8 @@ func (k Primitive) String() string {
 		return "Intf"
 	case Time:
 		return "time.Time"
+	case Duration:
+		return "time.Duration"
 	case Ext:
 		return "Extension"
 	case IDENT:
