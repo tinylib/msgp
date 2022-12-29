@@ -19,6 +19,8 @@ type encodeGen struct {
 	p    printer
 	fuse []byte
 	ctx  *Context
+
+	checkIsEmptyIntfEmitted bool // set to true when checkIsEmptyIntfEmitted is output in the current function
 }
 
 func (e *encodeGen) Method() Method { return Encode }
@@ -64,6 +66,7 @@ func (e *encodeGen) Execute(p Elem) error {
 	e.p.comment("EncodeMsg implements msgp.Encodable")
 
 	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), imutMethodReceiver(p))
+	e.checkIsEmptyIntfEmitted = false
 	next(e, p)
 	e.p.nakedReturn()
 	return e.p.err
@@ -94,7 +97,8 @@ func (e *encodeGen) tuple(s *Struct) {
 		}
 		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
 		if anField {
-			e.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr())
+			e.p.printf("\nif %s { // allownil: if nil",
+				s.Fields[i].FieldElem.IfZeroExpr(false)) // allownil takes precedence over omitisempty
 			e.p.printf("\nerr = en.WriteNil(); if err != nil { return; }")
 			e.p.printf("\n} else {")
 		}
@@ -129,13 +133,23 @@ func (e *encodeGen) structmap(s *Struct) {
 		varname: oeIdentPrefix + "Mask",
 	}
 
-	omitempty := s.AnyHasTagPart("omitempty")
+	omitisempty := s.AnyHasTagPart("omitisempty")
+	omitempty := s.AnyHasTagPart("omitempty") || omitisempty
 	var fieldNVar string
 	if omitempty {
 
 		fieldNVar = oeIdentPrefix + "Len"
 
 		e.p.printf("\n// omitempty: check for empty values")
+		if omitisempty && !e.checkIsEmptyIntfEmitted {
+			e.p.printf("\nvar checkIsEmptyIntf = func(i interface{}) bool { // omitisempty interface check helper")
+			e.p.printf("\n    type isEmpty interface { IsEmpty() bool }")
+			e.p.printf("\n    ie, ok := i.(isEmpty)")
+			e.p.printf("\n    return ok && ie.IsEmpty()")
+			e.p.printf("\n}")
+			e.p.printf("\n_ = checkIsEmptyIntf") // just in case there's some edge case where it's not referenced
+			e.checkIsEmptyIntfEmitted = true
+		}
 		e.p.printf("\n%s := uint32(%d)", fieldNVar, nfields)
 		e.p.printf("\n%s", bm.typeDecl())
 		e.p.printf("\n_ = %s", bm.varname)
@@ -143,7 +157,9 @@ func (e *encodeGen) structmap(s *Struct) {
 			if !e.p.ok() {
 				return
 			}
-			if ize := sf.FieldElem.IfZeroExpr(); ize != "" && sf.HasTagPart("omitempty") {
+			sfomitisempty := sf.HasTagPart("omitisempty")
+			sfomitempty := sf.HasTagPart("omitempty") || sfomitisempty
+			if ize := sf.FieldElem.IfZeroExpr(sfomitisempty); ize != "" && sfomitempty {
 				e.p.printf("\nif %s {", ize)
 				e.p.printf("\n%s--", fieldNVar)
 				e.p.printf("\n%s", bm.setStmt(i))
@@ -180,8 +196,11 @@ func (e *encodeGen) structmap(s *Struct) {
 			return
 		}
 
+		sfomitisempty := s.Fields[i].HasTagPart("omitisempty")
+		sfomitempty := s.Fields[i].HasTagPart("omitempty") || sfomitisempty
+
 		// if field is omitempty, wrap with if statement based on the emptymask
-		oeField := omitempty && s.Fields[i].HasTagPart("omitempty") && s.Fields[i].FieldElem.IfZeroExpr() != ""
+		oeField := omitempty && sfomitempty && s.Fields[i].FieldElem.IfZeroExpr(sfomitisempty) != ""
 		if oeField {
 			e.p.printf("\nif %s == 0 { // if not empty", bm.readExpr(i))
 		}
@@ -193,7 +212,7 @@ func (e *encodeGen) structmap(s *Struct) {
 
 		anField := !oeField && s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
 		if anField {
-			e.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr())
+			e.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr(false)) // allownil takes precedence over omitisempty
 			e.p.printf("\nerr = en.WriteNil(); if err != nil { return; }")
 			e.p.printf("\n} else {")
 		}

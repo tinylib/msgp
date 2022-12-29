@@ -19,6 +19,8 @@ type marshalGen struct {
 	p    printer
 	fuse []byte
 	ctx  *Context
+
+	checkIsEmptyIntfEmitted bool // set to true when checkIsEmptyIntfEmitted is output in the current function
 }
 
 func (m *marshalGen) Method() Method { return Marshal }
@@ -50,6 +52,7 @@ func (m *marshalGen) Execute(p Elem) error {
 
 	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", p.Varname(), imutMethodReceiver(p))
 	m.p.printf("\no = msgp.Require(b, %s.Msgsize())", c)
+	m.checkIsEmptyIntfEmitted = false
 	next(m, p)
 	m.p.nakedReturn()
 	return m.p.err
@@ -100,7 +103,8 @@ func (m *marshalGen) tuple(s *Struct) {
 		}
 		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
 		if anField {
-			m.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr())
+			m.p.printf("\nif %s { // allownil: if nil",
+				s.Fields[i].FieldElem.IfZeroExpr(false)) // allownil takes precedence over omitisempty
 			m.p.printf("\no = msgp.AppendNil(o)")
 			m.p.printf("\n} else {")
 		}
@@ -124,13 +128,23 @@ func (m *marshalGen) mapstruct(s *Struct) {
 		varname: oeIdentPrefix + "Mask",
 	}
 
-	omitempty := s.AnyHasTagPart("omitempty")
+	omitisempty := s.AnyHasTagPart("omitisempty")
+	omitempty := s.AnyHasTagPart("omitempty") || omitisempty
 	var fieldNVar string
 	if omitempty {
 
 		fieldNVar = oeIdentPrefix + "Len"
 
 		m.p.printf("\n// omitempty: check for empty values")
+		if omitisempty && !m.checkIsEmptyIntfEmitted {
+			m.p.printf("\nvar checkIsEmptyIntf = func(i interface{}) bool { // omitisempty interface check helper")
+			m.p.printf("\n    type isEmpty interface { IsEmpty() bool }")
+			m.p.printf("\n    ie, ok := i.(isEmpty)")
+			m.p.printf("\n    return ok && ie.IsEmpty()")
+			m.p.printf("\n}")
+			m.p.printf("\n_ = checkIsEmptyIntf") // just in case there's some edge case where it's not referenced
+			m.checkIsEmptyIntfEmitted = true
+		}
 		m.p.printf("\n%s := uint32(%d)", fieldNVar, nfields)
 		m.p.printf("\n%s", bm.typeDecl())
 		m.p.printf("\n_ = %s", bm.varname)
@@ -138,7 +152,9 @@ func (m *marshalGen) mapstruct(s *Struct) {
 			if !m.p.ok() {
 				return
 			}
-			if ize := sf.FieldElem.IfZeroExpr(); ize != "" && sf.HasTagPart("omitempty") {
+			sfomitisempty := sf.HasTagPart("omitisempty")
+			sfomitempty := sf.HasTagPart("omitempty") || sfomitisempty
+			if ize := sf.FieldElem.IfZeroExpr(sfomitisempty); ize != "" && sfomitempty {
 				m.p.printf("\nif %s {", ize)
 				m.p.printf("\n%s--", fieldNVar)
 				m.p.printf("\n%s", bm.setStmt(i))
@@ -175,8 +191,11 @@ func (m *marshalGen) mapstruct(s *Struct) {
 			return
 		}
 
+		sfomitisempty := s.Fields[i].HasTagPart("omitisempty")
+		sfomitempty := s.Fields[i].HasTagPart("omitempty") || sfomitisempty
+
 		// if field is omitempty, wrap with if statement based on the emptymask
-		oeField := s.Fields[i].HasTagPart("omitempty") && s.Fields[i].FieldElem.IfZeroExpr() != ""
+		oeField := sfomitempty && s.Fields[i].FieldElem.IfZeroExpr(sfomitisempty) != ""
 		if oeField {
 			m.p.printf("\nif %s == 0 { // if not empty", bm.readExpr(i))
 		}
@@ -189,7 +208,7 @@ func (m *marshalGen) mapstruct(s *Struct) {
 
 		anField := !oeField && s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
 		if anField {
-			m.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr())
+			m.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr(false)) // allownil takes precedence over omitisempty
 			m.p.printf("\no = msgp.AppendNil(o)")
 			m.p.printf("\n} else {")
 		}

@@ -194,8 +194,12 @@ type Elem interface {
 	// for this type.  It is meant to be used in an if statement
 	// and may include the simple statement form followed by
 	// semicolon and then the expression.
+	// The useIsEmptyIntf argument indicates if this type should
+	// use a check against a type that is expected to be declared
+	// as `type isEmpty interface { IsEmpty() bool }`, if supported
+	// for this type.  This is used by the `omitisempty` option.
 	// Returns "" if zero/empty not supported for this Elem.
-	IfZeroExpr() string
+	IfZeroExpr(useIsEmptyIntf bool) string
 
 	hidden()
 }
@@ -252,8 +256,13 @@ func (a *Array) Complexity() int { return 1 + a.Els.Complexity() }
 // ZeroExpr returns the zero/empty expression or empty string if not supported.  Unsupported for this case.
 func (a *Array) ZeroExpr() string { return "" }
 
-// IfZeroExpr unsupported
-func (a *Array) IfZeroExpr() string { return "" }
+// IfZeroExpr only supported via isEmpty if aliased
+func (a *Array) IfZeroExpr(useIsEmptyIntf bool) string {
+	if useIsEmptyIntf && a.common.alias != "" {
+		return ifEmptyIntfExpr(a.Varname(), "")
+	}
+	return ""
+}
 
 // Map is a map[string]Elem
 type Map struct {
@@ -297,7 +306,14 @@ func (m *Map) Complexity() int { return 2 + m.Value.Complexity() }
 func (m *Map) ZeroExpr() string { return "nil" }
 
 // IfZeroExpr returns the expression to compare to zero/empty.
-func (m *Map) IfZeroExpr() string { return m.Varname() + " == nil" }
+func (m *Map) IfZeroExpr(useIsEmptyIntf bool) (ret string) {
+	ret = m.Varname() + " == nil"
+	if useIsEmptyIntf && m.common.alias != "" {
+		// can have interface check if requested and alias
+		ret = ifEmptyIntfExpr(m.Varname(), ret)
+	}
+	return ret
+}
 
 // AllowNil is true for maps.
 func (m *Map) AllowNil() bool { return true }
@@ -341,7 +357,14 @@ func (s *Slice) Complexity() int {
 func (s *Slice) ZeroExpr() string { return "nil" }
 
 // IfZeroExpr returns the expression to compare to zero/empty.
-func (s *Slice) IfZeroExpr() string { return s.Varname() + " == nil" }
+func (s *Slice) IfZeroExpr(useIsEmptyIntf bool) (ret string) {
+	ret = s.Varname() + " == nil"
+	if useIsEmptyIntf && s.common.alias != "" {
+		// can have interface check if requested and alias
+		ret = ifEmptyIntfExpr(s.Varname(), ret)
+	}
+	return ret
+}
 
 // AllowNil is true for slices.
 func (s *Slice) AllowNil() bool { return true }
@@ -404,7 +427,20 @@ func (s *Ptr) Needsinit() bool {
 func (s *Ptr) ZeroExpr() string { return "nil" }
 
 // IfZeroExpr returns the expression to compare to zero/empty.
-func (s *Ptr) IfZeroExpr() string { return s.Varname() + " == nil" }
+func (s *Ptr) IfZeroExpr(useIsEmptyIntf bool) (ret string) {
+	ret = s.Varname() + " == nil"
+
+	if useIsEmptyIntf {
+		// TODO: this could be improved by inspecting the type being pointed to
+		// more closely to remove some impossible cases (e.g. `*string` will
+		// never implement isEmpty), but this keeps things simple
+		// and should function correctly regardless of target type.  Plus,
+		// useIsEmptyIntf is opt-in anyway based on omitisempty struct tag.
+		ret = ifEmptyIntfExpr(s.Varname(), ret)
+	}
+	return ret
+
+}
 
 type Struct struct {
 	common
@@ -459,11 +495,16 @@ func (s *Struct) ZeroExpr() string {
 }
 
 // IfZeroExpr returns the expression to compare to zero/empty.
-func (s *Struct) IfZeroExpr() string {
-	if s.alias == "" {
-		return "" // structs with no names not supported (for now)
+func (s *Struct) IfZeroExpr(useIsEmptyIntf bool) (ret string) {
+	z := s.ZeroExpr()
+	if z != "" {
+		ret = s.Varname() + " == " + z
 	}
-	return s.Varname() + " == " + s.ZeroExpr()
+	if useIsEmptyIntf && s.common.alias != "" {
+		// interface check if requested and has alias
+		ret = ifEmptyIntfExpr(s.Varname(), ret)
+	}
+	return ret
 }
 
 // AnyHasTagPart returns true if HasTagPart(p) is true for any field.
@@ -679,12 +720,18 @@ func (s *BaseElem) ZeroExpr() string {
 }
 
 // IfZeroExpr returns the expression to compare to zero/empty.
-func (s *BaseElem) IfZeroExpr() string {
+func (s *BaseElem) IfZeroExpr(useIsEmptyIntf bool) (ret string) {
 	z := s.ZeroExpr()
-	if z == "" {
-		return ""
+	if z != "" {
+		ret = s.Varname() + " == " + z
 	}
-	return s.Varname() + " == " + z
+	if useIsEmptyIntf && s.common.alias != "" {
+		// aliased base types can have interface check if requested,
+		// this specifically includes the IDENT case of a type we
+		// are not code generating for
+		ret = ifEmptyIntfExpr(s.Varname(), ret)
+	}
+	return ret
 }
 
 func (k Primitive) String() string {
@@ -757,4 +804,17 @@ func writeStructFields(s []StructField, name string) {
 //
 func coerceArraySize(asz string) string {
 	return fmt.Sprintf("uint32(%s)", asz)
+}
+
+// ifEmptyIntfExpr is a shorthand for checking empty against IsEmpty() plus
+// whatever custom expression
+func ifEmptyIntfExpr(varExpr, eqCheck string) string {
+	ret := "checkIsEmptyIntf(" + varExpr + ")"
+	// Note: instead of calling checkIsEmptyIntf, it is possible to do this check inline
+	// on any type, but it's quite messy:
+	// ret := "ie, ok := (func(v interface{})interface{}{return v})(" + varExpr + ").(isEmpty); " +	"(ok && ie.IsEmpty())"
+	if eqCheck != "" {
+		ret = "(" + eqCheck + ") || " + ret
+	}
+	return ret
 }
