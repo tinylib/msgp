@@ -530,6 +530,8 @@ func (s *BaseElem) Alias(typ string) {
 	}
 }
 
+func (s *BaseElem) AllowNil() bool { return s.Value == Bytes }
+
 func (s *BaseElem) SetVarname(a string) {
 	// extensions whose parents
 	// are not pointers need to
