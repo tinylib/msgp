@@ -18,20 +18,39 @@ func randomExt() RawExtension {
 
 func TestReadWriteExtension(t *testing.T) {
 	rand.Seed(time.Now().Unix())
+
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 	dc := NewReader(&buf)
 
-	for i := 0; i < 25; i++ {
-		buf.Reset()
-		e := randomExt()
-		en.WriteExtension(&e)
-		en.Flush()
-		err := dc.ReadExtension(&e)
-		if err != nil {
-			t.Errorf("error with extension (length %d): %s", len(buf.Bytes()), err)
+	t.Run("interface", func(t *testing.T) {
+		for i := 0; i < 25; i++ {
+			buf.Reset()
+			e := randomExt()
+			en.WriteExtension(&e)
+			en.Flush()
+			err := dc.ReadExtension(&e)
+			if err != nil {
+				t.Errorf("error with extension (length %d): %s", len(buf.Bytes()), err)
+			}
 		}
-	}
+	})
+
+	t.Run("raw", func(t *testing.T) {
+		for i := 0; i < 25; i++ {
+			buf.Reset()
+			e := randomExt()
+			en.WriteExtensionRaw(e.Type, e.Data)
+			en.Flush()
+			typ, payload, err := dc.ReadExtensionRaw()
+			if err != nil {
+				t.Errorf("error with extension (length %d): %s", len(buf.Bytes()), err)
+			}
+			if typ != e.Type || !bytes.Equal(payload, e.Data) {
+				t.Errorf("extension mismatch: %d %x != %d %x", typ, payload, e.Type, e.Data)
+			}
+		}
+	})
 }
 
 func TestReadWriteExtensionBytes(t *testing.T) {
@@ -71,4 +90,54 @@ func TestAppendAndWriteCompatibility(t *testing.T) {
 			t.Errorf("error with extension (length %d): %s", len(bts), err)
 		}
 	}
+}
+
+func BenchmarkExtensionReadWrite(b *testing.B) {
+	b.Run("interface", func(b *testing.B) {
+		var buf bytes.Buffer
+		en := NewWriter(&buf)
+		dc := NewReader(&buf)
+
+		for i := 0; i < b.N; i++ {
+			e := randomExt()
+			err := en.WriteExtension(&e)
+			if err != nil {
+				b.Errorf("error writing extension: %s", err)
+			}
+			en.Flush()
+
+			err = dc.ReadExtension(&e)
+			if err != nil {
+				b.Errorf("error reading extension: %s", err)
+			}
+
+			buf.Reset()
+		}
+	})
+
+	b.Run("raw", func(b *testing.B) {
+		var buf bytes.Buffer
+		en := NewWriter(&buf)
+		dc := NewReader(&buf)
+
+		// this should have zero allocations
+		for i := 0; i < b.N; i++ {
+			e := randomExt()
+			err := en.WriteExtensionRaw(e.Type, e.Data)
+			if err != nil {
+				b.Errorf("error writing extension: %s", err)
+			}
+			en.Flush()
+
+			typ, payload, err := dc.ReadExtensionRaw()
+			if err != nil {
+				b.Errorf("error reading extension: %s", err)
+			}
+			if typ != e.Type || !bytes.Equal(payload, e.Data) {
+				b.Errorf("extension mismatch: %d %x != %d %x", typ, payload, e.Type, e.Data)
+			}
+
+			buf.Reset()
+		}
+	})
 }
