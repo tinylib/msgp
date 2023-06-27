@@ -93,12 +93,16 @@ func TestAppendAndWriteCompatibility(t *testing.T) {
 }
 
 func BenchmarkExtensionReadWrite(b *testing.B) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+	dc := NewReader(&buf)
+
 	b.Run("interface", func(b *testing.B) {
-		var buf bytes.Buffer
-		en := NewWriter(&buf)
-		dc := NewReader(&buf)
+		b.ReportAllocs()
 
 		for i := 0; i < b.N; i++ {
+			buf.Reset()
+
 			e := randomExt()
 			err := en.WriteExtension(&e)
 			if err != nil {
@@ -110,18 +114,16 @@ func BenchmarkExtensionReadWrite(b *testing.B) {
 			if err != nil {
 				b.Errorf("error reading extension: %s", err)
 			}
-
-			buf.Reset()
 		}
 	})
 
 	b.Run("raw", func(b *testing.B) {
-		var buf bytes.Buffer
-		en := NewWriter(&buf)
-		dc := NewReader(&buf)
-
 		// this should have zero allocations
+		b.ReportAllocs()
+
 		for i := 0; i < b.N; i++ {
+			buf.Reset()
+
 			e := randomExt()
 			err := en.WriteExtensionRaw(e.Type, e.Data)
 			if err != nil {
