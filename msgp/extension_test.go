@@ -53,6 +53,37 @@ func TestReadWriteExtension(t *testing.T) {
 	})
 }
 
+func TestReadWriteLargeExtensionRaw(t *testing.T) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+	dc := NewReader(&buf)
+
+	largeExt := RawExtension{Type: int8(rand.Int()), Data: RandBytes(int(tuint32))}
+
+	err := en.WriteExtensionRaw(largeExt.Type, largeExt.Data)
+	if err != nil {
+		t.Errorf("error with large extension write: %s", err)
+	}
+	// write a nil as a marker
+	err = en.WriteNil()
+	if err != nil {
+		t.Errorf("error with large extension write: %s", err)
+	}
+	en.Flush()
+
+	typ, payload, err := dc.ReadExtensionRaw()
+	if err != nil {
+		t.Errorf("error with large extension read: %s", err)
+	}
+	if typ != largeExt.Type || !bytes.Equal(payload, largeExt.Data) {
+		t.Errorf("large extension mismatch: %d %x != %d %x", typ, payload, largeExt.Type, largeExt.Data)
+	}
+	err = dc.ReadNil()
+	if err != nil {
+		t.Errorf("error with large extension read: %s", err)
+	}
+}
+
 func TestReadWriteExtensionBytes(t *testing.T) {
 	var bts []byte
 	rand.Seed(time.Now().Unix())
@@ -142,4 +173,38 @@ func BenchmarkExtensionReadWrite(b *testing.B) {
 			buf.Reset()
 		}
 	})
+}
+
+func BenchmarkExtensioStackBuffer(b *testing.B) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+	dc := NewReader(&buf)
+
+	b.ReportAllocs()
+
+	const bufSize = 128
+	e := &RawExtension{Type: int8(rand.Int()), Data: RandBytes(bufSize)}
+
+	// this should have zero allocations
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+
+		var staticBuf [bufSize]byte
+		slc := e.Data[:rand.Intn(bufSize)]
+		copy(staticBuf[:], slc)
+
+		err := en.WriteExtensionRaw(e.Type, staticBuf[:len(slc)])
+		if err != nil {
+			b.Errorf("error writing extension: %s", err)
+		}
+		en.Flush()
+
+		typ, payload, err := dc.ReadExtensionRaw()
+		if err != nil {
+			b.Errorf("error reading extension: %s", err)
+		}
+		if typ != e.Type || !bytes.Equal(payload, slc) {
+			b.Errorf("extension mismatch: %d %x != %d %x", typ, payload, e.Type, slc)
+		}
+	}
 }
