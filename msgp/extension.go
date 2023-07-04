@@ -240,8 +240,23 @@ func (mw *Writer) WriteExtensionRaw(extType int8, payload []byte) error {
 		return err
 	}
 
-	if _, err := mw.Write(payload); err != nil {
-		return err
+	// instead of using mw.Write(), we'll copy the data through the internal
+	// buffer, otherwise the payload would be moved to the heap
+	// (meaning we can use stack-allocated buffers with zero allocations)
+	for len(payload) > 0 {
+		chunkSize := mw.avail()
+		if chunkSize == 0 {
+			if err := mw.flush(); err != nil {
+				return err
+			}
+			chunkSize = mw.avail()
+		}
+		if chunkSize > len(payload) {
+			chunkSize = len(payload)
+		}
+
+		mw.wloc += copy(mw.buf[mw.wloc:], payload[:chunkSize])
+		payload = payload[chunkSize:]
 	}
 
 	return nil
