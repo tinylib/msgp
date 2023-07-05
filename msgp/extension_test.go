@@ -84,6 +84,41 @@ func TestReadWriteLargeExtensionRaw(t *testing.T) {
 	}
 }
 
+func TestExtensionRawStackBuffer(t *testing.T) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+	dc := NewReader(&buf)
+
+	const bufSize = 128
+	e := &RawExtension{Type: int8(rand.Int()), Data: RandBytes(bufSize)}
+
+	allocs := testing.AllocsPerRun(100, func() {
+		buf.Reset()
+
+		var staticBuf [bufSize]byte
+		slc := e.Data[:rand.Intn(bufSize)]
+		copy(staticBuf[:], slc)
+
+		err := en.WriteExtensionRaw(e.Type, staticBuf[:len(slc)])
+		if err != nil {
+			t.Errorf("error writing extension: %s", err)
+		}
+		en.Flush()
+
+		typ, payload, err := dc.ReadExtensionRaw()
+		if err != nil {
+			t.Errorf("error reading extension: %s", err)
+		}
+		if typ != e.Type || !bytes.Equal(payload, slc) {
+			t.Errorf("extension mismatch: %d %x != %d %x", typ, payload, e.Type, slc)
+		}
+	})
+
+	if allocs != 0 {
+		t.Errorf("using stack allocated buffer with WriteExtensionRaw caused %f allocations", allocs)
+	}
+}
+
 func TestReadWriteExtensionBytes(t *testing.T) {
 	var bts []byte
 	rand.Seed(time.Now().Unix())
@@ -173,38 +208,4 @@ func BenchmarkExtensionReadWrite(b *testing.B) {
 			buf.Reset()
 		}
 	})
-}
-
-func BenchmarkExtensioStackBuffer(b *testing.B) {
-	var buf bytes.Buffer
-	en := NewWriter(&buf)
-	dc := NewReader(&buf)
-
-	b.ReportAllocs()
-
-	const bufSize = 128
-	e := &RawExtension{Type: int8(rand.Int()), Data: RandBytes(bufSize)}
-
-	// this should have zero allocations
-	for i := 0; i < b.N; i++ {
-		buf.Reset()
-
-		var staticBuf [bufSize]byte
-		slc := e.Data[:rand.Intn(bufSize)]
-		copy(staticBuf[:], slc)
-
-		err := en.WriteExtensionRaw(e.Type, staticBuf[:len(slc)])
-		if err != nil {
-			b.Errorf("error writing extension: %s", err)
-		}
-		en.Flush()
-
-		typ, payload, err := dc.ReadExtensionRaw()
-		if err != nil {
-			b.Errorf("error reading extension: %s", err)
-		}
-		if typ != e.Type || !bytes.Equal(payload, slc) {
-			b.Errorf("extension mismatch: %d %x != %d %x", typ, payload, e.Type, slc)
-		}
-	}
 }
