@@ -217,7 +217,7 @@ func (e *encodeGen) gMap(m *Map) {
 	e.writeAndCheck(mapHeader, lenAsUint32, vname)
 
 	e.p.printf("\nfor %s, %s := range %s {", m.Keyidx, m.Validx, vname)
-	e.writeAndCheck(stringTyp, literalFmt, m.Keyidx)
+	e.writeAndCheck(stringTyp, literalFmt, m.KeyStringExpr())
 	e.ctx.PushVar(m.Keyidx)
 	next(e, m.Value)
 	e.ctx.Pop()
