@@ -307,7 +307,7 @@ func (m *Map) KeyStringExpr() string {
 	if m.KeyType == "string" {
 		return m.Keyidx
 	} else {
-		return fmt.Sprintf("%s.String()", m.Keyidx)
+		return fmt.Sprintf("%s.MsgpStrMapKey()", m.Keyidx)
 	}
 }
 
@@ -315,7 +315,7 @@ func (m *Map) KeyOrigTypeExpr() string {
 	if m.KeyType == "string" {
 		return m.Keyidx
 	} else {
-		return fmt.Sprintf("*(new(%s).FromString(%s))", m.KeyType, m.Keyidx)
+		return fmt.Sprintf("*(new(%s).MsgpFromStrMapKey(%s)).(*%s)", m.KeyType, m.Keyidx, m.KeyType)
 	}
 }
 
@@ -323,7 +323,7 @@ func (m *Map) KeySizeExpr() string {
 	if m.KeyType == "string" {
 		return fmt.Sprintf("len(%s)", m.Keyidx)
 	} else {
-		return fmt.Sprintf("%s.StrMsgSize()", m.Keyidx)
+		return fmt.Sprintf("%s.MsgpStrMapKeySize()", m.Keyidx)
 	}
 }
 

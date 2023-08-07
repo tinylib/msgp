@@ -486,9 +486,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 			}
 		case *ast.SelectorExpr:
 			if in := fs.parseExpr(e.Value); in != nil {
-				if moduleIdent, ok := k.X.(*ast.Ident); ok {
-					return &gen.Map{Value: in, KeyType: fmt.Sprintf("%s.%s", moduleIdent.Name, k.Sel.Name)}
-				}
+				return &gen.Map{Value: in, KeyType: stringify(k)}
 			}
 		}
 		return nil
