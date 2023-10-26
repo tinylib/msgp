@@ -129,12 +129,13 @@ func (e *encodeGen) structmap(s *Struct) {
 	}
 
 	omitempty := s.AnyHasTagPart("omitempty")
+	omitzero := s.AnyHasTagPart("omitzero")
 	var fieldNVar string
-	if omitempty {
+	if omitempty || omitzero {
 
 		fieldNVar = oeIdentPrefix + "Len"
 
-		e.p.printf("\n// omitempty: check for empty values")
+		e.p.printf("\n// check for omitted fields")
 		e.p.printf("\n%s := uint32(%d)", fieldNVar, nfields)
 		e.p.printf("\n%s", bm.typeDecl())
 		e.p.printf("\n_ = %s", bm.varname)
@@ -144,6 +145,11 @@ func (e *encodeGen) structmap(s *Struct) {
 			}
 			if ize := sf.FieldElem.IfZeroExpr(); ize != "" && sf.HasTagPart("omitempty") {
 				e.p.printf("\nif %s {", ize)
+				e.p.printf("\n%s--", fieldNVar)
+				e.p.printf("\n%s", bm.setStmt(i))
+				e.p.printf("\n}")
+			} else if sf.HasTagPart("omitzero") {
+				e.p.printf("\nif %s.IsZero() {", sf.FieldElem.Varname())
 				e.p.printf("\n%s--", fieldNVar)
 				e.p.printf("\n%s", bm.setStmt(i))
 				e.p.printf("\n}")
@@ -164,7 +170,7 @@ func (e *encodeGen) structmap(s *Struct) {
 
 	} else {
 
-		// non-omitempty version
+		// non-omit version
 		data = msgp.AppendMapHeader(nil, uint32(nfields))
 		e.p.printf("\n// map header, size %d", nfields)
 		e.Fuse(data)
@@ -179,10 +185,12 @@ func (e *encodeGen) structmap(s *Struct) {
 			return
 		}
 
-		// if field is omitempty, wrap with if statement based on the emptymask
-		oeField := omitempty && s.Fields[i].HasTagPart("omitempty") && s.Fields[i].FieldElem.IfZeroExpr() != ""
+		// if field is omitempty or omitzero, wrap with if statement based on the emptymask
+		oeField := (omitempty || omitzero) &&
+			((s.Fields[i].HasTagPart("omitempty") && s.Fields[i].FieldElem.IfZeroExpr() != "") ||
+				s.Fields[i].HasTagPart("omitzero"))
 		if oeField {
-			e.p.printf("\nif %s == 0 { // if not empty", bm.readExpr(i))
+			e.p.printf("\nif %s == 0 { // if not omitted", bm.readExpr(i))
 		}
 
 		data = msgp.AppendString(nil, s.Fields[i].FieldTag)
