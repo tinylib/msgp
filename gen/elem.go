@@ -190,11 +190,13 @@ type Elem interface {
 	// This is true for slices and maps.
 	AllowNil() bool
 
-	// IfZeroExpr returns the expression to compare to zero/empty
-	// for this type.  It is meant to be used in an if statement
+	// IfZeroExpr returns the expression to compare to an empty value
+	// for this type, per the rules of the `omitempty` feature.
+	// It is meant to be used in an if statement
 	// and may include the simple statement form followed by
 	// semicolon and then the expression.
 	// Returns "" if zero/empty not supported for this Elem.
+	// Note that this is NOT used by the `omitzero` feature.
 	IfZeroExpr() string
 
 	hidden()
