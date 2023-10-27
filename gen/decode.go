@@ -84,15 +84,17 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 		if !d.p.ok() {
 			return
 		}
-		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		fieldElem := s.Fields[i].FieldElem
+		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {
 			d.p.print("\nif dc.IsNil() {")
 			d.p.print("\nerr = dc.ReadNil()")
 			d.p.wrapErrCheck(d.ctx.ArgsStr())
 			d.p.printf("\n%s = nil\n} else {", s.Fields[i].FieldElem.Varname())
 		}
+		SetIsAllowNil(fieldElem, anField)
 		d.ctx.PushString(s.Fields[i].FieldName)
-		next(d, s.Fields[i].FieldElem)
+		next(d, fieldElem)
 		d.ctx.Pop()
 		if anField {
 			d.p.printf("\n}") // close if statement
@@ -112,14 +114,16 @@ func (d *decodeGen) structAsMap(s *Struct) {
 	for i := range s.Fields {
 		d.ctx.PushString(s.Fields[i].FieldName)
 		d.p.printf("\ncase \"%s\":", s.Fields[i].FieldTag)
-		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		fieldElem := s.Fields[i].FieldElem
+		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {
 			d.p.print("\nif dc.IsNil() {")
 			d.p.print("\nerr = dc.ReadNil()")
 			d.p.wrapErrCheck(d.ctx.ArgsStr())
-			d.p.printf("\n%s = nil\n} else {", s.Fields[i].FieldElem.Varname())
+			d.p.printf("\n%s = nil\n} else {", fieldElem.Varname())
 		}
-		next(d, s.Fields[i].FieldElem)
+		SetIsAllowNil(fieldElem, anField)
+		next(d, fieldElem)
 		d.ctx.Pop()
 		if !d.p.ok() {
 			return
@@ -215,7 +219,7 @@ func (d *decodeGen) gSlice(s *Slice) {
 	sz := randIdent()
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
-	if s.AllowNil() {
+	if s.isAllowNil {
 		d.p.resizeSliceNoNil(sz, s)
 	} else {
 		d.p.resizeSlice(sz, s)

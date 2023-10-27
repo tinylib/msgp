@@ -84,11 +84,13 @@ func (u *unmarshalGen) tuple(s *Struct) {
 			return
 		}
 		u.ctx.PushString(s.Fields[i].FieldName)
-		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		fieldElem := s.Fields[i].FieldElem
+		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {
-			u.p.printf("\nif msgp.IsNil(bts) {\nbts = bts[1:]\n%s = nil\n} else {", s.Fields[i].FieldElem.Varname())
+			u.p.printf("\nif msgp.IsNil(bts) {\nbts = bts[1:]\n%s = nil\n} else {", fieldElem.Varname())
 		}
-		next(u, s.Fields[i].FieldElem)
+		SetIsAllowNil(fieldElem, anField)
+		next(u, fieldElem)
 		u.ctx.Pop()
 		if anField {
 			u.p.printf("\n}")
@@ -113,11 +115,13 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 		u.p.printf("\ncase \"%s\":", s.Fields[i].FieldTag)
 		u.ctx.PushString(s.Fields[i].FieldName)
 
-		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		fieldElem := s.Fields[i].FieldElem
+		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {
-			u.p.printf("\nif msgp.IsNil(bts) {\nbts = bts[1:]\n%s = nil\n} else {", s.Fields[i].FieldElem.Varname())
+			u.p.printf("\nif msgp.IsNil(bts) {\nbts = bts[1:]\n%s = nil\n} else {", fieldElem.Varname())
 		}
-		next(u, s.Fields[i].FieldElem)
+		SetIsAllowNil(fieldElem, anField)
+		next(u, fieldElem)
 		u.ctx.Pop()
 		if anField {
 			u.p.printf("\n}")
@@ -193,7 +197,7 @@ func (u *unmarshalGen) gSlice(s *Slice) {
 	sz := randIdent()
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, arrayHeader)
-	if s.AllowNil() {
+	if s.isAllowNil {
 		u.p.resizeSliceNoNil(sz, s)
 	} else {
 		u.p.resizeSlice(sz, s)

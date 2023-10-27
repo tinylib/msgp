@@ -117,8 +117,8 @@ func Test1EncodeDecode(t *testing.T) {
 	}
 
 	if !tt.Equal(tnew) {
-		t.Logf("in: %v", tt)
-		t.Logf("out: %v", tnew)
+		t.Logf("in:  %#v", tt)
+		t.Logf("out: %#v", tnew)
 		t.Fatal("objects not equal")
 	}
 
