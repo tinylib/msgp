@@ -1,5 +1,4 @@
-//go:build (amd64 && go1.18) || (darwin && go1.18)
-// +build amd64,go1.18 darwin,go1.18
+//go:build amd64 || darwin
 
 package tinygotest
 
@@ -12,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -148,6 +148,9 @@ var buildOnlyTargets = []string{
 
 func run(t *testing.T, dir, exe string, args ...string) {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		exe += ".exe"
+	}
 	cmd := exec.Command("./" + exe)
 	wd, err := os.Getwd()
 	if err != nil {
@@ -199,15 +202,22 @@ func tinygoBuild(t *testing.T, dir string, targets ...string) {
 	for _, tgt := range targets {
 
 		ext := ".bin"
+		dst := tgt + ext
 		if tgt == "wasm" {
 			ext = ".wasm"
+		}
+		if tgt == "" {
+			dst = "nativebin"
+			if runtime.GOOS == "windows" {
+				dst += ".exe"
+			}
 		}
 
 		var args []string
 		if tgt == "" { // empty target means the native platform
-			args = []string{"build", "-o=nativebin", "."}
+			args = []string{"build", "-o=" + dst, "."}
 		} else {
-			args = []string{"build", "-target=" + tgt, "-o=" + tgt + ext, "."}
+			args = []string{"build", "-target=" + tgt, "-o=" + dst, "."}
 		}
 
 		t.Logf("%s: tinygo %v", dir, args)
@@ -218,6 +228,10 @@ func tinygoBuild(t *testing.T, dir string, targets ...string) {
 			t.Logf("%s: tinygo build %v; output: %s", dir, args, b)
 		}
 		if err != nil {
+			// See https://github.com/tinygo-org/tinygo/issues/3977
+			if strings.Contains(string(b), "could not find wasm-opt") {
+				t.Skipf("skipping wasm test because wasm-opt is not installed")
+			}
 			t.Fatal(err)
 		}
 	}
