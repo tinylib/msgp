@@ -35,5 +35,5 @@ jobs:
       - name: lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.50
+          version: v1.55.1
           args: --print-resources-usage --timeout=10m --verbose
