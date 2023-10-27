@@ -193,7 +193,11 @@ func (u *unmarshalGen) gSlice(s *Slice) {
 	sz := randIdent()
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, arrayHeader)
-	u.p.resizeSlice(sz, s)
+	if s.AllowNil() {
+		u.p.resizeSliceNoNil(sz, s)
+	} else {
+		u.p.resizeSlice(sz, s)
+	}
 	u.p.rangeBlock(u.ctx, s.Index, s.Varname(), u, s.Els)
 }
 

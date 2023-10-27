@@ -215,7 +215,11 @@ func (d *decodeGen) gSlice(s *Slice) {
 	sz := randIdent()
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
-	d.p.resizeSlice(sz, s)
+	if s.AllowNil() {
+		d.p.resizeSliceNoNil(sz, s)
+	} else {
+		d.p.resizeSlice(sz, s)
+	}
 	d.p.rangeBlock(d.ctx, s.Index, s.Varname(), d, s.Els)
 }
 
