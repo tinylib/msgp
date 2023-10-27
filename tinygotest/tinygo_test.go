@@ -202,10 +202,10 @@ func tinygoBuild(t *testing.T, dir string, targets ...string) {
 	for _, tgt := range targets {
 
 		ext := ".bin"
-		dst := tgt + ext
 		if tgt == "wasm" {
 			ext = ".wasm"
 		}
+		dst := tgt + ext
 		if tgt == "" {
 			dst = "nativebin"
 			if runtime.GOOS == "windows" {
