@@ -177,6 +177,7 @@ func (e *encodeGen) structmap(s *Struct) {
 		e.p.printf("\n// map header, size %d", nfields)
 		e.Fuse(data)
 		if len(s.Fields) == 0 {
+			e.p.printf("\n_ = %s", s.vname)
 			e.fuseHook()
 		}
 
