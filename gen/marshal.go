@@ -170,6 +170,7 @@ func (m *marshalGen) mapstruct(s *Struct) {
 		m.p.printf("\n// map header, size %d", len(s.Fields))
 		m.Fuse(data)
 		if len(s.Fields) == 0 {
+			m.p.printf("\n_ = %s", s.vname)
 			m.fuseHook()
 		}
 

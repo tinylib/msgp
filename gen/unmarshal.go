@@ -208,6 +208,10 @@ func (u *unmarshalGen) gMap(m *Map) {
 	// allocate or clear map
 	u.p.resizeMap(sz, m)
 
+	// We likely need a field.
+	// Add now to not be inside for scope.
+	u.needsField()
+
 	// loop and get key,value
 	u.p.printf("\nfor %s > 0 {", sz)
 	u.p.printf("\nvar %s string; var %s %s; %s--", m.Keyidx, m.Validx, m.Value.TypeName(), sz)
