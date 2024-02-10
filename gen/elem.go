@@ -260,9 +260,10 @@ func (a *Array) IfZeroExpr() string { return "" }
 // Map is a map[string]Elem
 type Map struct {
 	common
-	Keyidx string // key variable name
-	Validx string // value variable name
-	Value  Elem   // value element
+	Keyidx     string // key variable name
+	Validx     string // value variable name
+	Value      Elem   // value element
+	isAllowNil bool
 }
 
 func (m *Map) SetVarname(s string) {
@@ -304,10 +305,14 @@ func (m *Map) IfZeroExpr() string { return m.Varname() + " == nil" }
 // AllowNil is true for maps.
 func (m *Map) AllowNil() bool { return true }
 
+// SetIsAllowNil sets whether the map is allowed to be nil.
+func (m *Map) SetIsAllowNil(b bool) { m.isAllowNil = b }
+
 type Slice struct {
 	common
-	Index string
-	Els   Elem // The type of each element
+	Index      string
+	isAllowNil bool
+	Els        Elem // The type of each element
 }
 
 func (s *Slice) SetVarname(a string) {
@@ -347,6 +352,19 @@ func (s *Slice) IfZeroExpr() string { return s.Varname() + " == nil" }
 
 // AllowNil is true for slices.
 func (s *Slice) AllowNil() bool { return true }
+
+// SetIsAllowNil sets whether the slice is allowed to be nil.
+func (s *Slice) SetIsAllowNil(b bool) { s.isAllowNil = b }
+
+// SetIsAllowNil will set whether the element is allowed to be nil.
+func SetIsAllowNil(e Elem, b bool) {
+	type i interface {
+		SetIsAllowNil(b bool)
+	}
+	if x, ok := e.(i); ok {
+		x.SetIsAllowNil(b)
+	}
+}
 
 type Ptr struct {
 	common

@@ -92,12 +92,14 @@ func (e *encodeGen) tuple(s *Struct) {
 		if !e.p.ok() {
 			return
 		}
-		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		fieldElem := s.Fields[i].FieldElem
+		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {
-			e.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr())
+			e.p.printf("\nif %s { // allownil: if nil", fieldElem.IfZeroExpr())
 			e.p.printf("\nerr = en.WriteNil(); if err != nil { return; }")
 			e.p.printf("\n} else {")
 		}
+		SetIsAllowNil(fieldElem, anField)
 		e.ctx.PushString(s.Fields[i].FieldName)
 		next(e, s.Fields[i].FieldElem)
 		e.ctx.Pop()
@@ -197,13 +199,14 @@ func (e *encodeGen) structmap(s *Struct) {
 		e.p.printf("\n// write %q", s.Fields[i].FieldTag)
 		e.Fuse(data)
 		e.fuseHook()
-
-		anField := !oeField && s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		fieldElem := s.Fields[i].FieldElem
+		anField := !oeField && s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {
 			e.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr())
 			e.p.printf("\nerr = en.WriteNil(); if err != nil { return; }")
 			e.p.printf("\n} else {")
 		}
+		SetIsAllowNil(fieldElem, anField)
 
 		e.ctx.PushString(s.Fields[i].FieldName)
 		next(e, s.Fields[i].FieldElem)

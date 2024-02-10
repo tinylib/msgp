@@ -98,14 +98,16 @@ func (m *marshalGen) tuple(s *Struct) {
 		if !m.p.ok() {
 			return
 		}
-		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		fieldElem := s.Fields[i].FieldElem
+		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {
-			m.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr())
+			m.p.printf("\nif %s { // allownil: if nil", fieldElem.IfZeroExpr())
 			m.p.printf("\no = msgp.AppendNil(o)")
 			m.p.printf("\n} else {")
 		}
 		m.ctx.PushString(s.Fields[i].FieldName)
-		next(m, s.Fields[i].FieldElem)
+		SetIsAllowNil(fieldElem, anField)
+		next(m, fieldElem)
 		m.ctx.Pop()
 		if anField {
 			m.p.printf("\n}") // close if statement
@@ -194,15 +196,16 @@ func (m *marshalGen) mapstruct(s *Struct) {
 		m.Fuse(data)
 		m.fuseHook()
 
-		anField := !oeField && s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		fieldElem := s.Fields[i].FieldElem
+		anField := !oeField && s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {
-			m.p.printf("\nif %s { // allownil: if nil", s.Fields[i].FieldElem.IfZeroExpr())
+			m.p.printf("\nif %s { // allownil: if nil", fieldElem.IfZeroExpr())
 			m.p.printf("\no = msgp.AppendNil(o)")
 			m.p.printf("\n} else {")
 		}
-
 		m.ctx.PushString(s.Fields[i].FieldName)
-		next(m, s.Fields[i].FieldElem)
+		SetIsAllowNil(fieldElem, anField)
+		next(m, fieldElem)
 		m.ctx.Pop()
 
 		if oeField || anField {

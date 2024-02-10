@@ -360,6 +360,13 @@ func (p *printer) resizeSlice(size string, s *Slice) {
 	p.printf("\nif cap(%[1]s) >= int(%[2]s) { %[1]s = (%[1]s)[:%[2]s] } else { %[1]s = make(%[3]s, %[2]s) }", s.Varname(), size, s.TypeName())
 }
 
+// resizeSliceNoNil will resize a slice and will not allow nil slices.
+func (p *printer) resizeSliceNoNil(size string, s *Slice) {
+	p.printf("\nif %[1]s != nil && cap(%[1]s) >= int(%[2]s) {", s.Varname(), size)
+	p.printf("\n%[1]s = (%[1]s)[:%[2]s]", s.Varname(), size)
+	p.printf("\n} else { %[1]s = make(%[3]s, %[2]s) }", s.Varname(), size, s.TypeName())
+}
+
 func (p *printer) arrayCheck(want string, got string) {
 	p.printf("\nif %[1]s != %[2]s { err = msgp.ArrayError{Wanted: %[2]s, Got: %[1]s}; return }", got, want)
 }
