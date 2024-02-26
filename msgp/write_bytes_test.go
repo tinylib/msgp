@@ -470,7 +470,7 @@ func TestEncodeDecode(t *testing.T) {
 				t.Fatalf("expected no encode error but got '%s'", err.Error())
 			}
 
-			out, buf, err := ReadIntfBytes(buf)
+			out, _, _ := ReadIntfBytes(buf)
 			if err != nil {
 				t.Fatalf("expected no decode error but got '%s'", err.Error())
 			}
