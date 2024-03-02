@@ -84,15 +84,17 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 		if !d.p.ok() {
 			return
 		}
-		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		fieldElem := s.Fields[i].FieldElem
+		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {
 			d.p.print("\nif dc.IsNil() {")
 			d.p.print("\nerr = dc.ReadNil()")
 			d.p.wrapErrCheck(d.ctx.ArgsStr())
 			d.p.printf("\n%s = nil\n} else {", s.Fields[i].FieldElem.Varname())
 		}
+		SetIsAllowNil(fieldElem, anField)
 		d.ctx.PushString(s.Fields[i].FieldName)
-		next(d, s.Fields[i].FieldElem)
+		next(d, fieldElem)
 		d.ctx.Pop()
 		if anField {
 			d.p.printf("\n}") // close if statement
@@ -112,14 +114,16 @@ func (d *decodeGen) structAsMap(s *Struct) {
 	for i := range s.Fields {
 		d.ctx.PushString(s.Fields[i].FieldName)
 		d.p.printf("\ncase \"%s\":", s.Fields[i].FieldTag)
-		anField := s.Fields[i].HasTagPart("allownil") && s.Fields[i].FieldElem.AllowNil()
+		fieldElem := s.Fields[i].FieldElem
+		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {
 			d.p.print("\nif dc.IsNil() {")
 			d.p.print("\nerr = dc.ReadNil()")
 			d.p.wrapErrCheck(d.ctx.ArgsStr())
-			d.p.printf("\n%s = nil\n} else {", s.Fields[i].FieldElem.Varname())
+			d.p.printf("\n%s = nil\n} else {", fieldElem.Varname())
 		}
-		next(d, s.Fields[i].FieldElem)
+		SetIsAllowNil(fieldElem, anField)
+		next(d, fieldElem)
 		d.ctx.Pop()
 		if !d.p.ok() {
 			return
@@ -155,7 +159,8 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	switch b.Value {
 	case Bytes:
 		if b.Convert {
-			d.p.printf("\n%s, err = dc.ReadBytes([]byte(%s))", tmp, vname)
+			lowered := b.ToBase() + "(" + vname + ")"
+			d.p.printf("\n%s, err = dc.ReadBytes(%s)", tmp, lowered)
 		} else {
 			d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
 		}
@@ -196,6 +201,7 @@ func (d *decodeGen) gMap(m *Map) {
 
 	// for element in map, read string/value
 	// pair and assign
+	d.needsField()
 	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
 	d.p.declare(m.Keyidx, "string")
 	d.p.declare(m.Validx, m.Value.TypeName())
@@ -214,7 +220,11 @@ func (d *decodeGen) gSlice(s *Slice) {
 	sz := randIdent()
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
-	d.p.resizeSlice(sz, s)
+	if s.isAllowNil {
+		d.p.resizeSliceNoNil(sz, s)
+	} else {
+		d.p.resizeSlice(sz, s)
+	}
 	d.p.rangeBlock(d.ctx, s.Index, s.Varname(), d, s.Els)
 }
 

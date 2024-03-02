@@ -46,27 +46,31 @@ type TestType struct {
 		ValueA string `msg:"value_a"`
 		ValueB []byte `msg:"value_b"`
 	} `msg:"object"`
-	Child      *TestType   `msg:"child"`
-	Time       time.Time   `msg:"time"`
-	Any        interface{} `msg:"any"`
-	Appended   msgp.Raw    `msg:"appended"`
-	Num        msgp.Number `msg:"num"`
-	Byte       byte
-	Rune       rune
-	RunePtr    *rune
-	RunePtrPtr **rune
-	RuneSlice  []rune
-	Slice1     []string
-	Slice2     []string
-	SlicePtr   *[]string
+	Child           *TestType   `msg:"child"`
+	Time            time.Time   `msg:"time"`
+	Any             interface{} `msg:"any"`
+	Appended        msgp.Raw    `msg:"appended"`
+	Num             msgp.Number `msg:"num"`
+	Byte            byte
+	Rune            rune
+	RunePtr         *rune
+	RunePtrPtr      **rune
+	RuneSlice       []rune
+	Slice1          []string
+	Slice2          []string
+	SlicePtr        *[]string
+	MapStringEmpty  map[string]struct{}
+	MapStringEmpty2 map[string]EmptyStruct
 }
 
 //msgp:tuple Object
 type Object struct {
-	ObjectNo string   `msg:"objno"`
-	Slice1   []string `msg:"slice1"`
-	Slice2   []string `msg:"slice2"`
-	MapMap   map[string]map[string]string
+	ObjectNo        string   `msg:"objno"`
+	Slice1          []string `msg:"slice1"`
+	Slice2          []string `msg:"slice2"`
+	MapMap          map[string]map[string]string
+	MapStringEmpty  map[string]struct{}
+	MapStringEmpty2 map[string]EmptyStruct
 }
 
 //msgp:tuple TestBench
@@ -266,8 +270,11 @@ type NonMsgStructTags struct {
 		B          string   `json:"b"`
 		C          []string `json:"c"`
 		VeryNested []struct {
-			A []string `json:"a"`
-			B []string `msg:"bbbb" xml:"-"`
+			A []string            `json:"a"`
+			B []string            `msg:"bbbb" xml:"-"`
+			C map[string]struct{} `msg:"cccc"`
 		}
 	}
 }
+
+type EmptyStruct struct{}
