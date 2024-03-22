@@ -1,5 +1,5 @@
-//go:build linux || darwin || dragonfly || freebsd || netbsd || openbsd
-// +build linux darwin dragonfly freebsd netbsd openbsd
+//go:build linux || darwin || dragonfly || freebsd || illumos || netbsd || openbsd
+// +build linux darwin dragonfly freebsd illumos netbsd openbsd
 
 package msgp_test
 
