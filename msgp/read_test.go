@@ -24,12 +24,13 @@ func TestReadIntf(t *testing.T) {
 	// always read out as int64, and
 	// unsigned integers as uint64
 
-	var testCases = []interface{}{
+	testCases := []interface{}{
 		float64(128.032),
 		float32(9082.092),
 		int64(-40),
 		uint64(9082981),
 		time.Now(),
+		48*time.Hour + 3*time.Minute + 2*time.Second + 3*time.Nanosecond,
 		"hello!",
 		[]byte("hello!"),
 		map[string]interface{}{
@@ -66,11 +67,16 @@ func TestReadIntf(t *testing.T) {
 			if !tm.Equal(v.(time.Time)) {
 				t.Errorf("%v != %v", ts, v)
 			}
+		} else if intd, ok := ts.(time.Duration); ok {
+			/* for time.Duration, cast before comparing */
+			outtd := time.Duration(v.(int64))
+			if intd != outtd {
+				t.Errorf("%v in; %v out", intd, outtd)
+			}
 		} else if !reflect.DeepEqual(v, ts) {
 			t.Errorf("%v in; %v out", ts, v)
 		}
 	}
-
 }
 
 func TestReadMapHeader(t *testing.T) {
@@ -357,10 +363,7 @@ func TestReadIntOverflows(t *testing.T) {
 		case UintOverflow:
 			bits = err.FailedBitsize
 		}
-		if bits == failBits {
-			return true
-		}
-		return false
+		return bits == failBits
 	}
 
 	belowZeroErr := func(err error, failBits int) bool {
@@ -853,7 +856,6 @@ func TestSkip(t *testing.T) {
 		t.Errorf("expected %q; got %q", io.EOF, err)
 		t.Errorf("returned type %q", tp)
 	}
-
 }
 
 func BenchmarkSkip(b *testing.B) {

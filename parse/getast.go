@@ -126,10 +126,10 @@ func (f *FileSet) applyDirectives() {
 // into just one level of indirection.
 // In other words, if we have:
 //
-//  type A uint64
-//  type B A
-//  type C B
-//  type D C
+//	type A uint64
+//	type B A
+//	type C B
+//	type D C
 //
 // ... then we want to end up
 // figuring out that D is just a uint64.
@@ -164,7 +164,6 @@ func (f *FileSet) resolve(ls linkset) {
 // process takes the contents of f.Specs and
 // uses them to populate f.Identities
 func (f *FileSet) process() {
-
 	deferred := make(linkset)
 parse:
 	for name, def := range f.Specs {
@@ -268,23 +267,18 @@ func (f *FileSet) PrintTo(p *gen.Printer) error {
 // getTypeSpecs extracts all of the *ast.TypeSpecs in the file
 // into fs.Identities, but does not set the actual element
 func (fs *FileSet) getTypeSpecs(f *ast.File) {
-
 	// collect all imports...
 	fs.Imports = append(fs.Imports, f.Imports...)
 
 	// check all declarations...
 	for i := range f.Decls {
-
 		// for GenDecls...
 		if g, ok := f.Decls[i].(*ast.GenDecl); ok {
-
 			// and check the specs...
 			for _, s := range g.Specs {
-
 				// for ast.TypeSpecs....
 				if ts, ok := s.(*ast.TypeSpec); ok {
 					switch ts.Type.(type) {
-
 					// this is the list of parse-able
 					// type specs
 					case *ast.StructType,
@@ -293,7 +287,6 @@ func (fs *FileSet) getTypeSpecs(f *ast.File) {
 						*ast.MapType,
 						*ast.Ident:
 						fs.Specs[ts.Name.Name] = ts.Type
-
 					}
 				}
 			}
@@ -432,9 +425,9 @@ func (fs *FileSet) getFieldsFromEmbeddedStruct(f ast.Expr) []gen.StructField {
 //
 // so, for a struct like
 //
-//	type A struct {
-//		io.Writer
-//  }
+//		type A struct {
+//			io.Writer
+//	 }
 //
 // we want "Writer"
 func embedded(f ast.Expr) string {

@@ -1,7 +1,6 @@
 package msgp
 
 func calcBytespec(v byte) bytespec {
-
 	// single byte values
 	switch v {
 
@@ -97,7 +96,6 @@ func calcBytespec(v byte) bytespec {
 	// everything else is covered above
 
 	return bytespec{}
-
 }
 
 func getType(v byte) Type {
@@ -120,11 +118,11 @@ type varmode int8
 
 const (
 	constsize varmode = 0  // constant size (size bytes + uint8(varmode) objects)
-	extra8            = -1 // has uint8(p[1]) extra bytes
-	extra16           = -2 // has be16(p[1:]) extra bytes
-	extra32           = -3 // has be32(p[1:]) extra bytes
-	map16v            = -4 // use map16
-	map32v            = -5 // use map32
-	array16v          = -6 // use array16
-	array32v          = -7 // use array32
+	extra8    varmode = -1 // has uint8(p[1]) extra bytes
+	extra16   varmode = -2 // has be16(p[1:]) extra bytes
+	extra32   varmode = -3 // has be32(p[1:]) extra bytes
+	map16v    varmode = -4 // use map16
+	map32v    varmode = -5 // use map32
+	array16v  varmode = -6 // use array16
+	array32v  varmode = -7 // use array32
 )

@@ -34,8 +34,10 @@ func TestWriteMapHeader(t *testing.T) {
 		{0, []byte{mfixmap}},
 		{1, []byte{mfixmap | byte(1)}},
 		{100, []byte{mmap16, byte(uint16(100) >> 8), byte(uint16(100))}},
-		{tuint32,
-			[]byte{mmap32,
+		{
+			tuint32,
+			[]byte{
+				mmap32,
 				byte(tuint32 >> 24),
 				byte(tuint32 >> 16),
 				byte(tuint32 >> 8),
@@ -210,6 +212,39 @@ func TestWriteFloat64(t *testing.T) {
 
 		if bts[0] != mfloat64 {
 			t.Errorf("Leading byte was %x and not %x", bts[0], mfloat64)
+		}
+	}
+}
+
+func TestReadWriterDuration(t *testing.T) {
+	var buf bytes.Buffer
+	wr := NewWriter(&buf)
+
+	for i := 0; i < 10000; i++ {
+		buf.Reset()
+		dur := time.Duration(rand.Int63())
+		err := wr.WriteDuration(dur)
+		if err != nil {
+			t.Errorf("Error with %v: %s", dur, err)
+		}
+		err = wr.Flush()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		bts := buf.Bytes()
+
+		if bts[0] != mint64 {
+			t.Errorf("Leading byte was %x and not %x", bts[0], mint64)
+		}
+
+		wr := NewReader(&buf)
+		d, err := wr.ReadDuration()
+		if err != nil {
+			t.Errorf("Error reading duration: %v", err)
+		}
+		if d != dur {
+			t.Errorf("Got duration %v, want %v", d, dur)
 		}
 	}
 }

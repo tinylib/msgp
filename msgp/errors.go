@@ -69,7 +69,6 @@ func Resumable(e error) bool {
 //
 // ErrShortBytes is not wrapped with any context due to backward compatibility
 // issues with the public API.
-//
 func WrapError(err error, ctx ...interface{}) error {
 	switch e := err.(type) {
 	case errShort:
@@ -310,7 +309,6 @@ func (e *ErrUnsupportedType) withContext(ctx string) error {
 // (unicode tables, needed for IsPrint(), are big).
 // It lives in errors.go just so we can test it in errors_test.go
 func simpleQuoteStr(s string) string {
-
 	const (
 		lowerhex = "0123456789abcdef"
 	)

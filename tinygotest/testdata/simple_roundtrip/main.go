@@ -11,7 +11,6 @@ type Example struct {
 }
 
 func main() {
-
 	e := Example{
 		I: 1,
 		S: "2",
@@ -35,5 +34,4 @@ func main() {
 	}
 
 	println("done, len(b):", len(b))
-
 }

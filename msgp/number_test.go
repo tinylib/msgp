@@ -6,7 +6,6 @@ import (
 )
 
 func TestNumber(t *testing.T) {
-
 	n := Number{}
 
 	if n.Type() != IntType {
@@ -93,5 +92,4 @@ func TestNumber(t *testing.T) {
 	if !bytes.Equal(dat, buf.Bytes()) {
 		t.Errorf("encode: expected output %#v; got %#v", dat, buf.Bytes())
 	}
-
 }

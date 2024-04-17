@@ -52,10 +52,12 @@ type OmitEmpty0 struct {
 	ATime time.Time `msg:"atime,omitempty"`
 }
 
-type NamedBool bool
-type NamedInt int
-type NamedFloat64 float64
-type NamedString string
+type (
+	NamedBool    bool
+	NamedInt     int
+	NamedFloat64 float64
+	NamedString  string
+)
 
 type EmbeddableStruct struct {
 	SomeEmbed string `msg:"someembed,omitempty"`

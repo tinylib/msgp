@@ -36,6 +36,7 @@ const (
 	IntType
 	UintType
 	NilType
+	DurationType
 	ExtensionType
 
 	// pseudo-types provided
@@ -394,7 +395,7 @@ func (m *Reader) ReadMapKey(scratch []byte) ([]byte, error) {
 	return out, nil
 }
 
-// MapKeyPtr returns a []byte pointing to the contents
+// ReadMapKeyPtr returns a []byte pointing to the contents
 // of a valid map key. The key cannot be empty, and it
 // must be shorter than the total buffer size of the
 // *Reader. Additionally, the returned slice is only
@@ -557,6 +558,12 @@ func (m *Reader) ReadBool() (b bool, err error) {
 	}
 	_, err = m.R.Skip(1)
 	return
+}
+
+// ReadDuration reads a time.Duration from the reader
+func (m *Reader) ReadDuration() (d time.Duration, err error) {
+	i, err := m.ReadInt64()
+	return time.Duration(i), err
 }
 
 // ReadInt64 reads an int64 from the reader
@@ -1300,6 +1307,10 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 
 	case TimeType:
 		i, err = m.ReadTime()
+		return
+
+	case DurationType:
+		i, err = m.ReadDuration()
 		return
 
 	case ExtensionType:

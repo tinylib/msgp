@@ -81,7 +81,6 @@ func TestLocate(t *testing.T) {
 	if len(field) != 0 {
 		t.Fatalf("wanted a zero-length returned slice")
 	}
-
 }
 
 func TestReplace(t *testing.T) {

@@ -68,6 +68,15 @@ func (a *TestType) Equal(b *TestType) bool {
 	if !bytes.Equal(aa, ab) {
 		return false
 	}
+	if len(a.MapStringEmpty) == 0 && len(b.MapStringEmpty) == 0 {
+		a.MapStringEmpty = nil
+		b.MapStringEmpty = nil
+	}
+	if len(a.MapStringEmpty2) == 0 && len(b.MapStringEmpty2) == 0 {
+		a.MapStringEmpty2 = nil
+		b.MapStringEmpty2 = nil
+	}
+
 	a.Time, b.Time = time.Time{}, time.Time{}
 	aa, ab = nil, nil
 	ok := reflect.DeepEqual(a, b)
@@ -77,12 +86,11 @@ func (a *TestType) Equal(b *TestType) bool {
 }
 
 // This covers the following cases:
-//  - Recursive types
-//  - Non-builtin identifiers (and recursive types)
-//  - time.Time
-//  - map[string]string
-//  - anonymous structs
-//
+//   - Recursive types
+//   - Non-builtin identifiers (and recursive types)
+//   - time.Time
+//   - map[string]string
+//   - anonymous structs
 func Test1EncodeDecode(t *testing.T) {
 	f := 32.00
 	tt := &TestType{
@@ -98,9 +106,11 @@ func Test1EncodeDecode(t *testing.T) {
 			ValueA: "here's the first inner value",
 			ValueB: []byte("here's the second inner value"),
 		},
-		Child:    nil,
-		Time:     time.Now(),
-		Appended: msgp.Raw([]byte{}), // 'nil'
+		Child:           nil,
+		Time:            time.Now(),
+		Appended:        msgp.Raw([]byte{}), // 'nil'
+		MapStringEmpty:  map[string]struct{}{"Key": {}, "Key2": {}},
+		MapStringEmpty2: map[string]EmptyStruct{"Key3": {}, "Key4": {}},
 	}
 
 	var buf bytes.Buffer
@@ -118,8 +128,8 @@ func Test1EncodeDecode(t *testing.T) {
 	}
 
 	if !tt.Equal(tnew) {
-		t.Logf("in: %v", tt)
-		t.Logf("out: %v", tnew)
+		t.Logf("in:  %#v", tt)
+		t.Logf("out: %#v", tnew)
 		t.Fatal("objects not equal")
 	}
 

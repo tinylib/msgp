@@ -29,7 +29,6 @@ func mustEncodeToJSON(o msgp.Encodable) string {
 }
 
 func TestOmitEmpty0(t *testing.T) {
-
 	var s string
 
 	var oe0a OmitEmpty0
@@ -92,12 +91,10 @@ func TestOmitEmpty0(t *testing.T) {
 	if oe0c.AInt64 != oe0d.AInt64 {
 		t.Fail()
 	}
-
 }
 
 // TestOmitEmptyHalfFull tests mixed omitempty and not
 func TestOmitEmptyHalfFull(t *testing.T) {
-
 	var s string
 
 	var oeA OmitEmptyHalfFull
@@ -124,7 +121,6 @@ func TestOmitEmptyHalfFull(t *testing.T) {
 
 // TestOmitEmptyLotsOFields tests the case of > 64 fields (triggers the bitmask needing to be an array instead of a single value)
 func TestOmitEmptyLotsOFields(t *testing.T) {
-
 	var s string
 
 	var oeLotsA OmitEmptyLotsOFields
@@ -147,11 +143,9 @@ func TestOmitEmptyLotsOFields(t *testing.T) {
 	if s != `{"field64":"val64"}` {
 		t.Errorf("wrong result: %s", s)
 	}
-
 }
 
 func BenchmarkOmitEmpty10AllEmpty(b *testing.B) {
-
 	en := msgp.NewWriter(ioutil.Discard)
 	var s OmitEmpty10
 
@@ -163,11 +157,9 @@ func BenchmarkOmitEmpty10AllEmpty(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-
 }
 
 func BenchmarkOmitEmpty10AllFull(b *testing.B) {
-
 	en := msgp.NewWriter(ioutil.Discard)
 	var s OmitEmpty10
 	s.Field00 = "this is the value of field00"
@@ -189,11 +181,9 @@ func BenchmarkOmitEmpty10AllFull(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-
 }
 
 func BenchmarkNotOmitEmpty10AllEmpty(b *testing.B) {
-
 	en := msgp.NewWriter(ioutil.Discard)
 	var s NotOmitEmpty10
 
@@ -208,7 +198,6 @@ func BenchmarkNotOmitEmpty10AllEmpty(b *testing.B) {
 }
 
 func BenchmarkNotOmitEmpty10AllFull(b *testing.B) {
-
 	en := msgp.NewWriter(ioutil.Discard)
 	var s NotOmitEmpty10
 	s.Field00 = "this is the value of field00"

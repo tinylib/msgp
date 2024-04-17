@@ -52,7 +52,7 @@ func format(file string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(file, out, 0600)
+	return ioutil.WriteFile(file, out, 0o600)
 }
 
 func goformat(file string, data []byte) <-chan error {

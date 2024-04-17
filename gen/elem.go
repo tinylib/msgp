@@ -88,9 +88,10 @@ const (
 	Int32
 	Int64
 	Bool
-	Intf // interface{}
-	Time // time.Time
-	Ext  // extension
+	Intf     // interface{}
+	Time     // time.Time
+	Duration // time.Duration
+	Ext      // extension
 
 	IDENT // IDENT means an unrecognized identifier
 )
@@ -119,6 +120,7 @@ var primitives = map[string]Primitive{
 	"bool":           Bool,
 	"interface{}":    Intf,
 	"time.Time":      Time,
+	"time.Duration":  Duration,
 	"msgp.Extension": Ext,
 }
 
@@ -126,8 +128,8 @@ var primitives = map[string]Primitive{
 // that satisfy all of the
 // interfaces.
 var builtins = map[string]struct{}{
-	"msgp.Raw":    struct{}{},
-	"msgp.Number": struct{}{},
+	"msgp.Raw":    {},
+	"msgp.Number": {},
 }
 
 // common data/methods for every Elem
@@ -137,6 +139,7 @@ func (c *common) SetVarname(s string) { c.vname = s }
 func (c *common) Varname() string     { return c.vname }
 func (c *common) Alias(typ string)    { c.alias = typ }
 func (c *common) hidden()             {}
+func (c *common) AllowNil() bool      { return false }
 
 func IsPrintable(e Elem) bool {
 	if be, ok := e.(*BaseElem); ok && !be.Printable() {
@@ -183,11 +186,17 @@ type Elem interface {
 	// Returns "" if zero/empty not supported for this Elem.
 	ZeroExpr() string
 
-	// IfZeroExpr returns the expression to compare to zero/empty
-	// for this type.  It is meant to be used in an if statement
+	// AllowNil will return true for types that can be nil but doesn't automatically check.
+	// This is true for slices and maps.
+	AllowNil() bool
+
+	// IfZeroExpr returns the expression to compare to an empty value
+	// for this type, per the rules of the `omitempty` feature.
+	// It is meant to be used in an if statement
 	// and may include the simple statement form followed by
 	// semicolon and then the expression.
 	// Returns "" if zero/empty not supported for this Elem.
+	// Note that this is NOT used by the `omitzero` feature.
 	IfZeroExpr() string
 
 	hidden()
@@ -251,9 +260,10 @@ func (a *Array) IfZeroExpr() string { return "" }
 // Map is a map[string]Elem
 type Map struct {
 	common
-	Keyidx string // key variable name
-	Validx string // value variable name
-	Value  Elem   // value element
+	Keyidx     string // key variable name
+	Validx     string // value variable name
+	Value      Elem   // value element
+	isAllowNil bool
 }
 
 func (m *Map) SetVarname(s string) {
@@ -292,10 +302,17 @@ func (m *Map) ZeroExpr() string { return "nil" }
 // IfZeroExpr returns the expression to compare to zero/empty.
 func (m *Map) IfZeroExpr() string { return m.Varname() + " == nil" }
 
+// AllowNil is true for maps.
+func (m *Map) AllowNil() bool { return true }
+
+// SetIsAllowNil sets whether the map is allowed to be nil.
+func (m *Map) SetIsAllowNil(b bool) { m.isAllowNil = b }
+
 type Slice struct {
 	common
-	Index string
-	Els   Elem // The type of each element
+	Index      string
+	isAllowNil bool
+	Els        Elem // The type of each element
 }
 
 func (s *Slice) SetVarname(a string) {
@@ -332,6 +349,22 @@ func (s *Slice) ZeroExpr() string { return "nil" }
 
 // IfZeroExpr returns the expression to compare to zero/empty.
 func (s *Slice) IfZeroExpr() string { return s.Varname() + " == nil" }
+
+// AllowNil is true for slices.
+func (s *Slice) AllowNil() bool { return true }
+
+// SetIsAllowNil sets whether the slice is allowed to be nil.
+func (s *Slice) SetIsAllowNil(b bool) { s.isAllowNil = b }
+
+// SetIsAllowNil will set whether the element is allowed to be nil.
+func SetIsAllowNil(e Elem, b bool) {
+	type i interface {
+		SetIsAllowNil(b bool)
+	}
+	if x, ok := e.(i); ok {
+		x.SetIsAllowNil(b)
+	}
+}
 
 type Ptr struct {
 	common
@@ -517,6 +550,8 @@ func (s *BaseElem) Alias(typ string) {
 	}
 }
 
+func (s *BaseElem) AllowNil() bool { return s.Value == Bytes }
+
 func (s *BaseElem) SetVarname(a string) {
 	// extensions whose parents
 	// are not pointers need to
@@ -562,10 +597,13 @@ func (s *BaseElem) FromBase() string {
 // BaseName returns the string form of the
 // base type (e.g. Float64, Ident, etc)
 func (s *BaseElem) BaseName() string {
-	// time is a special case;
+	// time.Time and time.Duration are special cases;
 	// we strip the package prefix
 	if s.Value == Time {
 		return "Time"
+	}
+	if s.Value == Duration {
+		return "Duration"
 	}
 	return s.Value.String()
 }
@@ -583,6 +621,8 @@ func (s *BaseElem) BaseType() string {
 		return "[]byte"
 	case Time:
 		return "time.Time"
+	case Duration:
+		return "time.Duration"
 	case Ext:
 		return "msgp.Extension"
 
@@ -626,7 +666,6 @@ func (s *BaseElem) Resolved() bool {
 
 // ZeroExpr returns the zero/empty expression or empty string if not supported.
 func (s *BaseElem) ZeroExpr() string {
-
 	switch s.Value {
 	case Bytes:
 		return "nil"
@@ -646,7 +685,8 @@ func (s *BaseElem) ZeroExpr() string {
 		Int8,
 		Int16,
 		Int32,
-		Int64:
+		Int64,
+		Duration:
 		return "0"
 	case Bool:
 		return "false"
@@ -710,6 +750,8 @@ func (k Primitive) String() string {
 		return "Intf"
 	case Time:
 		return "time.Time"
+	case Duration:
+		return "time.Duration"
 	case Ext:
 		return "Extension"
 	case IDENT:
@@ -733,7 +775,6 @@ func writeStructFields(s []StructField, name string) {
 // ArrayHeader implementation in this library using uint32. On the Go side, we
 // can declare array lengths as any constant integer width, which breaks when
 // attempting a direct comparison to an array header's uint32.
-//
 func coerceArraySize(asz string) string {
 	return fmt.Sprintf("uint32(%s)", asz)
 }

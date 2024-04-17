@@ -1,8 +1,13 @@
 module github.com/desertbit/msgp
 
-go 1.14
+go 1.18
 
 require (
-	github.com/philhofer/fwd v1.1.2-0.20210722190033-5c56ac6d0bb9
-	golang.org/x/tools v0.0.0-20201022035929-9cf592e881e9
+	github.com/philhofer/fwd v1.1.2
+	golang.org/x/tools v0.14.0
+)
+
+require (
+	golang.org/x/mod v0.13.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
 )

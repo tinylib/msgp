@@ -3,7 +3,6 @@ package msgp
 import "testing"
 
 func TestBytespec(t *testing.T) {
-
 	// verify that bytespec refactor for TinyGo behaves the same as the old code
 
 	// previous sizes array setup verbatim:
@@ -13,7 +12,7 @@ func TestBytespec(t *testing.T) {
 	// constant-time type information
 	// for traversing composite objects.
 	//
-	var sizes = [256]bytespec{
+	sizes := [256]bytespec{
 		mnil:      {size: 1, extra: constsize, typ: NilType},
 		mfalse:    {size: 1, extra: constsize, typ: BoolType},
 		mtrue:     {size: 1, extra: constsize, typ: BoolType},
@@ -47,7 +46,6 @@ func TestBytespec(t *testing.T) {
 		mmap32:    {size: 5, extra: map32v, typ: MapType},
 	}
 
-	//func init() {
 	// set up fixed fields
 
 	// fixint
@@ -75,11 +73,9 @@ func TestBytespec(t *testing.T) {
 	for i := mfixarray; i < 0xa0; i++ {
 		sizes[i] = bytespec{size: 1, extra: varmode(rfixarray(i)), typ: ArrayType}
 	}
-	//}
 
 	// compare all values to calcBytespec
 	for i := 0; i < 256; i++ {
-
 		sizeb := sizes[byte(i)]
 		cb := calcBytespec(byte(i))
 		if sizeb != cb {
@@ -90,7 +86,5 @@ func TestBytespec(t *testing.T) {
 		if i != 0xC1 && sizeb.size == 0 {
 			t.Errorf("unexpected zero size for index 0x%x", i)
 		}
-
 	}
-
 }

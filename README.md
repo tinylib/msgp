@@ -1,5 +1,12 @@
-MessagePack Code Generator [![Build Status](https://travis-ci.org/desertbit/msgp.svg?branch=master)](https://travis-ci.org/desertbit/msgp)
+
+This is a code generation tool and serialization library for [MessagePack](http://msgpack.org). You can read more about MessagePack [in the wiki](http://github.com/desertbit/msgp/wiki), or at [msgpack.org](http://msgpack.org).
 =======
+MessagePack Code Generator
+=======
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/desertbit/msgp.svg)](https://pkg.go.dev/github.com/desertbit/msgp)
+[![test](https://github.com/desertbit/msgp/actions/workflows/test.yml/badge.svg)](https://github.com/desertbit/msgp/actions/workflows/test.yml)
+[![validate](https://github.com/desertbit/msgp/actions/workflows/validate.yml/badge.svg)](https://github.com/desertbit/msgp/actions/workflows/validate.yml)
 
 This is a code generation tool and serialization library for [MessagePack](http://msgpack.org). You can read more about MessagePack [in the wiki](http://github.com/desertbit/msgp/wiki), or at [msgpack.org](http://msgpack.org).
 
@@ -7,7 +14,7 @@ This is a code generation tool and serialization library for [MessagePack](http:
 
 - Use Go as your schema language
 - Performance
-- [JSON interop](http://godoc.org/github.com/desertbit/msgp/msgp#CopyToJSON)
+- [JSON interop](https://pkg.go.dev/github.com/desertbit/msgp/msgp#CopyToJSON)
 - [User-defined extensions](http://github.com/desertbit/msgp/wiki/Using-Extensions)
 - Type safety
 - Encoding flexibility

@@ -65,7 +65,6 @@ func (e *Example) Setup() {
 	e.Omitted = "nope"
 
 	e.OmitEmptyString = "here"
-
 }
 
 func (e *Example) Eq(e2 *Example) bool {
@@ -143,7 +142,6 @@ func (e *Example) Eq(e2 *Example) bool {
 var buf [256]byte
 
 func main() {
-
 	var e Example
 	e.Setup()
 
@@ -192,5 +190,4 @@ func main() {
 	if bytes.Compare(wbuf.Bytes(), b1) != 0 {
 		panic("writer and marshal produced different results")
 	}
-
 }

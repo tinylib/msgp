@@ -178,5 +178,4 @@ func BenchmarkDecode{{.TypeName}}(b *testing.B) {
 }
 
 `))
-
 }

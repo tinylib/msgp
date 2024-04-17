@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"errors"
 	"math"
 	"reflect"
 	"time"
@@ -71,6 +72,11 @@ func AppendFloat32(b []byte, f float32) []byte {
 	o, n := ensure(b, Float32Size)
 	prefixu32(o[n:], mfloat32, math.Float32bits(f))
 	return o
+}
+
+// AppendDuration appends a time.Duration to the slice
+func AppendDuration(b []byte, d time.Duration) []byte {
+	return AppendInt64(b, int64(d))
 }
 
 // AppendInt64 appends an int64 to the slice
@@ -335,13 +341,13 @@ func AppendMapStrIntf(b []byte, m map[string]interface{}) ([]byte, error) {
 
 // AppendIntf appends the concrete type of 'i' to the
 // provided []byte. 'i' must be one of the following:
-//  - 'nil'
-//  - A bool, float, string, []byte, int, uint, or complex
-//  - A map[string]interface{} or map[string]string
-//  - A []T, where T is another supported type
-//  - A *T, where T is another supported type
-//  - A type that satisfieds the msgp.Marshaler interface
-//  - A type that satisfies the msgp.Extension interface
+//   - 'nil'
+//   - A bool, float, string, []byte, int, uint, or complex
+//   - A map[string]T where T is another supported type
+//   - A []T, where T is another supported type
+//   - A *T, where T is another supported type
+//   - A type that satisfies the msgp.Marshaler interface
+//   - A type that satisfies the msgp.Extension interface
 func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 	if i == nil {
 		return AppendNil(b), nil
@@ -409,6 +415,21 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 	var err error
 	v := reflect.ValueOf(i)
 	switch v.Kind() {
+	case reflect.Map:
+		if v.Type().Key().Kind() != reflect.String {
+			return b, errors.New("msgp: map keys must be strings")
+		}
+		ks := v.MapKeys()
+		b = AppendMapHeader(b, uint32(len(ks)))
+		for _, key := range ks {
+			val := v.MapIndex(key)
+			b = AppendString(b, key.String())
+			b, err = AppendIntf(b, val.Interface())
+			if err != nil {
+				return nil, err
+			}
+		}
+		return b, nil
 	case reflect.Array, reflect.Slice:
 		l := v.Len()
 		b = AppendArrayHeader(b, uint32(l))
