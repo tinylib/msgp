@@ -32,22 +32,22 @@ const maxComplex = 5
 
 // begin recursive search for identities with the
 // given name and replace them with e
-func (f *FileSet) replace(id string, e gen.Elem, addID bool) {
+func (f *FileSet) findShim(id string, e gen.Elem, addID bool) {
 	for name, el := range f.Identities {
 		pushstate(name)
 		switch el := el.(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
-				f.nextReplace(&el.Fields[i].FieldElem, id, e)
+				f.nextShim(&el.Fields[i].FieldElem, id, e)
 			}
 		case *gen.Array:
-			f.nextReplace(&el.Els, id, e)
+			f.nextShim(&el.Els, id, e)
 		case *gen.Slice:
-			f.nextReplace(&el.Els, id, e)
+			f.nextShim(&el.Els, id, e)
 		case *gen.Map:
-			f.nextReplace(&el.Value, id, e)
+			f.nextShim(&el.Value, id, e)
 		case *gen.Ptr:
-			f.nextReplace(&el.Value, id, e)
+			f.nextShim(&el.Value, id, e)
 		}
 		popstate()
 	}
@@ -56,7 +56,7 @@ func (f *FileSet) replace(id string, e gen.Elem, addID bool) {
 	}
 }
 
-func (f *FileSet) nextReplace(ref *gen.Elem, id string, e gen.Elem) {
+func (f *FileSet) nextShim(ref *gen.Elem, id string, e gen.Elem) {
 	if (*ref).TypeName() == id {
 		vn := (*ref).Varname()
 		*ref = e.Copy()
@@ -65,16 +65,16 @@ func (f *FileSet) nextReplace(ref *gen.Elem, id string, e gen.Elem) {
 		switch el := (*ref).(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
-				f.nextReplace(&el.Fields[i].FieldElem, id, e)
+				f.nextShim(&el.Fields[i].FieldElem, id, e)
 			}
 		case *gen.Array:
-			f.nextReplace(&el.Els, id, e)
+			f.nextShim(&el.Els, id, e)
 		case *gen.Slice:
-			f.nextReplace(&el.Els, id, e)
+			f.nextShim(&el.Els, id, e)
 		case *gen.Map:
-			f.nextReplace(&el.Value, id, e)
+			f.nextShim(&el.Value, id, e)
 		case *gen.Ptr:
-			f.nextReplace(&el.Value, id, e)
+			f.nextShim(&el.Value, id, e)
 		}
 	}
 }

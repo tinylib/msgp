@@ -92,7 +92,7 @@ func applyShim(text []string, f *FileSet) error {
 	}
 
 	infof("%s -> %s\n", name, be.Value.String())
-	f.replace(name, be, true)
+	f.findShim(name, be, true)
 
 	return nil
 }
@@ -122,7 +122,7 @@ func replace(text []string, f *FileSet) error {
 	}
 
 	infof("%s -> %s\n", name, replacement)
-	f.replace(name, e, false)
+	f.findShim(name, e, false)
 
 	return nil
 }
