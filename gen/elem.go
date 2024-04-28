@@ -119,6 +119,7 @@ var primitives = map[string]Primitive{
 	"int64":          Int64,
 	"bool":           Bool,
 	"interface{}":    Intf,
+	"any":            Intf,
 	"time.Time":      Time,
 	"time.Duration":  Duration,
 	"msgp.Extension": Ext,
