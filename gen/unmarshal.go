@@ -139,8 +139,8 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 
 	refname := b.Varname() // assigned to
 	lowered := b.Varname() // passed as argument
-	if b.Convert {
-		// begin 'tmp' block
+	// begin 'tmp' block
+	if b.Convert && b.Value != IDENT { // we don't need block for 'tmp' in case of IDENT
 		refname = randIdent()
 		lowered = b.ToBase() + "(" + lowered + ")"
 		u.p.printf("\n{\nvar %s %s", refname, b.BaseType())
@@ -152,18 +152,21 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 	case Ext:
 		u.p.printf("\nbts, err = msgp.ReadExtensionBytes(bts, %s)", lowered)
 	case IDENT:
+		if b.Convert {
+			lowered = b.ToBase() + "(" + lowered + ")"
+		}
 		u.p.printf("\nbts, err = %s.UnmarshalMsg(bts)", lowered)
 	default:
 		u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", refname, b.BaseName())
 	}
 	u.p.wrapErrCheck(u.ctx.ArgsStr())
 
-	if b.Convert {
-		// close 'tmp' block
+	// close 'tmp' block
+	if b.Convert && b.Value != IDENT {
 		if b.ShimMode == Cast {
 			u.p.printf("\n%s = %s(%s)\n", b.Varname(), b.FromBase(), refname)
 		} else {
-			u.p.printf("\n%s, err = %s(%s)", b.Varname(), b.FromBase(), refname)
+			u.p.printf("\n%s, err = %s(%s)\n", b.Varname(), b.FromBase(), refname)
 			u.p.wrapErrCheck(u.ctx.ArgsStr())
 		}
 		u.p.printf("}")

@@ -97,27 +97,29 @@ func applyShim(text []string, f *FileSet) error {
 	return nil
 }
 
-//msgp:replace {Type} {NewType}
+//msgp:replace {Type} with:{NewType}
 func replace(text []string, f *FileSet) error {
 	if len(text) != 3 {
-		return fmt.Errorf("replace directive should have 2 arguments; found %d", len(text)-1)
+		return fmt.Errorf("replace directive should have only 2 arguments; found %d", len(text)-1)
 	}
 
 	name := text[1]
-	replacement := text[2]
-
-	if _, ok := f.Identities[name]; ok {
-		return fmt.Errorf("type %q is already processed, can't replace it with %q", name, replacement)
-	}
+	replacement := strings.TrimPrefix(strings.TrimSpace(text[2]), "with:")
 
 	expr, err := parser.ParseExpr(replacement)
 	if err != nil {
 		return err
 	}
-
 	e := f.parseExpr(expr)
-	replacement = e.TypeName()
-	e.Alias(name)
+
+	if be, ok := e.(*gen.BaseElem); ok {
+		be.Convert = true
+		be.Alias(name)
+		if be.Value == gen.IDENT {
+			be.ShimToBase = "(*" + replacement + ")"
+			be.Needsref(true)
+		}
+	}
 
 	infof("%s -> %s\n", name, replacement)
 	f.replace(name, e, false)

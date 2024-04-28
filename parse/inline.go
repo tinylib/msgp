@@ -32,7 +32,7 @@ const maxComplex = 5
 
 // begin recursive search for identities with the
 // given name and replace them with e
-func (f *FileSet) replace(id string, e gen.Elem, topLevel bool) {
+func (f *FileSet) replace(id string, e gen.Elem, addID bool) {
 	for name, el := range f.Identities {
 		pushstate(name)
 		switch el := el.(type) {
@@ -51,7 +51,7 @@ func (f *FileSet) replace(id string, e gen.Elem, topLevel bool) {
 		}
 		popstate()
 	}
-	if topLevel {
+	if addID {
 		f.Identities[id] = e
 	}
 }

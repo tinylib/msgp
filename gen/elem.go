@@ -385,6 +385,11 @@ func (s *Ptr) SetVarname(a string) {
 	case *BaseElem:
 		// identities have pointer receivers
 		if x.Value == IDENT {
+			// replace directive sets Convert=true and Needsref=true
+			// since BaseElem is behind a pointer we set Needsref=false
+			if x.Convert {
+				x.Needsref(false)
+			}
 			x.SetVarname(a)
 		} else {
 			x.SetVarname("*" + a)
