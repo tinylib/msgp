@@ -22,10 +22,10 @@ type passDirective func(gen.Method, []string, *gen.Printer) error
 // to add a directive, define a func([]string, *FileSet) error
 // and then add it to this list.
 var directives = map[string]directive{
-	"shim":   applyShim,
-	"alias":  alias,
-	"ignore": ignore,
-	"tuple":  astuple,
+	"shim":    applyShim,
+	"replace": replace,
+	"ignore":  ignore,
+	"tuple":   astuple,
 }
 
 var passDirectives = map[string]passDirective{
@@ -97,29 +97,29 @@ func applyShim(text []string, f *FileSet) error {
 	return nil
 }
 
-//msgp:alias {Type} {NewType}
-func alias(text []string, f *FileSet) error {
+//msgp:replace {Type} {NewType}
+func replace(text []string, f *FileSet) error {
 	if len(text) != 3 {
-		return fmt.Errorf("alias directive should have 2 arguments; found %d", len(text)-1)
+		return fmt.Errorf("replace directive should have 2 arguments; found %d", len(text)-1)
 	}
 
 	name := text[1]
-	alias := text[2]
+	replacement := text[2]
 
 	if _, ok := f.Identities[name]; ok {
-		return fmt.Errorf("type %q is already processed, can't alias it with %q", name, alias)
+		return fmt.Errorf("type %q is already processed, can't replace it with %q", name, replacement)
 	}
 
-	expr, err := parser.ParseExpr(alias)
+	expr, err := parser.ParseExpr(replacement)
 	if err != nil {
 		return err
 	}
 
 	e := f.parseExpr(expr)
-	alias = e.TypeName()
+	replacement = e.TypeName()
 	e.Alias(name)
 
-	infof("%s -> %s\n", name, alias)
+	infof("%s -> %s\n", name, replacement)
 	f.replace(name, e, false)
 
 	return nil
