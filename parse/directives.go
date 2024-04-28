@@ -3,6 +3,7 @@ package parse
 import (
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
@@ -22,6 +23,7 @@ type passDirective func(gen.Method, []string, *gen.Printer) error
 // and then add it to this list.
 var directives = map[string]directive{
 	"shim":   applyShim,
+	"alias":  alias,
 	"ignore": ignore,
 	"tuple":  astuple,
 }
@@ -53,7 +55,7 @@ func yieldComments(c []*ast.CommentGroup) []string {
 	return out
 }
 
-//msgp:shim {Type} as:{Newtype} using:{toFunc/fromFunc} mode:{Mode}
+//msgp:shim {Type} as:{NewType} using:{toFunc/fromFunc} mode:{Mode}
 func applyShim(text []string, f *FileSet) error {
 	if len(text) < 4 || len(text) > 5 {
 		return fmt.Errorf("shim directive should have 3 or 4 arguments; found %d", len(text)-1)
@@ -90,7 +92,35 @@ func applyShim(text []string, f *FileSet) error {
 	}
 
 	infof("%s -> %s\n", name, be.Value.String())
-	f.findShim(name, be)
+	f.replace(name, be, true)
+
+	return nil
+}
+
+//msgp:alias {Type} {NewType}
+func alias(text []string, f *FileSet) error {
+	if len(text) != 3 {
+		return fmt.Errorf("alias directive should have 2 arguments; found %d", len(text)-1)
+	}
+
+	name := text[1]
+	alias := text[2]
+
+	if _, ok := f.Identities[name]; ok {
+		return fmt.Errorf("type %q is already processed, can't alias it with %q", name, alias)
+	}
+
+	expr, err := parser.ParseExpr(alias)
+	if err != nil {
+		return err
+	}
+
+	e := f.parseExpr(expr)
+	alias = e.TypeName()
+	e.Alias(name)
+
+	infof("%s -> %s\n", name, alias)
+	f.replace(name, e, false)
 
 	return nil
 }
