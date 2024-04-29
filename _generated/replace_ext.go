@@ -2,7 +2,7 @@ package _generated
 
 import "time"
 
-// external types to test receive directive
+// external types to test replace directive
 
 type (
 	MapString   map[string]string
