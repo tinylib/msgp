@@ -81,7 +81,7 @@ func compareStructS(t *testing.T, a, b *CompatibleStructS) {
 	}
 }
 
-func TestRecieve_ABCD(t *testing.T) {
+func TestReplace_ABCD(t *testing.T) {
 	d := CompatibleStructD{
 		Time:     Time(time.Now()),
 		Duration: Duration(time.Duration(1234)),
@@ -174,7 +174,7 @@ func TestRecieve_ABCD(t *testing.T) {
 	})
 }
 
-func TestRecieve_I(t *testing.T) {
+func TestReplace_I(t *testing.T) {
 	var int0 int = -10
 	var uint0 uint = 12
 
@@ -198,7 +198,7 @@ func TestRecieve_I(t *testing.T) {
 	compareStructI(t, &i, &ui)
 }
 
-func TestRecieve_S(t *testing.T) {
+func TestReplace_S(t *testing.T) {
 	s := CompatibleStructS{
 		Slice: []Int{10, 12, 14, 16},
 	}
@@ -218,7 +218,7 @@ func TestRecieve_S(t *testing.T) {
 	compareStructS(t, &s, &us)
 }
 
-func TestRecieve_Dummy(t *testing.T) {
+func TestReplace_Dummy(t *testing.T) {
 	dummy := Dummy{
 		StructA: StructA{
 			StructB: StructB{
