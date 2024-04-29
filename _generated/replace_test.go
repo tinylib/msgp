@@ -1,7 +1,6 @@
 package _generated
 
 import (
-	"slices"
 	"testing"
 	"time"
 )
@@ -81,8 +80,14 @@ func compareStructI(t *testing.T, a, b *CompatibleStructI) {
 func compareStructS(t *testing.T, a, b *CompatibleStructS) {
 	t.Helper()
 
-	if !slices.Equal(a.Slice, b.Slice) {
+	if len(a.Slice) != len(b.Slice) {
 		t.Fatal("not same slice")
+	}
+
+	for i := 0; i < len(a.Slice); i++ {
+		if a.Slice[i] != b.Slice[i] {
+			t.Fatal("not same slice")
+		}
 	}
 }
 
