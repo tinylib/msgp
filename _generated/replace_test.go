@@ -1,7 +1,6 @@
 package _generated
 
 import (
-	"maps"
 	"slices"
 	"testing"
 	"time"
@@ -18,8 +17,14 @@ func compareStructD(t *testing.T, a, b *CompatibleStructD) {
 		t.Fatal("not same duration")
 	}
 
-	if !maps.Equal(a.MapString, b.MapString) {
+	if len(a.MapString) != len(b.MapString) {
 		t.Fatal("not same map")
+	}
+
+	for k, v1 := range a.MapString {
+		if v2, ok := b.MapString[k]; !ok || v1 != v2 {
+			t.Fatal("not same map")
+		}
 	}
 }
 
