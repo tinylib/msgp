@@ -23,8 +23,7 @@ type passDirective func(gen.Method, []string, *gen.Printer) error
 var directives = map[string]directive{
 	"shim":   applyShim,
 	"ignore": ignore,
-	"tuple":  astuple,
-	"tag":    tag}
+	"tuple":  astuple}
 
 // map of all recognized directives which will be applied
 // before process() is called
