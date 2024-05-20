@@ -16,11 +16,18 @@ func TestCustomTag(t *testing.T) {
 		ts := CustomTag{
 			Foo: "foostring13579",
 			Bar: 999_999}
-		encDecCustomTag(t, ts, "mytag")
+		encDecCustomTag(t, ts, "mytag", false)
+	})
+	t.Run("Type Scope", func(t *testing.T) {
+		ts := CustomTag2{
+			Foo: "foostring246810",
+			Bar: 777_777}
+		encDecCustomTag(t, ts, "anothertag", false)
+		encDecCustomTag(t, ts, "mytag", true)
 	})
 }
 
-func encDecCustomTag(t *testing.T, testStruct msgp.Encodable, tag string) {
+func encDecCustomTag(t *testing.T, testStruct msgp.Encodable, tag string, expectError bool) {
 	var b bytes.Buffer
 	msgp.Encode(&b, testStruct)
 
@@ -46,6 +53,12 @@ func encDecCustomTag(t *testing.T, testStruct msgp.Encodable, tag string) {
 		// Check encoded field name
 		field := tsType.Field(i)
 		encodedValue, ok := encoded[field.Tag.Get(tag)]
+		if expectError {
+			if ok {
+				t.Error("unexpected encoded field", field.Name)
+			}
+			continue
+		}
 		if !ok {
 			t.Error("missing encoded value for field", field.Name)
 			continue
