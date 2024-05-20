@@ -16,12 +16,13 @@ import (
 // A FileSet is the in-memory representation of a
 // parsed file.
 type FileSet struct {
-	Package    string              // package name
-	Specs      map[string]ast.Expr // type specs in file
-	Identities map[string]gen.Elem // processed from specs
-	Directives []string            // raw preprocessor directives
-	Imports    []*ast.ImportSpec   // imports
-	tagName    string              // tag to read field names from
+	Package      string              // package name
+	Specs        map[string]ast.Expr // type specs in file
+	Identities   map[string]gen.Elem // processed from specs
+	Directives   []string            // raw preprocessor directives
+	Imports      []*ast.ImportSpec   // imports
+	tagName      string              // tag to read field names from
+	tagNameTypes map[string]string   // tag to read field names from for explicit types
 }
 
 // File parses a file at the relative path
@@ -34,9 +35,9 @@ func File(name string, unexported bool) (*FileSet, error) {
 	pushstate(name)
 	defer popstate()
 	fs := &FileSet{
-		Specs:      make(map[string]ast.Expr),
-		Identities: make(map[string]gen.Elem),
-	}
+		Specs:        make(map[string]ast.Expr),
+		Identities:   make(map[string]gen.Elem),
+		tagNameTypes: make(map[string]string)}
 
 	fset := token.NewFileSet()
 	finfo, err := os.Stat(name)
@@ -193,7 +194,7 @@ func (f *FileSet) process() {
 parse:
 	for name, def := range f.Specs {
 		pushstate(name)
-		el := f.parseExpr(def)
+		el := f.parseExpr(def, name)
 		if el == nil {
 			warnf("failed to parse")
 			popstate()
@@ -330,14 +331,14 @@ func fieldName(f *ast.Field) string {
 	}
 }
 
-func (fs *FileSet) parseFieldList(fl *ast.FieldList) []gen.StructField {
+func (fs *FileSet) parseFieldList(fl *ast.FieldList, structName string) []gen.StructField {
 	if fl == nil || fl.NumFields() == 0 {
 		return nil
 	}
 	out := make([]gen.StructField, 0, fl.NumFields())
 	for _, field := range fl.List {
 		pushstate(fieldName(field))
-		fds := fs.getField(field)
+		fds := fs.getField(field, structName)
 		if len(fds) > 0 {
 			out = append(out, fds...)
 		} else {
@@ -349,13 +350,15 @@ func (fs *FileSet) parseFieldList(fl *ast.FieldList) []gen.StructField {
 }
 
 // translate *ast.Field into []gen.StructField
-func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
+func (fs *FileSet) getField(f *ast.Field, structName string) []gen.StructField {
 	sf := make([]gen.StructField, 1)
 	var extension, flatten bool
 	// parse tag; otherwise field name is field tag
 	if f.Tag != nil {
 		var body string
-		if fs.tagName != "" {
+		if tagName, ok := fs.tagNameTypes[structName]; ok { // type-scope msgp:tag directive
+			body = reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get(tagName)
+		} else if fs.tagName != "" { // file-scope msgp:tag directive
 			body = reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get(fs.tagName)
 		}
 		if body == "" {
@@ -382,7 +385,7 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 		sf[0].RawTag = f.Tag.Value
 	}
 
-	ex := fs.parseExpr(f.Type)
+	ex := fs.parseExpr(f.Type, "")
 	if ex == nil {
 		return nil
 	}
@@ -442,7 +445,7 @@ func (fs *FileSet) getFieldsFromEmbeddedStruct(f ast.Expr) []gen.StructField {
 		s := fs.Specs[f.Name]
 		switch s := s.(type) {
 		case *ast.StructType:
-			return fs.parseFieldList(s.Fields)
+			return fs.parseFieldList(s.Fields, f.Name)
 		default:
 			return nil
 		}
@@ -506,12 +509,12 @@ func stringify(e ast.Expr) string {
 // - *ast.StructType (struct {})
 // - *ast.SelectorExpr (a.B)
 // - *ast.InterfaceType (interface {})
-func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
+func (fs *FileSet) parseExpr(e ast.Expr, name string) gen.Elem {
 	switch e := e.(type) {
 
 	case *ast.MapType:
 		if k, ok := e.Key.(*ast.Ident); ok && k.Name == "string" {
-			if in := fs.parseExpr(e.Value); in != nil {
+			if in := fs.parseExpr(e.Value, ""); in != nil {
 				return &gen.Map{Value: in}
 			}
 		}
@@ -541,7 +544,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 
 		// return early if we don't know
 		// what the slice element type is
-		els := fs.parseExpr(e.Elt)
+		els := fs.parseExpr(e.Elt, "")
 		if els == nil {
 			return nil
 		}
@@ -574,13 +577,13 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		return &gen.Slice{Els: els}
 
 	case *ast.StarExpr:
-		if v := fs.parseExpr(e.X); v != nil {
+		if v := fs.parseExpr(e.X, ""); v != nil {
 			return &gen.Ptr{Value: v}
 		}
 		return nil
 
 	case *ast.StructType:
-		return &gen.Struct{Fields: fs.parseFieldList(e.Fields)}
+		return &gen.Struct{Fields: fs.parseFieldList(e.Fields, name)}
 
 	case *ast.SelectorExpr:
 		return gen.Ident(stringify(e))

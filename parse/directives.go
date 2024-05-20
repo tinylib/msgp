@@ -138,9 +138,18 @@ func astuple(text []string, f *FileSet) error {
 
 //msgp:tag {tagname}
 func tag(text []string, f *FileSet) error {
-	if len(text) != 2 {
+	if len(text) < 2 {
 		return nil
 	}
-	f.tagName = strings.TrimSpace(text[1])
+	tag := strings.TrimSpace(text[1])
+	if len(text) == 2 {
+		// file-scope syntax - set custom tag for all types in the file
+		f.tagName = tag
+	} else {
+		// type-scope - set custom tag for types specified
+		for _, item := range text[2:] {
+			f.tagNameTypes[strings.TrimSpace(item)] = tag
+		}
+	}
 	return nil
 }
