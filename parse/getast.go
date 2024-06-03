@@ -21,6 +21,7 @@ type FileSet struct {
 	Identities map[string]gen.Elem // processed from specs
 	Directives []string            // raw preprocessor directives
 	Imports    []*ast.ImportSpec   // imports
+	tagName    string              // tag to read field names from
 }
 
 // File parses a file at the relative path
@@ -82,6 +83,7 @@ func File(name string, unexported bool) (*FileSet, error) {
 		return nil, fmt.Errorf("no definitions in %s", name)
 	}
 
+	fs.applyEarlyDirectives()
 	fs.process()
 	fs.applyDirectives()
 	fs.propInline()
@@ -107,6 +109,29 @@ func (f *FileSet) applyDirectives() {
 			} else {
 				newdirs = append(newdirs, d)
 			}
+		}
+	}
+	f.Directives = newdirs
+}
+
+// applyEarlyDirectives applies all early directives needed before process() is called.
+// additional directives remain in f.Directives for future processing
+func (f *FileSet) applyEarlyDirectives() {
+	newdirs := make([]string, 0, len(f.Directives))
+	for _, d := range f.Directives {
+		parts := strings.Split(d, " ")
+		if len(parts) == 0 {
+			continue
+		}
+		if fn, ok := earlyDirectives[parts[0]]; ok {
+			pushstate(parts[0])
+			err := fn(parts, f)
+			if err != nil {
+				warnf("early directive error: %s", err)
+			}
+			popstate()
+		} else {
+			newdirs = append(newdirs, d)
 		}
 	}
 	f.Directives = newdirs
@@ -329,7 +354,13 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 	var extension, flatten bool
 	// parse tag; otherwise field name is field tag
 	if f.Tag != nil {
-		body := reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("msg")
+		var body string
+		if fs.tagName != "" {
+			body = reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get(fs.tagName)
+		}
+		if body == "" {
+			body = reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("msg")
+		}
 		if body == "" {
 			body = reflect.StructTag(strings.Trim(f.Tag.Value, "`")).Get("msgpack")
 		}
