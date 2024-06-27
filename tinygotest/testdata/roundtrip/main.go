@@ -19,21 +19,23 @@ type EmbeddedStruct struct {
 // Example provides a decent variety of types and features and
 // lets us test for basic functionality in TinyGo.
 type Example struct {
-	Int64       int64      `msg:"int64"`
-	Uint64      uint64     `msg:"uint64"`
-	Int32       int32      `msg:"int32"`
-	Uint32      uint32     `msg:"uint32"`
-	Int16       int32      `msg:"int16"`
-	Uint16      uint32     `msg:"uint16"`
-	Int8        int32      `msg:"int8"`
-	Byte        byte       `msg:"byte"`
-	Float64     float64    `msg:"float64"`
-	Float32     float32    `msg:"float32"`
-	String      string     `msg:"string"`
-	ByteSlice   []byte     `msg:"byte_slice"`
-	StringSlice []string   `msg:"string_slice"`
-	IntArray    [2]int     `msg:"int_array"`
-	SomeStruct  SomeStruct `msg:"some_struct"`
+	Interface   interface{} `msg:"interface"`
+	Any         any         `msg:"any"`
+	Int64       int64       `msg:"int64"`
+	Uint64      uint64      `msg:"uint64"`
+	Int32       int32       `msg:"int32"`
+	Uint32      uint32      `msg:"uint32"`
+	Int16       int32       `msg:"int16"`
+	Uint16      uint32      `msg:"uint16"`
+	Int8        int32       `msg:"int8"`
+	Byte        byte        `msg:"byte"`
+	Float64     float64     `msg:"float64"`
+	Float32     float32     `msg:"float32"`
+	String      string      `msg:"string"`
+	ByteSlice   []byte      `msg:"byte_slice"`
+	StringSlice []string    `msg:"string_slice"`
+	IntArray    [2]int      `msg:"int_array"`
+	SomeStruct  SomeStruct  `msg:"some_struct"`
 
 	EmbeddedStruct
 
@@ -44,6 +46,8 @@ type Example struct {
 
 // Setup populuates the struct with test data
 func (e *Example) Setup() {
+	e.Interface = 10
+	e.Any = "any"
 	e.Int64 = 10
 	e.Uint64 = 11
 	e.Int32 = 12
@@ -68,6 +72,12 @@ func (e *Example) Setup() {
 }
 
 func (e *Example) Eq(e2 *Example) bool {
+	if int64(e.Interface.(int)) != e2.Interface.(int64) {
+		return false
+	}
+	if e.Any.(string) != e2.Any.(string) {
+		return false
+	}
 	if e.Int64 != e2.Int64 {
 		return false
 	}
