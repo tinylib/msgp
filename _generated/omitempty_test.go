@@ -2,7 +2,7 @@ package _generated
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/tinylib/msgp/msgp"
@@ -146,7 +146,7 @@ func TestOmitEmptyLotsOFields(t *testing.T) {
 }
 
 func BenchmarkOmitEmpty10AllEmpty(b *testing.B) {
-	en := msgp.NewWriter(ioutil.Discard)
+	en := msgp.NewWriter(io.Discard)
 	var s OmitEmpty10
 
 	b.ResetTimer()
@@ -160,7 +160,7 @@ func BenchmarkOmitEmpty10AllEmpty(b *testing.B) {
 }
 
 func BenchmarkOmitEmpty10AllFull(b *testing.B) {
-	en := msgp.NewWriter(ioutil.Discard)
+	en := msgp.NewWriter(io.Discard)
 	var s OmitEmpty10
 	s.Field00 = "this is the value of field00"
 	s.Field01 = "this is the value of field01"
@@ -184,7 +184,7 @@ func BenchmarkOmitEmpty10AllFull(b *testing.B) {
 }
 
 func BenchmarkNotOmitEmpty10AllEmpty(b *testing.B) {
-	en := msgp.NewWriter(ioutil.Discard)
+	en := msgp.NewWriter(io.Discard)
 	var s NotOmitEmpty10
 
 	b.ResetTimer()
@@ -198,7 +198,7 @@ func BenchmarkNotOmitEmpty10AllEmpty(b *testing.B) {
 }
 
 func BenchmarkNotOmitEmpty10AllFull(b *testing.B) {
-	en := msgp.NewWriter(ioutil.Discard)
+	en := msgp.NewWriter(io.Discard)
 	var s NotOmitEmpty10
 	s.Field00 = "this is the value of field00"
 	s.Field01 = "this is the value of field01"

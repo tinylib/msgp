@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
@@ -52,7 +52,7 @@ func format(file string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(file, out, 0o600)
+	return os.WriteFile(file, out, 0o600)
 }
 
 func goformat(file string, data []byte) <-chan error {

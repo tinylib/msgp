@@ -1,13 +1,10 @@
 module github.com/tinylib/msgp
 
-go 1.18
+go 1.20
 
 require (
-	github.com/philhofer/fwd v1.1.2
-	golang.org/x/tools v0.14.0
+	github.com/philhofer/fwd v1.1.3-0.20240612014219-fbbf4953d986
+	golang.org/x/tools v0.22.0
 )
 
-require (
-	golang.org/x/mod v0.13.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-)
+require golang.org/x/mod v0.18.0 // indirect
