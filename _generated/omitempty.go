@@ -177,3 +177,50 @@ type NotOmitEmpty10 struct {
 	Field08 string `msg:"field08"`
 	Field09 string `msg:"field09"`
 }
+
+type OmitEmptyNoName struct {
+	ABool       bool       `msg:",omitempty"`
+	AInt        int        `msg:",omitempty"`
+	AInt8       int8       `msg:",omitempty"`
+	AInt16      int16      `msg:",omitempty"`
+	AInt32      int32      `msg:",omitempty"`
+	AInt64      int64      `msg:",omitempty"`
+	AUint       uint       `msg:",omitempty"`
+	AUint8      uint8      `msg:",omitempty"`
+	AUint16     uint16     `msg:",omitempty"`
+	AUint32     uint32     `msg:",omitempty"`
+	AUint64     uint64     `msg:",omitempty"`
+	AFloat32    float32    `msg:",omitempty"`
+	AFloat64    float64    `msg:",omitempty"`
+	AComplex64  complex64  `msg:",omitempty"`
+	AComplex128 complex128 `msg:",omitempty"`
+
+	ANamedBool    bool    `msg:",omitempty"`
+	ANamedInt     int     `msg:",omitempty"`
+	ANamedFloat64 float64 `msg:",omitempty"`
+
+	AMapStrStr map[string]string `msg:",omitempty"`
+
+	APtrNamedStr *NamedString `msg:",omitempty"`
+
+	AString    string `msg:",omitempty"`
+	AByteSlice []byte `msg:",omitempty"`
+
+	ASliceString      []string      `msg:",omitempty"`
+	ASliceNamedString []NamedString `msg:",omitempty"`
+
+	ANamedStruct    NamedStruct  `msg:",omitempty"`
+	APtrNamedStruct *NamedStruct `msg:",omitempty"`
+
+	AUnnamedStruct struct {
+		A string `msg:",omitempty"`
+	} `msg:",omitempty"` // omitempty not supported on unnamed struct
+
+	EmbeddableStruct `msg:",flatten,omitempty"` // embed flat
+
+	EmbeddableStruct2 `msg:",omitempty"` // embed non-flat
+
+	AArrayInt [5]int `msg:",omitempty"` // not supported
+
+	ATime time.Time `msg:",omitempty"`
+}
