@@ -413,7 +413,11 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 	sf[0].FieldElem = ex
 	if sf[0].FieldTag == "" {
 		sf[0].FieldTag = sf[0].FieldName
-		sf[0].FieldTagParts = []string{sf[0].FieldName}
+		if len(sf[0].FieldTagParts) <= 1 {
+			sf[0].FieldTagParts = []string{sf[0].FieldTag}
+		} else {
+			sf[0].FieldTagParts = append([]string{sf[0].FieldName}, sf[0].FieldTagParts[1:]...)
+		}
 	}
 
 	// validate extension
