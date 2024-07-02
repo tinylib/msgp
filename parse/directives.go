@@ -3,6 +3,7 @@ package parse
 import (
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
@@ -21,9 +22,11 @@ type passDirective func(gen.Method, []string, *gen.Printer) error
 // to add a directive, define a func([]string, *FileSet) error
 // and then add it to this list.
 var directives = map[string]directive{
-	"shim":   applyShim,
-	"ignore": ignore,
-	"tuple":  astuple}
+	"shim":    applyShim,
+	"replace": replace,
+	"ignore":  ignore,
+	"tuple":   astuple,
+}
 
 // map of all recognized directives which will be applied
 // before process() is called
@@ -31,7 +34,8 @@ var directives = map[string]directive{
 // to add an early directive, define a func([]string, *FileSet) error
 // and then add it to this list.
 var earlyDirectives = map[string]directive{
-	"tag": tag}
+	"tag": tag,
+}
 
 var passDirectives = map[string]passDirective{
 	"ignore": passignore,
@@ -60,7 +64,7 @@ func yieldComments(c []*ast.CommentGroup) []string {
 	return out
 }
 
-//msgp:shim {Type} as:{Newtype} using:{toFunc/fromFunc} mode:{Mode}
+//msgp:shim {Type} as:{NewType} using:{toFunc/fromFunc} mode:{Mode}
 func applyShim(text []string, f *FileSet) error {
 	if len(text) < 4 || len(text) > 5 {
 		return fmt.Errorf("shim directive should have 3 or 4 arguments; found %d", len(text)-1)
@@ -97,7 +101,37 @@ func applyShim(text []string, f *FileSet) error {
 	}
 
 	infof("%s -> %s\n", name, be.Value.String())
-	f.findShim(name, be)
+	f.findShim(name, be, true)
+
+	return nil
+}
+
+//msgp:replace {Type} with:{NewType}
+func replace(text []string, f *FileSet) error {
+	if len(text) != 3 {
+		return fmt.Errorf("replace directive should have only 2 arguments; found %d", len(text)-1)
+	}
+
+	name := text[1]
+	replacement := strings.TrimPrefix(strings.TrimSpace(text[2]), "with:")
+
+	expr, err := parser.ParseExpr(replacement)
+	if err != nil {
+		return err
+	}
+	e := f.parseExpr(expr)
+
+	if be, ok := e.(*gen.BaseElem); ok {
+		be.Convert = true
+		be.Alias(name)
+		if be.Value == gen.IDENT {
+			be.ShimToBase = "(*" + replacement + ")"
+			be.Needsref(true)
+		}
+	}
+
+	infof("%s -> %s\n", name, replacement)
+	f.findShim(name, e, false)
 
 	return nil
 }

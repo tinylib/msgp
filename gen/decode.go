@@ -146,7 +146,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 
 	// open block for 'tmp'
 	var tmp string
-	if b.Convert {
+	if b.Convert && b.Value != IDENT { // we don't need block for 'tmp' in case of IDENT
 		tmp = randIdent()
 		d.p.printf("\n{ var %s %s", tmp, b.BaseType())
 	}
@@ -165,7 +165,12 @@ func (d *decodeGen) gBase(b *BaseElem) {
 			d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
 		}
 	case IDENT:
-		d.p.printf("\nerr = %s.DecodeMsg(dc)", vname)
+		if b.Convert {
+			lowered := b.ToBase() + "(" + vname + ")"
+			d.p.printf("\nerr = %s.DecodeMsg(dc)", lowered)
+		} else {
+			d.p.printf("\nerr = %s.DecodeMsg(dc)", vname)
+		}
 	case Ext:
 		d.p.printf("\nerr = dc.ReadExtension(%s)", vname)
 	default:
@@ -178,7 +183,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	d.p.wrapErrCheck(d.ctx.ArgsStr())
 
 	// close block for 'tmp'
-	if b.Convert {
+	if b.Convert && b.Value != IDENT {
 		if b.ShimMode == Cast {
 			d.p.printf("\n%s = %s(%s)\n}", vname, b.FromBase(), tmp)
 		} else {
