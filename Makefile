@@ -1,5 +1,5 @@
 
-# NOTE: This Makefile is only necessary if you 
+# NOTE: This Makefile is only necessary if you
 # plan on developing the msgp tool and library.
 # Installation can still be performed with a
 # normal `go install`.
@@ -55,8 +55,8 @@ ci: prepare
 	if [ `arch` == 'x86_64' ]; then \
 		sudo apt-get -y -q update; \
 		sudo apt-get -y -q install build-essential; \
-		wget -q https://github.com/tinygo-org/tinygo/releases/download/v0.30.0/tinygo_0.30.0_amd64.deb; \
-		sudo dpkg -i tinygo_0.30.0_amd64.deb; \
+		wget -q https://github.com/tinygo-org/tinygo/releases/download/v0.32.0/tinygo_0.32.0_amd64.deb; \
+		sudo dpkg -i tinygo_0.32.0_amd64.deb; \
 		export PATH=$$PATH:/usr/local/tinygo/bin; \
 	fi
 	go test -v ./... ./_generated
