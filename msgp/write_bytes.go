@@ -396,6 +396,8 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 		return AppendUint64(b, i), nil
 	case time.Time:
 		return AppendTime(b, i), nil
+	case time.Duration:
+		return AppendDuration(b, i), nil
 	case map[string]interface{}:
 		return AppendMapStrIntf(b, i)
 	case map[string]string:
