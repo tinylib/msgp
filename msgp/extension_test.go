@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"math/rand"
 	"testing"
-	"time"
 )
 
 var extSizes = [...]int{0, 1, 2, 4, 8, 16, int(tint8), int(tuint16), int(tuint32)}
@@ -17,8 +16,6 @@ func randomExt() RawExtension {
 }
 
 func TestReadWriteExtension(t *testing.T) {
-	rand.Seed(time.Now().Unix())
-
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 	dc := NewReader(&buf)
@@ -121,7 +118,6 @@ func TestExtensionRawStackBuffer(t *testing.T) {
 
 func TestReadWriteExtensionBytes(t *testing.T) {
 	var bts []byte
-	rand.Seed(time.Now().Unix())
 
 	for i := 0; i < 24; i++ {
 		e := randomExt()
@@ -134,8 +130,6 @@ func TestReadWriteExtensionBytes(t *testing.T) {
 }
 
 func TestAppendAndWriteCompatibility(t *testing.T) {
-	rand.Seed(time.Now().Unix())
-
 	var bts []byte
 	var buf bytes.Buffer
 	en := NewWriter(&buf)

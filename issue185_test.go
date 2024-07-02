@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -39,7 +38,7 @@ func TestIssue185Idents(t *testing.T) {
 	for idx, identCase := range identCases {
 		// generate the code, extract the generated variable names, mapped to function name
 		var tplData issue185TplData
-		varsBefore, err := loadVars(identCase.tpl, tplData)
+		varsBefore, err := loadVars(t, identCase.tpl, tplData)
 		if err != nil {
 			t.Fatalf("%d: could not extract before vars: %v", idx, err)
 		}
@@ -47,7 +46,7 @@ func TestIssue185Idents(t *testing.T) {
 		// regenerate the code with extra field(s), extract the generated variable
 		// names, mapped to function name
 		tplData.Extra = true
-		varsAfter, err := loadVars(identCase.tpl, tplData)
+		varsAfter, err := loadVars(t, identCase.tpl, tplData)
 		if err != nil {
 			t.Fatalf("%d: could not extract after vars: %v", idx, err)
 		}
@@ -102,7 +101,7 @@ func TestIssue185Overlap(t *testing.T) {
 	for idx, o := range overlapCases {
 		// regenerate the code with extra field(s), extract the generated variable
 		// names, mapped to function name
-		mvars, err := loadVars(o.tpl, o.data)
+		mvars, err := loadVars(t, o.tpl, o.data)
 		if err != nil {
 			t.Fatalf("%d: could not extract after vars: %v", idx, err)
 		}
@@ -134,12 +133,8 @@ func TestIssue185Overlap(t *testing.T) {
 	}
 }
 
-func loadVars(tpl *template.Template, tplData interface{}) (vars extractedVars, err error) {
-	tempDir, err := ioutil.TempDir("", "msgp-")
-	if err != nil {
-		err = fmt.Errorf("could not create temp dir: %v", err)
-		return
-	}
+func loadVars(t *testing.T, tpl *template.Template, tplData interface{}) (vars extractedVars, err error) {
+	tempDir := t.TempDir()
 
 	if !debugTemp {
 		defer os.RemoveAll(tempDir)

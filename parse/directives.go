@@ -28,6 +28,15 @@ var directives = map[string]directive{
 	"tuple":   astuple,
 }
 
+// map of all recognized directives which will be applied
+// before process() is called
+//
+// to add an early directive, define a func([]string, *FileSet) error
+// and then add it to this list.
+var earlyDirectives = map[string]directive{
+	"tag": tag,
+}
+
 var passDirectives = map[string]passDirective{
 	"ignore": passignore,
 }
@@ -158,5 +167,14 @@ func astuple(text []string, f *FileSet) error {
 			}
 		}
 	}
+	return nil
+}
+
+//msgp:tag {tagname}
+func tag(text []string, f *FileSet) error {
+	if len(text) != 2 {
+		return nil
+	}
+	f.tagName = strings.TrimSpace(text[1])
 	return nil
 }
