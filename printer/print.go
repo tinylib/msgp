@@ -94,6 +94,9 @@ func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, 
 	dedup := dedupImports(myImports)
 	writeImportHeader(outbuf, dedup...)
 
+	nonStrMapKeyImpls := nonStrMapKeyImpls(f)
+	writeInterfaceTypeConstraints(outbuf, "msgp.NonStrMapKey", nonStrMapKeyImpls)
+
 	var testbuf *bytes.Buffer
 	var testwr io.Writer
 	if mode&gen.Test == gen.Test {
@@ -130,4 +133,30 @@ func writeImportHeader(b *bytes.Buffer, imports ...string) {
 		}
 	}
 	b.WriteString(")\n\n")
+}
+
+func nonStrMapKeyImpls(f *parse.FileSet) []string {
+	m := map[string]struct{}{}
+	for _, identity := range f.Identities {
+		if _struct, ok := identity.(*gen.Struct); ok {
+			for _, field := range _struct.Fields {
+				if _map, ok := field.FieldElem.(*gen.Map); ok {
+					if _map.KeyType != "string" {
+						m[_map.KeyType] = struct{}{}
+					}
+				}
+			}
+		}
+	}
+	r := []string{}
+	for k := range m {
+		r = append(r, k)
+	}
+	return r
+}
+
+func writeInterfaceTypeConstraints(b *bytes.Buffer, _interface string, impls []string) {
+	for _, impl := range impls {
+		fmt.Fprintf(b, "var _ %s = new(%s)\n", _interface, impl)
+	}
 }
