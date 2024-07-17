@@ -37,7 +37,18 @@ func TestShimmedKeys(t *testing.T) {
 				binary.LittleEndian.PutUint64(tmp[:], rng.Uint64())
 				test.MapB[tmp] = rng.IntN(100)
 			}
-
+			if len(test.Map) == 0 {
+				test.Map = nil
+			}
+			if len(test.MapS) == 0 {
+				test.MapS = nil
+			}
+			if len(test.MapX) == 0 {
+				test.MapX = nil
+			}
+			if len(test.MapB) == 0 {
+				test.MapB = nil
+			}
 		}
 		var encoded [][]byte
 		b, err := test.MarshalMsg(nil)
@@ -63,7 +74,7 @@ func TestShimmedKeys(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(&decoded, &test) {
-				t.Errorf("decoded != test")
+				t.Errorf("decoded != test\n%#v\n%#v", decoded, test)
 			}
 			dec := msgp.NewReader(bytes.NewReader(enc))
 			err = decoded2.DecodeMsg(dec)
@@ -71,7 +82,7 @@ func TestShimmedKeys(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(&decoded2, &test) {
-				t.Errorf("decoded2 != test")
+				t.Errorf("decoded2 != test\n%#v\n%#v", decoded2, test)
 			}
 		}
 	}

@@ -797,8 +797,8 @@ func TestAllowNilFunctionality(t *testing.T) {
 		if len(data.RegularSlice) != 0 {
 			t.Errorf("Expected RegularSlice to be empty, got length %d", len(data.RegularSlice))
 		}
-		if data.RegularMap == nil {
-			t.Error("Expected RegularMap to be allocated (empty), got nil")
+		if data.RegularMap != nil && len(data.RegularMap) == 0 {
+			t.Error("Expected RegularMap to be nil, got allocated (empty)")
 		}
 		if len(data.RegularMap) != 0 {
 			t.Errorf("Expected RegularMap to be empty, got length %d", len(data.RegularMap))

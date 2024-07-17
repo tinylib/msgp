@@ -96,10 +96,68 @@ func TestAutoShimKeys(t *testing.T) {
 
 			for range rng.IntN(50) {
 				dst := make(map[int]int, 50)
-				test.MapMapInt[rng.Int()] = dst
 				for range rng.IntN(50) {
 					dst[rng.Int()] = rng.IntN(100)
 				}
+				if len(dst) == 0 {
+					dst = nil
+				}
+				test.MapMapInt[rng.Int()] = dst
+			}
+
+			if len(test.MapString) == 0 {
+				test.MapString = nil
+			}
+			if len(test.MapString2) == 0 {
+				test.MapString2 = nil
+			}
+			if len(test.MapString3) == 0 {
+				test.MapString3 = nil
+			}
+			if len(test.MapFloat32) == 0 {
+				test.MapFloat32 = nil
+			}
+			if len(test.MapFloat64) == 0 {
+				test.MapFloat64 = nil
+			}
+			if len(test.MapUint) == 0 {
+				test.MapUint = nil
+			}
+			if len(test.MapUint8) == 0 {
+				test.MapUint8 = nil
+			}
+			if len(test.MapUint16) == 0 {
+				test.MapUint16 = nil
+			}
+			if len(test.MapUint32) == 0 {
+				test.MapUint32 = nil
+			}
+			if len(test.MapUint64) == 0 {
+				test.MapUint64 = nil
+			}
+			if len(test.MapByte) == 0 {
+				test.MapByte = nil
+			}
+			if len(test.MapInt) == 0 {
+				test.MapInt = nil
+			}
+			if len(test.MapInt8) == 0 {
+				test.MapInt8 = nil
+			}
+			if len(test.MapInt16) == 0 {
+				test.MapInt16 = nil
+			}
+			if len(test.MapInt32) == 0 {
+				test.MapInt32 = nil
+			}
+			if len(test.MapInt64) == 0 {
+				test.MapInt64 = nil
+			}
+			if len(test.MapBool) == 0 {
+				test.MapBool = nil
+			}
+			if len(test.MapMapInt) == 0 {
+				test.MapMapInt = nil
 			}
 		}
 		var encoded [][]byte
@@ -126,7 +184,7 @@ func TestAutoShimKeys(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(&decoded, &test) {
-				t.Errorf("decoded != test")
+				t.Errorf("decoded != test\n%#v\n%#v", decoded, test)
 			}
 			dec := msgp.NewReader(bytes.NewReader(enc))
 			err = decoded2.DecodeMsg(dec)
@@ -134,7 +192,7 @@ func TestAutoShimKeys(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(&decoded2, &test) {
-				t.Errorf("decoded2 != test")
+				t.Errorf("decoded2 != test\n%#v\n%#v", decoded2, test)
 			}
 		}
 	}
