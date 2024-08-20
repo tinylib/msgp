@@ -95,7 +95,7 @@ func (s *sizeGen) Execute(p Elem) error {
 	s.state = assign
 	next(s, p)
 	if p.AlwaysPtr(nil) {
-		rcv = methodReceiver(p)
+		p.SetVarname(ogVar)
 	}
 	s.p.nakedReturn()
 	return s.p.err
