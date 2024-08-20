@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"strings"
 )
 
 const (
@@ -254,9 +253,6 @@ func next(t traversal, e Elem) {
 
 // possibly-immutable method receiver
 func imutMethodReceiver(p Elem) string {
-	if p.AlwaysPtr(nil) {
-		return "*" + p.TypeName()
-	}
 	switch e := p.(type) {
 	case *Struct:
 		// TODO(HACK): actually do real math here.
@@ -421,12 +417,8 @@ func (p *printer) initPtr(pt *Ptr) {
 
 func (p *printer) ok() bool { return p.err == nil }
 
-func tobaseConvert(b *BaseElem, ptr bool) string {
-	vname := b.Varname()
-	if ptr && !strings.HasPrefix(vname, "*") {
-		vname = "*" + vname
-	}
-	return b.ToBase() + "(" + vname + ")"
+func tobaseConvert(b *BaseElem) string {
+	return b.ToBase() + "(" + b.Varname() + ")"
 }
 
 func (p *printer) varWriteMapHeader(receiver string, sizeVarname string, maxSize int) {

@@ -47,10 +47,18 @@ func (m *marshalGen) Execute(p Elem) error {
 	// calling methodReceiver so
 	// that z.Msgsize() is printed correctly
 	c := p.Varname()
-
-	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", p.Varname(), imutMethodReceiver(p))
+	rcv := imutMethodReceiver(p)
+	ogVar := p.Varname()
+	if p.AlwaysPtr(nil) {
+		rcv = methodReceiver(p)
+	}
+	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", ogVar, rcv)
 	m.p.printf("\no = msgp.Require(b, %s.Msgsize())", c)
 	next(m, p)
+	if p.AlwaysPtr(nil) {
+		p.SetVarname(ogVar)
+	}
+
 	m.p.nakedReturn()
 	return m.p.err
 }
@@ -282,11 +290,11 @@ func (m *marshalGen) gBase(b *BaseElem) {
 	vname := b.Varname()
 	if b.Convert {
 		if b.ShimMode == Cast {
-			vname = tobaseConvert(b, len(m.ctx.path) == 0 && b.AlwaysPtr(nil))
+			vname = tobaseConvert(b)
 		} else {
 			vname = randIdent()
 			m.p.printf("\nvar %s %s", vname, b.BaseType())
-			m.p.printf("\n%s, err = %s", vname, tobaseConvert(b, false))
+			m.p.printf("\n%s, err = %s", vname, tobaseConvert(b))
 			m.p.wrapErrCheck(m.ctx.ArgsStr())
 		}
 	}

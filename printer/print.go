@@ -42,6 +42,11 @@ func PrintFile(file string, f *parse.FileSet, mode gen.Method) error {
 	}
 	err = <-res
 	if err != nil {
+		os.WriteFile(file+".broken", out.Bytes(), os.ModePerm)
+		if Logf != nil {
+			Logf("Error: %s. Wrote broken output to %s\n", err, file+".broken")
+		}
+
 		return err
 	}
 	return nil

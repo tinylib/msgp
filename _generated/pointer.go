@@ -7,7 +7,7 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-//go:generate msgp
+//go:generate msgp $GOFILE$
 
 // Generate only pointer receivers:
 

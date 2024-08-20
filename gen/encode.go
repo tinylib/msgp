@@ -62,9 +62,16 @@ func (e *encodeGen) Execute(p Elem) error {
 	e.ctx = &Context{}
 
 	e.p.comment("EncodeMsg implements msgp.Encodable")
-
-	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), imutMethodReceiver(p))
+	rcv := imutMethodReceiver(p)
+	ogVar := p.Varname()
+	if p.AlwaysPtr(nil) {
+		rcv = methodReceiver(p)
+	}
+	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", ogVar, rcv)
 	next(e, p)
+	if p.AlwaysPtr(nil) {
+		p.SetVarname(ogVar)
+	}
 	e.p.nakedReturn()
 	return e.p.err
 }
@@ -279,11 +286,11 @@ func (e *encodeGen) gBase(b *BaseElem) {
 	vname := b.Varname()
 	if b.Convert {
 		if b.ShimMode == Cast {
-			vname = tobaseConvert(b, len(e.ctx.path) == 0 && b.AlwaysPtr(nil))
+			vname = tobaseConvert(b)
 		} else {
 			vname = randIdent()
 			e.p.printf("\nvar %s %s", vname, b.BaseType())
-			e.p.printf("\n%s, err = %s", vname, tobaseConvert(b, false))
+			e.p.printf("\n%s, err = %s", vname, tobaseConvert(b))
 			e.p.wrapErrCheck(e.ctx.ArgsStr())
 		}
 	}

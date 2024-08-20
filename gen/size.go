@@ -86,9 +86,17 @@ func (s *sizeGen) Execute(p Elem) error {
 
 	s.p.comment("Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message")
 
-	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", p.Varname(), imutMethodReceiver(p))
+	rcv := imutMethodReceiver(p)
+	ogVar := p.Varname()
+	if p.AlwaysPtr(nil) {
+		rcv = methodReceiver(p)
+	}
+	s.p.printf("\nfunc (%s %s) Msgsize() (s int) {", ogVar, rcv)
 	s.state = assign
 	next(s, p)
+	if p.AlwaysPtr(nil) {
+		rcv = methodReceiver(p)
+	}
 	s.p.nakedReturn()
 	return s.p.err
 }
@@ -204,7 +212,7 @@ func (s *sizeGen) gBase(b *BaseElem) {
 	} else {
 		vname := b.Varname()
 		if b.Convert {
-			vname = tobaseConvert(b, len(s.ctx.path) <= 1 && b.AlwaysPtr(nil))
+			vname = tobaseConvert(b)
 		}
 		s.addConstant(basesizeExpr(b.Value, vname, b.BaseName()))
 	}
