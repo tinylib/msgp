@@ -204,7 +204,7 @@ func (s *sizeGen) gBase(b *BaseElem) {
 	} else {
 		vname := b.Varname()
 		if b.Convert {
-			vname = tobaseConvert(b)
+			vname = tobaseConvert(b, len(s.ctx.path) <= 1 && b.AlwaysPtr(nil))
 		}
 		s.addConstant(basesizeExpr(b.Value, vname, b.BaseName()))
 	}

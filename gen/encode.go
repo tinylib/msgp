@@ -279,11 +279,11 @@ func (e *encodeGen) gBase(b *BaseElem) {
 	vname := b.Varname()
 	if b.Convert {
 		if b.ShimMode == Cast {
-			vname = tobaseConvert(b)
+			vname = tobaseConvert(b, len(e.ctx.path) == 0 && b.AlwaysPtr(nil))
 		} else {
 			vname = randIdent()
 			e.p.printf("\nvar %s %s", vname, b.BaseType())
-			e.p.printf("\n%s, err = %s", vname, tobaseConvert(b))
+			e.p.printf("\n%s, err = %s", vname, tobaseConvert(b, false))
 			e.p.wrapErrCheck(e.ctx.ArgsStr())
 		}
 	}
