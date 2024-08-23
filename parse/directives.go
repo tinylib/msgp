@@ -34,7 +34,8 @@ var directives = map[string]directive{
 // to add an early directive, define a func([]string, *FileSet) error
 // and then add it to this list.
 var earlyDirectives = map[string]directive{
-	"tag": tag,
+	"tag":     tag,
+	"pointer": pointer,
 }
 
 var passDirectives = map[string]passDirective{
@@ -120,6 +121,7 @@ func replace(text []string, f *FileSet) error {
 		return err
 	}
 	e := f.parseExpr(expr)
+	e.AlwaysPtr(&f.pointerRcv)
 
 	if be, ok := e.(*gen.BaseElem); ok {
 		be.Convert = true
@@ -176,5 +178,11 @@ func tag(text []string, f *FileSet) error {
 		return nil
 	}
 	f.tagName = strings.TrimSpace(text[1])
+	return nil
+}
+
+//msgp:pointer
+func pointer(text []string, f *FileSet) error {
+	f.pointerRcv = true
 	return nil
 }

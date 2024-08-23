@@ -22,6 +22,7 @@ type FileSet struct {
 	Directives []string            // raw preprocessor directives
 	Imports    []*ast.ImportSpec   // imports
 	tagName    string              // tag to read field names from
+	pointerRcv bool                // generate with pointer receivers.
 }
 
 // File parses a file at the relative path
@@ -199,6 +200,7 @@ parse:
 			popstate()
 			continue parse
 		}
+		el.AlwaysPtr(&f.pointerRcv)
 		// push unresolved identities into
 		// the graph of links and resolve after
 		// we've handled every possible named type.

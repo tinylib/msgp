@@ -62,9 +62,16 @@ func (e *encodeGen) Execute(p Elem) error {
 	e.ctx = &Context{}
 
 	e.p.comment("EncodeMsg implements msgp.Encodable")
-
-	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", p.Varname(), imutMethodReceiver(p))
+	rcv := imutMethodReceiver(p)
+	ogVar := p.Varname()
+	if p.AlwaysPtr(nil) {
+		rcv = methodReceiver(p)
+	}
+	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", ogVar, rcv)
 	next(e, p)
+	if p.AlwaysPtr(nil) {
+		p.SetVarname(ogVar)
+	}
 	e.p.nakedReturn()
 	return e.p.err
 }

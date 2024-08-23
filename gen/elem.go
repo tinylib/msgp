@@ -134,13 +134,22 @@ var builtins = map[string]struct{}{
 }
 
 // common data/methods for every Elem
-type common struct{ vname, alias string }
+type common struct {
+	vname, alias string
+	ptrRcv       bool
+}
 
 func (c *common) SetVarname(s string) { c.vname = s }
 func (c *common) Varname() string     { return c.vname }
 func (c *common) Alias(typ string)    { c.alias = typ }
 func (c *common) hidden()             {}
 func (c *common) AllowNil() bool      { return false }
+func (c *common) AlwaysPtr(set *bool) bool {
+	if c != nil && set != nil {
+		c.ptrRcv = *set
+	}
+	return c.ptrRcv
+}
 
 func IsPrintable(e Elem) bool {
 	if be, ok := e.(*BaseElem); ok && !be.Printable() {
@@ -190,6 +199,9 @@ type Elem interface {
 	// AllowNil will return true for types that can be nil but doesn't automatically check.
 	// This is true for slices and maps.
 	AllowNil() bool
+
+	// AlwaysPtr will return true if receiver should always be a pointer.
+	AlwaysPtr(set *bool) bool
 
 	// IfZeroExpr returns the expression to compare to an empty value
 	// for this type, per the rules of the `omitempty` feature.

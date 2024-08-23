@@ -47,10 +47,18 @@ func (m *marshalGen) Execute(p Elem) error {
 	// calling methodReceiver so
 	// that z.Msgsize() is printed correctly
 	c := p.Varname()
-
-	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", p.Varname(), imutMethodReceiver(p))
+	rcv := imutMethodReceiver(p)
+	ogVar := p.Varname()
+	if p.AlwaysPtr(nil) {
+		rcv = methodReceiver(p)
+	}
+	m.p.printf("\nfunc (%s %s) MarshalMsg(b []byte) (o []byte, err error) {", ogVar, rcv)
 	m.p.printf("\no = msgp.Require(b, %s.Msgsize())", c)
 	next(m, p)
+	if p.AlwaysPtr(nil) {
+		p.SetVarname(ogVar)
+	}
+
 	m.p.nakedReturn()
 	return m.p.err
 }
@@ -280,7 +288,6 @@ func (m *marshalGen) gBase(b *BaseElem) {
 	}
 	m.fuseHook()
 	vname := b.Varname()
-
 	if b.Convert {
 		if b.ShimMode == Cast {
 			vname = tobaseConvert(b)
