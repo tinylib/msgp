@@ -109,6 +109,13 @@ func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 		return dst.WriteString("{}")
 	}
 
+	// This is potentially a recursive call.
+	if done, err := src.recursiveCall(); err != nil {
+		return 0, err
+	} else {
+		defer done()
+	}
+
 	err = dst.WriteByte('{')
 	if err != nil {
 		return
@@ -162,6 +169,13 @@ func rwArray(dst jsWriter, src *Reader) (n int, err error) {
 	if err != nil {
 		return
 	}
+	// This is potentially a recursive call.
+	if done, err := src.recursiveCall(); err != nil {
+		return 0, err
+	} else {
+		defer done()
+	}
+
 	var sz uint32
 	var nn int
 	sz, err = src.ReadArrayHeader()
