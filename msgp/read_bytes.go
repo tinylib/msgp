@@ -1095,6 +1095,15 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 // out of 'b' and returns the map and remaining bytes.
 // If 'old' is non-nil, the values will be read into that map.
 func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]interface{}, o []byte, err error) {
+	return readMapStrIntfBytesDepth(b, old, 0)
+}
+
+func readMapStrIntfBytesDepth(b []byte, old map[string]interface{}, depth int) (v map[string]interface{}, o []byte, err error) {
+	if depth >= recursionLimit {
+		err = ErrRecursion
+		return
+	}
+
 	var sz uint32
 	o = b
 	sz, o, err = ReadMapHeaderBytes(o)
@@ -1123,7 +1132,7 @@ func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]int
 			return
 		}
 		var val interface{}
-		val, o, err = ReadIntfBytes(o)
+		val, o, err = readIntfBytesDepth(o, depth)
 		if err != nil {
 			return
 		}
@@ -1136,6 +1145,14 @@ func ReadMapStrIntfBytes(b []byte, old map[string]interface{}) (v map[string]int
 // the next object out of 'b' as a raw interface{} and
 // return the remaining bytes.
 func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
+	return readIntfBytesDepth(b, 0)
+}
+
+func readIntfBytesDepth(b []byte, depth int) (i interface{}, o []byte, err error) {
+	if depth >= recursionLimit {
+		err = ErrRecursion
+		return
+	}
 	if len(b) < 1 {
 		err = ErrShortBytes
 		return
@@ -1145,7 +1162,7 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 
 	switch k {
 	case MapType:
-		i, o, err = ReadMapStrIntfBytes(b, nil)
+		i, o, err = readMapStrIntfBytesDepth(b, nil, depth+1)
 		return
 
 	case ArrayType:
@@ -1157,7 +1174,7 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 		j := make([]interface{}, int(sz))
 		i = j
 		for d := range j {
-			j[d], o, err = ReadIntfBytes(o)
+			j[d], o, err = readIntfBytesDepth(o, depth+1)
 			if err != nil {
 				return
 			}
@@ -1245,7 +1262,15 @@ func ReadIntfBytes(b []byte) (i interface{}, o []byte, err error) {
 //
 //   - [ErrShortBytes] (not enough bytes in b)
 //   - [InvalidPrefixError] (bad encoding)
+//   - [ErrRecursion] (too deeply nested data)
 func Skip(b []byte) ([]byte, error) {
+	return skipDepth(b, 0)
+}
+
+func skipDepth(b []byte, depth int) ([]byte, error) {
+	if depth >= recursionLimit {
+		return b, ErrRecursion
+	}
 	sz, asz, err := getSize(b)
 	if err != nil {
 		return b, err
@@ -1255,7 +1280,7 @@ func Skip(b []byte) ([]byte, error) {
 	}
 	b = b[sz:]
 	for asz > 0 {
-		b, err = Skip(b)
+		b, err = skipDepth(b, depth+1)
 		if err != nil {
 			return b, err
 		}

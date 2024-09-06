@@ -2,6 +2,7 @@ package msgp
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -76,6 +77,130 @@ func TestReadIntf(t *testing.T) {
 		} else if !reflect.DeepEqual(v, ts) {
 			t.Errorf("%v in; %v out", ts, v)
 		}
+	}
+}
+
+func TestReadIntfRecursion(t *testing.T) {
+	var buf bytes.Buffer
+	dec := NewReader(&buf)
+	enc := NewWriter(&buf)
+	// Test array recursion...
+	for i := 0; i < recursionLimit*2; i++ {
+		enc.WriteArrayHeader(1)
+	}
+	enc.Flush()
+	b := buf.Bytes()
+	_, err := dec.ReadIntf()
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Reader error: %v", err)
+	}
+	_, _, err = ReadIntfBytes(b)
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Bytes error: %v", err)
+	}
+	// Test JSON
+	dec.Reset(bytes.NewReader(b))
+	_, err = dec.WriteToJSON(io.Discard)
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Reader error: %v", err)
+	}
+	_, err = UnmarshalAsJSON(io.Discard, b)
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Bytes error: %v", err)
+	}
+	_, err = CopyToJSON(io.Discard, bytes.NewReader(b))
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Bytes error: %v", err)
+	}
+
+	// Test map recursion...
+	buf.Reset()
+	for i := 0; i < recursionLimit*2; i++ {
+		enc.WriteMapHeader(1)
+		// Write a key...
+		enc.WriteString("a")
+	}
+	enc.Flush()
+	b = buf.Bytes()
+	dec.Reset(bytes.NewReader(b))
+	_, err = dec.ReadIntf()
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Reader error: %v", err)
+	}
+	_, _, err = ReadIntfBytes(b)
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Bytes error: %v", err)
+	}
+
+	// Test ReadMapStrInt using same input
+	dec.Reset(bytes.NewReader(b))
+	err = dec.ReadMapStrIntf(map[string]interface{}{})
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Reader error: %v", err)
+	}
+	_, _, err = ReadMapStrIntfBytes(b, map[string]interface{}{})
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Bytes error: %v", err)
+	}
+
+	// Test CopyNext
+	dec.Reset(bytes.NewReader(b))
+	_, err = dec.CopyNext(io.Discard)
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Reader error: %v", err)
+	}
+
+	// Test JSON
+	dec.Reset(bytes.NewReader(b))
+	_, err = dec.WriteToJSON(io.Discard)
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Reader error: %v", err)
+	}
+	_, err = UnmarshalAsJSON(io.Discard, b)
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Bytes error: %v", err)
+	}
+	_, err = CopyToJSON(io.Discard, bytes.NewReader(b))
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Bytes error: %v", err)
+	}
+}
+
+func TestSkipRecursion(t *testing.T) {
+	var buf bytes.Buffer
+	dec := NewReader(&buf)
+	enc := NewWriter(&buf)
+	// Test array recursion...
+	for i := 0; i < recursionLimit*2; i++ {
+		enc.WriteArrayHeader(1)
+	}
+	enc.Flush()
+	b := buf.Bytes()
+	err := dec.Skip()
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Reader error: %v", err)
+	}
+	_, err = Skip(b)
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Bytes error: %v", err)
+	}
+	buf.Reset()
+
+	// Test map recursion...
+	for i := 0; i < recursionLimit*2; i++ {
+		enc.WriteMapHeader(1)
+		// Write a key...
+		enc.WriteString("a")
+	}
+	enc.Flush()
+	b = buf.Bytes()
+	err = dec.Skip()
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Reader error: %v", err)
+	}
+	_, err = Skip(b)
+	if !errors.Is(err, ErrRecursion) {
+		t.Errorf("unexpected Bytes error: %v", err)
 	}
 }
 

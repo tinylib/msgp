@@ -143,8 +143,9 @@ type Reader struct {
 	// is stateless; all the
 	// buffering is done
 	// within R.
-	R       *fwd.Reader
-	scratch []byte
+	R              *fwd.Reader
+	scratch        []byte
+	recursionDepth int
 }
 
 // Read implements `io.Reader`
@@ -190,6 +191,11 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 		return n, io.ErrShortWrite
 	}
 
+	if done, err := m.recursiveCall(); err != nil {
+		return n, err
+	} else {
+		defer done()
+	}
 	// for maps and slices, read elements
 	for x := uintptr(0); x < o; x++ {
 		var n2 int64
@@ -200,6 +206,18 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 		n += n2
 	}
 	return n, nil
+}
+
+// recursiveCall will increment the recursion depth and return an error if it is exceeded.
+// If a nil error is returned, done must be called to decrement the counter.
+func (m *Reader) recursiveCall() (done func(), err error) {
+	if m.recursionDepth >= recursionLimit {
+		return func() {}, ErrRecursion
+	}
+	m.recursionDepth++
+	return func() {
+		m.recursionDepth--
+	}, nil
 }
 
 // ReadFull implements `io.ReadFull`
@@ -332,7 +350,12 @@ func (m *Reader) Skip() error {
 		return err
 	}
 
-	// for maps and slices, skip elements
+	// for maps and slices, skip elements with recursive call
+	if done, err := m.recursiveCall(); err != nil {
+		return err
+	} else {
+		defer done()
+	}
 	for x := uintptr(0); x < o; x++ {
 		err = m.Skip()
 		if err != nil {
@@ -1333,6 +1356,13 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 		return
 
 	case MapType:
+		// This can call back here, so treat as recursive call.
+		if done, err := m.recursiveCall(); err != nil {
+			return nil, err
+		} else {
+			defer done()
+		}
+
 		mp := make(map[string]interface{})
 		err = m.ReadMapStrIntf(mp)
 		i = mp
@@ -1358,6 +1388,13 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 		if err != nil {
 			return
 		}
+
+		if done, err := m.recursiveCall(); err != nil {
+			return nil, err
+		} else {
+			defer done()
+		}
+
 		out := make([]interface{}, int(sz))
 		for j := range out {
 			out[j], err = m.ReadIntf()

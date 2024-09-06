@@ -13,6 +13,10 @@ var (
 	// contain the contents of the message
 	ErrShortBytes error = errShort{}
 
+	// ErrRecursion is returned when the maximum recursion limit is reached for an operation.
+	// This should only realistically be seen on adversarial data trying to exhaust the stack.
+	ErrRecursion error = errRecursion{}
+
 	// this error is only returned
 	// if we reach code that should
 	// be unreachable
@@ -133,6 +137,11 @@ func (f errFatal) Error() string {
 func (f errFatal) Resumable() bool { return false }
 
 func (f errFatal) withContext(ctx string) error { f.ctx = addCtx(f.ctx, ctx); return f }
+
+type errRecursion struct{}
+
+func (e errRecursion) Error() string   { return "msgp: recursion limit reached" }
+func (e errRecursion) Resumable() bool { return false }
 
 // ArrayError is an error returned
 // when decoding a fix-sized array
