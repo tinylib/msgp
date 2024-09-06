@@ -26,14 +26,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: prepare generated code
         run: make prepare
       - name: lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v6
         with:
           version: v1.60.3
           args: --print-resources-usage --timeout=10m --verbose
