@@ -20,8 +20,9 @@ var (
 
 func RandBytes(sz int) []byte {
 	out := make([]byte, sz)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := range out {
-		out[i] = byte(rand.Int63n(math.MaxInt64) % 256)
+		out[i] = byte(rng.Uint32())
 	}
 	return out
 }
