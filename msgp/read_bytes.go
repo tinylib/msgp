@@ -229,29 +229,30 @@ func ReadArrayHeaderBytes(b []byte) (sz uint32, o []byte, err error) {
 		return 0, nil, ErrShortBytes
 	}
 	lead := b[0]
+	b = b[1:]
 	if isfixarray(lead) {
 		sz = uint32(rfixarray(lead))
-		o = b[1:]
+		o = b
 		return
 	}
 
 	switch lead {
 	case marray16:
-		if len(b) < 3 {
+		if len(b) < 2 {
 			err = ErrShortBytes
 			return
 		}
-		sz = uint32(big.Uint16(b[1:]))
-		o = b[3:]
+		sz = uint32(big.Uint16(b))
+		o = b[2:]
 		return
 
 	case marray32:
-		if len(b) < 5 {
+		if len(b) < 4 {
 			err = ErrShortBytes
 			return
 		}
-		sz = big.Uint32(b[1:])
-		o = b[5:]
+		sz = big.Uint32(b)
+		o = b[4:]
 		return
 
 	default:
@@ -872,7 +873,6 @@ func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
 
 	lead := b[0]
 	var read uint32
-	var skip int
 	b = b[1:]
 	switch lead {
 	case mbin8:
@@ -881,8 +881,8 @@ func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
 			return
 		}
 
-		read = uint32(b[1])
-		skip = 1
+		read = uint32(b[0])
+		b = b[1:]
 
 	case mbin16:
 		if len(b) < 2 {
@@ -890,7 +890,7 @@ func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
 			return
 		}
 		read = uint32(big.Uint16(b))
-		skip = 2
+		b = b[2:]
 
 	case mbin32:
 		if len(b) < 4 {
@@ -898,7 +898,7 @@ func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
 			return
 		}
 		read = big.Uint32(b)
-		skip = 4
+		b = b[4:]
 
 	default:
 		err = badPrefix(BinType, lead)
@@ -910,7 +910,7 @@ func ReadExactBytes(b []byte, into []byte) (o []byte, err error) {
 		return
 	}
 
-	o = b[skip+copy(into, b[skip:]):]
+	o = b[copy(into, b):]
 	return
 }
 
