@@ -278,3 +278,24 @@ type NonMsgStructTags struct {
 }
 
 type EmptyStruct struct{}
+
+type StructByteSlice struct {
+	ABytes      []byte       `msg:",allownil"`
+	AString     []string     `msg:",allownil"`
+	ABool       []bool       `msg:",allownil"`
+	AInt        []int        `msg:",allownil"`
+	AInt8       []int8       `msg:",allownil"`
+	AInt16      []int16      `msg:",allownil"`
+	AInt32      []int32      `msg:",allownil"`
+	AInt64      []int64      `msg:",allownil"`
+	AUint       []uint       `msg:",allownil"`
+	AUint8      []uint8      `msg:",allownil"`
+	AUint16     []uint16     `msg:",allownil"`
+	AUint32     []uint32     `msg:",allownil"`
+	AUint64     []uint64     `msg:",allownil"`
+	AFloat32    []float32    `msg:",allownil"`
+	AFloat64    []float64    `msg:",allownil"`
+	AComplex64  []complex64  `msg:",allownil"`
+	AComplex128 []complex128 `msg:",allownil"`
+	AStruct     []Fixed      `msg:",allownil"`
+}
