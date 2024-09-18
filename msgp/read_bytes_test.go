@@ -472,7 +472,7 @@ func TestReadIntBytesOverflows(t *testing.T) {
 				_, _, err = ReadUint8Bytes(buf.Bytes())
 			}
 			if !v.errCheck(err, v.failBits) {
-				t.Fatal(err)
+				t.Fatal(err, v.rdBits, v.failBits)
 			}
 		})
 	}
