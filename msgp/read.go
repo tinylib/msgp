@@ -934,7 +934,7 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, err error) {
 		err = badPrefix(BinType, lead)
 		return
 	}
-	if int64(cap(scratch)) < read || scratch == nil {
+	if int64(cap(scratch)) < read {
 		b = make([]byte, read)
 	} else {
 		b = scratch[0:read]

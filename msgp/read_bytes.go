@@ -843,7 +843,7 @@ func readBytesBytes(b []byte, scratch []byte, zc bool) (v []byte, o []byte, err 
 		return
 	}
 
-	if cap(scratch) >= read && scratch != nil {
+	if cap(scratch) >= read {
 		v = scratch[0:read]
 	} else {
 		v = make([]byte, read)
