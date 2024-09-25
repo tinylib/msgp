@@ -153,6 +153,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 
 	vname := b.Varname()  // e.g. "z.FieldOne"
 	bname := b.BaseName() // e.g. "Float64"
+	checkNil := vname     // Name of var to check for nil
 
 	// handle special cases
 	// for object type.
@@ -161,8 +162,10 @@ func (d *decodeGen) gBase(b *BaseElem) {
 		if b.Convert {
 			lowered := b.ToBase() + "(" + vname + ")"
 			d.p.printf("\n%s, err = dc.ReadBytes(%s)", tmp, lowered)
+			checkNil = tmp
 		} else {
 			d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
+			checkNil = vname
 		}
 	case IDENT:
 		if b.Convert {
@@ -181,6 +184,11 @@ func (d *decodeGen) gBase(b *BaseElem) {
 		}
 	}
 	d.p.wrapErrCheck(d.ctx.ArgsStr())
+
+	if checkNil != "" && b.AllowNil() {
+		// Ensure that 0 sized slices are allocated.
+		d.p.printf("\nif %s == nil {\n%s = make([]byte, 0)\n}", checkNil, checkNil)
+	}
 
 	// close block for 'tmp'
 	if b.Convert && b.Value != IDENT {

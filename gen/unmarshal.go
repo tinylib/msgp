@@ -161,6 +161,11 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 	}
 	u.p.wrapErrCheck(u.ctx.ArgsStr())
 
+	if b.Value == Bytes && b.AllowNil() {
+		// Ensure that 0 sized slices are allocated.
+		u.p.printf("\nif %s == nil {\n%s = make([]byte, 0)\n}", refname, refname)
+	}
+
 	// close 'tmp' block
 	if b.Convert && b.Value != IDENT {
 		if b.ShimMode == Cast {

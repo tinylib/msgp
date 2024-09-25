@@ -554,6 +554,7 @@ type BaseElem struct {
 	Convert      bool      // should we do an explicit conversion?
 	mustinline   bool      // must inline; not printable
 	needsref     bool      // needs reference for shim
+	allowNil     *bool     // Override from parent.
 }
 
 func (s *BaseElem) Printable() bool { return !s.mustinline }
@@ -568,7 +569,17 @@ func (s *BaseElem) Alias(typ string) {
 	}
 }
 
-func (s *BaseElem) AllowNil() bool { return s.Value == Bytes }
+func (s *BaseElem) AllowNil() bool {
+	if s.allowNil == nil {
+		return s.Value == Bytes
+	}
+	return *s.allowNil
+}
+
+// SetIsAllowNil will override allownil when tag has been parsed.
+func (s *BaseElem) SetIsAllowNil(b bool) {
+	s.allowNil = &b
+}
 
 func (s *BaseElem) SetVarname(a string) {
 	// extensions whose parents
