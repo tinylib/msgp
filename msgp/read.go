@@ -1,8 +1,10 @@
 package msgp
 
 import (
+	"encoding/json"
 	"io"
 	"math"
+	"strconv"
 	"sync"
 	"time"
 
@@ -45,6 +47,7 @@ const (
 	Complex64Type
 	Complex128Type
 	TimeType
+	NumberType
 
 	_maxtype
 )
@@ -74,6 +77,8 @@ func (t Type) String() string {
 		return "ext"
 	case NilType:
 		return "nil"
+	case NumberType:
+		return "number"
 	default:
 		return "<invalid>"
 	}
@@ -1274,6 +1279,40 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 	t = time.Unix(sec, int64(nsec)).Local()
 	_, err = m.R.Skip(15)
 	return
+}
+
+// ReadJSONNumber reads an integer or a float value and return as json.Number
+func (m *Reader) ReadJSONNumber() (n json.Number, err error) {
+	t, err := m.NextType()
+	if err != nil {
+		return
+	}
+	switch t {
+	case IntType:
+		v, err := m.ReadInt64()
+		if err == nil {
+			return json.Number(strconv.FormatInt(v, 10)), nil
+		}
+		return "", err
+	case UintType:
+		v, err := m.ReadUint64()
+		if err == nil {
+			return json.Number(strconv.FormatUint(v, 10)), nil
+		}
+		return "", err
+	case Float32Type, Float64Type:
+		v, err := m.ReadFloat64()
+		if err == nil {
+			return json.Number(strconv.FormatFloat(v, 'f', -1, 64)), nil
+		}
+		return "", err
+	case StrType:
+		v, err := m.ReadString()
+		if err == nil {
+			return json.Number(v), nil
+		}
+	}
+	return "", TypeError{Method: NumberType, Encoded: t}
 }
 
 // ReadIntf reads out the next object as a raw interface{}/any.

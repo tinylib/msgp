@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"encoding/json"
 	"errors"
 	"math"
 	"reflect"
@@ -402,6 +403,8 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 		return AppendMapStrIntf(b, i)
 	case map[string]string:
 		return AppendMapStrStr(b, i), nil
+	case json.Number:
+		return AppendJSONNumber(b, i)
 	case []interface{}:
 		b = AppendArrayHeader(b, uint32(len(i)))
 		var err error
@@ -451,4 +454,22 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 	default:
 		return b, &ErrUnsupportedType{T: v.Type()}
 	}
+}
+
+// AppendJSONNumber appends a json.Number to the slice.
+// An error will be returned if the json.Number returns error as both integer and float.
+func AppendJSONNumber(b []byte, n json.Number) ([]byte, error) {
+	if n == "" {
+		// Allow writing the empty string to cover the zero value.
+		return append(b, mfixstr), nil
+	}
+	ii, err := n.Int64()
+	if err == nil {
+		return AppendInt64(b, ii), nil
+	}
+	ff, err := n.Float64()
+	if err == nil {
+		return AppendFloat64(b, ff), nil
+	}
+	return b, err
 }

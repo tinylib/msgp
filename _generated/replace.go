@@ -1,5 +1,7 @@
 package _generated
 
+import "encoding/json"
+
 //go:generate msgp
 //msgp:replace Any with:any
 //msgp:replace MapString with:CompatibleMapString
@@ -74,3 +76,11 @@ type (
 		String  String
 	}
 )
+
+//msgp:replace json.Number with:string
+
+type NumberJSONSampleReplace struct {
+	Single json.Number
+	Array  []json.Number
+	Map    map[string]json.Number
+}

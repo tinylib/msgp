@@ -3,7 +3,9 @@ package msgp
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"math"
+	"strconv"
 	"time"
 )
 
@@ -1326,4 +1328,29 @@ func getSize(b []byte) (uintptr, uintptr, error) {
 	default:
 		return 0, 0, fatal
 	}
+}
+
+// ReadJSONNumberBytes tries to read a number
+// from 'b' and return the value and the remaining bytes.
+//
+// Possible errors:
+//
+//   - [ErrShortBytes] (too few bytes)
+//   - TypeError (not a number (int/float))
+func ReadJSONNumberBytes(b []byte) (number json.Number, o []byte, err error) {
+	if len(b) < 1 {
+		return "", nil, ErrShortBytes
+	}
+	if i, o, err := ReadInt64Bytes(b); err == nil {
+		return json.Number(strconv.FormatInt(i, 10)), o, nil
+	}
+	f, o, err := ReadFloat64Bytes(b)
+	if err == nil {
+		return json.Number(strconv.FormatFloat(f, 'f', -1, 64)), o, nil
+	}
+	s, o, err := ReadStringBytes(b)
+	if err == nil {
+		return json.Number(s), o, nil
+	}
+	return "", nil, TypeError{Method: NumberType, Encoded: getType(b[0])}
 }

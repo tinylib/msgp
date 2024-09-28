@@ -88,10 +88,11 @@ const (
 	Int32
 	Int64
 	Bool
-	Intf     // interface{}
-	Time     // time.Time
-	Duration // time.Duration
-	Ext      // extension
+	Intf       // interface{}
+	Time       // time.Time
+	Duration   // time.Duration
+	Ext        // extension
+	JsonNumber // json.Number
 
 	IDENT // IDENT means an unrecognized identifier
 )
@@ -123,6 +124,7 @@ var primitives = map[string]Primitive{
 	"time.Time":      Time,
 	"time.Duration":  Duration,
 	"msgp.Extension": Ext,
+	"json.Number":    JsonNumber,
 }
 
 // types built into the library
@@ -634,6 +636,9 @@ func (s *BaseElem) BaseName() string {
 	if s.Value == Duration {
 		return "Duration"
 	}
+	if s.Value == JsonNumber {
+		return "JSONNumber"
+	}
 	return s.Value.String()
 }
 
@@ -652,6 +657,8 @@ func (s *BaseElem) BaseType() string {
 		return "time.Time"
 	case Duration:
 		return "time.Duration"
+	case JsonNumber:
+		return "json.Number"
 	case Ext:
 		return "msgp.Extension"
 
@@ -719,9 +726,10 @@ func (s *BaseElem) ZeroExpr() string {
 		return "0"
 	case Bool:
 		return "false"
-
 	case Time:
 		return "(time.Time{})"
+	case JsonNumber:
+		return "(json.Number{})"
 
 	}
 
@@ -783,6 +791,8 @@ func (k Primitive) String() string {
 		return "time.Duration"
 	case Ext:
 		return "Extension"
+	case JsonNumber:
+		return "json.Number"
 	case IDENT:
 		return "Ident"
 	default:
