@@ -694,13 +694,13 @@ func TestReadIntfBytes(t *testing.T) {
 	en := NewWriter(&buf)
 
 	tests := make([]interface{}, 0, 10)
-	tests = append(tests, float64(3.5))
+	tests = append(tests, float64(1e40))
 	tests = append(tests, int64(-49082))
 	tests = append(tests, uint64(34908))
 	tests = append(tests, string("hello!"))
 	tests = append(tests, []byte("blah."))
 	tests = append(tests, map[string]interface{}{
-		"key_one": 3.5,
+		"key_one": float32(3.5),
 		"key_two": "hi.",
 	})
 

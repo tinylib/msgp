@@ -120,7 +120,7 @@ func TestReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(m["thing_two"], 4.0) {
+	if !reflect.DeepEqual(m["thing_two"], float32(4.0)) {
 		t.Errorf("wanted %v; got %v", 4.0, m["thing_two"])
 	}
 
