@@ -348,6 +348,17 @@ func (mw *Writer) WriteNil() error {
 
 // WriteFloat64 writes a float64 to the writer
 func (mw *Writer) WriteFloat64(f float64) error {
+	f32 := float32(f)
+	if float64(f32) == f {
+		return mw.prefix32(mfloat32, math.Float32bits(f32))
+	}
+
+	return mw.prefix64(mfloat64, math.Float64bits(f))
+}
+
+// WriteFloat64Only writes a float64 to the writer
+// If the value can be lossless represented as float32 it will be stored as that.
+func (mw *Writer) WriteFloat64Only(f float64) error {
 	return mw.prefix64(mfloat64, math.Float64bits(f))
 }
 

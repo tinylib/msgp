@@ -3,6 +3,7 @@ package msgp
 import (
 	"bytes"
 	"math"
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
@@ -135,27 +136,138 @@ func TestAppendNil(t *testing.T) {
 }
 
 func TestAppendFloat64(t *testing.T) {
-	f := float64(3.14159)
+	rng := rand.New(rand.NewSource(0))
+	const n = 1e7
+	src := make([]float64, n)
+	for i := range src {
+		// ~50% full float64, 50% converted from float32.
+		if rng.Uint32()&1 == 1 {
+			src[i] = rng.NormFloat64()
+		} else {
+			src[i] = float64(math.MaxFloat32 * (0.5 - rng.Float32()))
+		}
+	}
+
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 
 	var bts []byte
-	en.WriteFloat64(f)
+	for _, f := range src {
+		en.WriteFloat64(f)
+		bts = AppendFloat64(bts, f)
+	}
 	en.Flush()
-	bts = AppendFloat64(bts[0:0], f)
-	if !bytes.Equal(buf.Bytes(), bts) {
-		t.Errorf("for float %f, encoder wrote %q; append wrote %q", f, buf.Bytes(), bts)
+	if buf.Len() != len(bts) {
+		t.Errorf("encoder wrote %d; append wrote %d bytes", buf.Len(), len(bts))
+	}
+	t.Logf("%f bytes/value", float64(buf.Len())/n)
+	a, b := bts, buf.Bytes()
+	for i := range a {
+		if a[i] != b[i] {
+			t.Errorf("mismatch at byte %d, %d != %d", i, a[i], b[i])
+			break
+		}
+	}
+
+	for i, want := range src {
+		var got float64
+		var err error
+		got, a, err = ReadFloat64Bytes(a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want != got {
+			t.Errorf("value #%d: want %v; got %v", i, want, got)
+		}
 	}
 }
 
 func BenchmarkAppendFloat64(b *testing.B) {
-	f := float64(3.14159)
+	rng := rand.New(rand.NewSource(0))
+	const n = 1 << 16
+	src := make([]float64, n)
+	for i := range src {
+		// ~50% full float64, 50% converted from float32.
+		if rng.Uint32()&1 == 1 {
+			src[i] = rng.NormFloat64()
+		} else {
+			src[i] = float64(math.MaxFloat32 * (0.5 - rng.Float32()))
+		}
+	}
 	buf := make([]byte, 0, 9)
-	b.SetBytes(9)
+	b.SetBytes(8)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		AppendFloat64(buf[0:0], f)
+		AppendFloat64(buf, src[i&(n-1)])
+	}
+}
+
+func TestAppendFloat64Only(t *testing.T) {
+	rng := rand.New(rand.NewSource(0))
+	const n = 1e7
+	src := make([]float64, n)
+	for i := range src {
+		// ~50% full float64, 50% converted from float32.
+		if rng.Uint32()&1 == 1 {
+			src[i] = rng.NormFloat64()
+		} else {
+			src[i] = float64(rng.Float32())
+		}
+	}
+
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+
+	var bts []byte
+	for _, f := range src {
+		en.WriteFloat64Only(f)
+		bts = AppendFloat64Only(bts, f)
+	}
+	en.Flush()
+	if buf.Len() != len(bts) {
+		t.Errorf("encoder wrote %d; append wrote %d bytes", buf.Len(), len(bts))
+	}
+	t.Logf("%f bytes/value", float64(buf.Len())/n)
+	a, b := bts, buf.Bytes()
+	for i := range a {
+		if a[i] != b[i] {
+			t.Errorf("mismatch at byte %d, %d != %d", i, a[i], b[i])
+			break
+		}
+	}
+
+	for i, want := range src {
+		var got float64
+		var err error
+		got, a, err = ReadFloat64Bytes(a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want != got {
+			t.Errorf("value #%d: want %v; got %v", i, want, got)
+		}
+	}
+}
+
+func BenchmarkAppendFloat64Only(b *testing.B) {
+	rng := rand.New(rand.NewSource(0))
+	const n = 1 << 16
+	src := make([]float64, n)
+	for i := range src {
+		// ~50% full float64, 50% converted from float32.
+		if rng.Uint32()&1 == 1 {
+			src[i] = rng.NormFloat64()
+		} else {
+			src[i] = float64(rng.Float32())
+		}
+	}
+	buf := make([]byte, 0, 9)
+	b.SetBytes(8)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		AppendFloat64Only(buf, src[i&(n-1)])
 	}
 }
 
