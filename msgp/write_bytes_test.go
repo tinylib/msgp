@@ -3,6 +3,7 @@ package msgp
 import (
 	"bytes"
 	"math"
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
@@ -131,6 +132,74 @@ func TestAppendNil(t *testing.T) {
 	bts = AppendNil(bts[0:0])
 	if bts[0] != mnil {
 		t.Fatal("bts[0] is not 'nil'")
+	}
+}
+
+func TestAppendFloat(t *testing.T) {
+	rng := rand.New(rand.NewSource(0))
+	const n = 1e7
+	src := make([]float64, n)
+	for i := range src {
+		// ~50% full float64, 50% converted from float32.
+		if rng.Uint32()&1 == 1 {
+			src[i] = rng.NormFloat64()
+		} else {
+			src[i] = float64(math.MaxFloat32 * (0.5 - rng.Float32()))
+		}
+	}
+
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+
+	var bts []byte
+	for _, f := range src {
+		en.WriteFloat(f)
+		bts = AppendFloat(bts, f)
+	}
+	en.Flush()
+	if buf.Len() != len(bts) {
+		t.Errorf("encoder wrote %d; append wrote %d bytes", buf.Len(), len(bts))
+	}
+	t.Logf("%f bytes/value", float64(buf.Len())/n)
+	a, b := bts, buf.Bytes()
+	for i := range a {
+		if a[i] != b[i] {
+			t.Errorf("mismatch at byte %d, %d != %d", i, a[i], b[i])
+			break
+		}
+	}
+
+	for i, want := range src {
+		var got float64
+		var err error
+		got, a, err = ReadFloat64Bytes(a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want != got {
+			t.Errorf("value #%d: want %v; got %v", i, want, got)
+		}
+	}
+}
+
+func BenchmarkAppendFloat(b *testing.B) {
+	rng := rand.New(rand.NewSource(0))
+	const n = 1 << 16
+	src := make([]float64, n)
+	for i := range src {
+		// ~50% full float64, 50% converted from float32.
+		if rng.Uint32()&1 == 1 {
+			src[i] = rng.NormFloat64()
+		} else {
+			src[i] = float64(math.MaxFloat32 * (0.5 - rng.Float32()))
+		}
+	}
+	buf := make([]byte, 0, 9)
+	b.SetBytes(8)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		AppendFloat64(buf, src[i&(n-1)])
 	}
 }
 

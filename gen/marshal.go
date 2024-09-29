@@ -27,7 +27,8 @@ func (m *marshalGen) Apply(dirs []string) error {
 	return nil
 }
 
-func (m *marshalGen) Execute(p Elem) error {
+func (m *marshalGen) Execute(p Elem, ctx Context) error {
+	m.ctx = &ctx
 	if !m.p.ok() {
 		return m.p.err
 	}
@@ -38,8 +39,6 @@ func (m *marshalGen) Execute(p Elem) error {
 	if !IsPrintable(p) {
 		return nil
 	}
-
-	m.ctx = &Context{}
 
 	m.p.comment("MarshalMsg implements msgp.Marshaler")
 
@@ -64,6 +63,9 @@ func (m *marshalGen) Execute(p Elem) error {
 }
 
 func (m *marshalGen) rawAppend(typ string, argfmt string, arg interface{}) {
+	if m.ctx.compFloats && typ == "Float64" {
+		typ = "Float"
+	}
 	m.p.printf("\no = msgp.Append%s(o, %s)", typ, fmt.Sprintf(argfmt, arg))
 }
 

@@ -75,7 +75,8 @@ const (
 )
 
 type Printer struct {
-	gens []generator
+	gens          []generator
+	CompactFloats bool
 }
 
 func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
@@ -144,7 +145,7 @@ func (p *Printer) Print(e Elem) error {
 		// collisions between idents created during SetVarname and idents created during Print,
 		// hence the separate prefixes.
 		resetIdent("zb")
-		err := g.Execute(e)
+		err := g.Execute(e, Context{compFloats: p.CompactFloats})
 		resetIdent("za")
 
 		if err != nil {
@@ -171,7 +172,8 @@ func (c contextVar) Arg() string {
 }
 
 type Context struct {
-	path []contextItem
+	path       []contextItem
+	compFloats bool
 }
 
 func (c *Context) PushString(s string) {
@@ -202,7 +204,7 @@ func (c *Context) ArgsStr() string {
 type generator interface {
 	Method() Method
 	Add(p TransformPass)
-	Execute(Elem) error // execute writes the method for the provided object.
+	Execute(Elem, Context) error // execute writes the method for the provided object.
 }
 
 type passes []TransformPass

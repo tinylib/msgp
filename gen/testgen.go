@@ -26,7 +26,7 @@ type mtestGen struct {
 	w io.Writer
 }
 
-func (m *mtestGen) Execute(p Elem) error {
+func (m *mtestGen) Execute(p Elem, _ Context) error {
 	p = m.applyall(p)
 	if p != nil && IsPrintable(p) {
 		switch p.(type) {
@@ -48,7 +48,7 @@ func etest(w io.Writer) *etestGen {
 	return &etestGen{w: w}
 }
 
-func (e *etestGen) Execute(p Elem) error {
+func (e *etestGen) Execute(p Elem, _ Context) error {
 	p = e.applyall(p)
 	if p != nil && IsPrintable(p) {
 		switch p.(type) {
