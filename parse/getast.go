@@ -16,13 +16,14 @@ import (
 // A FileSet is the in-memory representation of a
 // parsed file.
 type FileSet struct {
-	Package    string              // package name
-	Specs      map[string]ast.Expr // type specs in file
-	Identities map[string]gen.Elem // processed from specs
-	Directives []string            // raw preprocessor directives
-	Imports    []*ast.ImportSpec   // imports
-	tagName    string              // tag to read field names from
-	pointerRcv bool                // generate with pointer receivers.
+	Package       string              // package name
+	Specs         map[string]ast.Expr // type specs in file
+	Identities    map[string]gen.Elem // processed from specs
+	Directives    []string            // raw preprocessor directives
+	Imports       []*ast.ImportSpec   // imports
+	CompactFloats bool                // Use smaller floats when feasible.
+	tagName       string              // tag to read field names from
+	pointerRcv    bool                // generate with pointer receivers.
 }
 
 // File parses a file at the relative path
@@ -269,6 +270,7 @@ loop:
 			warnf("empty directive: %q\n", d)
 		}
 	}
+	p.CompactFloats = f.CompactFloats
 }
 
 func (f *FileSet) PrintTo(p *gen.Printer) error {

@@ -346,6 +346,16 @@ func (mw *Writer) WriteNil() error {
 	return mw.push(mnil)
 }
 
+// WriteFloat writes a float to the writer as either float64
+// or float32 when it represents the exact same value
+func (mw *Writer) WriteFloat(f float64) error {
+	f32 := float32(f)
+	if float64(f32) == f {
+		return mw.prefix32(mfloat32, math.Float32bits(f32))
+	}
+	return mw.prefix64(mfloat64, math.Float64bits(f))
+}
+
 // WriteFloat64 writes a float64 to the writer
 func (mw *Writer) WriteFloat64(f float64) error {
 	return mw.prefix64(mfloat64, math.Float64bits(f))

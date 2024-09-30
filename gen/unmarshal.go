@@ -28,8 +28,9 @@ func (u *unmarshalGen) needsField() {
 	u.hasfield = true
 }
 
-func (u *unmarshalGen) Execute(p Elem) error {
+func (u *unmarshalGen) Execute(p Elem, ctx Context) error {
 	u.hasfield = false
+	u.ctx = &ctx
 	if !u.p.ok() {
 		return u.p.err
 	}
@@ -40,8 +41,6 @@ func (u *unmarshalGen) Execute(p Elem) error {
 	if !IsPrintable(p) {
 		return nil
 	}
-
-	u.ctx = &Context{}
 
 	u.p.comment("UnmarshalMsg implements msgp.Unmarshaler")
 
