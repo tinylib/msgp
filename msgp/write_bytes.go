@@ -61,6 +61,16 @@ func AppendArrayHeader(b []byte, sz uint32) []byte {
 // AppendNil appends a 'nil' byte to the slice
 func AppendNil(b []byte) []byte { return append(b, mnil) }
 
+// AppendFloat appends a float to the slice as either float64
+// or float32 when it represents the exact same value
+func AppendFloat(b []byte, f float64) []byte {
+	f32 := float32(f)
+	if float64(f32) == f {
+		return AppendFloat32(b, f32)
+	}
+	return AppendFloat64(b, f)
+}
+
 // AppendFloat64 appends a float64 to the slice
 func AppendFloat64(b []byte, f float64) []byte {
 	o, n := ensure(b, Float64Size)

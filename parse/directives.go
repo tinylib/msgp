@@ -22,10 +22,11 @@ type passDirective func(gen.Method, []string, *gen.Printer) error
 // to add a directive, define a func([]string, *FileSet) error
 // and then add it to this list.
 var directives = map[string]directive{
-	"shim":    applyShim,
-	"replace": replace,
-	"ignore":  ignore,
-	"tuple":   astuple,
+	"shim":          applyShim,
+	"replace":       replace,
+	"ignore":        ignore,
+	"tuple":         astuple,
+	"compactfloats": compactfloats,
 }
 
 // map of all recognized directives which will be applied
@@ -184,5 +185,11 @@ func tag(text []string, f *FileSet) error {
 //msgp:pointer
 func pointer(text []string, f *FileSet) error {
 	f.pointerRcv = true
+	return nil
+}
+
+//msgp:compactfloats
+func compactfloats(text []string, f *FileSet) error {
+	f.CompactFloats = true
 	return nil
 }

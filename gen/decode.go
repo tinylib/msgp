@@ -29,7 +29,8 @@ func (d *decodeGen) needsField() {
 	d.hasfield = true
 }
 
-func (d *decodeGen) Execute(p Elem) error {
+func (d *decodeGen) Execute(p Elem, ctx Context) error {
+	d.ctx = &ctx
 	p = d.applyall(p)
 	if p == nil {
 		return nil
@@ -42,8 +43,6 @@ func (d *decodeGen) Execute(p Elem) error {
 	if !IsPrintable(p) {
 		return nil
 	}
-
-	d.ctx = &Context{}
 
 	d.p.comment("DecodeMsg implements msgp.Decodable")
 

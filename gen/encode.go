@@ -28,6 +28,10 @@ func (e *encodeGen) Apply(dirs []string) error {
 }
 
 func (e *encodeGen) writeAndCheck(typ string, argfmt string, arg interface{}) {
+	if e.ctx.compFloats && typ == "Float64" {
+		typ = "Float"
+	}
+
 	e.p.printf("\nerr = en.Write%s(%s)", typ, fmt.Sprintf(argfmt, arg))
 	e.p.wrapErrCheck(e.ctx.ArgsStr())
 }
@@ -47,7 +51,8 @@ func (e *encodeGen) Fuse(b []byte) {
 	}
 }
 
-func (e *encodeGen) Execute(p Elem) error {
+func (e *encodeGen) Execute(p Elem, ctx Context) error {
+	e.ctx = &ctx
 	if !e.p.ok() {
 		return e.p.err
 	}
@@ -58,8 +63,6 @@ func (e *encodeGen) Execute(p Elem) error {
 	if !IsPrintable(p) {
 		return nil
 	}
-
-	e.ctx = &Context{}
 
 	e.p.comment("EncodeMsg implements msgp.Encodable")
 	rcv := imutMethodReceiver(p)
