@@ -647,7 +647,7 @@ func (mw *Writer) WriteJSONNumber(n json.Number) error {
 	}
 	ff, err := n.Float64()
 	if err == nil {
-		return mw.WriteFloat64(ff)
+		return mw.WriteFloat(ff)
 	}
 	return err
 }

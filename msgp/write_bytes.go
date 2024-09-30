@@ -479,7 +479,7 @@ func AppendJSONNumber(b []byte, n json.Number) ([]byte, error) {
 	}
 	ff, err := n.Float64()
 	if err == nil {
-		return AppendFloat64(b, ff), nil
+		return AppendFloat(b, ff), nil
 	}
 	return b, err
 }
