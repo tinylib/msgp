@@ -1306,11 +1306,6 @@ func (m *Reader) ReadJSONNumber() (n json.Number, err error) {
 			return json.Number(strconv.FormatFloat(v, 'f', -1, 64)), nil
 		}
 		return "", err
-	case StrType:
-		v, err := m.ReadString()
-		if err == nil {
-			return json.Number(v), nil
-		}
 	}
 	return "", TypeError{Method: NumberType, Encoded: t}
 }

@@ -1348,9 +1348,5 @@ func ReadJSONNumberBytes(b []byte) (number json.Number, o []byte, err error) {
 	if err == nil {
 		return json.Number(strconv.FormatFloat(f, 'f', -1, 64)), o, nil
 	}
-	s, o, err := ReadStringBytes(b)
-	if err == nil {
-		return json.Number(s), o, nil
-	}
 	return "", nil, TypeError{Method: NumberType, Encoded: getType(b[0])}
 }

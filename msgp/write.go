@@ -638,8 +638,8 @@ func (mw *Writer) WriteTime(t time.Time) error {
 // WriteJSONNumber writes the json.Number to the stream as either integer or float.
 func (mw *Writer) WriteJSONNumber(n json.Number) error {
 	if n == "" {
-		// Allow writing the empty string to cover the zero value.
-		return mw.push(wfixstr(uint8(0)))
+		// The zero value outputs the 0 integer.
+		return mw.push(0)
 	}
 	ii, err := n.Int64()
 	if err == nil {

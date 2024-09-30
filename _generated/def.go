@@ -305,4 +305,5 @@ type NumberJSONSample struct {
 	Single json.Number
 	Array  []json.Number
 	Map    map[string]json.Number
+	OE     json.Number `msg:",omitempty"`
 }

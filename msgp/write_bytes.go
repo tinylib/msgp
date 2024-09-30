@@ -470,8 +470,8 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 // An error will be returned if the json.Number returns error as both integer and float.
 func AppendJSONNumber(b []byte, n json.Number) ([]byte, error) {
 	if n == "" {
-		// Allow writing the empty string to cover the zero value.
-		return append(b, mfixstr), nil
+		// The zero value outputs the 0 integer.
+		return append(b, 0), nil
 	}
 	ii, err := n.Int64()
 	if err == nil {

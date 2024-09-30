@@ -729,7 +729,7 @@ func (s *BaseElem) ZeroExpr() string {
 	case Time:
 		return "(time.Time{})"
 	case JsonNumber:
-		return "(json.Number{})"
+		return `""`
 
 	}
 
