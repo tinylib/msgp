@@ -306,7 +306,7 @@ func (m *marshalGen) gBase(b *BaseElem) {
 	case IDENT:
 		echeck = true
 		m.p.printf("\no, err = %s.MarshalMsg(o)", vname)
-	case Intf, Ext:
+	case Intf, Ext, JsonNumber:
 		echeck = true
 		m.p.printf("\no, err = msgp.Append%s(o, %s)", b.BaseName(), vname)
 	default:

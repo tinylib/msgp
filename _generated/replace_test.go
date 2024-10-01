@@ -1,8 +1,13 @@
 package _generated
 
 import (
+	"bytes"
+	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 func compareStructD(t *testing.T, a, b *CompatibleStructD) {
@@ -286,5 +291,73 @@ func TestReplace_Dummy(t *testing.T) {
 
 	if dummy.String != udummy.String {
 		t.Fatal("not same string")
+	}
+}
+
+func TestJSONNumberReplace(t *testing.T) {
+	test := NumberJSONSampleReplace{
+		Single: "-42",
+		Array:  []json.Number{"0", "-0", "1", "-1", "0.1", "-0.1", "1234", "-1234", "12.34", "-12.34", "12E0", "12E1", "12e34", "12E-0", "12e+1", "12e-34", "-12E0", "-12E1", "-12e34", "-12E-0", "-12e+1", "-12e-34", "1.2E0", "1.2E1", "1.2e34", "1.2E-0", "1.2e+1", "1.2e-34", "-1.2E0", "-1.2E1", "-1.2e34", "-1.2E-0", "-1.2e+1", "-1.2e-34", "0E0", "0E1", "0e34", "0E-0", "0e+1", "0e-34", "-0E0", "-0E1", "-0e34", "-0E-0", "-0e+1", "-0e-34"},
+		Map: map[string]json.Number{
+			"a": json.Number("50"),
+		},
+	}
+
+	encoded, err := test.MarshalMsg(nil)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	var v NumberJSONSampleReplace
+	_, err = v.UnmarshalMsg(encoded)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	// Symmetric since we store strings.
+	if !reflect.DeepEqual(v, test) {
+		t.Fatalf("want %v, got %v", test, v)
+	}
+
+	var jsBuf bytes.Buffer
+	remain, err := msgp.UnmarshalAsJSON(&jsBuf, encoded)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	if len(remain) != 0 {
+		t.Errorf("remain should be empty")
+	}
+	// Retains number formatting. Map order is random, though.
+	wantjs := `{"Single":"-42","Array":["0","-0","1","-1","0.1","-0.1","1234","-1234","12.34","-12.34","12E0","12E1","12e34","12E-0","12e+1","12e-34","-12E0","-12E1","-12e34","-12E-0","-12e+1","-12e-34","1.2E0","1.2E1","1.2e34","1.2E-0","1.2e+1","1.2e-34","-1.2E0","-1.2E1","-1.2e34","-1.2E-0","-1.2e+1","-1.2e-34","0E0","0E1","0e34","0E-0","0e+1","0e-34","-0E0","-0E1","-0e34","-0E-0","-0e+1","-0e-34"],"Map":{"a":"50"}}`
+	if jsBuf.String() != wantjs {
+		t.Errorf("jsBuf.String() = \n%s, want \n%s", jsBuf.String(), wantjs)
+	}
+	// Test encoding
+	var buf bytes.Buffer
+	en := msgp.NewWriter(&buf)
+	err = test.EncodeMsg(en)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	en.Flush()
+	encoded = buf.Bytes()
+
+	dc := msgp.NewReader(&buf)
+	err = v.DecodeMsg(dc)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	if !reflect.DeepEqual(v, test) {
+		t.Fatalf("want %v, got %v", test, v)
+	}
+
+	jsBuf.Reset()
+	remain, err = msgp.UnmarshalAsJSON(&jsBuf, encoded)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	if len(remain) != 0 {
+		t.Errorf("remain should be empty")
+	}
+	if jsBuf.String() != wantjs {
+		t.Errorf("jsBuf.String() = \n%s, want \n%s", jsBuf.String(), wantjs)
 	}
 }

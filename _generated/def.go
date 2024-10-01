@@ -1,6 +1,7 @@
 package _generated
 
 import (
+	"encoding/json"
 	"os"
 	"time"
 
@@ -298,4 +299,11 @@ type StructByteSlice struct {
 	AComplex64  []complex64  `msg:",allownil"`
 	AComplex128 []complex128 `msg:",allownil"`
 	AStruct     []Fixed      `msg:",allownil"`
+}
+
+type NumberJSONSample struct {
+	Single json.Number
+	Array  []json.Number
+	Map    map[string]json.Number
+	OE     json.Number `msg:",omitempty"`
 }

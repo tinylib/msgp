@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"math"
@@ -634,6 +635,23 @@ func (mw *Writer) WriteTime(t time.Time) error {
 	return nil
 }
 
+// WriteJSONNumber writes the json.Number to the stream as either integer or float.
+func (mw *Writer) WriteJSONNumber(n json.Number) error {
+	if n == "" {
+		// The zero value outputs the 0 integer.
+		return mw.push(0)
+	}
+	ii, err := n.Int64()
+	if err == nil {
+		return mw.WriteInt64(ii)
+	}
+	ff, err := n.Float64()
+	if err == nil {
+		return mw.WriteFloat(ff)
+	}
+	return err
+}
+
 // WriteIntf writes the concrete type of 'v'.
 // WriteIntf will error if 'v' is not one of the following:
 //   - A bool, float, string, []byte, int, uint, or complex
@@ -699,6 +717,8 @@ func (mw *Writer) WriteIntf(v interface{}) error {
 		return mw.WriteTime(v)
 	case time.Duration:
 		return mw.WriteDuration(v)
+	case json.Number:
+		return mw.WriteJSONNumber(v)
 	}
 
 	val := reflect.ValueOf(v)
