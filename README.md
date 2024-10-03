@@ -18,6 +18,8 @@ This is a code generation tool and serialization library for [MessagePack](http:
 
 ### Quickstart
 
+First install the `msgp` generator command. Using Go this is done with `go install github.com/tinylib/msgp@latest`
+
 In a source file, include the following directive:
 
 ```go
@@ -50,6 +52,9 @@ While `msgp.Marshaler` and `msgp.Unmarshaler` are quite similar to the standard 
 `json.Marshaler` and `json.Unmarshaler`, `msgp.Encodable` and `msgp.Decodable` are useful for 
 stream serialization. (`*msgp.Writer` and `*msgp.Reader` are essentially protocol-aware versions
 of `*bufio.Writer` and `*bufio.Reader`, respectively.)
+
+An important thing to note is that msgp operates on *individual files*. 
+This means if your structs include types defined in other files, these must be processed as well.
 
 ### Features
 
