@@ -107,14 +107,13 @@ func (d *decodeGen) structAsMap(s *Struct) {
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, mapHeader)
 
-	oeIdentPrefix := randIdent()
 	oeCount := s.CountFieldTagPart("omitempty") + s.CountFieldTagPart("omitzero")
 	if !d.ctx.clearOmitted {
 		oeCount = 0
 	}
 	bm := bmask{
 		bitlen:  oeCount,
-		varname: oeIdentPrefix + "Mask",
+		varname: sz + "Mask",
 	}
 	if oeCount > 0 {
 		// Declare mask
