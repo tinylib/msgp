@@ -21,7 +21,8 @@ type FileSet struct {
 	Identities    map[string]gen.Elem // processed from specs
 	Directives    []string            // raw preprocessor directives
 	Imports       []*ast.ImportSpec   // imports
-	CompactFloats bool                // Use smaller floats when feasible.
+	CompactFloats bool                // Use smaller floats when feasible
+	ClearOmitted  bool                // Set omitted fields to zero value
 	tagName       string              // tag to read field names from
 	pointerRcv    bool                // generate with pointer receivers.
 }
@@ -271,6 +272,7 @@ loop:
 		}
 	}
 	p.CompactFloats = f.CompactFloats
+	p.ClearOmitted = f.ClearOmitted
 }
 
 func (f *FileSet) PrintTo(p *gen.Printer) error {

@@ -107,6 +107,23 @@ func (d *decodeGen) structAsMap(s *Struct) {
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, mapHeader)
 
+	oeIdentPrefix := randIdent()
+	oeCount := s.CountFieldTagPart("omitempty") + s.CountFieldTagPart("omitzero")
+	if !d.ctx.clearOmitted {
+		oeCount = 0
+	}
+	bm := bmask{
+		bitlen:  oeCount,
+		varname: oeIdentPrefix + "Mask",
+	}
+	if oeCount > 0 {
+		// Declare mask
+		d.p.printf("\n%s", bm.typeDecl())
+		d.p.printf("\n_ = %s", bm.varname)
+	}
+	// Index to field idx of each emitted
+	oeEmittedIdx := []int{}
+
 	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
 	d.assignAndCheck("field", mapKey)
 	d.p.print("\nswitch msgp.UnsafeString(field) {")
@@ -123,6 +140,10 @@ func (d *decodeGen) structAsMap(s *Struct) {
 		}
 		SetIsAllowNil(fieldElem, anField)
 		next(d, fieldElem)
+		if oeCount > 0 && (s.Fields[i].HasTagPart("omitempty") || s.Fields[i].HasTagPart("omitzero")) {
+			d.p.printf("\n%s", bm.setStmt(len(oeEmittedIdx)))
+			oeEmittedIdx = append(oeEmittedIdx, i)
+		}
 		d.ctx.Pop()
 		if !d.p.ok() {
 			return
@@ -136,6 +157,24 @@ func (d *decodeGen) structAsMap(s *Struct) {
 
 	d.p.closeblock() // close switch
 	d.p.closeblock() // close for loop
+
+	if oeCount > 0 {
+		d.p.printf("\n// Clear omitted fields.\n")
+		d.p.printf("if %s {\n", bm.notAllSet())
+		for bitIdx, fieldIdx := range oeEmittedIdx {
+			fieldElem := s.Fields[fieldIdx].FieldElem
+
+			d.p.printf("if %s == 0 {\n", bm.readExpr(bitIdx))
+			fze := fieldElem.ZeroExpr()
+			if fze != "" {
+				d.p.printf("%s = %s\n", fieldElem.Varname(), fze)
+			} else {
+				d.p.printf("%s = %s{}\n", fieldElem.Varname(), fieldElem.TypeName())
+			}
+			d.p.printf("}\n")
+		}
+		d.p.printf("}")
+	}
 }
 
 func (d *decodeGen) gBase(b *BaseElem) {

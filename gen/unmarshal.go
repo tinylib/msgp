@@ -103,6 +103,23 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, mapHeader)
 
+	oeIdentPrefix := randIdent()
+	oeCount := s.CountFieldTagPart("omitempty") + s.CountFieldTagPart("omitzero")
+	if !u.ctx.clearOmitted {
+		oeCount = 0
+	}
+	bm := bmask{
+		bitlen:  oeCount,
+		varname: oeIdentPrefix + "Mask",
+	}
+	if oeCount > 0 {
+		// Declare mask
+		u.p.printf("\n%s", bm.typeDecl())
+		u.p.printf("\n_ = %s", bm.varname)
+	}
+	// Index to field idx of each emitted
+	oeEmittedIdx := []int{}
+
 	u.p.printf("\nfor %s > 0 {", sz)
 	u.p.printf("\n%s--; field, bts, err = msgp.ReadMapKeyZC(bts)", sz)
 	u.p.wrapErrCheck(u.ctx.ArgsStr())
@@ -122,6 +139,10 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 		SetIsAllowNil(fieldElem, anField)
 		next(u, fieldElem)
 		u.ctx.Pop()
+		if oeCount > 0 && (s.Fields[i].HasTagPart("omitempty") || s.Fields[i].HasTagPart("omitzero")) {
+			u.p.printf("\n%s", bm.setStmt(len(oeEmittedIdx)))
+			oeEmittedIdx = append(oeEmittedIdx, i)
+		}
 		if anField {
 			u.p.printf("\n}")
 		}
@@ -129,6 +150,23 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 	u.p.print("\ndefault:\nbts, err = msgp.Skip(bts)")
 	u.p.wrapErrCheck(u.ctx.ArgsStr())
 	u.p.print("\n}\n}") // close switch and for loop
+	if oeCount > 0 {
+		u.p.printf("\n// Clear omitted fields.\n")
+		u.p.printf("if %s {\n", bm.notAllSet())
+		for bitIdx, fieldIdx := range oeEmittedIdx {
+			fieldElem := s.Fields[fieldIdx].FieldElem
+
+			u.p.printf("if %s == 0 {\n", bm.readExpr(bitIdx))
+			fze := fieldElem.ZeroExpr()
+			if fze != "" {
+				u.p.printf("%s = %s\n", fieldElem.Varname(), fze)
+			} else {
+				u.p.printf("%s = %s{}\n", fieldElem.Varname(), fieldElem.TypeName())
+			}
+			u.p.printf("}\n")
+		}
+		u.p.printf("}")
+	}
 }
 
 func (u *unmarshalGen) gBase(b *BaseElem) {
