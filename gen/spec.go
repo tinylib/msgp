@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 )
 
 const (
@@ -77,6 +78,7 @@ const (
 type Printer struct {
 	gens          []generator
 	CompactFloats bool
+	ClearOmitted  bool
 }
 
 func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
@@ -145,7 +147,7 @@ func (p *Printer) Print(e Elem) error {
 		// collisions between idents created during SetVarname and idents created during Print,
 		// hence the separate prefixes.
 		resetIdent("zb")
-		err := g.Execute(e, Context{compFloats: p.CompactFloats})
+		err := g.Execute(e, Context{compFloats: p.CompactFloats, clearOmitted: p.ClearOmitted})
 		resetIdent("za")
 
 		if err != nil {
@@ -172,8 +174,9 @@ func (c contextVar) Arg() string {
 }
 
 type Context struct {
-	path       []contextItem
-	compFloats bool
+	path         []contextItem
+	compFloats   bool
+	clearOmitted bool
 }
 
 func (c *Context) PushString(s string) {
@@ -498,6 +501,27 @@ func (b *bmask) setStmt(bitoffset int) string {
 		fmt.Fprintf(&buf, "[%d]", (bitoffset / 64))
 	}
 	fmt.Fprintf(&buf, " |= 0x%X", (uint64(1) << (uint64(bitoffset) % 64)))
+
+	return buf.String()
+}
+
+// notAllSet returns a check against all fields having been set in set.
+func (b *bmask) notAllSet() string {
+	var buf bytes.Buffer
+	buf.Grow(len(b.varname) + 16)
+	buf.WriteString(b.varname)
+	if b.bitlen > 64 {
+		var bytes []string
+		remain := b.bitlen
+		for remain >= 8 {
+			bytes = append(bytes, "0xff")
+		}
+		if remain > 0 {
+			bytes = append(bytes, fmt.Sprintf("0x%X", remain))
+		}
+		fmt.Fprintf(&buf, " != [%d]byte{%s}\n", (b.bitlen+63)/64, strings.Join(bytes, ","))
+	}
+	fmt.Fprintf(&buf, " != 0x%x", uint64(1<<b.bitlen)-1)
 
 	return buf.String()
 }

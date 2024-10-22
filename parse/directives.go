@@ -27,6 +27,7 @@ var directives = map[string]directive{
 	"ignore":        ignore,
 	"tuple":         astuple,
 	"compactfloats": compactfloats,
+	"clearomitted":  clearomitted,
 }
 
 // map of all recognized directives which will be applied
@@ -191,5 +192,11 @@ func pointer(text []string, f *FileSet) error {
 //msgp:compactfloats
 func compactfloats(text []string, f *FileSet) error {
 	f.CompactFloats = true
+	return nil
+}
+
+//msgp:clearomitted
+func clearomitted(text []string, f *FileSet) error {
+	f.ClearOmitted = true
 	return nil
 }

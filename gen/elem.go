@@ -516,6 +516,17 @@ func (s *Struct) AnyHasTagPart(pname string) bool {
 	return false
 }
 
+// CountFieldTagPart the count of HasTagPart(p) is true for any field.
+func (s *Struct) CountFieldTagPart(pname string) int {
+	var n int
+	for _, sf := range s.Fields {
+		if sf.HasTagPart(pname) {
+			n++
+		}
+	}
+	return n
+}
+
 type StructField struct {
 	FieldTag      string   // the string inside the `msg:""` tag up to the first comma
 	FieldTagParts []string // the string inside the `msg:""` tag split by commas
