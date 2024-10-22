@@ -387,12 +387,7 @@ func (p *printer) rangeBlock(ctx *Context, idx string, iter string, t traversal,
 	ctx.PushVar(idx)
 	// Tags on slices do not extend to the elements, so we always disable allownil on elements.
 	// If we want this to happen in the future, it should be a unique tag.
-	type an interface {
-		SetIsAllowNil(b bool)
-	}
-	if set, ok := inner.(an); ok {
-		set.SetIsAllowNil(false)
-	}
+	inner.SetIsAllowNil(false)
 	p.printf("\n for %s := range %s {", idx, iter)
 	next(t, inner)
 	p.closeblock()

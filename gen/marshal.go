@@ -245,6 +245,7 @@ func (m *marshalGen) gMap(s *Map) {
 	m.p.printf("\nfor %s, %s := range %s {", s.Keyidx, s.Validx, vname)
 	m.rawAppend(stringTyp, literalFmt, s.Keyidx)
 	m.ctx.PushVar(s.Keyidx)
+	s.Value.SetIsAllowNil(false)
 	next(m, s.Value)
 	m.ctx.Pop()
 	m.p.closeblock()
