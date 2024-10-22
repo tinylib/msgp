@@ -141,6 +141,7 @@ func (p *Printer) ApplyDirective(pass Method, t TransformPass) {
 
 // Print prints an Elem.
 func (p *Printer) Print(e Elem) error {
+	e.SetIsAllowNil(false)
 	for _, g := range p.gens {
 		// Elem.SetVarname() is called before the Print() step in parse.FileSet.PrintTo().
 		// Elem.SetVarname() generates identifiers as it walks the Elem. This can cause

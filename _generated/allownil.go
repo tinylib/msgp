@@ -228,3 +228,6 @@ type AllowNilOmitEmpty2 struct {
 	Field00 []string `msg:"field00,allownil,omitempty"`
 	Field01 []string `msg:"field01,allownil,omitempty"`
 }
+
+// Primitive types cannot have allownil for now.
+type NoAllowNil []byte
