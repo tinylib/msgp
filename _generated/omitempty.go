@@ -29,9 +29,11 @@ type OmitEmpty0 struct {
 
 	APtrNamedStr *NamedString `msg:"aptrnamedstr,omitempty"`
 
-	AString      string `msg:"astring,omitempty"`
-	ANamedString string `msg:"anamedstring,omitempty"`
-	AByteSlice   []byte `msg:"abyteslice,omitempty"`
+	AString         string            `msg:"astring,omitempty"`
+	ANamedString    string            `msg:"anamedstring,omitempty"`
+	AByteSlice      []byte            `msg:"abyteslice,omitempty"`
+	ASliceByteSlice [][]byte          `msg:"aslicebyteslice,omitempty"`
+	AMapByteSlice   map[string][]byte `msg:"amapbyteslice,omitempty"`
 
 	ASliceString      []string      `msg:"aslicestring,omitempty"`
 	ASliceNamedString []NamedString `msg:"aslicenamedstring,omitempty"`
