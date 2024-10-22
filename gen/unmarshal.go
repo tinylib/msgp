@@ -269,6 +269,7 @@ func (u *unmarshalGen) gMap(m *Map) {
 	u.p.printf("\nvar %s string; var %s %s; %s--", m.Keyidx, m.Validx, m.Value.TypeName(), sz)
 	u.assignAndCheck(m.Keyidx, stringTyp)
 	u.ctx.PushVar(m.Keyidx)
+	m.Value.SetIsAllowNil(false)
 	next(u, m.Value)
 	u.ctx.Pop()
 	u.p.mapAssign(m)

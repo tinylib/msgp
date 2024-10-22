@@ -241,6 +241,7 @@ func (e *encodeGen) gMap(m *Map) {
 	e.p.printf("\nfor %s, %s := range %s {", m.Keyidx, m.Validx, vname)
 	e.writeAndCheck(stringTyp, literalFmt, m.Keyidx)
 	e.ctx.PushVar(m.Keyidx)
+	m.Value.SetIsAllowNil(false)
 	next(e, m.Value)
 	e.ctx.Pop()
 	e.p.closeblock()

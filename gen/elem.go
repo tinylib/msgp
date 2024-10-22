@@ -146,6 +146,7 @@ func (c *common) Varname() string     { return c.vname }
 func (c *common) Alias(typ string)    { c.alias = typ }
 func (c *common) hidden()             {}
 func (c *common) AllowNil() bool      { return false }
+func (c *common) SetIsAllowNil(bool)  {}
 func (c *common) AlwaysPtr(set *bool) bool {
 	if c != nil && set != nil {
 		c.ptrRcv = *set
@@ -201,6 +202,9 @@ type Elem interface {
 	// AllowNil will return true for types that can be nil but doesn't automatically check.
 	// This is true for slices and maps.
 	AllowNil() bool
+
+	// SetIsAllowNil will set the allownil value, if the type supports it.
+	SetIsAllowNil(bool)
 
 	// AlwaysPtr will return true if receiver should always be a pointer.
 	AlwaysPtr(set *bool) bool

@@ -257,6 +257,7 @@ func (d *decodeGen) gMap(m *Map) {
 	d.p.declare(m.Validx, m.Value.TypeName())
 	d.assignAndCheck(m.Keyidx, stringTyp)
 	d.ctx.PushVar(m.Keyidx)
+	m.Value.SetIsAllowNil(false)
 	next(d, m.Value)
 	d.p.mapAssign(m)
 	d.ctx.Pop()
