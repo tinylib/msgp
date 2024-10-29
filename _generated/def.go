@@ -31,6 +31,7 @@ type X struct {
 	Others    [][32]int32 // should compile to len(x.Others)*32*msgp.Int32Size
 	Matrix    [][]int32   // should not optimize
 	ManyFixed []Fixed
+	WeirdTag  string `msg:"\x0b"`
 }
 
 // test fixed-size struct

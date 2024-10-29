@@ -128,7 +128,7 @@ func (d *decodeGen) structAsMap(s *Struct) {
 	d.p.print("\nswitch msgp.UnsafeString(field) {")
 	for i := range s.Fields {
 		d.ctx.PushString(s.Fields[i].FieldName)
-		d.p.printf("\ncase \"%s\":", s.Fields[i].FieldTag)
+		d.p.printf("\ncase %q:", s.Fields[i].FieldTag)
 		fieldElem := s.Fields[i].FieldElem
 		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
 		if anField {

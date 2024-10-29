@@ -127,7 +127,7 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 		if !u.p.ok() {
 			return
 		}
-		u.p.printf("\ncase \"%s\":", s.Fields[i].FieldTag)
+		u.p.printf("\ncase %q:", s.Fields[i].FieldTag)
 		u.ctx.PushString(s.Fields[i].FieldName)
 
 		fieldElem := s.Fields[i].FieldElem
