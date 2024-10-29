@@ -3,7 +3,6 @@ package gen
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -142,6 +141,7 @@ func (e *encodeGen) structmap(s *Struct) {
 
 	omitempty := s.AnyHasTagPart("omitempty")
 	omitzero := s.AnyHasTagPart("omitzero")
+	var closeZero bool
 	var fieldNVar string
 	if omitempty || omitzero {
 
@@ -175,9 +175,11 @@ func (e *encodeGen) structmap(s *Struct) {
 			return
 		}
 
-		// quick return for the case where the entire thing is empty, but only at the top level
-		if !strings.Contains(s.Varname(), ".") {
-			e.p.printf("\nif %s == 0 { return }", fieldNVar)
+		// Skip block, if no fields are set.
+		if nfields > 1 {
+			e.p.printf("\n// Skip if no fields are to be emitted")
+			e.p.printf("\nif %s != 0 {", fieldNVar)
+			closeZero = true
 		}
 
 	} else {
@@ -226,7 +228,9 @@ func (e *encodeGen) structmap(s *Struct) {
 		if oeField || anField {
 			e.p.print("\n}") // close if statement
 		}
-
+	}
+	if closeZero {
+		e.p.printf("\n}") // close if statement
 	}
 }
 

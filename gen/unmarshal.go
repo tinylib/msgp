@@ -151,7 +151,9 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 	u.p.print("\n}\n}") // close switch and for loop
 	if oeCount > 0 {
 		u.p.printf("\n// Clear omitted fields.\n")
-		u.p.printf("if %s {\n", bm.notAllSet())
+		if bm.bitlen > 1 {
+			u.p.printf("if %s {\n", bm.notAllSet())
+		}
 		for bitIdx, fieldIdx := range oeEmittedIdx {
 			fieldElem := s.Fields[fieldIdx].FieldElem
 
@@ -164,7 +166,9 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 			}
 			u.p.printf("}\n")
 		}
-		u.p.printf("}")
+		if bm.bitlen > 1 {
+			u.p.printf("}")
+		}
 	}
 }
 

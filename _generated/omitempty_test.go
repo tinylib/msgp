@@ -3,6 +3,7 @@ package _generated
 import (
 	"bytes"
 	"io"
+	"reflect"
 	"testing"
 
 	"github.com/tinylib/msgp/msgp"
@@ -283,5 +284,37 @@ func BenchmarkNotOmitEmpty10AllFull(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+func TestTypeAlias(t *testing.T) {
+	value := TypeSamples{TypeSample{}, TypeSample{K: 1, V: 2}}
+	encoded, err := value.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got TypeSamples
+	_, err = got.UnmarshalMsg(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(value, got) {
+		t.Errorf("UnmarshalMsg got %v want %v", value, got)
+	}
+	var buf bytes.Buffer
+	w := msgp.NewWriter(&buf)
+	err = value.EncodeMsg(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Flush()
+	got = TypeSamples{}
+	r := msgp.NewReader(&buf)
+	err = got.DecodeMsg(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(value, got) {
+		t.Errorf("UnmarshalMsg got %v want %v", value, got)
 	}
 }

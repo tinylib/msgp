@@ -159,7 +159,9 @@ func (d *decodeGen) structAsMap(s *Struct) {
 
 	if oeCount > 0 {
 		d.p.printf("\n// Clear omitted fields.\n")
-		d.p.printf("if %s {\n", bm.notAllSet())
+		if bm.bitlen > 1 {
+			d.p.printf("if %s {\n", bm.notAllSet())
+		}
 		for bitIdx, fieldIdx := range oeEmittedIdx {
 			fieldElem := s.Fields[fieldIdx].FieldElem
 
@@ -172,7 +174,9 @@ func (d *decodeGen) structAsMap(s *Struct) {
 			}
 			d.p.printf("}\n")
 		}
-		d.p.printf("}")
+		if bm.bitlen > 1 {
+			d.p.printf("}")
+		}
 	}
 }
 
