@@ -260,7 +260,7 @@ func (m *Reader) NextType() (Type, error) {
 			return Complex64Type, nil
 		case Complex128Extension:
 			return Complex128Type, nil
-		case TimeExtension:
+		case TimeExtension, MsgTimeExtension:
 			return TimeType, nil
 		}
 	}
@@ -1287,7 +1287,7 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 		t = time.Unix(sec, int64(nsec)).Local()
 		_, err = m.R.Skip(15)
 		return
-	case -1:
+	case MsgTimeExtension:
 		switch length {
 		case 4, 8, 12:
 			var tmp [12]byte

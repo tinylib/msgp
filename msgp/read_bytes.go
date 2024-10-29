@@ -29,7 +29,7 @@ func NextType(b []byte) Type {
 			tp = int8(b[spec.size-1])
 		}
 		switch tp {
-		case TimeExtension:
+		case TimeExtension, MsgTimeExtension:
 			return TimeType
 		case Complex128Extension:
 			return Complex128Type
@@ -1094,7 +1094,7 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 		sec, nsec := getUnix(b)
 		t = time.Unix(sec, int64(nsec)).Local()
 		return
-	case -1:
+	case MsgTimeExtension:
 		switch len(b) {
 		case 4:
 			t = time.Unix(int64(binary.BigEndian.Uint32(b)), 0).Local()
