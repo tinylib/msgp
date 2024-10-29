@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"math"
@@ -1262,22 +1263,76 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (err error) {
 // ReadTime reads a time.Time object from the reader.
 // The returned time's location will be set to time.Local.
 func (m *Reader) ReadTime() (t time.Time, err error) {
-	var p []byte
-	p, err = m.R.Peek(15)
+	offset, length, extType, err := m.peekExtensionHeader()
 	if err != nil {
-		return
+		return t, err
 	}
-	if p[0] != mext8 || p[1] != 12 {
-		err = badPrefix(TimeType, p[0])
+
+	switch extType {
+	case TimeExtension:
+		var p []byte
+		p, err = m.R.Peek(15)
+		if err != nil {
+			return
+		}
+		if p[0] != mext8 || p[1] != 12 {
+			err = badPrefix(TimeType, p[0])
+			return
+		}
+		if int8(p[2]) != TimeExtension {
+			err = errExt(int8(p[2]), TimeExtension)
+			return
+		}
+		sec, nsec := getUnix(p[3:])
+		t = time.Unix(sec, int64(nsec)).Local()
+		_, err = m.R.Skip(15)
 		return
+	case -1:
+		switch length {
+		case 4, 8, 12:
+			var tmp [12]byte
+			_, err = m.R.Skip(offset)
+			if err != nil {
+				return
+			}
+			var n int
+			n, err = m.R.Read(tmp[:length])
+			if err != nil {
+				return
+			}
+			if n != length {
+				err = ErrShortBytes
+				return
+			}
+			b := tmp[:length]
+			switch length {
+			case 4:
+				t = time.Unix(int64(binary.BigEndian.Uint32(b)), 0).Local()
+			case 8:
+				v := binary.BigEndian.Uint64(b)
+				nanos := int64(v >> 34)
+				if nanos > 999999999 {
+					// In timestamp 64 and timestamp 96 formats, nanoseconds must not be larger than 999999999.
+					err = InvalidTimestamp{Nanos: nanos}
+					return
+				}
+				t = time.Unix(int64(v&(1<<34-1)), nanos).Local()
+			case 12:
+				nanos := int64(binary.BigEndian.Uint32(b))
+				if nanos > 999999999 {
+					// In timestamp 64 and timestamp 96 formats, nanoseconds must not be larger than 999999999.
+					err = InvalidTimestamp{Nanos: nanos}
+					return
+				}
+				ux := int64(binary.BigEndian.Uint64(b[4:]))
+				t = time.Unix(ux, nanos).Local()
+			}
+		default:
+			err = InvalidTimestamp{FieldLength: length}
+		}
+	default:
+		err = errExt(extType, TimeExtension)
 	}
-	if int8(p[2]) != TimeExtension {
-		err = errExt(int8(p[2]), TimeExtension)
-		return
-	}
-	sec, nsec := getUnix(p[3:])
-	t = time.Unix(sec, int64(nsec)).Local()
-	_, err = m.R.Skip(15)
 	return
 }
 

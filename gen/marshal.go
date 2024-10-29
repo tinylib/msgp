@@ -66,6 +66,10 @@ func (m *marshalGen) rawAppend(typ string, argfmt string, arg interface{}) {
 	if m.ctx.compFloats && typ == "Float64" {
 		typ = "Float"
 	}
+	if m.ctx.newTime && typ == "Time" {
+		typ = "TimeExt"
+	}
+
 	m.p.printf("\no = msgp.Append%s(o, %s)", typ, fmt.Sprintf(argfmt, arg))
 }
 

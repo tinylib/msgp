@@ -420,6 +420,16 @@ func BenchmarkAppendTime(b *testing.B) {
 	}
 }
 
+func BenchmarkAppendTimeExt(b *testing.B) {
+	t := time.Now()
+	buf := make([]byte, 0, 15)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		AppendTimeExt(buf[0:0], t)
+	}
+}
+
 // TestEncodeDecode does a back-and-forth test of encoding and decoding and compare the value with a given output.
 func TestEncodeDecode(t *testing.T) {
 	for _, tc := range []struct {

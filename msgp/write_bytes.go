@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"math"
@@ -320,6 +321,40 @@ func AppendTime(b []byte, t time.Time) []byte {
 	o[n+2] = TimeExtension
 	putUnix(o[n+3:], t.Unix(), int32(t.Nanosecond()))
 	return o
+}
+
+// AppendTimeExt will write t using the official webpack extension spec.
+// https://github.com/msgpack/msgpack/blob/master/spec.md#timestamp-extension-type
+func AppendTimeExt(b []byte, t time.Time) []byte {
+	// Time rounded towards zero.
+	secPrec := t.Truncate(time.Second)
+	remain := t.Sub(secPrec).Nanoseconds()
+	asSecs := secPrec.Unix()
+	switch {
+	case remain == 0 && asSecs > 0 && asSecs <= math.MaxUint32:
+		// 4 bytes
+		o, n := ensure(b, 2+4)
+		o[n+0] = mfixext4
+		o[n+1] = byte(msgTimeExtension)
+		binary.BigEndian.PutUint32(o[n+2:], uint32(asSecs))
+		return o
+	case asSecs < 0 || asSecs >= (1<<34):
+		// 12 bytes
+		o, n := ensure(b, 3+12)
+		o[n+0] = mext8
+		o[n+1] = 12
+		o[n+2] = byte(msgTimeExtension)
+		binary.BigEndian.PutUint32(o[n+3:], uint32(remain))
+		binary.BigEndian.PutUint64(o[n+3+4:], uint64(asSecs))
+		return o
+	default:
+		// 8 bytes
+		o, n := ensure(b, 2+8)
+		o[n+0] = mfixext8
+		o[n+1] = byte(msgTimeExtension)
+		binary.BigEndian.PutUint64(o[n+2:], uint64(asSecs)|(uint64(remain)<<34))
+		return o
+	}
 }
 
 // AppendMapStrStr appends a map[string]string to the slice

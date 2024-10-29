@@ -28,6 +28,7 @@ var directives = map[string]directive{
 	"tuple":         astuple,
 	"compactfloats": compactfloats,
 	"clearomitted":  clearomitted,
+	"newtime":       newtime,
 }
 
 // map of all recognized directives which will be applied
@@ -198,5 +199,11 @@ func compactfloats(text []string, f *FileSet) error {
 //msgp:clearomitted
 func clearomitted(text []string, f *FileSet) error {
 	f.ClearOmitted = true
+	return nil
+}
+
+//msgp:newtime
+func newtime(text []string, f *FileSet) error {
+	f.NewTime = true
 	return nil
 }

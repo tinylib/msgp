@@ -23,6 +23,7 @@ type FileSet struct {
 	Imports       []*ast.ImportSpec   // imports
 	CompactFloats bool                // Use smaller floats when feasible
 	ClearOmitted  bool                // Set omitted fields to zero value
+	NewTime       bool                // Set to use -1 extension for time.Time
 	tagName       string              // tag to read field names from
 	pointerRcv    bool                // generate with pointer receivers.
 }
@@ -273,6 +274,7 @@ loop:
 	}
 	p.CompactFloats = f.CompactFloats
 	p.ClearOmitted = f.ClearOmitted
+	p.NewTime = f.NewTime
 }
 
 func (f *FileSet) PrintTo(p *gen.Printer) error {
@@ -530,7 +532,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	case *ast.Ident:
 		b := gen.Ident(e.Name)
 
-		// work to resove this expression
+		// work to resolve this expression
 		// can be done later, once we've resolved
 		// everything else.
 		if b.Value == gen.IDENT {
