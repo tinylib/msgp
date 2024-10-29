@@ -636,7 +636,7 @@ func (mw *Writer) WriteTime(t time.Time) error {
 	return nil
 }
 
-// WriteTimeExt will write t using the offical webpack extension spec.
+// WriteTimeExt will write t using the official msgpack extension spec.
 // https://github.com/msgpack/msgpack/blob/master/spec.md#timestamp-extension-type
 func (mw *Writer) WriteTimeExt(t time.Time) error {
 	// Time rounded towards zero.

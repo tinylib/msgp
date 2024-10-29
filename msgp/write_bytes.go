@@ -323,7 +323,7 @@ func AppendTime(b []byte, t time.Time) []byte {
 	return o
 }
 
-// AppendTimeExt will write t using the official webpack extension spec.
+// AppendTimeExt will write t using the official msgpack extension spec.
 // https://github.com/msgpack/msgpack/blob/master/spec.md#timestamp-extension-type
 func AppendTimeExt(b []byte, t time.Time) []byte {
 	// Time rounded towards zero.
