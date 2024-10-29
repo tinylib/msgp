@@ -171,7 +171,7 @@ func (m *marshalGen) mapstruct(s *Struct) {
 
 		// Skip block, if no fields are set.
 		if nfields > 1 {
-			m.p.printf("\n// Skip if no fields are to be emitted")
+			m.p.printf("\n\n// skip if no fields are to be emitted")
 			m.p.printf("\nif %s != 0 {", fieldNVar)
 			closeZero = true
 		}

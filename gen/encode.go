@@ -177,7 +177,7 @@ func (e *encodeGen) structmap(s *Struct) {
 
 		// Skip block, if no fields are set.
 		if nfields > 1 {
-			e.p.printf("\n// Skip if no fields are to be emitted")
+			e.p.printf("\n\n// skip if no fields are to be emitted")
 			e.p.printf("\nif %s != 0 {", fieldNVar)
 			closeZero = true
 		}
