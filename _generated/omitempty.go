@@ -54,6 +54,13 @@ type OmitEmpty0 struct {
 	ATime time.Time `msg:"atime,omitempty"`
 }
 
+type TypeSample struct {
+	K uint32 `msg:"k,omitempty"`
+	V uint32 `msg:"v,omitempty"`
+}
+
+type TypeSamples []TypeSample
+
 type (
 	NamedBool    bool
 	NamedInt     int

@@ -3,7 +3,6 @@ package gen
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -137,6 +136,7 @@ func (m *marshalGen) mapstruct(s *Struct) {
 
 	omitempty := s.AnyHasTagPart("omitempty")
 	omitzero := s.AnyHasTagPart("omitzero")
+	var closeZero bool
 	var fieldNVar string
 	if omitempty || omitzero {
 
@@ -169,9 +169,11 @@ func (m *marshalGen) mapstruct(s *Struct) {
 			return
 		}
 
-		// quick return for the case where the entire thing is empty, but only at the top level
-		if !strings.Contains(s.Varname(), ".") {
-			m.p.printf("\nif %s == 0 { return }", fieldNVar)
+		// Skip block, if no fields are set.
+		if nfields > 1 {
+			m.p.printf("\n\n// skip if no fields are to be emitted")
+			m.p.printf("\nif %s != 0 {", fieldNVar)
+			closeZero = true
 		}
 
 	} else {
@@ -222,7 +224,9 @@ func (m *marshalGen) mapstruct(s *Struct) {
 		if oeField || anField {
 			m.p.printf("\n}") // close if statement
 		}
-
+	}
+	if closeZero {
+		m.p.printf("\n}") // close if statement
 	}
 }
 
