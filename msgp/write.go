@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"io"
@@ -632,6 +633,48 @@ func (mw *Writer) WriteTime(t time.Time) error {
 	mw.buf[o+1] = 12
 	mw.buf[o+2] = TimeExtension
 	putUnix(mw.buf[o+3:], t.Unix(), int32(t.Nanosecond()))
+	return nil
+}
+
+// WriteTimeExt will write t using the official msgpack extension spec.
+// https://github.com/msgpack/msgpack/blob/master/spec.md#timestamp-extension-type
+func (mw *Writer) WriteTimeExt(t time.Time) error {
+	// Time rounded towards zero.
+	secPrec := t.Truncate(time.Second)
+	remain := t.Sub(secPrec).Nanoseconds()
+	asSecs := secPrec.Unix()
+	switch {
+	case remain == 0 && asSecs > 0 && asSecs <= math.MaxUint32:
+		// 4 bytes
+		o, err := mw.require(6)
+		if err != nil {
+			return err
+		}
+		mw.buf[o] = mfixext4
+		mw.buf[o+1] = byte(msgTimeExtension)
+		binary.BigEndian.PutUint32(mw.buf[o+2:], uint32(asSecs))
+		return nil
+	case asSecs < 0 || asSecs >= (1<<34):
+		// 12 bytes
+		o, err := mw.require(12 + 3)
+		if err != nil {
+			return err
+		}
+		mw.buf[o] = mext8
+		mw.buf[o+1] = 12
+		mw.buf[o+2] = byte(msgTimeExtension)
+		binary.BigEndian.PutUint32(mw.buf[o+3:], uint32(remain))
+		binary.BigEndian.PutUint64(mw.buf[o+3+4:], uint64(asSecs))
+	default:
+		// 8 bytes
+		o, err := mw.require(10)
+		if err != nil {
+			return err
+		}
+		mw.buf[o] = mfixext8
+		mw.buf[o+1] = byte(msgTimeExtension)
+		binary.BigEndian.PutUint64(mw.buf[o+2:], uint64(asSecs)|(uint64(remain)<<34))
+	}
 	return nil
 }
 

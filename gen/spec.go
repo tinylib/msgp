@@ -79,6 +79,7 @@ type Printer struct {
 	gens          []generator
 	CompactFloats bool
 	ClearOmitted  bool
+	NewTime       bool
 }
 
 func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
@@ -148,7 +149,11 @@ func (p *Printer) Print(e Elem) error {
 		// collisions between idents created during SetVarname and idents created during Print,
 		// hence the separate prefixes.
 		resetIdent("zb")
-		err := g.Execute(e, Context{compFloats: p.CompactFloats, clearOmitted: p.ClearOmitted})
+		err := g.Execute(e, Context{
+			compFloats:   p.CompactFloats,
+			clearOmitted: p.ClearOmitted,
+			newTime:      p.NewTime,
+		})
 		resetIdent("za")
 
 		if err != nil {
@@ -178,6 +183,7 @@ type Context struct {
 	path         []contextItem
 	compFloats   bool
 	clearOmitted bool
+	newTime      bool
 }
 
 func (c *Context) PushString(s string) {

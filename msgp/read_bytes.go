@@ -29,7 +29,7 @@ func NextType(b []byte) Type {
 			tp = int8(b[spec.size-1])
 		}
 		switch tp {
-		case TimeExtension:
+		case TimeExtension, MsgTimeExtension:
 			return TimeType
 		case Complex128Extension:
 			return Complex128Type
@@ -1069,29 +1069,64 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 // ReadTimeBytes reads a time.Time
 // extension object from 'b' and returns the
 // remaining bytes.
+// Both the official and the format in this package will be read.
 //
 // Possible errors:
 //
 //   - [ErrShortBytes] (not enough bytes in 'b')
-//   - [TypeError] (object not a complex64)
+//   - [TypeError] (object not a time extension 5 or -1)
 //   - [ExtensionTypeError] (object an extension of the correct size, but not a time.Time)
 func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
-	if len(b) < 15 {
+	if len(b) < 6 {
 		err = ErrShortBytes
 		return
 	}
-	if b[0] != mext8 || b[1] != 12 {
-		err = badPrefix(TimeType, b[0])
+	typ, o, b, err := readExt(b)
+	if err != nil {
 		return
 	}
-	if int8(b[2]) != TimeExtension {
+	switch typ {
+	case TimeExtension:
+		if len(b) != 12 {
+			err = ErrShortBytes
+			return
+		}
+		sec, nsec := getUnix(b)
+		t = time.Unix(sec, int64(nsec)).Local()
+		return
+	case MsgTimeExtension:
+		switch len(b) {
+		case 4:
+			t = time.Unix(int64(binary.BigEndian.Uint32(b)), 0).Local()
+			return
+		case 8:
+			v := binary.BigEndian.Uint64(b)
+			nanos := int64(v >> 34)
+			if nanos > 999999999 {
+				// In timestamp 64 and timestamp 96 formats, nanoseconds must not be larger than 999999999.
+				err = InvalidTimestamp{Nanos: nanos}
+				return
+			}
+			t = time.Unix(int64(v&(1<<34-1)), nanos).Local()
+			return
+		case 12:
+			nanos := int64(binary.BigEndian.Uint32(b))
+			if nanos > 999999999 {
+				// In timestamp 64 and timestamp 96 formats, nanoseconds must not be larger than 999999999.
+				err = InvalidTimestamp{Nanos: nanos}
+				return
+			}
+			ux := int64(binary.BigEndian.Uint64(b[4:]))
+			t = time.Unix(ux, nanos).Local()
+			return
+		default:
+			err = InvalidTimestamp{FieldLength: len(b)}
+			return
+		}
+	default:
 		err = errExt(int8(b[2]), TimeExtension)
 		return
 	}
-	sec, nsec := getUnix(b[3:])
-	t = time.Unix(sec, int64(nsec)).Local()
-	o = b[15:]
-	return
 }
 
 // ReadMapStrIntfBytes reads a map[string]interface{}

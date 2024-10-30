@@ -72,7 +72,7 @@ func writeNext(w jsWriter, msg []byte, scratch []byte, depth int) ([]byte, []byt
 		if err != nil {
 			return nil, scratch, err
 		}
-		if et == TimeExtension {
+		if et == TimeExtension || et == MsgTimeExtension {
 			t = TimeType
 		}
 	}
@@ -276,7 +276,7 @@ func rwExtensionBytes(w jsWriter, msg []byte, scratch []byte, depth int) ([]byte
 	}
 
 	// if it's time.Time
-	if et == TimeExtension {
+	if et == TimeExtension || et == MsgTimeExtension {
 		var tm time.Time
 		tm, msg, err = ReadTimeBytes(msg)
 		if err != nil {

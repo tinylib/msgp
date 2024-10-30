@@ -30,6 +30,9 @@ func (e *encodeGen) writeAndCheck(typ string, argfmt string, arg interface{}) {
 	if e.ctx.compFloats && typ == "Float64" {
 		typ = "Float"
 	}
+	if e.ctx.newTime && typ == "Time" {
+		typ = "TimeExt"
+	}
 
 	e.p.printf("\nerr = en.Write%s(%s)", typ, fmt.Sprintf(argfmt, arg))
 	e.p.wrapErrCheck(e.ctx.ArgsStr())
