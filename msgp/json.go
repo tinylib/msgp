@@ -310,7 +310,7 @@ func rwExtension(dst jsWriter, src *Reader) (n int, err error) {
 	}
 	n++
 
-	nn, err = dst.WriteString(`"type:"`)
+	nn, err = dst.WriteString(`"type":`)
 	n += nn
 	if err != nil {
 		return
