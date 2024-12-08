@@ -308,3 +308,19 @@ type NumberJSONSample struct {
 	Map    map[string]json.Number
 	OE     json.Number `msg:",omitempty"`
 }
+
+type Flobbity struct {
+	A Flobs `msg:"a,omitempty"`
+	B Flobs `msg:"b,omitempty"`
+}
+
+type Flobs []Flob
+
+type Flob struct {
+	X Numberwang `msg:"x"`
+	Y int8       `msg:"y"`
+	Z int8       `msg:"z"`
+	W int32      `msg:"w"`
+}
+
+type Numberwang int8
