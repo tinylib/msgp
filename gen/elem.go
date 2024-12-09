@@ -268,7 +268,10 @@ func (a *Array) Copy() Elem {
 	return &b
 }
 
-func (a *Array) Complexity() int { return 1 + a.Els.Complexity() }
+func (a *Array) Complexity() int {
+	// We consider the complexity constant and leave the children to decide on their own.
+	return 2
+}
 
 // ZeroExpr returns the zero/empty expression or empty string if not supported.  Unsupported for this case.
 func (a *Array) ZeroExpr() string { return "" }
@@ -313,7 +316,10 @@ func (m *Map) Copy() Elem {
 	return &g
 }
 
-func (m *Map) Complexity() int { return 2 + m.Value.Complexity() }
+func (m *Map) Complexity() int {
+	// Complexity of maps are considered constant. Children should decide on their own.
+	return 3
+}
 
 // ZeroExpr returns the zero/empty expression or empty string if not supported.  Always "nil" for this case.
 func (m *Map) ZeroExpr() string { return "nil" }
@@ -360,7 +366,8 @@ func (s *Slice) Copy() Elem {
 }
 
 func (s *Slice) Complexity() int {
-	return 1 + s.Els.Complexity()
+	// We leave the inlining decision to the slice children.
+	return 2
 }
 
 // ZeroExpr returns the zero/empty expression or empty string if not supported.  Always "nil" for this case.
