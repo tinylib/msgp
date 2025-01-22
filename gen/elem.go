@@ -752,7 +752,8 @@ func (s *BaseElem) ZeroExpr() string {
 		return "(time.Time{})"
 	case JsonNumber:
 		return `""`
-
+	case Intf:
+		return "nil"
 	}
 
 	return ""
