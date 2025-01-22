@@ -32,6 +32,7 @@ type ClearOmitted0 struct {
 	AString             string                             `msg:"atring,omitempty"`
 	Adur                time.Duration                      `msg:"adur,omitempty"`
 	AJSON               json.Number                        `msg:"ajson,omitempty"`
+	AnAny               any                                `msg:"anany,omitempty"`
 
 	ClearOmittedTuple ClearOmittedTuple `msg:"ozt"` // the inside of a tuple should ignore both omitempty and omitzero
 }
