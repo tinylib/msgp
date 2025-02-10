@@ -14,8 +14,12 @@ type EndlessReader struct {
 	offset int
 }
 
-// NewEndlessReader returns a new endless reader
+// NewEndlessReader returns a new endless reader.
+// Buffer b cannot be empty
 func NewEndlessReader(b []byte, tb timer) *EndlessReader {
+	if len(b) == 0 {
+		panic("EndlessReader cannot be of zero length")
+	}
 	// Double until we reach 4K.
 	for len(b) < 4<<10 {
 		b = append(b, b...)
