@@ -358,7 +358,7 @@ func ReadFloat64Bytes(b []byte) (f float64, o []byte, err error) {
 	return
 }
 
-// ReadFloat32Bytes tries to read a float64
+// ReadFloat32Bytes tries to read a float32
 // from 'b' and return the value and the remaining bytes.
 //
 // Possible errors:
@@ -381,7 +381,7 @@ func ReadFloat32Bytes(b []byte) (f float32, o []byte, err error) {
 	return
 }
 
-// ReadBoolBytes tries to read a float64
+// ReadBoolBytes tries to read a bool
 // from 'b' and return the value and the remaining bytes.
 //
 // Possible errors:
