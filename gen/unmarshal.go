@@ -89,11 +89,34 @@ func (u *unmarshalGen) tuple(s *Struct) {
 			u.p.printf("\nif msgp.IsNil(bts) {\nbts = bts[1:]\n%s = nil\n} else {", fieldElem.Varname())
 		}
 		SetIsAllowNil(fieldElem, anField)
+		if s.Fields[i].HasTagPart("zerocopy") {
+			setRecursiveZC(fieldElem, true)
+		}
 		next(u, fieldElem)
+		if s.Fields[i].HasTagPart("zerocopy") {
+			setRecursiveZC(fieldElem, false)
+		}
+
 		u.ctx.Pop()
 		if anField {
 			u.p.printf("\n}")
 		}
+	}
+}
+
+// setRecursiveZC will alloc zerocopy for byte fields that are present.
+func setRecursiveZC(e Elem, enable bool) {
+	if base, ok := e.(*BaseElem); ok {
+		base.zerocopy = enable
+	}
+	if el, ok := e.(*Slice); ok {
+		setRecursiveZC(el.Els, enable)
+	}
+	if el, ok := e.(*Array); ok {
+		setRecursiveZC(el.Els, enable)
+	}
+	if el, ok := e.(*Map); ok {
+		setRecursiveZC(el.Value, enable)
 	}
 }
 
@@ -136,7 +159,13 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 			u.p.printf("\nif msgp.IsNil(bts) {\nbts = bts[1:]\n%s = nil\n} else {", fieldElem.Varname())
 		}
 		SetIsAllowNil(fieldElem, anField)
+		if s.Fields[i].HasTagPart("zerocopy") {
+			setRecursiveZC(fieldElem, true)
+		}
 		next(u, fieldElem)
+		if s.Fields[i].HasTagPart("zerocopy") {
+			setRecursiveZC(fieldElem, false)
+		}
 		u.ctx.Pop()
 		if oeCount > 0 && (s.Fields[i].HasTagPart("omitempty") || s.Fields[i].HasTagPart("omitzero")) {
 			u.p.printf("\n%s", bm.setStmt(len(oeEmittedIdx)))
@@ -188,7 +217,11 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 
 	switch b.Value {
 	case Bytes:
-		u.p.printf("\n%s, bts, err = msgp.ReadBytesBytes(bts, %s)", refname, lowered)
+		if b.zerocopy {
+			u.p.printf("\n%s, bts, err = msgp.ReadBytesZC(bts)", refname)
+		} else {
+			u.p.printf("\n%s, bts, err = msgp.ReadBytesBytes(bts, %s)", refname, lowered)
+		}
 	case Ext:
 		u.p.printf("\nbts, err = msgp.ReadExtensionBytes(bts, %s)", lowered)
 	case IDENT:
