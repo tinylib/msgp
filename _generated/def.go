@@ -25,13 +25,21 @@ type Block [32]byte
 // tests edge-cases with
 // compiling size compilation.
 type X struct {
-	Values    [32]byte    // should compile to 32*msgp.ByteSize; encoded as Bin
-	ValuesPtr *[32]byte   // check (*)[:] deref
-	More      Block       // should be identical to the above
-	Others    [][32]int32 // should compile to len(x.Others)*32*msgp.Int32Size
-	Matrix    [][]int32   // should not optimize
-	ManyFixed []Fixed
-	WeirdTag  string `msg:"\x0b"`
+	Values         [32]byte    // should compile to 32*msgp.ByteSize; encoded as Bin
+	ValuesPtr      *[32]byte   // check (*)[:] deref
+	More           Block       // should be identical to the above
+	Others         [][32]int32 // should compile to len(x.Others)*32*msgp.Int32Size
+	Matrix         [][]int32   // should not optimize
+	ManyFixed      []Fixed
+	WeirdTag       string                       `msg:"\x0b"`
+	ZCBytes        []byte                       `msg:",zerocopy"`
+	ZCBytesAN      []byte                       `msg:",zerocopy,allownil"`
+	ZCBytesOE      []byte                       `msg:",zerocopy,omitempty"`
+	ZCBytesSlice   [][]byte                     `msg:",zerocopy"`
+	ZCBytesArr     [2][]byte                    `msg:",zerocopy"`
+	ZCBytesMap     map[string][]byte            `msg:",zerocopy"`
+	ZCBytesMapDeep map[string]map[string][]byte `msg:",zerocopy"`
+	CustomBytes    CustomBytes                  `msg:",zerocopy"`
 }
 
 // test fixed-size struct
@@ -73,6 +81,14 @@ type Object struct {
 	MapMap          map[string]map[string]string
 	MapStringEmpty  map[string]struct{}
 	MapStringEmpty2 map[string]EmptyStruct
+	ZCBytes         []byte                       `msg:",zerocopy"`
+	ZCBytesAN       []byte                       `msg:",zerocopy,allownil"`
+	ZCBytesOE       []byte                       `msg:",zerocopy,omitempty"`
+	ZCBytesSlice    [][]byte                     `msg:",zerocopy"`
+	ZCBytesArr      [2][]byte                    `msg:",zerocopy"`
+	ZCBytesMap      map[string][]byte            `msg:",zerocopy"`
+	ZCBytesMapDeep  map[string]map[string][]byte `msg:",zerocopy"`
+	CustomBytes     CustomBytes                  `msg:",zerocopy"`
 }
 
 //msgp:tuple TestBench
