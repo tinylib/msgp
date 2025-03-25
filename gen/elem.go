@@ -286,6 +286,7 @@ type Map struct {
 	Validx     string // value variable name
 	Value      Elem   // value element
 	isAllowNil bool
+	KeyType string // key type
 }
 
 func (m *Map) SetVarname(s string) {
@@ -306,7 +307,7 @@ func (m *Map) TypeName() string {
 	if m.common.alias != "" {
 		return m.common.alias
 	}
-	m.common.Alias("map[string]" + m.Value.TypeName())
+	m.common.Alias(fmt.Sprintf("map[%s]%s", m.KeyType, m.Value.TypeName()))
 	return m.common.alias
 }
 
@@ -332,6 +333,30 @@ func (m *Map) AllowNil() bool { return true }
 
 // SetIsAllowNil sets whether the map is allowed to be nil.
 func (m *Map) SetIsAllowNil(b bool) { m.isAllowNil = b }
+
+func (m *Map) KeyStringExpr() string {
+	if m.KeyType == "string" {
+		return m.Keyidx
+	} else {
+		return fmt.Sprintf("%s.MsgpStrMapKey()", m.Keyidx)
+	}
+}
+
+func (m *Map) KeyOrigTypeExpr() string {
+	if m.KeyType == "string" {
+		return m.Keyidx
+	} else {
+		return fmt.Sprintf("*(new(%s).MsgpFromStrMapKey(%s)).(*%s)", m.KeyType, m.Keyidx, m.KeyType)
+	}
+}
+
+func (m *Map) KeySizeExpr() string {
+	if m.KeyType == "string" {
+		return fmt.Sprintf("len(%s)", m.Keyidx)
+	} else {
+		return fmt.Sprintf("%s.MsgpStrMapKeySize()", m.Keyidx)
+	}
+}
 
 type Slice struct {
 	common
