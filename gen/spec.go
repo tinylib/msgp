@@ -80,6 +80,7 @@ type Printer struct {
 	CompactFloats bool
 	ClearOmitted  bool
 	NewTime       bool
+	AsUTC         bool
 }
 
 func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
@@ -153,6 +154,7 @@ func (p *Printer) Print(e Elem) error {
 			compFloats:   p.CompactFloats,
 			clearOmitted: p.ClearOmitted,
 			newTime:      p.NewTime,
+			asUTC:        p.AsUTC,
 		})
 		resetIdent("za")
 
@@ -184,6 +186,7 @@ type Context struct {
 	compFloats   bool
 	clearOmitted bool
 	newTime      bool
+	asUTC        bool
 }
 
 func (c *Context) PushString(s string) {

@@ -132,6 +132,9 @@ func Test1EncodeDecode(t *testing.T) {
 		t.Logf("out: %#v", tnew)
 		t.Fatal("objects not equal")
 	}
+	if tnew.Time.Location() != time.UTC {
+		t.Errorf("time location not UTC: %v", tnew.Time.Location())
+	}
 
 	tanother := new(TestType)
 
@@ -152,6 +155,10 @@ func Test1EncodeDecode(t *testing.T) {
 		t.Logf("out: %v", tanother)
 		t.Fatal("objects not equal")
 	}
+	if tanother.Time.Location() != time.UTC {
+		t.Errorf("time location not UTC: %v", tanother.Time.Location())
+	}
+
 }
 
 func TestIssue168(t *testing.T) {

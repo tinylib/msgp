@@ -24,6 +24,7 @@ type FileSet struct {
 	CompactFloats bool                // Use smaller floats when feasible
 	ClearOmitted  bool                // Set omitted fields to zero value
 	NewTime       bool                // Set to use -1 extension for time.Time
+	AsUTC         bool                // Set timezone to UTC instead of local
 	tagName       string              // tag to read field names from
 	pointerRcv    bool                // generate with pointer receivers.
 }
@@ -275,6 +276,7 @@ loop:
 	p.CompactFloats = f.CompactFloats
 	p.ClearOmitted = f.ClearOmitted
 	p.NewTime = f.NewTime
+	p.AsUTC = f.AsUTC
 }
 
 func (f *FileSet) PrintTo(p *gen.Printer) error {

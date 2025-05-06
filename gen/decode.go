@@ -218,6 +218,9 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	case Ext:
 		d.p.printf("\nerr = dc.ReadExtension(%s)", vname)
 	default:
+		if b.Value == Time && d.ctx.asUTC {
+			bname += "UTC"
+		}
 		if b.Convert {
 			d.p.printf("\n%s, err = dc.Read%s()", tmp, bname)
 		} else {

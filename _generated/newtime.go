@@ -5,6 +5,7 @@ import "time"
 //go:generate msgp -v
 
 //msgp:newtime
+//msgp:timezone local
 
 type NewTime struct {
 	T     time.Time
