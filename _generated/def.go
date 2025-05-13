@@ -20,6 +20,8 @@ import (
 // a struct definition is
 // by adding it to this file.
 
+//msgp:timezone utc
+
 type Block [32]byte
 
 // tests edge-cases with

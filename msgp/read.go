@@ -1260,6 +1260,13 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (err error) {
 	return
 }
 
+// ReadTimeUTC reads a time.Time object from the reader.
+// The returned time's location will be set to UTC.
+func (m *Reader) ReadTimeUTC() (t time.Time, err error) {
+	t, err = m.ReadTime()
+	return t.UTC(), err
+}
+
 // ReadTime reads a time.Time object from the reader.
 // The returned time's location will be set to time.Local.
 func (m *Reader) ReadTime() (t time.Time, err error) {

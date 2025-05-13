@@ -229,6 +229,12 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 			lowered = b.ToBase() + "(" + lowered + ")"
 		}
 		u.p.printf("\nbts, err = %s.UnmarshalMsg(bts)", lowered)
+	case Time:
+		if u.ctx.asUTC {
+			u.p.printf("\n%s, bts, err = msgp.Read%sUTCBytes(bts)", refname, b.BaseName())
+		} else {
+			u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", refname, b.BaseName())
+		}
 	default:
 		u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", refname, b.BaseName())
 	}

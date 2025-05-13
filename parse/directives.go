@@ -29,6 +29,7 @@ var directives = map[string]directive{
 	"compactfloats": compactfloats,
 	"clearomitted":  clearomitted,
 	"newtime":       newtime,
+	"timezone":      newtimezone,
 }
 
 // map of all recognized directives which will be applied
@@ -205,5 +206,21 @@ func clearomitted(text []string, f *FileSet) error {
 //msgp:newtime
 func newtime(text []string, f *FileSet) error {
 	f.NewTime = true
+	return nil
+}
+
+//msgp:timezone
+func newtimezone(text []string, f *FileSet) error {
+	if len(text) != 2 {
+		return fmt.Errorf("timezone directive should have only 1 argument; found %d", len(text)-1)
+	}
+	switch strings.ToLower(strings.TrimSpace(text[1])) {
+	case "local":
+		f.AsUTC = false
+	case "utc":
+		f.AsUTC = true
+	default:
+		return fmt.Errorf("timezone directive should be either 'local' or 'utc'; found %q", text[1])
+	}
 	return nil
 }

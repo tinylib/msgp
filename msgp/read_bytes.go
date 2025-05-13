@@ -1066,6 +1066,12 @@ func ReadComplex64Bytes(b []byte) (c complex64, o []byte, err error) {
 	return
 }
 
+// ReadTimeUTCBytes does the same as ReadTimeBytes, but returns the value as UTC.
+func ReadTimeUTCBytes(b []byte) (t time.Time, o []byte, err error) {
+	t, o, err = ReadTimeBytes(b)
+	return t.UTC(), o, err
+}
+
 // ReadTimeBytes reads a time.Time
 // extension object from 'b' and returns the
 // remaining bytes.
