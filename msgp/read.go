@@ -983,7 +983,7 @@ func (m *Reader) ReadBytesHeader() (sz uint32, err error) {
 		sz = uint32(big.Uint32(p[1:]))
 		return
 	default:
-		err = badPrefix(BinType, p[0])
+		err = badPrefix(BinType, lead)
 		return
 	}
 }
