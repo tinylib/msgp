@@ -463,7 +463,7 @@ func (m *Reader) ReadMapKey(scratch []byte) ([]byte, error) {
 	if err != nil {
 		if tperr, ok := err.(TypeError); ok && tperr.Encoded == BinType {
 			key, err := m.ReadBytes(scratch)
-			if len(key) > int(m.GetMaxStrLen()) {
+			if uint64(len(key)) > m.GetMaxStrLen() {
 				return nil, ErrLimitExceeded
 			}
 			return key, err
