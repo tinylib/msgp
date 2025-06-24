@@ -152,6 +152,10 @@ type Reader struct {
 	R              *fwd.Reader
 	scratch        []byte
 	recursionDepth int
+
+	maxRecursionDepth int    // maximum recursion depth
+	maxElements       int    // maximum number of elements in arrays and maps
+	maxStrLen         uint64 // maximum number of bytes in any string
 }
 
 // Read implements `io.Reader`
@@ -197,7 +201,7 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 		return n, io.ErrShortWrite
 	}
 
-	if done, err := m.recursiveCall(); err != nil {
+	if done, err := m.RecursiveCall(); err != nil {
 		return n, err
 	} else {
 		defer done()
@@ -214,10 +218,53 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 	return n, nil
 }
 
-// recursiveCall will increment the recursion depth and return an error if it is exceeded.
+// SetMaxRecursionDepth sets the maximum recursion depth.
+func (m *Reader) SetMaxRecursionDepth(d int) {
+	m.maxRecursionDepth = d
+}
+
+// GetMaxRecursionDepth returns the maximum recursion depth.
+// Set to 0 to use the default value of 100000.
+func (m *Reader) GetMaxRecursionDepth() int {
+	if m.maxRecursionDepth <= 0 {
+		return recursionLimit
+	}
+	return m.maxRecursionDepth
+}
+
+// SetMaxElements sets the maximum number of elements to allow in map, bin, array or extension payload.
+// Setting this to <= 0 will allow any number of elements - math.MaxUint32.
+// This does currently apply to generated code.
+func (m *Reader) SetMaxElements(d int) {
+	m.maxElements = d
+}
+
+// GetMaxElements will return the maximum number of elements in a map, bin, array or extension payload.
+func (m *Reader) GetMaxElements() uint32 {
+	if m.maxElements <= 0 {
+		return math.MaxUint32
+	}
+	return uint32(min(m.maxElements, math.MaxUint32))
+}
+
+// SetMaxStringLength sets the maximum number of bytes to allow in strings.
+// Setting this == 0 will allow any number of elements - math.MaxUint64.
+func (m *Reader) SetMaxStringLength(d uint64) {
+	m.maxStrLen = d
+}
+
+// GetMaxStrLen will return the current string length limit.
+func (m *Reader) GetMaxStrLen() uint64 {
+	if m.maxStrLen <= 0 {
+		return math.MaxUint64
+	}
+	return min(m.maxStrLen, math.MaxUint64)
+}
+
+// RecursiveCall will increment the recursion depth and return an error if it is exceeded.
 // If a nil error is returned, done must be called to decrement the counter.
-func (m *Reader) recursiveCall() (done func(), err error) {
-	if m.recursionDepth >= recursionLimit {
+func (m *Reader) RecursiveCall() (done func(), err error) {
+	if m.recursionDepth >= m.GetMaxRecursionDepth() {
 		return func() {}, ErrRecursion
 	}
 	m.recursionDepth++
@@ -356,7 +403,7 @@ func (m *Reader) Skip() error {
 	}
 
 	// for maps and slices, skip elements with recursive call
-	if done, err := m.recursiveCall(); err != nil {
+	if done, err := m.RecursiveCall(); err != nil {
 		return err
 	} else {
 		defer done()
@@ -415,7 +462,11 @@ func (m *Reader) ReadMapKey(scratch []byte) ([]byte, error) {
 	out, err := m.ReadStringAsBytes(scratch)
 	if err != nil {
 		if tperr, ok := err.(TypeError); ok && tperr.Encoded == BinType {
-			return m.ReadBytes(scratch)
+			key, err := m.ReadBytes(scratch)
+			if len(key) > int(m.GetMaxStrLen()) {
+				return nil, ErrLimitExceeded
+			}
+			return key, err
 		}
 		return nil, err
 	}
@@ -467,6 +518,9 @@ func (m *Reader) ReadMapKeyPtr() ([]byte, error) {
 fill:
 	if read == 0 {
 		return nil, ErrShortBytes
+	}
+	if uint64(read) > m.GetMaxStrLen() {
+		return nil, ErrLimitExceeded
 	}
 	return m.R.Next(read)
 }
@@ -941,6 +995,10 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, err error) {
 		return
 	}
 	if int64(cap(scratch)) < read {
+		if read > int64(m.GetMaxElements()) {
+			err = ErrLimitExceeded
+			return
+		}
 		b = make([]byte, read)
 	} else {
 		b = scratch[0:read]
@@ -1070,6 +1128,10 @@ func (m *Reader) ReadStringAsBytes(scratch []byte) (b []byte, err error) {
 		return
 	}
 fill:
+	if uint64(read) > m.GetMaxStrLen() {
+		err = ErrLimitExceeded
+		return
+	}
 	if int64(cap(scratch)) < read {
 		b = make([]byte, read)
 	} else {
@@ -1165,6 +1227,11 @@ fill:
 		s, err = "", nil
 		return
 	}
+	if uint64(read) > m.GetMaxStrLen() {
+		err = ErrLimitExceeded
+		return
+	}
+
 	// reading into the memory
 	// that will become the string
 	// itself has vastly superior
@@ -1243,6 +1310,10 @@ func (m *Reader) ReadMapStrIntf(mp map[string]interface{}) (err error) {
 	}
 	for key := range mp {
 		delete(mp, key)
+	}
+	if sz > m.GetMaxElements() {
+		err = ErrLimitExceeded
+		return
 	}
 	for i := uint32(0); i < sz; i++ {
 		var key string
@@ -1440,7 +1511,7 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 
 	case MapType:
 		// This can call back here, so treat as recursive call.
-		if done, err := m.recursiveCall(); err != nil {
+		if done, err := m.RecursiveCall(); err != nil {
 			return nil, err
 		} else {
 			defer done()
@@ -1472,10 +1543,14 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 			return
 		}
 
-		if done, err := m.recursiveCall(); err != nil {
+		if done, err := m.RecursiveCall(); err != nil {
 			return nil, err
 		} else {
 			defer done()
+		}
+		if sz > m.GetMaxElements() {
+			err = ErrLimitExceeded
+			return
 		}
 
 		out := make([]interface{}, int(sz))

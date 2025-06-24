@@ -110,7 +110,7 @@ func rwMap(dst jsWriter, src *Reader) (n int, err error) {
 	}
 
 	// This is potentially a recursive call.
-	if done, err := src.recursiveCall(); err != nil {
+	if done, err := src.RecursiveCall(); err != nil {
 		return 0, err
 	} else {
 		defer done()
@@ -170,7 +170,7 @@ func rwArray(dst jsWriter, src *Reader) (n int, err error) {
 		return
 	}
 	// This is potentially a recursive call.
-	if done, err := src.recursiveCall(); err != nil {
+	if done, err := src.RecursiveCall(); err != nil {
 		return 0, err
 	} else {
 		defer done()
@@ -382,6 +382,10 @@ func rwString(dst jsWriter, src *Reader) (n int, err error) {
 		return
 	}
 write:
+	if uint64(read) > src.GetMaxStrLen(){
+		err = ErrLimitExceeded
+		return
+	}
 	p, err = src.R.Next(read)
 	if err != nil {
 		return
