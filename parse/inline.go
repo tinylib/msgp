@@ -32,31 +32,31 @@ const maxComplex = 5
 
 // begin recursive search for identities with the
 // given name and replace them with e
-func (f *FileSet) findShim(id string, e gen.Elem, addID bool) {
-	for name, el := range f.Identities {
+func (fs *FileSet) findShim(id string, e gen.Elem, addID bool) {
+	for name, el := range fs.Identities {
 		pushstate(name)
 		switch el := el.(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
-				f.nextShim(&el.Fields[i].FieldElem, id, e)
+				fs.nextShim(&el.Fields[i].FieldElem, id, e)
 			}
 		case *gen.Array:
-			f.nextShim(&el.Els, id, e)
+			fs.nextShim(&el.Els, id, e)
 		case *gen.Slice:
-			f.nextShim(&el.Els, id, e)
+			fs.nextShim(&el.Els, id, e)
 		case *gen.Map:
-			f.nextShim(&el.Value, id, e)
+			fs.nextShim(&el.Value, id, e)
 		case *gen.Ptr:
-			f.nextShim(&el.Value, id, e)
+			fs.nextShim(&el.Value, id, e)
 		}
 		popstate()
 	}
 	if addID {
-		f.Identities[id] = e
+		fs.Identities[id] = e
 	}
 }
 
-func (f *FileSet) nextShim(ref *gen.Elem, id string, e gen.Elem) {
+func (fs *FileSet) nextShim(ref *gen.Elem, id string, e gen.Elem) {
 	if (*ref).TypeName() == id {
 		vn := (*ref).Varname()
 		*ref = e.Copy()
@@ -65,30 +65,30 @@ func (f *FileSet) nextShim(ref *gen.Elem, id string, e gen.Elem) {
 		switch el := (*ref).(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
-				f.nextShim(&el.Fields[i].FieldElem, id, e)
+				fs.nextShim(&el.Fields[i].FieldElem, id, e)
 			}
 		case *gen.Array:
-			f.nextShim(&el.Els, id, e)
+			fs.nextShim(&el.Els, id, e)
 		case *gen.Slice:
-			f.nextShim(&el.Els, id, e)
+			fs.nextShim(&el.Els, id, e)
 		case *gen.Map:
-			f.nextShim(&el.Value, id, e)
+			fs.nextShim(&el.Value, id, e)
 		case *gen.Ptr:
-			f.nextShim(&el.Value, id, e)
+			fs.nextShim(&el.Value, id, e)
 		}
 	}
 }
 
 // propInline identifies and inlines candidates
-func (f *FileSet) propInline() {
+func (fs *FileSet) propInline() {
 	type gelem struct {
 		name string
 		el   gen.Elem
 	}
 
-	all := make([]gelem, 0, len(f.Identities))
+	all := make([]gelem, 0, len(fs.Identities))
 
-	for name, el := range f.Identities {
+	for name, el := range fs.Identities {
 		all = append(all, gelem{name: name, el: el})
 	}
 
@@ -107,16 +107,16 @@ func (f *FileSet) propInline() {
 		switch el := all[i].el.(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
-				f.nextInline(&el.Fields[i].FieldElem, name)
+				fs.nextInline(&el.Fields[i].FieldElem, name)
 			}
 		case *gen.Array:
-			f.nextInline(&el.Els, name)
+			fs.nextInline(&el.Els, name)
 		case *gen.Slice:
-			f.nextInline(&el.Els, name)
+			fs.nextInline(&el.Els, name)
 		case *gen.Map:
-			f.nextInline(&el.Value, name)
+			fs.nextInline(&el.Value, name)
 		case *gen.Ptr:
-			f.nextInline(&el.Value, name)
+			fs.nextInline(&el.Value, name)
 		}
 		popstate()
 	}
@@ -127,14 +127,14 @@ Please file a bug at github.com/tinylib/msgp/issues!
 Thanks!
 `
 
-func (f *FileSet) nextInline(ref *gen.Elem, root string) {
+func (fs *FileSet) nextInline(ref *gen.Elem, root string) {
 	switch el := (*ref).(type) {
 	case *gen.BaseElem:
 		// ensure that we're not inlining
 		// a type into itself
 		typ := el.TypeName()
 		if el.Value == gen.IDENT && typ != root {
-			if node, ok := f.Identities[typ]; ok && node.Complexity() < maxComplex {
+			if node, ok := fs.Identities[typ]; ok && node.Complexity() < maxComplex {
 				infof("inlining %s\n", typ)
 
 				// This should never happen; it will cause
@@ -144,7 +144,7 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 				}
 
 				*ref = node.Copy()
-				f.nextInline(ref, node.TypeName())
+				fs.nextInline(ref, node.TypeName())
 			} else if !ok && !el.Resolved() {
 				// this is the point at which we're sure that
 				// we've got a type that isn't a primitive,
@@ -154,16 +154,16 @@ func (f *FileSet) nextInline(ref *gen.Elem, root string) {
 		}
 	case *gen.Struct:
 		for i := range el.Fields {
-			f.nextInline(&el.Fields[i].FieldElem, root)
+			fs.nextInline(&el.Fields[i].FieldElem, root)
 		}
 	case *gen.Array:
-		f.nextInline(&el.Els, root)
+		fs.nextInline(&el.Els, root)
 	case *gen.Slice:
-		f.nextInline(&el.Els, root)
+		fs.nextInline(&el.Els, root)
 	case *gen.Map:
-		f.nextInline(&el.Value, root)
+		fs.nextInline(&el.Value, root)
 	case *gen.Ptr:
-		f.nextInline(&el.Value, root)
+		fs.nextInline(&el.Value, root)
 	default:
 		panic("bad elem type")
 	}

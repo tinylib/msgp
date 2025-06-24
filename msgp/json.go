@@ -60,7 +60,7 @@ func CopyToJSON(dst io.Writer, src io.Reader) (n int64, err error) {
 // WriteToJSON translates MessagePack from 'r' and writes it as
 // JSON to 'w' until the underlying reader returns io.EOF. It returns
 // the number of bytes written, and an error if it stopped before EOF.
-func (r *Reader) WriteToJSON(w io.Writer) (n int64, err error) {
+func (m *Reader) WriteToJSON(w io.Writer) (n int64, err error) {
 	var j jsWriter
 	var bf *bufio.Writer
 	if jsw, ok := w.(jsWriter); ok {
@@ -71,7 +71,7 @@ func (r *Reader) WriteToJSON(w io.Writer) (n int64, err error) {
 	}
 	var nn int
 	for err == nil {
-		nn, err = rwNext(j, r)
+		nn, err = rwNext(j, m)
 		n += int64(nn)
 	}
 	if err != io.EOF {
@@ -382,7 +382,7 @@ func rwString(dst jsWriter, src *Reader) (n int, err error) {
 		return
 	}
 write:
-	if uint64(read) > src.GetMaxStrLen(){
+	if uint64(read) > src.GetMaxStrLen() {
 		err = ErrLimitExceeded
 		return
 	}
