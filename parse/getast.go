@@ -99,14 +99,14 @@ func File(name string, unexported bool) (*FileSet, error) {
 // applyDirectives applies all of the directives that
 // are known to the parser. additional method-specific
 // directives remain in f.Directives
-func (f *FileSet) applyDirectives() {
-	newdirs := make([]string, 0, len(f.Directives))
-	for _, d := range f.Directives {
+func (fs *FileSet) applyDirectives() {
+	newdirs := make([]string, 0, len(fs.Directives))
+	for _, d := range fs.Directives {
 		chunks := strings.Split(d, " ")
 		if len(chunks) > 0 {
 			if fn, ok := directives[chunks[0]]; ok {
 				pushstate(chunks[0])
-				err := fn(chunks, f)
+				err := fn(chunks, fs)
 				if err != nil {
 					warnf("directive error: %s", err)
 				}
@@ -116,21 +116,21 @@ func (f *FileSet) applyDirectives() {
 			}
 		}
 	}
-	f.Directives = newdirs
+	fs.Directives = newdirs
 }
 
 // applyEarlyDirectives applies all early directives needed before process() is called.
 // additional directives remain in f.Directives for future processing
-func (f *FileSet) applyEarlyDirectives() {
-	newdirs := make([]string, 0, len(f.Directives))
-	for _, d := range f.Directives {
+func (fs *FileSet) applyEarlyDirectives() {
+	newdirs := make([]string, 0, len(fs.Directives))
+	for _, d := range fs.Directives {
 		parts := strings.Split(d, " ")
 		if len(parts) == 0 {
 			continue
 		}
 		if fn, ok := earlyDirectives[parts[0]]; ok {
 			pushstate(parts[0])
-			err := fn(parts, f)
+			err := fn(parts, fs)
 			if err != nil {
 				warnf("early directive error: %s", err)
 			}
@@ -139,7 +139,7 @@ func (f *FileSet) applyEarlyDirectives() {
 			newdirs = append(newdirs, d)
 		}
 	}
-	f.Directives = newdirs
+	fs.Directives = newdirs
 }
 
 // A linkset is a graph of unresolved
@@ -165,12 +165,12 @@ func (f *FileSet) applyEarlyDirectives() {
 // figuring out that D is just a uint64.
 type linkset map[string]*gen.BaseElem
 
-func (f *FileSet) resolve(ls linkset) {
+func (fs *FileSet) resolve(ls linkset) {
 	progress := true
 	for progress && len(ls) > 0 {
 		progress = false
 		for name, elem := range ls {
-			real, ok := f.Identities[elem.TypeName()]
+			real, ok := fs.Identities[elem.TypeName()]
 			if ok {
 				// copy the old type descriptor,
 				// alias it to the new value,
@@ -179,7 +179,7 @@ func (f *FileSet) resolve(ls linkset) {
 				progress = true
 				nt := real.Copy()
 				nt.Alias(name)
-				f.Identities[name] = nt
+				fs.Identities[name] = nt
 				delete(ls, name)
 			}
 		}
@@ -193,18 +193,18 @@ func (f *FileSet) resolve(ls linkset) {
 
 // process takes the contents of f.Specs and
 // uses them to populate f.Identities
-func (f *FileSet) process() {
+func (fs *FileSet) process() {
 	deferred := make(linkset)
 parse:
-	for name, def := range f.Specs {
+	for name, def := range fs.Specs {
 		pushstate(name)
-		el := f.parseExpr(def)
+		el := fs.parseExpr(def)
 		if el == nil {
 			warnf("failed to parse")
 			popstate()
 			continue parse
 		}
-		el.AlwaysPtr(&f.pointerRcv)
+		el.AlwaysPtr(&fs.pointerRcv)
 		// push unresolved identities into
 		// the graph of links and resolve after
 		// we've handled every possible named type.
@@ -214,12 +214,12 @@ parse:
 			continue parse
 		}
 		el.Alias(name)
-		f.Identities[name] = el
+		fs.Identities[name] = el
 		popstate()
 	}
 
 	if len(deferred) > 0 {
-		f.resolve(deferred)
+		fs.resolve(deferred)
 	}
 }
 
@@ -242,13 +242,13 @@ func strToMethod(s string) gen.Method {
 	}
 }
 
-func (f *FileSet) applyDirs(p *gen.Printer) {
+func (fs *FileSet) applyDirs(p *gen.Printer) {
 	// apply directives of the form
 	//
 	// 	//msgp:encode ignore {{TypeName}}
 	//
 loop:
-	for _, d := range f.Directives {
+	for _, d := range fs.Directives {
 		chunks := strings.Split(d, " ")
 		if len(chunks) > 1 {
 			for i := range chunks {
@@ -273,21 +273,21 @@ loop:
 			warnf("empty directive: %q\n", d)
 		}
 	}
-	p.CompactFloats = f.CompactFloats
-	p.ClearOmitted = f.ClearOmitted
-	p.NewTime = f.NewTime
-	p.AsUTC = f.AsUTC
+	p.CompactFloats = fs.CompactFloats
+	p.ClearOmitted = fs.ClearOmitted
+	p.NewTime = fs.NewTime
+	p.AsUTC = fs.AsUTC
 }
 
-func (f *FileSet) PrintTo(p *gen.Printer) error {
-	f.applyDirs(p)
-	names := make([]string, 0, len(f.Identities))
-	for name := range f.Identities {
+func (fs *FileSet) PrintTo(p *gen.Printer) error {
+	fs.applyDirs(p)
+	names := make([]string, 0, len(fs.Identities))
+	for name := range fs.Identities {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		el := f.Identities[name]
+		el := fs.Identities[name]
 		el.SetVarname("z")
 		pushstate(el.TypeName())
 		err := p.Print(el)

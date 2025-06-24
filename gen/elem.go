@@ -255,11 +255,11 @@ ridx:
 }
 
 func (a *Array) TypeName() string {
-	if a.common.alias != "" {
-		return a.common.alias
+	if a.alias != "" {
+		return a.alias
 	}
-	a.common.Alias(fmt.Sprintf("[%s]%s", a.Size, a.Els.TypeName()))
-	return a.common.alias
+	a.Alias(fmt.Sprintf("[%s]%s", a.Size, a.Els.TypeName()))
+	return a.alias
 }
 
 func (a *Array) Copy() Elem {
@@ -303,11 +303,11 @@ ridx:
 }
 
 func (m *Map) TypeName() string {
-	if m.common.alias != "" {
-		return m.common.alias
+	if m.alias != "" {
+		return m.alias
 	}
-	m.common.Alias("map[string]" + m.Value.TypeName())
-	return m.common.alias
+	m.Alias("map[string]" + m.Value.TypeName())
+	return m.alias
 }
 
 func (m *Map) Copy() Elem {
@@ -352,11 +352,11 @@ func (s *Slice) SetVarname(a string) {
 }
 
 func (s *Slice) TypeName() string {
-	if s.common.alias != "" {
-		return s.common.alias
+	if s.alias != "" {
+		return s.alias
 	}
-	s.common.Alias("[]" + s.Els.TypeName())
-	return s.common.alias
+	s.Alias("[]" + s.Els.TypeName())
+	return s.alias
 }
 
 func (s *Slice) Copy() Elem {
@@ -429,11 +429,11 @@ func (s *Ptr) SetVarname(a string) {
 }
 
 func (s *Ptr) TypeName() string {
-	if s.common.alias != "" {
-		return s.common.alias
+	if s.alias != "" {
+		return s.alias
 	}
-	s.common.Alias("*" + s.Value.TypeName())
-	return s.common.alias
+	s.Alias("*" + s.Value.TypeName())
+	return s.alias
 }
 
 func (s *Ptr) Copy() Elem {
@@ -464,8 +464,8 @@ type Struct struct {
 }
 
 func (s *Struct) TypeName() string {
-	if s.common.alias != "" {
-		return s.common.alias
+	if s.alias != "" {
+		return s.alias
 	}
 	str := "struct{\n"
 	for i := range s.Fields {
@@ -474,8 +474,8 @@ func (s *Struct) TypeName() string {
 			" " + s.Fields[i].RawTag + ";\n"
 	}
 	str += "}"
-	s.common.Alias(str)
-	return s.common.alias
+	s.Alias(str)
+	return s.alias
 }
 
 func (s *Struct) SetVarname(a string) {
@@ -625,11 +625,11 @@ func (s *BaseElem) SetVarname(a string) {
 // TypeName returns the syntactically correct Go
 // type name for the base element.
 func (s *BaseElem) TypeName() string {
-	if s.common.alias != "" {
-		return s.common.alias
+	if s.alias != "" {
+		return s.alias
 	}
 	s.common.Alias(s.BaseType())
-	return s.common.alias
+	return s.alias
 }
 
 // ToBase, used if Convert==true, is used as tmp = {{ToBase}}({{Varname}})

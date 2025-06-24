@@ -21,7 +21,7 @@ jobs:
   linters:
     strategy:
       matrix:
-        go-version: [1.23.x]
+        go-version: [1.24.x]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -33,7 +33,7 @@ jobs:
       - name: prepare generated code
         run: make prepare
       - name: lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.60.3
+          version: v2.1.6
           args: --print-resources-usage --timeout=10m --verbose
