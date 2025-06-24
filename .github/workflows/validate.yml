@@ -33,7 +33,7 @@ jobs:
       - name: prepare generated code
         run: make prepare
       - name: lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
           version: v2.1.6
           args: --print-resources-usage --timeout=10m --verbose
