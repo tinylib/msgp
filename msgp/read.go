@@ -201,7 +201,7 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 		return n, io.ErrShortWrite
 	}
 
-	if done, err := m.RecursiveCall(); err != nil {
+	if done, err := m.recursiveCall(); err != nil {
 		return n, err
 	} else {
 		defer done()
@@ -253,17 +253,17 @@ func (m *Reader) SetMaxStringLength(d uint64) {
 	m.maxStrLen = d
 }
 
-// GetMaxStrLen will return the current string length limit.
-func (m *Reader) GetMaxStrLen() uint64 {
+// GetMaxStringLength will return the current string length limit.
+func (m *Reader) GetMaxStringLength() uint64 {
 	if m.maxStrLen <= 0 {
 		return math.MaxUint64
 	}
 	return min(m.maxStrLen, math.MaxUint64)
 }
 
-// RecursiveCall will increment the recursion depth and return an error if it is exceeded.
+// recursiveCall will increment the recursion depth and return an error if it is exceeded.
 // If a nil error is returned, done must be called to decrement the counter.
-func (m *Reader) RecursiveCall() (done func(), err error) {
+func (m *Reader) recursiveCall() (done func(), err error) {
 	if m.recursionDepth >= m.GetMaxRecursionDepth() {
 		return func() {}, ErrRecursion
 	}
@@ -403,7 +403,7 @@ func (m *Reader) Skip() error {
 	}
 
 	// for maps and slices, skip elements with recursive call
-	if done, err := m.RecursiveCall(); err != nil {
+	if done, err := m.recursiveCall(); err != nil {
 		return err
 	} else {
 		defer done()
@@ -463,7 +463,7 @@ func (m *Reader) ReadMapKey(scratch []byte) ([]byte, error) {
 	if err != nil {
 		if tperr, ok := err.(TypeError); ok && tperr.Encoded == BinType {
 			key, err := m.ReadBytes(scratch)
-			if uint64(len(key)) > m.GetMaxStrLen() {
+			if uint64(len(key)) > m.GetMaxStringLength() {
 				return nil, ErrLimitExceeded
 			}
 			return key, err
@@ -519,7 +519,7 @@ fill:
 	if read == 0 {
 		return nil, ErrShortBytes
 	}
-	if uint64(read) > m.GetMaxStrLen() {
+	if uint64(read) > m.GetMaxStringLength() {
 		return nil, ErrLimitExceeded
 	}
 	return m.R.Next(read)
@@ -1128,7 +1128,7 @@ func (m *Reader) ReadStringAsBytes(scratch []byte) (b []byte, err error) {
 		return
 	}
 fill:
-	if uint64(read) > m.GetMaxStrLen() {
+	if uint64(read) > m.GetMaxStringLength() {
 		err = ErrLimitExceeded
 		return
 	}
@@ -1227,7 +1227,7 @@ fill:
 		s, err = "", nil
 		return
 	}
-	if uint64(read) > m.GetMaxStrLen() {
+	if uint64(read) > m.GetMaxStringLength() {
 		err = ErrLimitExceeded
 		return
 	}
@@ -1511,7 +1511,7 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 
 	case MapType:
 		// This can call back here, so treat as recursive call.
-		if done, err := m.RecursiveCall(); err != nil {
+		if done, err := m.recursiveCall(); err != nil {
 			return nil, err
 		} else {
 			defer done()
@@ -1543,7 +1543,7 @@ func (m *Reader) ReadIntf() (i interface{}, err error) {
 			return
 		}
 
-		if done, err := m.RecursiveCall(); err != nil {
+		if done, err := m.recursiveCall(); err != nil {
 			return nil, err
 		} else {
 			defer done()
