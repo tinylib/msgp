@@ -154,7 +154,7 @@ type Reader struct {
 	recursionDepth int
 
 	maxRecursionDepth int    // maximum recursion depth
-	maxElements       int    // maximum number of elements in arrays and maps
+	maxElements       uint32 // maximum number of elements in arrays and maps
 	maxStrLen         uint64 // maximum number of bytes in any string
 }
 
@@ -233,9 +233,9 @@ func (m *Reader) GetMaxRecursionDepth() int {
 }
 
 // SetMaxElements sets the maximum number of elements to allow in map, bin, array or extension payload.
-// Setting this to <= 0 will allow any number of elements - math.MaxUint32.
+// Setting this to 0 will allow any number of elements - math.MaxUint32.
 // This does currently apply to generated code.
-func (m *Reader) SetMaxElements(d int) {
+func (m *Reader) SetMaxElements(d uint32) {
 	m.maxElements = d
 }
 
@@ -244,7 +244,7 @@ func (m *Reader) GetMaxElements() uint32 {
 	if m.maxElements <= 0 {
 		return math.MaxUint32
 	}
-	return uint32(min(m.maxElements, math.MaxUint32))
+	return m.maxElements
 }
 
 // SetMaxStringLength sets the maximum number of bytes to allow in strings.
