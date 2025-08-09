@@ -25,8 +25,12 @@ type FileSet struct {
 	ClearOmitted  bool                // Set omitted fields to zero value
 	NewTime       bool                // Set to use -1 extension for time.Time
 	AsUTC         bool                // Set timezone to UTC instead of local
-	tagName       string              // tag to read field names from
-	pointerRcv    bool                // generate with pointer receivers.
+	AllowMapShims bool                // Allow map keys to be shimmed (default true)
+	AllowBinMaps  bool                // Allow maps with binary keys to be used (default false)
+	AutoMapShims  bool                // Automatically shim map keys of builtin types(default false)
+
+	tagName    string // tag to read field names from
+	pointerRcv bool   // generate with pointer receivers.
 }
 
 // File parses a file at the relative path
@@ -507,6 +511,8 @@ func stringify(e ast.Expr) string {
 		if e.Methods == nil || e.Methods.NumFields() == 0 {
 			return "interface{}"
 		}
+	case *ast.BasicLit:
+		return e.Value
 	}
 	return "<BAD>"
 }
@@ -524,10 +530,54 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	switch e := e.(type) {
 
 	case *ast.MapType:
-		if k, ok := e.Key.(*ast.Ident); ok && k.Name == "string" {
-			if in := fs.parseExpr(e.Value); in != nil {
-				return &gen.Map{Value: in}
+		switch k := e.Key.(type) {
+		case *ast.Ident:
+			switch k.Name {
+			case "string":
+				if in := fs.parseExpr(e.Value); in != nil {
+					return &gen.Map{Value: in, AllowBinMaps: fs.AllowBinMaps, AllowMapShims: fs.AllowMapShims, AutoMapShims: fs.AutoMapShims}
+				}
+				warnf("%s: map keys of type  are not supported\n", stringify(e.Key))
+			default:
+				if !fs.AllowMapShims && !fs.AllowBinMaps {
+					warnf("map keys of type %s are not supported without binary keys or shimming\n", stringify(e.Key))
+					return nil
+				}
+				// Allow for other types, assuming they will be shimmed later.
+				key := fs.parseExpr(k)
+				// Types that aren't idents are native types and cannot currently be used as map keys.
+				switch k := key.(type) {
+				case *gen.BaseElem:
+					switch k.Value {
+					case gen.IDENT:
+						if in := fs.parseExpr(e.Value); in != nil {
+							return &gen.Map{Value: in, Key: key, AllowBinMaps: fs.AllowBinMaps, AllowMapShims: fs.AllowMapShims, AutoMapShims: fs.AutoMapShims}
+						}
+						warnf("map keys of type %s are not supported\n", k.TypeName())
+						// Exclude types that cannot be used as native map keys.
+					case gen.Bytes:
+						warnf("map keys of type %s are not supported\n", k.TypeName())
+					default:
+						if in := fs.parseExpr(e.Value); fs.AllowBinMaps && in != nil {
+							return &gen.Map{Value: in, Key: key, AllowBinMaps: fs.AllowBinMaps, AllowMapShims: fs.AllowMapShims, AutoMapShims: fs.AutoMapShims}
+						}
+						warnf("map keys of type %s are not supported without binary keys or shimming\n", k.TypeName())
+					}
+				default:
+					warnf("map keys of type %s are not supported\n", k.TypeName())
+				}
+				return nil
 			}
+		case *ast.ArrayType:
+			if fs.AllowBinMaps {
+				key := fs.parseExpr(k)
+				if in := fs.parseExpr(e.Value); fs.AllowBinMaps && in != nil {
+					return &gen.Map{Value: in, Key: key, AllowBinMaps: fs.AllowBinMaps, AllowMapShims: fs.AllowMapShims, AutoMapShims: fs.AutoMapShims}
+				}
+			}
+			warnf("array map keys (type %s) are not supported without binary keys or shimming\n", stringify(e.Key))
+		default:
+			warnf("array map key type not supported\n")
 		}
 		return nil
 
@@ -539,7 +589,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		// everything else.
 		if b.Value == gen.IDENT {
 			if _, ok := fs.Specs[e.Name]; !ok {
-				warnf("non-local identifier: %s\n", e.Name)
+				warnf("possible non-local identifier: %s\n", e.Name)
 			}
 		}
 		return b

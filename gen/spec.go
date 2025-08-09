@@ -356,12 +356,34 @@ func (p *printer) mapAssign(m *Map) {
 	if !p.ok() {
 		return
 	}
+
+	if key, ok := m.Key.(*BaseElem); ok {
+		if fromBase := key.FromBase(); !m.AllowBinMaps && fromBase != "" {
+			if key.Value == String && key.ShimFromBase != "" {
+				p.printf("\nvar %sTmp %s", m.Keyidx, key.TypeName())
+				if key.ShimErrs {
+					p.printf("\n%sTmp, err = %s(%s)", m.Keyidx, fromBase, m.Keyidx)
+					p.wrapErrCheck("\"shim: " + fromBase + "\"")
+				} else {
+					p.printf("\n%sTmp = %s(%s)", m.Keyidx, fromBase, m.Keyidx)
+				}
+				p.printf("\n%s[%sTmp] = %s", m.Varname(), m.Keyidx, m.Validx)
+				return
+			} else if key.Value == IDENT {
+				p.printf("\n%s[%s(%s)] = %s", m.Varname(), fromBase, m.Keyidx, m.Validx)
+				return
+			} else {
+				p.printf("\n%s[%s(%s)] = %s", m.Varname(), fromBase, m.Keyidx, m.Validx)
+				return
+			}
+		}
+	}
 	p.printf("\n%s[%s] = %s", m.Varname(), m.Keyidx, m.Validx)
 }
 
 // clear map keys
 func (p *printer) clearMap(name string) {
-	p.printf("\nfor key := range %[1]s { delete(%[1]s, key) }", name)
+	p.printf("\nclear(%[1]s)", name)
 }
 
 func (p *printer) wrapErrCheck(ctx string) {

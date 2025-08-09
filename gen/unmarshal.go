@@ -247,7 +247,7 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 
 	// close 'tmp' block
 	if b.Convert && b.Value != IDENT {
-		if b.ShimMode == Cast {
+		if b.ShimMode == Cast && !b.ShimErrs {
 			u.p.printf("\n%s = %s(%s)\n", b.Varname(), b.FromBase(), refname)
 		} else {
 			u.p.printf("\n%s, err = %s(%s)\n", b.Varname(), b.FromBase(), refname)
@@ -309,8 +309,8 @@ func (u *unmarshalGen) gMap(m *Map) {
 
 	// loop and get key,value
 	u.p.printf("\nfor %s > 0 {", sz)
-	u.p.printf("\nvar %s string; var %s %s; %s--", m.Keyidx, m.Validx, m.Value.TypeName(), sz)
-	u.assignAndCheck(m.Keyidx, stringTyp)
+	u.p.printf("\nvar %s %s; %s--", m.Validx, m.Value.TypeName(), sz)
+	m.readKey(u.ctx, u.p, u, u.assignAndCheck)
 	u.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)
 	next(u, m.Value)

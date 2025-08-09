@@ -342,3 +342,7 @@ type Flob struct {
 }
 
 type Numberwang int8
+
+//msgp:ignore ExternalString
+type ExternalString string
+type ExternalArr [4]byte
