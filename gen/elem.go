@@ -459,8 +459,9 @@ func (s *Ptr) IfZeroExpr() string { return s.Varname() + " == nil" }
 
 type Struct struct {
 	common
-	Fields  []StructField // field list
-	AsTuple bool          // write as an array instead of a map
+	Fields     []StructField // field list
+	AsTuple    bool          // write as an array instead of a map
+	AsVarTuple bool          // write as an array of variable length instead of a map
 }
 
 func (s *Struct) TypeName() string {

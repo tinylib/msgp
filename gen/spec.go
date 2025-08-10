@@ -386,6 +386,10 @@ func (p *printer) arrayCheck(want string, got string) {
 	p.printf("\nif %[1]s != %[2]s { err = msgp.ArrayError{Wanted: %[2]s, Got: %[1]s}; return }", got, want)
 }
 
+func (p *printer) arrayEmptyCheck(sizeVar string) {
+	p.printf("\nif %[1]s == 0 { return }", sizeVar)
+}
+
 func (p *printer) closeblock() { p.print("\n}") }
 
 // does:
