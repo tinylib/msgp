@@ -77,7 +77,7 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
 	if s.AsVarTuple {
-		d.p.arrayEmptyCheck(sz)
+		d.p.printf("\nif %[1]s == 0 { return }", sz)
 	} else {
 		d.p.arrayCheck(strconv.Itoa(len(s.Fields)), sz)
 	}
