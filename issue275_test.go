@@ -1,14 +1,6 @@
 package main
 
-import (
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"testing"
-
-	"github.com/tinylib/msgp/gen"
-)
+import "testing"
 
 func TestIssue275Tuples(t *testing.T) {
 	mainFilename, err := generate(t, issue275Tuples)
@@ -17,40 +9,6 @@ func TestIssue275Tuples(t *testing.T) {
 	}
 	goExec(t, mainFilename, false) // exec go run
 	goExec(t, mainFilename, true)  // exec go test
-}
-
-func generate(t *testing.T, content string) (string, error) {
-	tempDir := t.TempDir()
-
-	tfile := filepath.Join(tempDir, "main.go")
-
-	fd, err := os.OpenFile(tfile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o600)
-	if err != nil {
-		return "", err
-	}
-	defer fd.Close()
-
-	if _, err := fd.WriteString(issue275Tuples); err != nil {
-		return "", err
-	}
-
-	mode := gen.Encode | gen.Decode | gen.Size | gen.Marshal | gen.Unmarshal | gen.Test
-	return tfile, Run(tfile, mode, false)
-}
-
-func goExec(t *testing.T, mainFilename string, test bool) {
-	mainGenFilename := strings.TrimSuffix(mainFilename, ".go") + "_gen.go"
-
-	args := []string{"run", mainFilename, mainGenFilename}
-	if test {
-		mainGenTestFilename := strings.TrimSuffix(mainFilename, ".go") + "_gen_test.go"
-		args = []string{"test", mainFilename, mainGenFilename, mainGenTestFilename}
-	}
-
-	output, err := exec.Command("go", args...).CombinedOutput()
-	if err != nil {
-		t.Fatalf("go run failed: %v, output:\n%s", err, output)
-	}
 }
 
 var issue275Tuples = `package main
