@@ -46,6 +46,7 @@ type MyMapKeyStruct2 struct {
 	MapInt32      map[int32]int          `msg:",allownil"`
 	MapInt64      map[int64]int          `msg:",allownil"`
 	MapBool       map[bool]int           `msg:",allownil"`
+	MapMapInt     map[int]map[int]int    `msg:",allownil"`
 
 	// Maps with array keys
 	MapArray  map[[4]byte]int     `msg:",allownil"`

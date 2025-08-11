@@ -43,6 +43,7 @@ func TestBinKeys(t *testing.T) {
 			test.MapArray3 = make(map[ExternalArr]int)
 			test.MapArray4 = make(map[[4]uint32]int)
 			test.MapDuration = make(map[mapKeyShimmed]int)
+			test.MapMapInt = make(map[int]map[int]int)
 
 			for range rng.IntN(50) {
 				test.MapString[string(strconv.Itoa(rng.IntN(math.MaxInt32)))] = rng.IntN(100)
@@ -137,8 +138,14 @@ func TestBinKeys(t *testing.T) {
 				test.MapArray4[k] = rng.IntN(100)
 			}
 			for range rng.IntN(50) {
-				// Use only non-negative values to stay within IntN capabilities
 				test.MapDuration[mapKeyShimmed(rng.IntN(math.MaxInt32))] = rng.IntN(100)
+			}
+			for range rng.IntN(50) {
+				dst := make(map[int]int, 50)
+				test.MapMapInt[rng.Int()] = dst
+				for range rng.IntN(50) {
+					dst[rng.Int()] = rng.IntN(100)
+				}
 			}
 		}
 		var encoded [][]byte

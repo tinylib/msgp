@@ -337,8 +337,6 @@ func (m *Map) readKey(ctx *Context, p printer, t traversal, assignAndCheck func(
 	// No key, so we assume the key as a string.
 	p.declare(m.Keyidx, "string")
 	assignAndCheck(m.Keyidx, stringTyp)
-	p.wrapErrCheck(ctx.ArgsStr())
-
 }
 
 func (m *Map) Complexity() int {
