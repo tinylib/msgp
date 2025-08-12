@@ -26,6 +26,7 @@ var directives = map[string]directive{
 	"replace":       replace,
 	"ignore":        ignore,
 	"tuple":         astuple,
+	"vartuple":      asvartuple,
 	"compactfloats": compactfloats,
 	"clearomitted":  clearomitted,
 	"newtime":       newtime,
@@ -167,6 +168,26 @@ func astuple(text []string, f *FileSet) error {
 		if el, ok := f.Identities[name]; ok {
 			if st, ok := el.(*gen.Struct); ok {
 				st.AsTuple = true
+				infof(name)
+			} else {
+				warnf("%s: only structs can be tuples\n", name)
+			}
+		}
+	}
+	return nil
+}
+
+//msgp:vartuple {TypeA} {TypeB}...
+func asvartuple(text []string, f *FileSet) error {
+	if len(text) < 2 {
+		return nil
+	}
+	for _, item := range text[1:] {
+		name := strings.TrimSpace(item)
+		if el, ok := f.Identities[name]; ok {
+			if st, ok := el.(*gen.Struct); ok {
+				st.AsTuple = true
+				st.AsVarTuple = true
 				infof(name)
 			} else {
 				warnf("%s: only structs can be tuples\n", name)

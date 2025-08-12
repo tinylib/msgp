@@ -77,7 +77,11 @@ func (u *unmarshalGen) tuple(s *Struct) {
 	sz := randIdent()
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, arrayHeader)
-	u.p.arrayCheck(strconv.Itoa(len(s.Fields)), sz)
+	if s.AsVarTuple {
+		u.p.printf("\nif %[1]s == 0 {\no = bts\nreturn\n}", sz)
+	} else {
+		u.p.arrayCheck(strconv.Itoa(len(s.Fields)), sz)
+	}
 	for i := range s.Fields {
 		if !u.p.ok() {
 			return
@@ -101,6 +105,12 @@ func (u *unmarshalGen) tuple(s *Struct) {
 		if anField {
 			u.p.printf("\n}")
 		}
+		if s.AsVarTuple {
+			u.p.printf("\nif %[1]s--; %[1]s == 0 {\no = bts\nreturn\n}", sz)
+		}
+	}
+	if s.AsVarTuple {
+		u.p.printf("\nfor ; %[1]s > 0; %[1]s-- {\nbts, err = msgp.Skip(bts)\nif err != nil {\nerr = msgp.WrapError(err)\nreturn\n}\n}", sz)
 	}
 }
 

@@ -97,9 +97,7 @@ func (e *encodeGen) tuple(s *Struct) {
 	data := msgp.AppendArrayHeader(nil, uint32(nfields))
 	e.p.printf("\n// array header, size %d", nfields)
 	e.Fuse(data)
-	if len(s.Fields) == 0 {
-		e.fuseHook()
-	}
+	e.fuseHook()
 	for i := range s.Fields {
 		if !e.p.ok() {
 			return

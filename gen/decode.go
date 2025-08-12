@@ -73,12 +73,14 @@ func (d *decodeGen) assignAndCheck(name string, typ string) {
 }
 
 func (d *decodeGen) structAsTuple(s *Struct) {
-	nfields := len(s.Fields)
-
 	sz := randIdent()
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
-	d.p.arrayCheck(strconv.Itoa(nfields), sz)
+	if s.AsVarTuple {
+		d.p.printf("\nif %[1]s == 0 { return }", sz)
+	} else {
+		d.p.arrayCheck(strconv.Itoa(len(s.Fields)), sz)
+	}
 	for i := range s.Fields {
 		if !d.p.ok() {
 			return
@@ -98,6 +100,12 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 		if anField {
 			d.p.printf("\n}") // close if statement
 		}
+		if s.AsVarTuple {
+			d.p.printf("\nif %[1]s--; %[1]s == 0 { return }", sz)
+		}
+	}
+	if s.AsVarTuple {
+		d.p.printf("\nfor ; %[1]s > 0; %[1]s-- {\nif err = dc.Skip(); err != nil {\nerr = msgp.WrapError(err)\nreturn\n}\n}", sz)
 	}
 }
 
