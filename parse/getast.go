@@ -539,7 +539,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 				}
 				warnf("%s: map keys of type  are not supported\n", stringify(e.Key))
 			default:
-				if !fs.AllowMapShims && !fs.AllowBinMaps {
+				if !fs.AllowMapShims && !fs.AllowBinMaps && !fs.AutoMapShims {
 					warnf("map keys of type %s are not supported without binary keys or shimming\n", stringify(e.Key))
 					return nil
 				}
@@ -558,7 +558,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 					case gen.Bytes:
 						warnf("map keys of type %s are not supported\n", k.TypeName())
 					default:
-						if in := fs.parseExpr(e.Value); fs.AllowBinMaps && in != nil {
+						if in := fs.parseExpr(e.Value); (fs.AllowBinMaps || (fs.AutoMapShims && gen.CanAutoShim[k.Value])) && in != nil {
 							return &gen.Map{Value: in, Key: key, AllowBinMaps: fs.AllowBinMaps, AllowMapShims: fs.AllowMapShims, AutoMapShims: fs.AutoMapShims}
 						}
 						warnf("map keys of type %s are not supported without binary keys or shimming\n", k.TypeName())

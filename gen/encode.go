@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -255,7 +256,9 @@ func (e *encodeGen) gMap(m *Map) {
 		} else {
 			keyIdx := m.Keyidx
 			if key, ok := m.Key.(*BaseElem); ok {
-				if key.Value == String {
+				if m.AutoMapShims && CanAutoShim[key.Value] {
+					keyIdx = fmt.Sprintf("msgp.AutoShim{}.%sString(%s(%s))", key.Value.String(), strings.ToLower(key.Value.String()), keyIdx)
+				} else if key.Value == String {
 					keyIdx = fmt.Sprintf("%s(%s)", key.ToBase(), keyIdx)
 				} else if key.alias != "" {
 					keyIdx = fmt.Sprintf("string(%s)", keyIdx)

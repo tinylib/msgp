@@ -351,6 +351,9 @@ func (p *printer) resizeMap(size string, m *Map) {
 	p.closeblock()
 }
 
+// CanAutoShim contains the primitives that can be auto-shimmed.
+var CanAutoShim = map[Primitive]bool{Uint: true, Uint8: true, Uint16: true, Uint32: true, Uint64: true, Int: true, Int8: true, Int16: true, Int32: true, Int64: true, Bool: true, Float32: true, Float64: true, Byte: true}
+
 // assign key to value based on varnames
 func (p *printer) mapAssign(m *Map) {
 	if !p.ok() {
@@ -358,7 +361,13 @@ func (p *printer) mapAssign(m *Map) {
 	}
 
 	if key, ok := m.Key.(*BaseElem); ok {
-		if fromBase := key.FromBase(); !m.AllowBinMaps && fromBase != "" {
+		fromBase := key.FromBase()
+		shimErr := key.ShimErrs
+		if m.AutoMapShims && CanAutoShim[key.Value] {
+			fromBase = "msgp.AutoShim{}.Parse" + key.Value.String()
+			shimErr = true
+		}
+		if !m.AllowBinMaps && fromBase != "" {
 			if key.Value == String && key.ShimFromBase != "" {
 				p.printf("\nvar %sTmp %s", m.Keyidx, key.TypeName())
 				if key.ShimErrs {
@@ -373,7 +382,14 @@ func (p *printer) mapAssign(m *Map) {
 				p.printf("\n%s[%s(%s)] = %s", m.Varname(), fromBase, m.Keyidx, m.Validx)
 				return
 			} else {
-				p.printf("\n%s[%s(%s)] = %s", m.Varname(), fromBase, m.Keyidx, m.Validx)
+				if shimErr {
+					p.printf("\nvar %sTmp %s", m.Keyidx, strings.ToLower(key.Value.String()))
+					p.printf("\n%sTmp, err = %s(%s)", m.Keyidx, fromBase, m.Keyidx)
+					p.wrapErrCheck("\"shim: " + m.Varname() + "\"")
+					p.printf("\n%s[%s(%sTmp)] = %s", m.Varname(), key.FromBase(), m.Keyidx, m.Validx)
+				} else {
+					p.printf("\n%s[%s(%s)] = %s", m.Varname(), fromBase, m.Keyidx, m.Validx)
+				}
 				return
 			}
 		}

@@ -249,12 +249,27 @@ func maps(text []string, f *FileSet) (err error) {
 			if err != nil {
 				return fmt.Errorf("invalid binkeys directive; found %s, expected 'true' or 'false'", arg)
 			}
+		case strings.HasPrefix(arg, "autoshim"):
+			arg = strings.TrimPrefix(arg, "autoshim")
+			if len(arg) == 0 {
+				f.AutoMapShims = true
+				continue
+			}
+			f.AutoMapShims, err = strconv.ParseBool(strings.TrimPrefix(arg, ":"))
+			if err != nil {
+				return fmt.Errorf("invalid autoshim directive; found %s, expected 'true' or 'false'", arg)
+			}
 		default:
 			if err != nil {
-				return fmt.Errorf("invalid binkeys directive; found %s, expected 'true' or 'false'", arg)
+				return fmt.Errorf("invalid autoshim directive; found %s, expected 'true' or 'false'", arg)
 			}
 		}
 	}
+	if f.AllowBinMaps && f.AutoMapShims {
+		warnf("both binkeys and autoshim are enabled; ignoring autoshim\n")
+		f.AutoMapShims = false
+	}
+	infof("shim:%t binkeys:%t autoshim:%t\n", f.AllowMapShims, f.AllowBinMaps, f.AutoMapShims)
 	return nil
 }
 
