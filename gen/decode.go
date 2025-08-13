@@ -244,7 +244,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 
 	// close block for 'tmp'
 	if b.Convert && b.Value != IDENT {
-		if b.ShimMode == Cast {
+		if b.ShimMode == Cast && !b.ShimErrs {
 			d.p.printf("\n%s = %s(%s)\n}", vname, b.FromBase(), tmp)
 		} else {
 			d.p.printf("\n%s, err = %s(%s)\n}", vname, b.FromBase(), tmp)
@@ -268,9 +268,8 @@ func (d *decodeGen) gMap(m *Map) {
 	// pair and assign
 	d.needsField()
 	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
-	d.p.declare(m.Keyidx, "string")
+	m.readKey(d.ctx, d.p, d, d.assignAndCheck)
 	d.p.declare(m.Validx, m.Value.TypeName())
-	d.assignAndCheck(m.Keyidx, stringTyp)
 	d.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)
 	next(d, m.Value)

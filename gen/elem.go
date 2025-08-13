@@ -282,10 +282,14 @@ func (a *Array) IfZeroExpr() string { return "" }
 // Map is a map[string]Elem
 type Map struct {
 	common
-	Keyidx     string // key variable name
-	Validx     string // value variable name
-	Value      Elem   // value element
-	isAllowNil bool
+	Keyidx        string // key variable name
+	Validx        string // value variable name
+	Key           Elem   // key element (if not string)
+	Value         Elem   // value element
+	AllowMapShims bool   // Allow map keys to be shimmed (default true)
+	AllowBinMaps  bool   // Allow maps with binary keys to be used (default false)
+	AutoMapShims  bool   // Automatically shim map keys of builtin types(default false)
+	isAllowNil    bool
 }
 
 func (m *Map) SetVarname(s string) {
@@ -306,7 +310,11 @@ func (m *Map) TypeName() string {
 	if m.alias != "" {
 		return m.alias
 	}
-	m.Alias("map[string]" + m.Value.TypeName())
+	keyType := "string"
+	if m.Key != nil {
+		keyType = m.Key.TypeName()
+	}
+	m.Alias("map[" + keyType + "]" + m.Value.TypeName())
 	return m.alias
 }
 
@@ -314,6 +322,21 @@ func (m *Map) Copy() Elem {
 	g := *m
 	g.Value = m.Value.Copy()
 	return &g
+}
+
+// readKey will read the key into the variable named by m.Keyidx.
+func (m *Map) readKey(ctx *Context, p printer, t traversal, assignAndCheck func(name string, base string)) {
+	if m.Key != nil && m.AllowBinMaps {
+		p.declare(m.Keyidx, m.Key.TypeName())
+		ctx.PushVar(m.Keyidx)
+		m.Key.SetVarname(m.Keyidx)
+		next(t, m.Key)
+		ctx.Pop()
+		return
+	}
+	// No key, so we assume the key as a string.
+	p.declare(m.Keyidx, "string")
+	assignAndCheck(m.Keyidx, stringTyp)
 }
 
 func (m *Map) Complexity() int {
@@ -575,6 +598,7 @@ type BaseElem struct {
 	ShimMode     ShimMode  // Method used to shim
 	ShimToBase   string    // shim to base type, or empty
 	ShimFromBase string    // shim from base type, or empty
+	ShimErrs     bool      // ShimToBase has errors on function
 	Value        Primitive // Type of element
 	Convert      bool      // should we do an explicit conversion?
 	zerocopy     bool      // Allow zerocopy for byte slices in unmarshal.
