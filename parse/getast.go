@@ -35,12 +35,13 @@ type FileSet struct {
 // directory will be parsed.
 // If unexport is false, only exported identifiers are included in the FileSet.
 // If the resulting FileSet would be empty, an error is returned.
-func File(name string, unexported bool) (*FileSet, error) {
+func File(name string, unexported bool, directives []string) (*FileSet, error) {
 	pushstate(name)
 	defer popstate()
 	fs := &FileSet{
 		Specs:      make(map[string]ast.Expr),
 		Identities: make(map[string]gen.Elem),
+		Directives: append([]string{}, directives...),
 	}
 
 	fset := token.NewFileSet()
@@ -77,7 +78,7 @@ func File(name string, unexported bool) (*FileSet, error) {
 			return nil, err
 		}
 		fs.Package = f.Name.Name
-		fs.Directives = yieldComments(f.Comments)
+		fs.Directives = append(fs.Directives, yieldComments(f.Comments)...)
 		if !unexported {
 			ast.FileExports(f)
 		}

@@ -203,29 +203,34 @@ func tag(text []string, f *FileSet) error {
 		return nil
 	}
 	f.tagName = strings.TrimSpace(text[1])
+	infof("using field tag %q\n", f.tagName)
 	return nil
 }
 
 //msgp:pointer
 func pointer(text []string, f *FileSet) error {
+	infof("using pointer receiver\n")
 	f.pointerRcv = true
 	return nil
 }
 
 //msgp:compactfloats
 func compactfloats(text []string, f *FileSet) error {
+	infof("using compact floats\n")
 	f.CompactFloats = true
 	return nil
 }
 
 //msgp:clearomitted
 func clearomitted(text []string, f *FileSet) error {
+	infof("clearing omitted fields\n")
 	f.ClearOmitted = true
 	return nil
 }
 
 //msgp:newtime
 func newtime(text []string, f *FileSet) error {
+	infof("using new time encoding\n")
 	f.NewTime = true
 	return nil
 }
@@ -243,5 +248,6 @@ func newtimezone(text []string, f *FileSet) error {
 	default:
 		return fmt.Errorf("timezone directive should be either 'local' or 'utc'; found %q", text[1])
 	}
+	infof("using timezone %q\n", text[1])
 	return nil
 }
