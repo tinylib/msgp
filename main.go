@@ -39,7 +39,7 @@ var (
 	encode     = flag.Bool("io", true, "create Encode and Decode methods")
 	marshal    = flag.Bool("marshal", true, "create Marshal and Unmarshal methods")
 	tests      = flag.Bool("tests", true, "create tests and benchmarks")
-	unexported = flag.Bool("unexported", false, "also process unexported types")
+	unexported = flag.Bool("unexported", false, "also process unexported types and fields")
 	verbose    = flag.Bool("v", false, "verbose diagnostics")
 	directives = stringArrFlags{}
 )
