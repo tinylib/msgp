@@ -1,13 +1,9 @@
 package _generated
 
-//go:generate msgp
-
-//msgp:compactfloats
+//go:generate msgp -d "msgp:compactfloats" -d "replace F64 with:float64" -v
 
 //msgp:ignore F64
 type F64 float64
-
-//msgp:replace F64 with:float64
 
 type Floats struct {
 	A     float64

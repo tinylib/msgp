@@ -1,7 +1,6 @@
 package _generated
 
-//go:generate msgp
-//msgp:tag mytag
+//go:generate msgp -d "tag mytag"
 
 type CustomTag struct {
 	Foo string `mytag:"foo_custom_name"`

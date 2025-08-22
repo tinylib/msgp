@@ -41,6 +41,7 @@ var (
 	tests      = flag.Bool("tests", true, "create tests and benchmarks")
 	unexported = flag.Bool("unexported", false, "also process unexported types")
 	verbose    = flag.Bool("v", false, "verbose diagnostics")
+	directives = stringArrFlags{}
 )
 
 func diagf(f string, args ...interface{}) {
@@ -59,11 +60,16 @@ func exitln(res string) {
 }
 
 func main() {
+	flag.Var(&directives, "d", "apply directive to all files. Multiple -d flags allowed. 'msgp:' can be omitted")
 	flag.Parse()
 
 	if *verbose {
 		printer.Logf = diagf
 		parse.Logf = diagf
+	}
+	for i, v := range directives {
+		// Trim prefix and whitespace, if any.
+		directives[i] = strings.TrimPrefix(strings.TrimSpace(v), "msgp:")
 	}
 
 	// GOFILE is set by go generate
@@ -102,7 +108,7 @@ func Run(gofile string, mode gen.Method, unexported bool) error {
 		return nil
 	}
 	diagf("Input: \"%s\"\n", gofile)
-	fs, err := parse.File(gofile, unexported)
+	fs, err := parse.File(gofile, unexported, directives)
 	if err != nil {
 		return err
 	}
@@ -129,4 +135,18 @@ func newFilename(old string, pkg string) string {
 	}
 	// new file name is old file name + _gen.go
 	return strings.TrimSuffix(old, ".go") + "_gen.go"
+}
+
+// stringArrFlags is a flag.Value that accepts multiple values
+type stringArrFlags []string
+
+// String is an implementation of the flag.Value interface
+func (i *stringArrFlags) String() string {
+	return fmt.Sprintf("%v", *i)
+}
+
+// Set is an implementation of the flag.Value interface
+func (i *stringArrFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
 }
