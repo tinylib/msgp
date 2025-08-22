@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -244,7 +245,28 @@ func (e *encodeGen) gMap(m *Map) {
 	e.writeAndCheck(mapHeader, lenAsUint32, vname)
 
 	e.p.printf("\nfor %s, %s := range %s {", m.Keyidx, m.Validx, vname)
-	e.writeAndCheck(stringTyp, literalFmt, m.Keyidx)
+	if m.Key != nil {
+		if m.AllowBinMaps {
+			e.ctx.PushVar(m.Keyidx)
+			m.Key.SetVarname(m.Keyidx)
+			next(e, m.Key)
+			e.ctx.Pop()
+		} else {
+			keyIdx := m.Keyidx
+			if key, ok := m.Key.(*BaseElem); ok {
+				if m.AutoMapShims && CanAutoShim[key.Value] {
+					keyIdx = fmt.Sprintf("msgp.AutoShim{}.%sString(%s(%s))", key.Value.String(), strings.ToLower(key.Value.String()), keyIdx)
+				} else if key.Value == String {
+					keyIdx = fmt.Sprintf("%s(%s)", key.ToBase(), keyIdx)
+				} else if key.alias != "" {
+					keyIdx = fmt.Sprintf("string(%s)", keyIdx)
+				}
+			}
+			e.writeAndCheck(stringTyp, literalFmt, keyIdx)
+		}
+	} else {
+		e.writeAndCheck(stringTyp, literalFmt, m.Keyidx)
+	}
 	e.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)
 	next(e, m.Value)

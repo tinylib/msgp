@@ -184,7 +184,24 @@ func (s *sizeGen) gMap(m *Map) {
 	s.p.printf("\nif %s != nil {", vn)
 	s.p.printf("\nfor %s, %s := range %s {", m.Keyidx, m.Validx, vn)
 	s.p.printf("\n_ = %s", m.Validx) // we may not use the value
-	s.p.printf("\ns += msgp.StringPrefixSize + len(%s)", m.Keyidx)
+	keyIdx := m.Keyidx
+	if key, ok := m.Key.(*BaseElem); ok {
+		switch key.Value {
+		case String, IDENT, Bytes:
+			if toBase := key.ToBase(); toBase != "" {
+				keyIdx = fmt.Sprintf("%s(%s)", toBase, keyIdx)
+				s.p.printf("\ns += msgp.StringPrefixSize + len(%s)", keyIdx)
+			} else if key.Value == IDENT && key.ShimToBase == "" && m.AllowBinMaps {
+				s.p.printf("\ns += %s.Msgsize()", keyIdx)
+			}
+		default:
+			// A bit clunky - we likely have a fixed size
+			s.p.printf("\n_ = %s", m.Keyidx) // we will not use the key
+			s.p.printf("\ns += %s", builtinSize(key.Value.String()))
+		}
+	} else {
+		s.p.printf("\ns += msgp.StringPrefixSize + len(%s)", keyIdx)
+	}
 	s.state = expr
 	s.ctx.PushVar(m.Keyidx)
 	next(s, m.Value)

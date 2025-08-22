@@ -46,6 +46,9 @@ func (fs *FileSet) findShim(id string, e gen.Elem, addID bool) {
 			fs.nextShim(&el.Els, id, e)
 		case *gen.Map:
 			fs.nextShim(&el.Value, id, e)
+			if el.Key != nil {
+				fs.nextShim(&el.Key, id, e)
+			}
 		case *gen.Ptr:
 			fs.nextShim(&el.Value, id, e)
 		}
@@ -73,6 +76,9 @@ func (fs *FileSet) nextShim(ref *gen.Elem, id string, e gen.Elem) {
 			fs.nextShim(&el.Els, id, e)
 		case *gen.Map:
 			fs.nextShim(&el.Value, id, e)
+			if el.Key != nil {
+				fs.nextShim(&el.Key, id, e)
+			}
 		case *gen.Ptr:
 			fs.nextShim(&el.Value, id, e)
 		}

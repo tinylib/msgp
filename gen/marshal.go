@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -249,7 +250,30 @@ func (m *marshalGen) gMap(s *Map) {
 	vname := s.Varname()
 	m.rawAppend(mapHeader, lenAsUint32, vname)
 	m.p.printf("\nfor %s, %s := range %s {", s.Keyidx, s.Validx, vname)
-	m.rawAppend(stringTyp, literalFmt, s.Keyidx)
+	// Shim key to base type if necessary.
+	if s.Key != nil {
+		if s.AllowBinMaps {
+			m.ctx.PushVar(s.Keyidx)
+			s.Key.SetVarname(s.Keyidx)
+			next(m, s.Key)
+			m.ctx.Pop()
+		} else {
+			keyIdx := s.Keyidx
+			if key, ok := s.Key.(*BaseElem); ok {
+				if s.AutoMapShims && CanAutoShim[key.Value] {
+					keyIdx = fmt.Sprintf("msgp.AutoShim{}.%sString(%s(%s))", key.Value.String(), strings.ToLower(key.Value.String()), keyIdx)
+				} else if key.Value == String {
+					keyIdx = fmt.Sprintf("%s(%s)", key.ToBase(), keyIdx)
+				} else if key.alias != "" {
+					keyIdx = fmt.Sprintf("string(%s)", keyIdx)
+				}
+			}
+			m.rawAppend(stringTyp, literalFmt, keyIdx)
+		}
+	} else {
+		m.rawAppend(stringTyp, literalFmt, s.Keyidx)
+	}
+
 	m.ctx.PushVar(s.Keyidx)
 	s.Value.SetIsAllowNil(false)
 	next(m, s.Value)

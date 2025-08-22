@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"strconv"
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
@@ -41,6 +42,7 @@ var directives = map[string]directive{
 var earlyDirectives = map[string]directive{
 	"tag":     tag,
 	"pointer": pointer,
+	"maps":    maps,
 }
 
 var passDirectives = map[string]passDirective{
@@ -72,8 +74,8 @@ func yieldComments(c []*ast.CommentGroup) []string {
 
 //msgp:shim {Type} as:{NewType} using:{toFunc/fromFunc} mode:{Mode}
 func applyShim(text []string, f *FileSet) error {
-	if len(text) < 4 || len(text) > 5 {
-		return fmt.Errorf("shim directive should have 3 or 4 arguments; found %d", len(text)-1)
+	if len(text) < 4 {
+		return fmt.Errorf("shim directive should have at least 3 arguments; found %d", len(text)-1)
 	}
 
 	name := text[1]
@@ -94,16 +96,30 @@ func applyShim(text []string, f *FileSet) error {
 	be.ShimToBase = methods[0]
 	be.ShimFromBase = methods[1]
 
-	if len(text) == 5 {
-		modestr := strings.TrimPrefix(strings.TrimSpace(text[4]), "mode:") // parse mode::{mode}
-		switch modestr {
-		case "cast":
-			be.ShimMode = gen.Cast
-		case "convert":
-			be.ShimMode = gen.Convert
+	text = text[4:]
+	for len(text) > 0 {
+		arg := strings.TrimSpace(text[0])
+		switch {
+		case strings.HasPrefix(arg, "mode:"):
+			modestr := strings.TrimPrefix(arg, "mode:") // parse mode::{mode}
+			switch modestr {
+			case "cast":
+				be.ShimMode = gen.Cast
+			case "convert":
+				be.ShimMode = gen.Convert
+			default:
+				return fmt.Errorf("invalid shim mode; found %s, expected 'cast' or 'convert", modestr)
+			}
+		case strings.HasPrefix(arg, "witherr:"):
+			haserr, err := strconv.ParseBool(strings.TrimPrefix(arg, "witherr:"))
+			if err != nil {
+				return fmt.Errorf("invalid witherr directive; found %s, expected 'true' or 'false'", arg)
+			}
+			be.ShimErrs = haserr
 		default:
-			return fmt.Errorf("invalid shim mode; found %s, expected 'cast' or 'convert", modestr)
+			return fmt.Errorf("invalid shim directive; found %s", arg)
 		}
+		text = text[1:]
 	}
 
 	infof("%s -> %s\n", name, be.Value.String())
@@ -227,6 +243,54 @@ func clearomitted(text []string, f *FileSet) error {
 //msgp:newtime
 func newtime(text []string, f *FileSet) error {
 	f.NewTime = true
+	return nil
+}
+
+func maps(text []string, f *FileSet) (err error) {
+	for _, arg := range text[1:] {
+		arg = strings.ToLower(strings.TrimSpace(arg))
+		switch {
+		case strings.HasPrefix(arg, "shim"):
+			arg = strings.TrimPrefix(arg, "shim")
+			if len(arg) == 0 {
+				f.AllowMapShims = true
+				continue
+			}
+			f.AllowMapShims, err = strconv.ParseBool(strings.TrimPrefix(arg, ":"))
+			if err != nil {
+				return fmt.Errorf("invalid shim directive; found %s, expected 'true' or 'false'", arg)
+			}
+		case strings.HasPrefix(arg, "binkeys"):
+			arg = strings.TrimPrefix(arg, "binkeys")
+			if len(arg) == 0 {
+				f.AllowBinMaps = true
+				continue
+			}
+			f.AllowBinMaps, err = strconv.ParseBool(strings.TrimPrefix(arg, ":"))
+			if err != nil {
+				return fmt.Errorf("invalid binkeys directive; found %s, expected 'true' or 'false'", arg)
+			}
+		case strings.HasPrefix(arg, "autoshim"):
+			arg = strings.TrimPrefix(arg, "autoshim")
+			if len(arg) == 0 {
+				f.AutoMapShims = true
+				continue
+			}
+			f.AutoMapShims, err = strconv.ParseBool(strings.TrimPrefix(arg, ":"))
+			if err != nil {
+				return fmt.Errorf("invalid autoshim directive; found %s, expected 'true' or 'false'", arg)
+			}
+		default:
+			if err != nil {
+				return fmt.Errorf("invalid autoshim directive; found %s, expected 'true' or 'false'", arg)
+			}
+		}
+	}
+	if f.AllowBinMaps && f.AutoMapShims {
+		warnf("both binkeys and autoshim are enabled; ignoring autoshim\n")
+		f.AutoMapShims = false
+	}
+	infof("shim:%t binkeys:%t autoshim:%t\n", f.AllowMapShims, f.AllowBinMaps, f.AutoMapShims)
 	return nil
 }
 
