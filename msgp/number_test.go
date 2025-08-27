@@ -100,10 +100,6 @@ func TestConv32(t *testing.T) {
 		x := math.Float32bits(float32(i))
 		exp := int(x>>23)&255 - 127
 		mant := x & ((1 << 23) - 1)
-		mantf := float64(mant) / (1 << 23)
-		if exp != 0 {
-			mantf += 1
-		}
 		isExact := false
 		if exp >= 23 || (exp == -127 && mant == 0) {
 			isExact = true
@@ -136,10 +132,6 @@ func TestConv64(t *testing.T) {
 		x := math.Float64bits(float64(i))
 		exp := int(x>>52)&2047 - 1023
 		mant := x & ((1 << 52) - 1)
-		mantf := float64(mant) / (1 << 52)
-		if exp != 0 {
-			mantf += 1
-		}
 
 		isExact := false
 		if exp >= 52 || (exp == -1023 && mant == 0) {
