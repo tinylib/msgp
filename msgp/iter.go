@@ -80,6 +80,7 @@ func ReadArray[V ArrayExtraTypes](m *Reader) iter.Seq2[V, error] {
 			for range length {
 				v, err := m.ReadComplex128()
 				if !yield(any(v).(V), err) {
+					return
 				}
 			}
 		default:
@@ -92,7 +93,7 @@ func ReadArray[V ArrayExtraTypes](m *Reader) iter.Seq2[V, error] {
 						return
 					}
 				} else {
-					err = fmt.Errorf("cannot decode into type %T", ptr)
+					yield(v, fmt.Errorf("cannot decode into type %T", ptr))
 					return
 				}
 			}
@@ -226,6 +227,7 @@ func ReadMap[K MapKeyTypes, V MapValueTypes](m *Reader) (iter.Seq2[K, V], func()
 				}
 				key = (any)(v).(K)
 			default:
+				_ = v
 				ptr := &key
 				if dc, ok := any(ptr).(Decodable); ok {
 					if err = dc.DecodeMsg(m); err != nil {
@@ -336,6 +338,7 @@ func ReadMap[K MapKeyTypes, V MapValueTypes](m *Reader) (iter.Seq2[K, V], func()
 				val = (any)(v).(V)
 
 			default:
+				_ = v
 				ptr := &val
 				if dc, ok := any(ptr).(Decodable); ok {
 					if err = dc.DecodeMsg(m); err != nil {
