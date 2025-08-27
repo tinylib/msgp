@@ -93,6 +93,11 @@ const (
 	Duration   // time.Duration
 	Ext        // extension
 	JsonNumber // json.Number
+	AInt64
+	AUint64
+	AInt32
+	AUint32
+	ABool
 
 	IDENT // IDENT means an unrecognized identifier
 )
@@ -125,6 +130,11 @@ var primitives = map[string]Primitive{
 	"time.Duration":  Duration,
 	"msgp.Extension": Ext,
 	"json.Number":    JsonNumber,
+	"atomic.Int64":   AInt64,
+	"atomic.Uint64":  AUint64,
+	"atomic.Int32":   AInt32,
+	"atomic.Uint32":  AUint32,
+	"atomic.Bool":    ABool,
 }
 
 // types built into the library
@@ -707,6 +717,17 @@ func (s *BaseElem) BaseType() string {
 		return "time.Duration"
 	case JsonNumber:
 		return "json.Number"
+	case AInt64:
+		return "atomic.Int64"
+	case AUint64:
+		return "atomic.Uint64"
+	case AInt32:
+		return "atomic.Int32"
+	case AUint32:
+		return "atomic.Uint32"
+	case ABool:
+		return "atomic.Bool"
+
 	case Ext:
 		return "msgp.Extension"
 
@@ -787,6 +808,12 @@ func (s *BaseElem) ZeroExpr() string {
 
 // IfZeroExpr returns the expression to compare to zero/empty.
 func (s *BaseElem) IfZeroExpr() string {
+	switch s.Value {
+	case AInt64, AUint64, AInt32, AUint32:
+		return fmt.Sprintf("%s.Load() == 0", s.Varname())
+	case ABool:
+		return fmt.Sprintf("!%s.Load()", s.Varname())
+	}
 	z := s.ZeroExpr()
 	if z == "" {
 		return ""
@@ -842,6 +869,16 @@ func (k Primitive) String() string {
 		return "Extension"
 	case JsonNumber:
 		return "json.Number"
+	case AInt64:
+		return "atomic.Int64"
+	case AUint64:
+		return "atomic.Uint64"
+	case AInt32:
+		return "atomic.Int32"
+	case AUint32:
+		return "atomic.Uint32"
+	case ABool:
+		return "atomic.Bool"
 	case IDENT:
 		return "Ident"
 	default:

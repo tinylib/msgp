@@ -3,6 +3,7 @@ package gen
 import (
 	"io"
 	"strconv"
+	"strings"
 )
 
 func unmarshal(w io.Writer) *unmarshalGen {
@@ -245,6 +246,13 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 		} else {
 			u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", refname, b.BaseName())
 		}
+	case AInt64, AInt32, AUint64, AUint32, ABool:
+		tmp := randIdent()
+		t := strings.TrimPrefix(b.BaseName(), "atomic.")
+		u.p.printf("\n var %s %s", tmp, strings.ToLower(t))
+		u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", tmp, t)
+		u.p.printf("\n%s.Store(%s)", strings.TrimPrefix(refname, "*"), tmp)
+
 	default:
 		u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", refname, b.BaseName())
 	}

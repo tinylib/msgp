@@ -3,6 +3,7 @@ package gen
 import (
 	"io"
 	"strconv"
+	"strings"
 )
 
 func decode(w io.Writer) *decodeGen {
@@ -225,6 +226,12 @@ func (d *decodeGen) gBase(b *BaseElem) {
 		}
 	case Ext:
 		d.p.printf("\nerr = dc.ReadExtension(%s)", vname)
+	case AInt64, AInt32, AUint64, AUint32, ABool:
+		tmp := randIdent()
+		t := strings.TrimPrefix(b.BaseName(), "atomic.")
+		d.p.printf("\n var %s %s", tmp, strings.ToLower(t))
+		d.p.printf("\n%s, err = dc.Read%s()", tmp, t)
+		d.p.printf("\n%s.Store(%s)", strings.TrimPrefix(vname, "*"), tmp)
 	default:
 		if b.Value == Time && d.ctx.asUTC {
 			bname += "UTC"

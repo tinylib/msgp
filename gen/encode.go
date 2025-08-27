@@ -325,11 +325,14 @@ func (e *encodeGen) gBase(b *BaseElem) {
 			e.p.wrapErrCheck(e.ctx.ArgsStr())
 		}
 	}
-
-	if b.Value == IDENT { // unknown identity
+	switch b.Value {
+	case AInt64, AInt32, AUint64, AUint32, ABool:
+		t := strings.TrimPrefix(b.BaseName(), "atomic.")
+		e.writeAndCheck(t, literalFmt, strings.TrimPrefix(vname, "*")+".Load()")
+	case IDENT: // unknown identity
 		e.p.printf("\nerr = %s.EncodeMsg(en)", vname)
 		e.p.wrapErrCheck(e.ctx.ArgsStr())
-	} else { // typical case
+	default:
 		e.writeAndCheck(b.BaseName(), literalFmt, vname)
 	}
 }

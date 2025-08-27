@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -270,7 +271,7 @@ func fixedsizeExpr(e Elem) (string, bool) {
 		}
 	case *BaseElem:
 		if fixedSize(e.Value) {
-			return builtinSize(e.BaseName()), true
+			return builtinSize(strings.TrimPrefix(e.BaseName(), "atomic.")), true
 		}
 	case *Struct:
 		var str string
@@ -311,6 +312,8 @@ func basesizeExpr(value Primitive, vname, basename string) string {
 		return "msgp.BytesPrefixSize + len(" + vname + ")"
 	case String:
 		return "msgp.StringPrefixSize + len(" + vname + ")"
+	case AInt64, AInt32, AUint64, AUint32, ABool:
+		return builtinSize(strings.TrimPrefix(basename, "atomic."))
 	default:
 		return builtinSize(basename)
 	}

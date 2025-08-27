@@ -340,6 +340,10 @@ func (m *marshalGen) gBase(b *BaseElem) {
 	case Intf, Ext, JsonNumber:
 		echeck = true
 		m.p.printf("\no, err = msgp.Append%s(o, %s)", b.BaseName(), vname)
+	case AInt64, AInt32, AUint64, AUint32, ABool:
+		t := strings.TrimPrefix(b.BaseName(), "atomic.")
+		echeck = false
+		m.p.printf("\no = msgp.Append%s(o, %s.Load())", t, strings.TrimPrefix(vname, "*"))
 	default:
 		m.rawAppend(b.BaseName(), literalFmt, vname)
 	}
