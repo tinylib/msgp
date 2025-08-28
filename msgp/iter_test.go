@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var nilMsg = AppendNil(nil)
+
 // collectSeq2 collects values from an iter.Seq2[V, error] into a slice.
 // It stops at the first non-nil error and returns it together with the collected values.
 func collectSeq2[V any](seq func(func(V, error) bool)) (vals []V, err error) {
@@ -434,6 +436,14 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 					t.Fatalf("%s[%d]: got %v want %v", tc.name, i, got[i], tc.vals[i])
 				}
 			}
+			got, err = collectSeq2(ReadNumberArray[uint](NewReader(bytes.NewReader(nilMsg))))
+			if err != nil {
+				t.Fatalf("%s iterate: %v", tc.name, err)
+			}
+			if len(got) != 0 {
+				t.Fatalf("%s len: got %d want %d", tc.name, len(got), 0)
+			}
+
 		case testcase[uint8]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
@@ -796,6 +806,15 @@ func TestRoundtripArray_AllTypes(t *testing.T) {
 					t.Fatalf("%s[%d]: got %v want %v", tc.name, i, got[i], tc.vals[i])
 				}
 			}
+			r.Reset(bytes.NewReader(nilMsg))
+			got, err = collectSeq2(ReadArray[bool](r))
+			if len(got) != 0 {
+				t.Fatalf("%s len: got %d want 0", tc.name, len(got))
+			}
+			if err != nil {
+				t.Fatalf("%s iterate: %v", tc.name, err)
+			}
+
 		case regCase[string]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
@@ -1040,6 +1059,18 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 					t.Fatalf("%s[%d]: got %v want %v", tc.name, i, got[i], tc.vals[i])
 				}
 			}
+			seq, tail = ReadNumberArrayBytes[uint](nilMsg)
+			for range seq {
+				t.Fatalf("%s: got entries on nil", tc.name)
+			}
+			remain, err = tail()
+			if err != nil {
+				t.Fatalf("%s tail: %v", tc.name, err)
+			}
+			if len(remain) != 0 {
+				t.Fatalf("%s remain: %d", tc.name, len(remain))
+			}
+
 		case tb[uint8]:
 			msg := AppendArrayHeader(nil, uint32(len(tc.vals)))
 			for _, v := range tc.vals {
@@ -1378,6 +1409,17 @@ func TestRoundtripArrayBytes_AllTypes(t *testing.T) {
 					t.Fatalf("%s[%d]: got %v want %v", tc.name, i, got[i], tc.vals[i])
 				}
 			}
+			seq, tail = ReadArrayBytes[bool](nilMsg)
+			for range seq {
+				t.Fatalf("%s: got entries on nil", tc.name)
+			}
+			remain, err = tail()
+			if err != nil {
+				t.Fatalf("%s tail: %v", tc.name, err)
+			}
+			if len(remain) != 0 {
+				t.Fatalf("%s remain: %d", tc.name, len(remain))
+			}
 		case rb[string]:
 			msg := AppendArrayHeader(nil, uint32(len(tc.vals)))
 			for _, v := range tc.vals {
@@ -1592,7 +1634,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[uint]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1623,10 +1665,19 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 					t.Fatalf("%s key %v: got %v want %v", tc.name, tc.keys[i], got[tc.keys[i]], tc.vals[i])
 				}
 			}
+			// Test nil
+			r = NewReader(bytes.NewReader(nilMsg))
+			seq, tail = ReadMap[uint, uint](r)
+			for k, v := range seq {
+				t.Fatalf("nil %s: got key %v val %v", tc.name, k, v)
+			}
+			if err := tail(); err != nil {
+				t.Fatalf("nil %s: tail: %v", tc.name, err)
+			}
 		case numCase[uint8]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1660,7 +1711,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[uint16]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1694,7 +1745,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[uint32]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1728,7 +1779,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[uint64]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1762,7 +1813,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[int]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1796,7 +1847,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[int8]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1830,7 +1881,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[int16]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1864,7 +1915,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[int32]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1898,7 +1949,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[int64]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1932,7 +1983,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[float32]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -1966,7 +2017,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 		case numCase[float64]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -2046,7 +2097,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 		case regCase[bool]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -2077,10 +2128,19 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 					t.Fatalf("%s: key %v got %v want %v", tc.name, tc.keys[i], got[tc.keys[i]], tc.vals[i])
 				}
 			}
+			r = NewReader(bytes.NewReader(nilMsg))
+			seq, tail = ReadMap[bool, bool](r)
+			for k, v := range seq {
+				t.Fatalf("%s:expected ni results, got %v:%v", tc.name, k, v)
+			}
+			if err := tail(); err != nil {
+				t.Fatalf("%s tail: %v", tc.name, err)
+			}
+
 		case regCase[string]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -2115,7 +2175,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 			// For []byte keys (not comparable), validate by pair presence.
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -2168,7 +2228,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 		case regCase[time.Time]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -2202,7 +2262,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 		case regCase[time.Duration]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -2237,7 +2297,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 		case regCase[complex64]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -2271,7 +2331,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 		case regCase[complex128]:
 			var buf bytes.Buffer
 			w := NewWriter(&buf)
-			if err := w.WriteArrayHeader(uint32(len(tc.keys))); err != nil {
+			if err := w.WriteMapHeader(uint32(len(tc.keys))); err != nil {
 				t.Fatalf("hdr %s: %v", tc.name, err)
 			}
 			for i := range tc.keys {
@@ -2360,6 +2420,17 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				if !tc.eq(got[tc.keys[i]], tc.vals[i]) {
 					t.Fatalf("%s key %v got %v want %v", tc.name, tc.keys[i], got[tc.keys[i]], tc.vals[i])
 				}
+			}
+			seq, tail = ReadMapBytes[uint, uint](nilMsg)
+			for k, v := range seq {
+				t.Fatalf("%s: got %v:%v want nothing", tc.name, k, v)
+			}
+			remain, err = tail()
+			if err != nil {
+				t.Fatalf("%s tail: %v", tc.name, err)
+			}
+			if len(remain) != 0 {
+				t.Fatalf("%s remain %d", tc.name, len(remain))
 			}
 		case numCase[uint8]:
 			msg := AppendMapHeader(nil, uint32(len(tc.keys)))
@@ -2719,6 +2790,18 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 					t.Fatalf("%s key %v got %v want %v", tc.name, tc.keys[i], got[tc.keys[i]], tc.vals[i])
 				}
 			}
+			seq, tail = ReadMapBytes[bool, bool](nilMsg)
+			for k, v := range seq {
+				t.Fatalf("%s key %v:%v want nothing", tc.name, k, v)
+			}
+			remain, err = tail()
+			if err != nil {
+				t.Fatalf("%s tail: %v", tc.name, err)
+			}
+			if len(remain) != 0 {
+				t.Fatalf("%s remain %d", tc.name, len(remain))
+			}
+
 		case regCase[string]:
 			msg := AppendMapHeader(nil, uint32(len(tc.keys)))
 			for i := range tc.keys {

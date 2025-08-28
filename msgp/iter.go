@@ -26,11 +26,16 @@ type ArrayExtraTypes interface {
 // allowing for sequential access to the array elements.
 func ReadArray[V ArrayExtraTypes](m *Reader) iter.Seq2[V, error] {
 	return func(yield func(V, error) bool) {
-		// Assuming Reader has a method to read array length
+		// Check if nil
+		if m.IsNil() {
+			m.ReadNil()
+			return
+		}
+		// Regular array.
 		var x V
 		length, err := m.ReadArrayHeader()
 		if err != nil {
-			yield(x, err)
+			yield(x, fmt.Errorf("cannot read array header: %w", err))
 			return
 		}
 		switch any(x).(type) {
@@ -122,234 +127,256 @@ type MapValueTypes interface {
 func ReadMap[K MapKeyTypes, V MapValueTypes](m *Reader) (iter.Seq2[K, V], func() error) {
 	var err error
 	return func(yield func(K, V) bool) {
-		// Assuming Reader has a method to read array length
-		var length uint32
-		length, err = m.ReadArrayHeader()
-		if err != nil {
+		var sz uint32
+		if m.IsNil() {
+			err = m.ReadNil()
 			return
 		}
-		for range length {
-			var key K
-			switch v := any(key).(type) {
+		sz, err = m.ReadMapHeader()
+		if err != nil {
+			err = fmt.Errorf("cannot read map header: %w", err)
+			return
+		}
+
+		// Prepare per-type readers once, avoid switching for each element.
+		// Key reader.
+		var readKey func() (K, error)
+		{
+			var keyZero K
+			switch any(keyZero).(type) {
 			case string:
-				if v, err = m.ReadString(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadString()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case []byte:
-				if v, err = m.ReadBytes(nil); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadBytes(nil)
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case bool:
-				if v, err = m.ReadBool(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadBool()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case time.Time:
-				if v, err = m.ReadTime(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadTime()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case time.Duration:
-				if v, err = m.ReadDuration(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadDuration()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case complex64:
-				if v, err = m.ReadComplex64(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadComplex64()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case complex128:
-				if v, err = m.ReadComplex128(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadComplex128()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case uint8:
-				if v, err = m.ReadUint8(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadUint8()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case uint16:
-				if v, err = m.ReadUint16(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadUint16()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case uint32:
-				if v, err = m.ReadUint32(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadUint32()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case uint64:
-				if v, err = m.ReadUint64(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadUint64()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case uint:
-				if v, err = m.ReadUint(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadUint()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case int8:
-				if v, err = m.ReadInt8(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadInt8()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case int16:
-				if v, err = m.ReadInt16(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadInt16()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case int32:
-				if v, err = m.ReadInt32(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadInt32()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case int64:
-				if v, err = m.ReadInt64(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadInt64()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case int:
-				if v, err = m.ReadInt(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadInt()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case float32:
-				if v, err = m.ReadFloat32(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadFloat32()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			case float64:
-				if v, err = m.ReadFloat64(); err != nil {
-					return
+				readKey = func() (K, error) {
+					v, e := m.ReadFloat64()
+					return any(v).(K), e
 				}
-				key = (any)(v).(K)
 			default:
-				_ = v
-				ptr := &key
-				if dc, ok := any(ptr).(Decodable); ok {
-					if err = dc.DecodeMsg(m); err != nil {
-						return
+				readKey = func() (K, error) {
+					var k K
+					ptr := &k
+					if dc, ok := any(ptr).(Decodable); ok {
+						return k, dc.DecodeMsg(m)
 					}
-				} else {
-					err = fmt.Errorf("cannot decode key into type %T", ptr)
-					return
+					return k, fmt.Errorf("cannot decode key into type %T", ptr)
 				}
 			}
+		}
 
-			var val V
-			switch v := any(key).(type) {
+		// Value reader.
+		var readVal func() (V, error)
+		{
+			var valZero V
+			switch any(valZero).(type) {
 			case string:
-				if v, err = m.ReadString(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadString()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case []byte:
-				if v, err = m.ReadBytes(nil); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadBytes(nil)
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case bool:
-				if v, err = m.ReadBool(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadBool()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case time.Time:
-				if v, err = m.ReadTime(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadTime()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case time.Duration:
-				if v, err = m.ReadDuration(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadDuration()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case complex64:
-				if v, err = m.ReadComplex64(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadComplex64()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case complex128:
-				if v, err = m.ReadComplex128(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadComplex128()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case int8:
-				if v, err = m.ReadInt8(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadInt8()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case int16:
-				if v, err = m.ReadInt16(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadInt16()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case int32:
-				if v, err = m.ReadInt32(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadInt32()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case int64:
-				if v, err = m.ReadInt64(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadInt64()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case int:
-				if v, err = m.ReadInt(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadInt()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case float32:
-				if v, err = m.ReadFloat32(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadFloat32()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case float64:
-				if v, err = m.ReadFloat64(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadFloat64()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case uint8:
-				if v, err = m.ReadUint8(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadUint8()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case uint16:
-				if v, err = m.ReadUint16(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadUint16()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case uint32:
-				if v, err = m.ReadUint32(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadUint32()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case uint64:
-				if v, err = m.ReadUint64(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadUint64()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
 			case uint:
-				if v, err = m.ReadUint(); err != nil {
-					return
+				readVal = func() (V, error) {
+					v, e := m.ReadUint()
+					return any(v).(V), e
 				}
-				val = (any)(v).(V)
-
 			default:
-				_ = v
-				ptr := &val
-				if dc, ok := any(ptr).(Decodable); ok {
-					if err = dc.DecodeMsg(m); err != nil {
-						return
+				readVal = func() (V, error) {
+					var v V
+					ptr := &v
+					if dc, ok := any(ptr).(Decodable); ok {
+						return v, dc.DecodeMsg(m)
 					}
-				} else {
-					err = fmt.Errorf("cannot decode value into type %T", ptr)
-					return
+					return v, fmt.Errorf("cannot decode value into type %T", ptr)
 				}
 			}
-			if !yield(key, val) {
+		}
+
+		for range sz {
+			var k K
+			k, err = readKey()
+			if err != nil {
+				err = fmt.Errorf("cannot read key: %w", err)
+				return
+			}
+			var v V
+			v, err = readVal()
+			if err != nil {
+				err = fmt.Errorf("cannot read value: %w", err)
+				return
+			}
+			if !yield(k, v) {
 				return
 			}
 		}
@@ -368,11 +395,14 @@ type NumberTypes interface {
 // allowing for sequential access to the array elements.
 func ReadNumberArray[V NumberTypes](m *Reader) iter.Seq2[V, error] {
 	return func(yield func(V, error) bool) {
-		// Assuming Reader has a method to read array length
+		if m.IsNil() {
+			m.ReadNil()
+			return
+		}
 		var x V
 		length, err := m.ReadArrayHeader()
 		if err != nil {
-			yield(x, err)
+			yield(x, fmt.Errorf("cannot read array header: %w", err))
 			return
 		}
 
@@ -475,9 +505,14 @@ func ReadNumberArray[V NumberTypes](m *Reader) iter.Seq2[V, error] {
 // After the iterator is exhausted, the remaining bytes in the buffer
 // and any error can be read by calling the returned function.
 func ReadNumberArrayBytes[V NumberTypes](b []byte) (iter.Seq[V], func() (remain []byte, err error)) {
+	if IsNil(b) {
+		b, err := ReadNilBytes(b)
+		return func(yield func(V) bool) {}, func() ([]byte, error) { return b, err }
+	}
+	// Regular array.
 	sz, b, err := ReadArrayHeaderBytes(b)
 	if err != nil {
-		return nil, func() ([]byte, error) { return b, err }
+		return func(yield func(V) bool) {}, func() ([]byte, error) { return b, fmt.Errorf("cannot read array header: %w", err) }
 	}
 
 	var readValue func() (V, error)
@@ -581,6 +616,10 @@ func ReadNumberArrayBytes[V NumberTypes](b []byte) (iter.Seq[V], func() (remain 
 // After the iterator is exhausted, the remaining bytes in the buffer
 // and any error can be read by calling the returned function.
 func ReadArrayBytes[V ArrayExtraTypes](b []byte) (iter.Seq[V], func() (remain []byte, err error)) {
+	if IsNil(b) {
+		b, err := ReadNilBytes(b)
+		return func(yield func(V) bool) {}, func() ([]byte, error) { return b, err }
+	}
 	sz, b, err := ReadArrayHeaderBytes(b)
 	if err != nil {
 		return nil, func() ([]byte, error) { return b, err }
@@ -664,218 +703,304 @@ func ReadArrayBytes[V ArrayExtraTypes](b []byte) (iter.Seq[V], func() (remain []
 		}
 }
 
-// ReadMapBytes returns an iterator over key-value pairs of a map encoded in MessagePack bytes.
-// The type parameters K and V specify the types of the keys and values in the map.
-// The iterator yields pairs in wire order. After iteration completes (or stops early),
-// call the returned tail function to get any remaining bytes and the first error encountered (if any).
-// K and V must be one of the supported built-in types, or pointers to types implementing Unmarshaler.
-// Byte slices will reference the same underlying data.
+// ReadMapBytes returns an iterator over key/value pairs from a MessagePack map encoded in b.
+// The iterator yields K,V pairs and this function also returns a closure to obtain the remaining bytes and any error.
+// It avoids per-element type switches by precomputing readKey/readVal funcs based on K and V.
 func ReadMapBytes[K MapKeyTypes, V MapValueTypes](b []byte) (iter.Seq2[K, V], func() (remain []byte, err error)) {
-	sz, b, err := ReadMapHeaderBytes(b)
+	var err error
+	var sz uint32
+	if IsNil(b) {
+		b, err = ReadNilBytes(b)
+		return func(yield func(K, V) bool) {}, func() ([]byte, error) { return b, err }
+	}
+	sz, b, err = ReadMapHeaderBytes(b)
 	if err != nil {
-		return nil, func() ([]byte, error) { return b, err }
+		return func(yield func(K, V) bool) {}, func() ([]byte, error) { return b, err }
 	}
 
-	readKey := func() (K, error) {
-		var key K
-		switch any(key).(type) {
+	// Precompute key reader
+	var readKey func() (K, error)
+	{
+		var keyZero K
+		switch any(keyZero).(type) {
 		case string:
-			var v string
-			v, b, err = ReadStringBytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadStringBytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case []byte:
-			var v []byte
-			v, b, err = ReadBytesZC(b)
-			key = any(v).(K)
+			// Map keys can be str or bin; use specialized helper that accepts both.
+			readKey = func() (K, error) {
+				v, e, er := ReadMapKeyZC(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case bool:
-			var v bool
-			v, b, err = ReadBoolBytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadBoolBytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case time.Time:
-			var v time.Time
-			v, b, err = ReadTimeBytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadTimeBytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case time.Duration:
-			var v time.Duration
-			v, b, err = ReadDurationBytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadDurationBytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case complex64:
-			var v complex64
-			v, b, err = ReadComplex64Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadComplex64Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case complex128:
-			var v complex128
-			v, b, err = ReadComplex128Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadComplex128Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case uint8:
-			var v uint8
-			v, b, err = ReadUint8Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadUint8Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case uint16:
-			var v uint16
-			v, b, err = ReadUint16Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadUint16Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case uint32:
-			var v uint32
-			v, b, err = ReadUint32Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadUint32Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case uint64:
-			var v uint64
-			v, b, err = ReadUint64Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadUint64Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case uint:
-			var v uint
-			v, b, err = ReadUintBytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadUintBytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case int8:
-			var v int8
-			v, b, err = ReadInt8Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadInt8Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case int16:
-			var v int16
-			v, b, err = ReadInt16Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadInt16Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case int32:
-			var v int32
-			v, b, err = ReadInt32Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadInt32Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case int64:
-			var v int64
-			v, b, err = ReadInt64Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadInt64Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case int:
-			var v int
-			v, b, err = ReadIntBytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadIntBytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case float32:
-			var v float32
-			v, b, err = ReadFloat32Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadFloat32Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		case float64:
-			var v float64
-			v, b, err = ReadFloat64Bytes(b)
-			key = any(v).(K)
+			readKey = func() (K, error) {
+				v, e, er := ReadFloat64Bytes(b)
+				b, err = e, er
+				return any(v).(K), err
+			}
 		default:
-			// Fallback for custom types implementing Unmarshaler
-			ptr := &key
-			if um, ok := any(ptr).(Unmarshaler); ok {
-				b, err = um.UnmarshalMsg(b)
-			} else {
-				err = fmt.Errorf("cannot unmarshal key into type %T", ptr)
+			readKey = func() (K, error) {
+				var k K
+				ptr := &k
+				if um, ok := any(ptr).(Unmarshaler); ok {
+					var e error
+					b, e = um.UnmarshalMsg(b)
+					return k, e
+				}
+				return k, fmt.Errorf("cannot unmarshal key into type %T", ptr)
 			}
 		}
-		return key, err
 	}
 
-	readVal := func() (V, error) {
-		var val V
-		switch any(val).(type) {
+	// Precompute value reader
+	var readVal func() (V, error)
+	{
+		var valZero V
+		switch any(valZero).(type) {
 		case string:
-			var v string
-			v, b, err = ReadStringBytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadStringBytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case []byte:
-			var v []byte
-			v, b, err = ReadBytesZC(b)
-			val = any(v).(V)
+			// For values, zero-copy read of bin/str payload.
+			readVal = func() (V, error) {
+				v, e, er := ReadBytesZC(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case bool:
-			var v bool
-			v, b, err = ReadBoolBytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadBoolBytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case time.Time:
-			var v time.Time
-			v, b, err = ReadTimeBytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadTimeBytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case time.Duration:
-			var v time.Duration
-			v, b, err = ReadDurationBytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadDurationBytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case complex64:
-			var v complex64
-			v, b, err = ReadComplex64Bytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadComplex64Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case complex128:
-			var v complex128
-			v, b, err = ReadComplex128Bytes(b)
-			val = any(v).(V)
-		case uint8:
-			var v uint8
-			v, b, err = ReadUint8Bytes(b)
-			val = any(v).(V)
-		case uint16:
-			var v uint16
-			v, b, err = ReadUint16Bytes(b)
-			val = any(v).(V)
-		case uint32:
-			var v uint32
-			v, b, err = ReadUint32Bytes(b)
-			val = any(v).(V)
-		case uint64:
-			var v uint64
-			v, b, err = ReadUint64Bytes(b)
-			val = any(v).(V)
-		case uint:
-			var v uint
-			v, b, err = ReadUintBytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadComplex128Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case int8:
-			var v int8
-			v, b, err = ReadInt8Bytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadInt8Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case int16:
-			var v int16
-			v, b, err = ReadInt16Bytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadInt16Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case int32:
-			var v int32
-			v, b, err = ReadInt32Bytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadInt32Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case int64:
-			var v int64
-			v, b, err = ReadInt64Bytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadInt64Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case int:
-			var v int
-			v, b, err = ReadIntBytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadIntBytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case float32:
-			var v float32
-			v, b, err = ReadFloat32Bytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadFloat32Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		case float64:
-			var v float64
-			v, b, err = ReadFloat64Bytes(b)
-			val = any(v).(V)
+			readVal = func() (V, error) {
+				v, e, er := ReadFloat64Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
+		case uint8:
+			readVal = func() (V, error) {
+				v, e, er := ReadUint8Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
+		case uint16:
+			readVal = func() (V, error) {
+				v, e, er := ReadUint16Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
+		case uint32:
+			readVal = func() (V, error) {
+				v, e, er := ReadUint32Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
+		case uint64:
+			readVal = func() (V, error) {
+				v, e, er := ReadUint64Bytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
+		case uint:
+			readVal = func() (V, error) {
+				v, e, er := ReadUintBytes(b)
+				b, err = e, er
+				return any(v).(V), err
+			}
 		default:
-			// Fallback for custom types implementing Unmarshaler
-			ptr := &val
-			if um, ok := any(ptr).(Unmarshaler); ok {
-				b, err = um.UnmarshalMsg(b)
-			} else {
-				err = fmt.Errorf("cannot unmarshal value into type %T", ptr)
+			readVal = func() (V, error) {
+				var v V
+				ptr := &v
+				if um, ok := any(ptr).(Unmarshaler); ok {
+					var e error
+					b, e = um.UnmarshalMsg(b)
+					return v, e
+				}
+				return v, fmt.Errorf("cannot unmarshal value into type %T", ptr)
 			}
 		}
-		return val, err
 	}
 
 	return func(yield func(K, V) bool) {
-			for sz > 0 {
-				k, e := readKey()
-				if e != nil {
-					err = e
-					return
-				}
-				v, e := readVal()
-				if e != nil {
-					err = e
-					return
-				}
-				if !yield(k, v) {
-					return
-				}
-				sz--
+		for range sz {
+			k, er := readKey()
+			if er != nil {
+				err = fmt.Errorf("cannot read map key: %w", er)
+				return
 			}
-		}, func() ([]byte, error) {
-			return b, err
+			v, er := readVal()
+			if er != nil {
+				err = fmt.Errorf("cannot read map value: %w", er)
+				return
+			}
+			if !yield(k, v) {
+				return
+			}
 		}
+	}, func() ([]byte, error) { return b, err }
 }
