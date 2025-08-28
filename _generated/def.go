@@ -24,6 +24,18 @@ import (
 
 type Block [32]byte
 
+// test fixed-size struct
+// size compilation
+type Fixed struct {
+	A float64
+	B bool
+}
+
+type AliasedType = Fixed
+type AliasedType2 = *Fixed
+type AliasedType3 = uint64
+type AliasedType4 = *uint64
+
 // tests edge-cases with
 // compiling size compilation.
 type X struct {
@@ -42,13 +54,10 @@ type X struct {
 	ZCBytesMap     map[string][]byte            `msg:",zerocopy"`
 	ZCBytesMapDeep map[string]map[string][]byte `msg:",zerocopy"`
 	CustomBytes    CustomBytes                  `msg:",zerocopy"`
-}
-
-// test fixed-size struct
-// size compilation
-type Fixed struct {
-	A float64
-	B bool
+	Renamed1       AliasedType
+	Renamed2       AliasedType2
+	Renamed3       AliasedType3
+	Renamed4       AliasedType4
 }
 
 type TestType struct {
