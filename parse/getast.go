@@ -19,6 +19,7 @@ type FileSet struct {
 	Package       string              // package name
 	Specs         map[string]ast.Expr // type specs in file
 	Identities    map[string]gen.Elem // processed from specs
+	Aliased       map[string]string   // Aliased types.
 	Directives    []string            // raw preprocessor directives
 	Imports       []*ast.ImportSpec   // imports
 	CompactFloats bool                // Use smaller floats when feasible
@@ -107,6 +108,22 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 func (fs *FileSet) applyDirectives() {
 	newdirs := make([]string, 0, len(fs.Directives))
 	for _, d := range fs.Directives {
+		chunks := strings.Split(d, " ")
+		if len(chunks) > 0 {
+			if fn, ok := directives[chunks[0]]; ok {
+				pushstate(chunks[0])
+				err := fn(chunks, fs)
+				if err != nil {
+					warnf("directive error: %s", err)
+				}
+				popstate()
+			} else {
+				newdirs = append(newdirs, d)
+			}
+		}
+	}
+	// Apply aliases last, so we don't overrule any manually specified replace directives.
+	for _, d := range fs.Aliased {
 		chunks := strings.Split(d, " ")
 		if len(chunks) > 0 {
 			if fn, ok := directives[chunks[0]]; ok {
@@ -318,6 +335,15 @@ func (fs *FileSet) getTypeSpecs(f *ast.File) {
 			for _, s := range g.Specs {
 				// for ast.TypeSpecs....
 				if ts, ok := s.(*ast.TypeSpec); ok {
+					// Handle type aliases, by adding a "replace" directive.
+					if ts.Assign != 0 {
+						if fs.Aliased == nil {
+							fs.Aliased = make(map[string]string)
+						}
+						fs.Aliased[ts.Name.Name] = fmt.Sprintf("replace %s with:%s", ts.Name.Name, stringify(ts.Type))
+						continue
+					}
+
 					switch ts.Type.(type) {
 					// this is the list of parse-able
 					// type specs
@@ -589,7 +615,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		// can be done later, once we've resolved
 		// everything else.
 		if b.Value == gen.IDENT {
-			if _, ok := fs.Specs[e.Name]; !ok {
+			if _, ok := fs.Specs[e.Name]; !ok && fs.Aliased[e.Name] == "" {
 				warnf("possible non-local identifier: %s\n", e.Name)
 			}
 		}
