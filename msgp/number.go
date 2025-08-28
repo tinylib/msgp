@@ -314,6 +314,24 @@ func (n *Number) isExactInt() bool {
 	return bits.TrailingZeros64(mant) >= mBits-exp
 }
 
+// CoerceFloat returns the number as a float64.
+// If the number is an integer, it will be
+// converted to a float64 with the closest representation.
+func (n *Number) CoerceFloat() float64 {
+	switch n.typ {
+	case IntType:
+		return float64(int64(n.bits))
+	case UintType:
+		return float64(n.bits)
+	case Float32Type:
+		return float64(math.Float32frombits(uint32(n.bits)))
+	case Float64Type:
+		return math.Float64frombits(n.bits)
+	default:
+		return 0.0
+	}
+}
+
 // Msgsize implements msgp.Sizer
 func (n *Number) Msgsize() int {
 	switch n.typ {
