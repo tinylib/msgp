@@ -2,6 +2,7 @@ package msgp
 
 import (
 	"bytes"
+	"math"
 	"testing"
 )
 
@@ -91,5 +92,69 @@ func TestNumber(t *testing.T) {
 
 	if !bytes.Equal(dat, buf.Bytes()) {
 		t.Errorf("encode: expected output %#v; got %#v", dat, buf.Bytes())
+	}
+}
+
+func TestConv32(t *testing.T) {
+	for i := -1 << 24; i < 1<<25; i++ {
+		x := math.Float32bits(float32(i))
+		exp := int(x>>23)&255 - 127
+		mant := x & ((1 << 23) - 1)
+		isExact := false
+		if exp >= 23 || (exp == -127 && mant == 0) {
+			isExact = true
+		}
+		// Only exp >= 0 can be exact integer
+		if exp >= 0 && exp <= 23 {
+			mantissaMask := uint32((1 << (23 - exp)) - 1)
+			isExact = (mant & mantissaMask) == 0
+		}
+
+		n := Number{bits: uint64(x), typ: Float32Type}
+		got := n.isExactInt()
+		if got != isExact {
+			t.Errorf("n.IsExactInt(): got %t, want %t", got, isExact)
+		}
+		n = Number{bits: uint64(math.Float32bits(float32(i) + 0.1)), typ: Float32Type}
+		got = n.isExactInt()
+		if got != false && i > -2097152 && i < 2097152 {
+			val, ok := n.Float()
+			t.Fatalf("n.IsExactInt(%f): got %t, want %t, ok: %v", val, got, false, ok)
+		}
+	}
+}
+
+func TestConv64(t *testing.T) {
+	for i := -1 << 30; i < 1<<30; i++ {
+		if testing.Short() {
+			i += 8
+		}
+		x := math.Float64bits(float64(i))
+		exp := int(x>>52)&2047 - 1023
+		mant := x & ((1 << 52) - 1)
+
+		isExact := false
+		if exp >= 52 || (exp == -1023 && mant == 0) {
+			isExact = true
+		}
+		// Only exp >= 0 can be exact integer
+		if exp >= 0 && exp <= 52 {
+			mantissaMask := uint64((1 << (52 - exp)) - 1)
+			isExact = (mant & mantissaMask) == 0
+		}
+		n := Number{bits: uint64(x), typ: Float64Type}
+		got := n.isExactInt()
+		if got != isExact {
+			t.Errorf("n.IsExactInt(): got %t, want %t", got, isExact)
+		}
+		if !got {
+			t.Fatal(i)
+		}
+		n = Number{bits: uint64(math.Float64bits(float64(i) + 0.1)), typ: Float64Type}
+		got = n.isExactInt()
+		if got != false {
+			val, ok := n.Float()
+			t.Fatalf("n.IsExactInt(%f): got %t, want %t, ok: %v", val, got, false, ok)
+		}
 	}
 }
