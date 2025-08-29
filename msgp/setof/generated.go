@@ -45,6 +45,18 @@ func (s String) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s String) AsSlice() []string {
+	if s == nil {
+		return nil
+	}
+	dst := make([]string, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *String) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -59,9 +71,7 @@ func (s *String) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(String, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k string
@@ -90,9 +100,7 @@ func (s *String) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(String, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k string
@@ -116,11 +124,22 @@ func (s String) Msgsize() int {
 	}
 	size := msgp.ArrayHeaderSize
 	for key := range s {
-			size += msgp.StringPrefixSize + len(key)
-		}
+		size += msgp.StringPrefixSize + len(key)
+	}
 	return size
 }
 
+// StringFromSlice creates a String from a slice.
+func StringFromSlice(s []string) String {
+	if s == nil {
+		return nil
+	}
+	dst := make(String, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // StringSorted is a set of strings that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -170,6 +189,19 @@ func (s StringSorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s StringSorted) AsSlice() []string {
+	if s == nil {
+		return nil
+	}
+	dst := make([]string, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *StringSorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -184,9 +216,7 @@ func (s *StringSorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(StringSorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k string
@@ -215,9 +245,7 @@ func (s *StringSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(StringSorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k string
@@ -241,11 +269,22 @@ func (s StringSorted) Msgsize() int {
 	}
 	size := msgp.ArrayHeaderSize
 	for key := range s {
-			size += msgp.StringPrefixSize + len(key)
-		}
+		size += msgp.StringPrefixSize + len(key)
+	}
 	return size
 }
 
+// StringSortedFromSlice creates a StringSorted from a slice.
+func StringSortedFromSlice(s []string) StringSorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(StringSorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Int is a set of ints that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -284,6 +323,18 @@ func (s Int) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Int) AsSlice() []int {
+	if s == nil {
+		return nil
+	}
+	dst := make([]int, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Int) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -298,9 +349,7 @@ func (s *Int) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Int, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int
@@ -329,9 +378,7 @@ func (s *Int) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Int, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int
@@ -358,6 +405,17 @@ func (s Int) Msgsize() int {
 	return size
 }
 
+// IntFromSlice creates a Int from a slice.
+func IntFromSlice(s []int) Int {
+	if s == nil {
+		return nil
+	}
+	dst := make(Int, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // IntSorted is a set of ints that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -407,6 +465,19 @@ func (s IntSorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s IntSorted) AsSlice() []int {
+	if s == nil {
+		return nil
+	}
+	dst := make([]int, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *IntSorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -421,9 +492,7 @@ func (s *IntSorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(IntSorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int
@@ -452,9 +521,7 @@ func (s *IntSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(IntSorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int
@@ -481,6 +548,17 @@ func (s IntSorted) Msgsize() int {
 	return size
 }
 
+// IntSortedFromSlice creates a IntSorted from a slice.
+func IntSortedFromSlice(s []int) IntSorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(IntSorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Uint is a set of uints that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -519,6 +597,18 @@ func (s Uint) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Uint) AsSlice() []uint {
+	if s == nil {
+		return nil
+	}
+	dst := make([]uint, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Uint) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -533,9 +623,7 @@ func (s *Uint) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Uint, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint
@@ -564,9 +652,7 @@ func (s *Uint) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Uint, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint
@@ -593,6 +679,17 @@ func (s Uint) Msgsize() int {
 	return size
 }
 
+// UintFromSlice creates a Uint from a slice.
+func UintFromSlice(s []uint) Uint {
+	if s == nil {
+		return nil
+	}
+	dst := make(Uint, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // UintSorted is a set of uints that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -642,6 +739,19 @@ func (s UintSorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s UintSorted) AsSlice() []uint {
+	if s == nil {
+		return nil
+	}
+	dst := make([]uint, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *UintSorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -656,9 +766,7 @@ func (s *UintSorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(UintSorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint
@@ -687,9 +795,7 @@ func (s *UintSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(UintSorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint
@@ -716,6 +822,17 @@ func (s UintSorted) Msgsize() int {
 	return size
 }
 
+// UintSortedFromSlice creates a UintSorted from a slice.
+func UintSortedFromSlice(s []uint) UintSorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(UintSorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Byte is a set of bytes that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -754,6 +871,18 @@ func (s Byte) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Byte) AsSlice() []byte {
+	if s == nil {
+		return nil
+	}
+	dst := make([]byte, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Byte) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -768,9 +897,7 @@ func (s *Byte) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Byte, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k byte
@@ -799,9 +926,7 @@ func (s *Byte) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Byte, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k byte
@@ -828,6 +953,17 @@ func (s Byte) Msgsize() int {
 	return size
 }
 
+// ByteFromSlice creates a Byte from a slice.
+func ByteFromSlice(s []byte) Byte {
+	if s == nil {
+		return nil
+	}
+	dst := make(Byte, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // ByteSorted is a set of bytes that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -877,6 +1013,19 @@ func (s ByteSorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s ByteSorted) AsSlice() []byte {
+	if s == nil {
+		return nil
+	}
+	dst := make([]byte, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *ByteSorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -891,9 +1040,7 @@ func (s *ByteSorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(ByteSorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k byte
@@ -922,9 +1069,7 @@ func (s *ByteSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(ByteSorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k byte
@@ -951,6 +1096,17 @@ func (s ByteSorted) Msgsize() int {
 	return size
 }
 
+// ByteSortedFromSlice creates a ByteSorted from a slice.
+func ByteSortedFromSlice(s []byte) ByteSorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(ByteSorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Int8 is a set of int8s that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -989,6 +1145,18 @@ func (s Int8) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Int8) AsSlice() []int8 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]int8, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Int8) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -1003,9 +1171,7 @@ func (s *Int8) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Int8, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int8
@@ -1034,9 +1200,7 @@ func (s *Int8) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Int8, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int8
@@ -1063,6 +1227,17 @@ func (s Int8) Msgsize() int {
 	return size
 }
 
+// Int8FromSlice creates a Int8 from a slice.
+func Int8FromSlice(s []int8) Int8 {
+	if s == nil {
+		return nil
+	}
+	dst := make(Int8, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Int8Sorted is a set of int8s that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -1112,6 +1287,19 @@ func (s Int8Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s Int8Sorted) AsSlice() []int8 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]int8, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Int8Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -1126,9 +1314,7 @@ func (s *Int8Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Int8Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int8
@@ -1157,9 +1343,7 @@ func (s *Int8Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Int8Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int8
@@ -1186,6 +1370,17 @@ func (s Int8Sorted) Msgsize() int {
 	return size
 }
 
+// Int8SortedFromSlice creates a Int8Sorted from a slice.
+func Int8SortedFromSlice(s []int8) Int8Sorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(Int8Sorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Uint8 is a set of uint8s that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -1224,6 +1419,18 @@ func (s Uint8) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Uint8) AsSlice() []uint8 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]uint8, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Uint8) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -1238,9 +1445,7 @@ func (s *Uint8) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Uint8, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint8
@@ -1269,9 +1474,7 @@ func (s *Uint8) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Uint8, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint8
@@ -1298,6 +1501,17 @@ func (s Uint8) Msgsize() int {
 	return size
 }
 
+// Uint8FromSlice creates a Uint8 from a slice.
+func Uint8FromSlice(s []uint8) Uint8 {
+	if s == nil {
+		return nil
+	}
+	dst := make(Uint8, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Uint8Sorted is a set of uint8s that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -1347,6 +1561,19 @@ func (s Uint8Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s Uint8Sorted) AsSlice() []uint8 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]uint8, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Uint8Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -1361,9 +1588,7 @@ func (s *Uint8Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Uint8Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint8
@@ -1392,9 +1617,7 @@ func (s *Uint8Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Uint8Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint8
@@ -1421,6 +1644,17 @@ func (s Uint8Sorted) Msgsize() int {
 	return size
 }
 
+// Uint8SortedFromSlice creates a Uint8Sorted from a slice.
+func Uint8SortedFromSlice(s []uint8) Uint8Sorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(Uint8Sorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Int16 is a set of int16s that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -1459,6 +1693,18 @@ func (s Int16) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Int16) AsSlice() []int16 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]int16, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Int16) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -1473,9 +1719,7 @@ func (s *Int16) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Int16, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int16
@@ -1504,9 +1748,7 @@ func (s *Int16) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Int16, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int16
@@ -1533,6 +1775,17 @@ func (s Int16) Msgsize() int {
 	return size
 }
 
+// Int16FromSlice creates a Int16 from a slice.
+func Int16FromSlice(s []int16) Int16 {
+	if s == nil {
+		return nil
+	}
+	dst := make(Int16, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Int16Sorted is a set of int16s that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -1582,6 +1835,19 @@ func (s Int16Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s Int16Sorted) AsSlice() []int16 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]int16, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Int16Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -1596,9 +1862,7 @@ func (s *Int16Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Int16Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int16
@@ -1627,9 +1891,7 @@ func (s *Int16Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Int16Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int16
@@ -1656,6 +1918,17 @@ func (s Int16Sorted) Msgsize() int {
 	return size
 }
 
+// Int16SortedFromSlice creates a Int16Sorted from a slice.
+func Int16SortedFromSlice(s []int16) Int16Sorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(Int16Sorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Uint16 is a set of uint16s that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -1694,6 +1967,18 @@ func (s Uint16) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Uint16) AsSlice() []uint16 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]uint16, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Uint16) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -1708,9 +1993,7 @@ func (s *Uint16) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Uint16, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint16
@@ -1739,9 +2022,7 @@ func (s *Uint16) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Uint16, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint16
@@ -1768,6 +2049,17 @@ func (s Uint16) Msgsize() int {
 	return size
 }
 
+// Uint16FromSlice creates a Uint16 from a slice.
+func Uint16FromSlice(s []uint16) Uint16 {
+	if s == nil {
+		return nil
+	}
+	dst := make(Uint16, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Uint16Sorted is a set of uint16s that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -1817,6 +2109,19 @@ func (s Uint16Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s Uint16Sorted) AsSlice() []uint16 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]uint16, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Uint16Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -1831,9 +2136,7 @@ func (s *Uint16Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Uint16Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint16
@@ -1862,9 +2165,7 @@ func (s *Uint16Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Uint16Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint16
@@ -1891,6 +2192,17 @@ func (s Uint16Sorted) Msgsize() int {
 	return size
 }
 
+// Uint16SortedFromSlice creates a Uint16Sorted from a slice.
+func Uint16SortedFromSlice(s []uint16) Uint16Sorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(Uint16Sorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Int32 is a set of int32s that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -1929,6 +2241,18 @@ func (s Int32) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Int32) AsSlice() []int32 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]int32, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Int32) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -1943,9 +2267,7 @@ func (s *Int32) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Int32, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int32
@@ -1974,9 +2296,7 @@ func (s *Int32) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Int32, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int32
@@ -2003,6 +2323,17 @@ func (s Int32) Msgsize() int {
 	return size
 }
 
+// Int32FromSlice creates a Int32 from a slice.
+func Int32FromSlice(s []int32) Int32 {
+	if s == nil {
+		return nil
+	}
+	dst := make(Int32, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Int32Sorted is a set of int32s that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -2052,6 +2383,19 @@ func (s Int32Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s Int32Sorted) AsSlice() []int32 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]int32, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Int32Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -2066,9 +2410,7 @@ func (s *Int32Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Int32Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int32
@@ -2097,9 +2439,7 @@ func (s *Int32Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Int32Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int32
@@ -2126,6 +2466,17 @@ func (s Int32Sorted) Msgsize() int {
 	return size
 }
 
+// Int32SortedFromSlice creates a Int32Sorted from a slice.
+func Int32SortedFromSlice(s []int32) Int32Sorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(Int32Sorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Uint32 is a set of uint32s that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -2164,6 +2515,18 @@ func (s Uint32) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Uint32) AsSlice() []uint32 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]uint32, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Uint32) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -2178,9 +2541,7 @@ func (s *Uint32) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Uint32, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint32
@@ -2209,9 +2570,7 @@ func (s *Uint32) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Uint32, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint32
@@ -2238,6 +2597,17 @@ func (s Uint32) Msgsize() int {
 	return size
 }
 
+// Uint32FromSlice creates a Uint32 from a slice.
+func Uint32FromSlice(s []uint32) Uint32 {
+	if s == nil {
+		return nil
+	}
+	dst := make(Uint32, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Uint32Sorted is a set of uint32s that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -2287,6 +2657,19 @@ func (s Uint32Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s Uint32Sorted) AsSlice() []uint32 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]uint32, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Uint32Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -2301,9 +2684,7 @@ func (s *Uint32Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Uint32Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint32
@@ -2332,9 +2713,7 @@ func (s *Uint32Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Uint32Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint32
@@ -2361,6 +2740,17 @@ func (s Uint32Sorted) Msgsize() int {
 	return size
 }
 
+// Uint32SortedFromSlice creates a Uint32Sorted from a slice.
+func Uint32SortedFromSlice(s []uint32) Uint32Sorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(Uint32Sorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Int64 is a set of int64s that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -2399,6 +2789,18 @@ func (s Int64) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Int64) AsSlice() []int64 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]int64, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Int64) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -2413,9 +2815,7 @@ func (s *Int64) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Int64, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int64
@@ -2444,9 +2844,7 @@ func (s *Int64) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Int64, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int64
@@ -2473,6 +2871,17 @@ func (s Int64) Msgsize() int {
 	return size
 }
 
+// Int64FromSlice creates a Int64 from a slice.
+func Int64FromSlice(s []int64) Int64 {
+	if s == nil {
+		return nil
+	}
+	dst := make(Int64, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Int64Sorted is a set of int64s that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -2522,6 +2931,19 @@ func (s Int64Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s Int64Sorted) AsSlice() []int64 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]int64, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Int64Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -2536,9 +2958,7 @@ func (s *Int64Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Int64Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int64
@@ -2567,9 +2987,7 @@ func (s *Int64Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Int64Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k int64
@@ -2596,6 +3014,17 @@ func (s Int64Sorted) Msgsize() int {
 	return size
 }
 
+// Int64SortedFromSlice creates a Int64Sorted from a slice.
+func Int64SortedFromSlice(s []int64) Int64Sorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(Int64Sorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Uint64 is a set of uint64s that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -2634,6 +3063,18 @@ func (s Uint64) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Uint64) AsSlice() []uint64 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]uint64, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Uint64) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -2648,9 +3089,7 @@ func (s *Uint64) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Uint64, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint64
@@ -2679,9 +3118,7 @@ func (s *Uint64) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Uint64, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint64
@@ -2708,6 +3145,17 @@ func (s Uint64) Msgsize() int {
 	return size
 }
 
+// Uint64FromSlice creates a Uint64 from a slice.
+func Uint64FromSlice(s []uint64) Uint64 {
+	if s == nil {
+		return nil
+	}
+	dst := make(Uint64, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Uint64Sorted is a set of uint64s that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -2757,6 +3205,19 @@ func (s Uint64Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s Uint64Sorted) AsSlice() []uint64 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]uint64, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Uint64Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -2771,9 +3232,7 @@ func (s *Uint64Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Uint64Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint64
@@ -2802,9 +3261,7 @@ func (s *Uint64Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Uint64Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k uint64
@@ -2831,6 +3288,17 @@ func (s Uint64Sorted) Msgsize() int {
 	return size
 }
 
+// Uint64SortedFromSlice creates a Uint64Sorted from a slice.
+func Uint64SortedFromSlice(s []uint64) Uint64Sorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(Uint64Sorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Float64 is a set of float64s that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -2869,6 +3337,18 @@ func (s Float64) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Float64) AsSlice() []float64 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]float64, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Float64) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -2883,9 +3363,7 @@ func (s *Float64) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Float64, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k float64
@@ -2914,9 +3392,7 @@ func (s *Float64) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Float64, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k float64
@@ -2943,6 +3419,17 @@ func (s Float64) Msgsize() int {
 	return size
 }
 
+// Float64FromSlice creates a Float64 from a slice.
+func Float64FromSlice(s []float64) Float64 {
+	if s == nil {
+		return nil
+	}
+	dst := make(Float64, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Float64Sorted is a set of float64s that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -2992,6 +3479,19 @@ func (s Float64Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s Float64Sorted) AsSlice() []float64 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]float64, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Float64Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -3006,9 +3506,7 @@ func (s *Float64Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Float64Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k float64
@@ -3037,9 +3535,7 @@ func (s *Float64Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Float64Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k float64
@@ -3066,6 +3562,17 @@ func (s Float64Sorted) Msgsize() int {
 	return size
 }
 
+// Float64SortedFromSlice creates a Float64Sorted from a slice.
+func Float64SortedFromSlice(s []float64) Float64Sorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(Float64Sorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Float32 is a set of float32s that will be stored as an array.
 // Elements are not sorted and the order of elements is not guaranteed.
@@ -3104,6 +3611,18 @@ func (s Float32) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a slice.
+func (s Float32) AsSlice() []float32 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]float32, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Float32) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -3118,9 +3637,7 @@ func (s *Float32) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Float32, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k float32
@@ -3149,9 +3666,7 @@ func (s *Float32) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Float32, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k float32
@@ -3178,6 +3693,17 @@ func (s Float32) Msgsize() int {
 	return size
 }
 
+// Float32FromSlice creates a Float32 from a slice.
+func Float32FromSlice(s []float32) Float32 {
+	if s == nil {
+		return nil
+	}
+	dst := make(Float32, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}
 
 // Float32Sorted is a set of float32s that will be stored as an array.
 // Elements are sorted and the order of elements is guaranteed.
@@ -3227,6 +3753,19 @@ func (s Float32Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	return bytes, nil
 }
 
+// AsSlice returns the set as a sorted slice.
+func (s Float32Sorted) AsSlice() []float32 {
+	if s == nil {
+		return nil
+	}
+	dst := make([]float32, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
+}
+
 // DecodeMsg decodes the message from the reader.
 func (s *Float32Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if reader.IsNil() {
@@ -3241,9 +3780,7 @@ func (s *Float32Sorted) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Float32Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k float32
@@ -3272,9 +3809,7 @@ func (s *Float32Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Float32Sorted, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k float32
@@ -3301,3 +3836,14 @@ func (s Float32Sorted) Msgsize() int {
 	return size
 }
 
+// Float32SortedFromSlice creates a Float32Sorted from a slice.
+func Float32SortedFromSlice(s []float32) Float32Sorted {
+	if s == nil {
+		return nil
+	}
+	dst := make(Float32Sorted, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
+}

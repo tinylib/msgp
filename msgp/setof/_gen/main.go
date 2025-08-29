@@ -21,9 +21,7 @@ func (s *Foo) DecodeMsg(reader *msgp.Reader) error {
 	if dst == nil {
 		dst = make(Foo, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k string
@@ -52,9 +50,7 @@ func (s *Foo) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	if dst == nil {
 		dst = make(Foo, sz)
 	} else {
-		for k := range dst {
-			delete(dst, k)
-		}
+		clear(dst)
 	}
 	for i := uint32(0); i < sz; i++ {
 		var k string
@@ -79,6 +75,18 @@ func (s Foo) Msgsize() int {
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.StringPrefixSize
 	return size
+}
+
+// FooFromSlice creates a Foo from a slice.
+func FooFromSlice(s []string) Foo {
+	if s == nil {
+		return nil
+	}
+	dst := make(Foo, len(s))
+	for _, v := range s {
+		dst[v] = struct{}{}
+	}
+	return dst
 }
 `
 
@@ -118,6 +126,18 @@ func (s Foo) MarshalMsg(bytes []byte) ([]byte, error) {
 		bytes = msgp.AppendString(bytes, string(k))
 	}
 	return bytes, nil
+}
+
+// AsSlice returns the set as a slice.
+func (s Foo) AsSlice() []string {
+	if s == nil {
+		return nil
+	}
+	dst := make([]string, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	return dst
 }
 `
 
@@ -168,6 +188,19 @@ func (s Foo) MarshalMsg(bytes []byte) ([]byte, error) {
 		bytes = msgp.AppendString(bytes, k)
 	}
 	return bytes, nil
+}
+
+// AsSlice returns the set as a sorted slice.
+func (s Foo) AsSlice() []string {
+	if s == nil {
+		return nil
+	}
+	dst := make([]string, 0, len(s))
+	for k := range s {
+		dst = append(dst, k)
+	}
+	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
+	return dst
 }
 `
 
