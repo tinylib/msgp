@@ -106,7 +106,8 @@ func ReadMap[K, V any](m *Reader, readKey func() (K, error), readVal func() (V, 
 }
 
 // WriteMap writes a map to the provided Writer.
-// The writeKey and writeVal parameters specify the functions to use to write each key and value of the map.
+// The writeKey and writeVal parameters specify the functions
+// to use to write each key and value of the map.
 func WriteMap[K comparable, V any](w *Writer, m map[K]V, writeKey func(K) error, writeVal func(V) error) error {
 	if m == nil {
 		return w.WriteNil()
@@ -196,7 +197,7 @@ func ReadArrayBytes[T any](b []byte, readFn func([]byte) (T, []byte, error)) (it
 // AppendArray writes an array to the provided buffer.
 // The writeFn parameter specifies the function to use to write each element of the array.
 // The returned buffer contains the encoded array.
-// The function panics if the map is larger than math.MaxUint32 elements.
+// The function panics if the array is larger than math.MaxUint32 elements.
 func AppendArray[T any](b []byte, a []T, writeFn func(b []byte, v T) []byte) []byte {
 	if a == nil {
 		return AppendNil(b)
@@ -341,8 +342,8 @@ type UnmarshalPtr[T any] interface {
 	Unmarshaler
 }
 
-// DecoderFromBytes allows augmenting any type with a UnmarshalMsg method into a method
-// that reads from []byte and returns a T.
+// DecoderFromBytes allows augmenting any type with an UnmarshalMsg
+// method into a method that reads from []byte and returns a T.
 // Provide an instance of T. This value isn't used.
 func DecoderFromBytes[T any, PT UnmarshalPtr[T]](_ T) func([]byte) (T, []byte, error) {
 	return func(b []byte) (T, []byte, error) {

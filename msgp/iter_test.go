@@ -17,12 +17,41 @@ func ExampleReadArray() {
 	w := NewWriter(&buf)
 
 	// Write an array [10, 20, 30] using WriteArray
-	_ = WriteArray[int](w, []int{10, 20, 30}, w.WriteInt)
+	_ = WriteArray(w, []int{10, 20, 30}, w.WriteInt)
 	_ = w.Flush()
 
 	r := NewReader(&buf)
 
-	seq := ReadArray[int](r, r.ReadInt)
+	seq := ReadArray(r, r.ReadInt)
+	seq(func(v int, err error) bool {
+		if err != nil {
+			fmt.Println("err:", err)
+			return false
+		}
+		fmt.Println(v)
+		return true
+	})
+
+	// Output:
+	// 10
+	// 20
+	// 30
+}
+
+// Example: Writing and array with WriteArray,
+// then reading back using ReadArray with a *Reader.
+// It prints each element in order.
+func ExampleWriteArray() {
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+
+	// Write an array [10, 20, 30] using WriteArray
+	_ = WriteArray(w, []int8{10, 20, 30}, w.WriteInt8)
+	_ = w.Flush()
+
+	r := NewReader(&buf)
+
+	seq := ReadArray(r, r.ReadInt)
 	seq(func(v int, err error) bool {
 		if err != nil {
 			fmt.Println("err:", err)
@@ -45,12 +74,12 @@ func ExampleReadMap() {
 	w := NewWriter(&buf)
 
 	// Write a map {"a":1, "b":2} using WriteMap - we use the sorted version so output is predictable.
-	_ = WriteMapSorted[string, int](w, map[string]int{"a": 1, "b": 2}, w.WriteString, w.WriteInt)
+	_ = WriteMapSorted(w, map[string]int{"a": 1, "b": 2}, w.WriteString, w.WriteInt)
 	_ = w.Flush()
 
 	r := NewReader(&buf)
 
-	seq, done := ReadMap[string, int](r, r.ReadString, r.ReadInt)
+	seq, done := ReadMap(r, r.ReadString, r.ReadInt)
 	seq(func(k string, v int) bool {
 		fmt.Printf("%s=%d\n", k, v)
 		return true
@@ -64,14 +93,39 @@ func ExampleReadMap() {
 	// b=2
 }
 
+// Example: writing a map using WriteMap (non-sorted).
+// Uses a single-entry map to keep output deterministic.
+// Use WriteMapSorted to write a sorted map.
+func ExampleWriteMap() {
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+
+	// Write a map {"only":1} using WriteMap
+	_ = WriteMap(w, map[string]int{"only": 1}, w.WriteString, w.WriteInt)
+	_ = w.Flush()
+
+	r := NewReader(&buf)
+	seq, done := ReadMap(r, r.ReadString, r.ReadInt)
+	seq(func(k string, v int) bool {
+		fmt.Printf("%s=%d\n", k, v)
+		return true
+	})
+	if err := done(); err != nil {
+		fmt.Println("err:", err)
+	}
+
+	// Output:
+	// only=1
+}
+
 // Example: reading an array of strings from a byte slice using ReadArrayBytes.
 // It prints each element and then checks for a final error from the returned closure.
 func ExampleReadArrayBytes() {
 	var b []byte
 	// Append ["x","y","z"] using AppendArray
-	b = AppendArray[string](b, []string{"x", "y", "z"}, AppendString)
+	b = AppendArray(b, []string{"x", "y", "z"}, AppendString)
 
-	seq, finish := ReadArrayBytes[string](b, ReadStringBytes)
+	seq, finish := ReadArrayBytes(b, ReadStringBytes)
 	seq(func(s string) bool {
 		fmt.Println(s)
 		return true
@@ -91,9 +145,9 @@ func ExampleReadArrayBytes() {
 func ExampleReadMapBytes() {
 	var b []byte
 	// Append {"pi":3.14, "e":2.718} using AppendMap - we use the sorted version for the example
-	b = AppendMapSorted[string, float64](b, map[string]float64{"pi": 3.14, "e": 2.718}, AppendString, AppendFloat64)
+	b = AppendMapSorted(b, map[string]float64{"pi": 3.14, "e": 2.718}, AppendString, AppendFloat64)
 
-	seq, finish := ReadMapBytes[string, float64](b, ReadStringBytes, ReadFloat64Bytes)
+	seq, finish := ReadMapBytes(b, ReadStringBytes, ReadFloat64Bytes)
 	seq(func(k string, v float64) bool {
 		fmt.Printf("%s=%.3f\n", k, v)
 		return true
@@ -115,12 +169,12 @@ func ExampleReadArray_struct() {
 
 	in := []testDec{{A: 1, B: "x"}, {A: 2, B: "y"}}
 	// Write []testDec using EncoderTo as the per-element writer.
-	_ = WriteArray[testDec](w, in, EncoderTo(w, testDec{}))
+	_ = WriteArray(w, in, EncoderTo(w, testDec{}))
 	_ = w.Flush()
 
 	r := NewReader(&buf)
 	// Read []testDec using DecoderFrom as the per-element reader.
-	seq := ReadArray[testDec](r, DecoderFrom(r, testDec{}))
+	seq := ReadArray(r, DecoderFrom(r, testDec{}))
 
 	seq(func(v testDec, err error) bool {
 		if err != nil {
@@ -148,11 +202,11 @@ func ExampleReadMap_struct() {
 		"b": {A: 2, B: "y"},
 	}
 	// Write map[string]testDec using sorted keys for stable example output.
-	_ = WriteMapSorted[string, testDec](w, in, w.WriteString, EncoderTo(w, testDec{}))
+	_ = WriteMapSorted(w, in, w.WriteString, EncoderTo(w, testDec{}))
 	_ = w.Flush()
 
 	r := NewReader(&buf)
-	seq, done := ReadMap[string, testDec](r, r.ReadString, DecoderFrom(r, testDec{}))
+	seq, done := ReadMap(r, r.ReadString, DecoderFrom(r, testDec{}))
 
 	seq(func(k string, v testDec) bool {
 		fmt.Printf("%s=%d,%s\n", k, v.A, v.B)
@@ -174,10 +228,10 @@ func ExampleReadArrayBytes_struct() {
 	var b []byte
 
 	// Append []testDec using EncoderToBytes as the per-element appender.
-	b = AppendArray[testDec](b, in, EncoderToBytes(testDec{}))
+	b = AppendArray(b, in, EncoderToBytes(testDec{}))
 
 	// Read back using DecoderFromBytes as the per-element reader.
-	seq, finish := ReadArrayBytes[testDec](b, DecoderFromBytes(testDec{}))
+	seq, finish := ReadArrayBytes(b, DecoderFromBytes(testDec{}))
 
 	seq(func(v testDec) bool {
 		fmt.Printf("%d %s\n", v.A, v.B)
@@ -203,10 +257,10 @@ func ExampleReadMapBytes_struct() {
 	var b []byte
 
 	// Append map[string]testDec with sorted keys for stable example output.
-	b = AppendMapSorted[string, testDec](b, in, AppendString, EncoderToBytes(testDec{}))
+	b = AppendMapSorted(b, in, AppendString, EncoderToBytes(testDec{}))
 
 	// Read back using DecoderFromBytes for values.
-	seq, finish := ReadMapBytes[string, testDec](b, ReadStringBytes, DecoderFromBytes(testDec{}))
+	seq, finish := ReadMapBytes(b, ReadStringBytes, DecoderFromBytes(testDec{}))
 
 	seq(func(k string, v testDec) bool {
 		fmt.Printf("%s=%d,%s\n", k, v.A, v.B)
@@ -219,6 +273,29 @@ func ExampleReadMapBytes_struct() {
 	// Output:
 	// a=1,x
 	// b=2,y
+}
+
+// Example: appending a map to a byte slice using AppendMap (non-sorted).
+// Uses a single-entry map to keep output deterministic.
+// Use AppendMapSorted to write a sorted map.
+func ExampleAppendMap() {
+	var b []byte
+
+	// Append {"only":1} using AppendMap
+	b = AppendMap(b, map[string]int{"only": 1}, AppendString, AppendInt)
+
+	// Read back and print
+	seq, finish := ReadMapBytes(b, ReadStringBytes, ReadIntBytes)
+	seq(func(k string, v int) bool {
+		fmt.Printf("%s=%d\n", k, v)
+		return true
+	})
+	if _, err := finish(); err != nil {
+		fmt.Println("err:", err)
+	}
+
+	// Output:
+	// only=1
 }
 
 var nilMsg = AppendNil(nil)
@@ -255,7 +332,7 @@ func TestReadNumberArray_Int(t *testing.T) {
 	}
 
 	r := NewReader(&buf)
-	got, err := collectSeq2(ReadArray[int](r, r.ReadInt))
+	got, err := collectSeq2(ReadArray(r, r.ReadInt))
 	if err != nil {
 		t.Fatalf("iteration error: %v", err)
 	}
@@ -287,7 +364,7 @@ func TestReadNumberArray_Float64(t *testing.T) {
 	}
 
 	r := NewReader(&buf)
-	got, err := collectSeq2(ReadArray[float64](r, r.ReadFloat64))
+	got, err := collectSeq2(ReadArray(r, r.ReadFloat64))
 	if err != nil {
 		t.Fatalf("iteration error: %v", err)
 	}
@@ -319,7 +396,7 @@ func TestReadArray_String(t *testing.T) {
 	}
 
 	r := NewReader(&buf)
-	got, err := collectSeq2(ReadArray[string](r, r.ReadString))
+	got, err := collectSeq2(ReadArray(r, r.ReadString))
 	if err != nil {
 		t.Fatalf("iteration error: %v", err)
 	}
@@ -351,7 +428,7 @@ func TestReadArray_Bool(t *testing.T) {
 	}
 
 	r := NewReader(&buf)
-	got, err := collectSeq2(ReadArray[bool](r, r.ReadBool))
+	got, err := collectSeq2(ReadArray(r, r.ReadBool))
 	if err != nil {
 		t.Fatalf("iteration error: %v", err)
 	}
@@ -508,7 +585,7 @@ func TestReadNumberArrayBytes_Uint16(t *testing.T) {
 		msg = AppendUint16(msg, v)
 	}
 
-	seq, tail := ReadArrayBytes[uint16](msg, ReadUint16Bytes)
+	seq, tail := ReadArrayBytes(msg, ReadUint16Bytes)
 	var got []uint16
 	for v := range seq {
 		got = append(got, v)
@@ -540,7 +617,7 @@ func TestReadNumberArrayBytes_ErrOnTruncated(t *testing.T) {
 	// Truncate to cause an error when reading the second element.
 	trunc := full[:len(full)-2]
 
-	seq, tail := ReadArrayBytes[int32](trunc, ReadInt32Bytes)
+	seq, tail := ReadArrayBytes(trunc, ReadInt32Bytes)
 	var got []int32
 	for v := range seq {
 		got = append(got, v)
@@ -577,7 +654,7 @@ func TestReadArray_ErrorOnTooFewElements(t *testing.T) {
 	r := NewReader(&buf)
 	var got []int
 	var firstErr error
-	ReadArray[int](r, r.ReadInt)(func(v int, err error) bool {
+	ReadArray(r, r.ReadInt)(func(v int, err error) bool {
 		if err != nil {
 			firstErr = err
 			return false
@@ -642,7 +719,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[uint](r, r.ReadUint))
+			got, err := collectSeq2(ReadArray(r, r.ReadUint))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -655,7 +732,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				}
 			}
 			r = NewReader(bytes.NewReader(nilMsg))
-			got, err = collectSeq2(ReadArray[uint](r, r.ReadUint))
+			got, err = collectSeq2(ReadArray(r, r.ReadUint))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -678,7 +755,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[uint8](r, r.ReadUint8))
+			got, err := collectSeq2(ReadArray(r, r.ReadUint8))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -705,7 +782,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[uint16](r, r.ReadUint16))
+			got, err := collectSeq2(ReadArray(r, r.ReadUint16))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -732,7 +809,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[uint32](r, r.ReadUint32))
+			got, err := collectSeq2(ReadArray(r, r.ReadUint32))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -759,7 +836,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[uint64](r, r.ReadUint64))
+			got, err := collectSeq2(ReadArray(r, r.ReadUint64))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -786,7 +863,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[int](r, r.ReadInt))
+			got, err := collectSeq2(ReadArray(r, r.ReadInt))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -813,7 +890,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[int8](r, r.ReadInt8))
+			got, err := collectSeq2(ReadArray(r, r.ReadInt8))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -840,7 +917,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[int16](r, r.ReadInt16))
+			got, err := collectSeq2(ReadArray(r, r.ReadInt16))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -867,7 +944,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[int32](r, r.ReadInt32))
+			got, err := collectSeq2(ReadArray(r, r.ReadInt32))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -894,7 +971,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[int64](r, r.ReadInt64))
+			got, err := collectSeq2(ReadArray(r, r.ReadInt64))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -921,7 +998,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[float32](r, r.ReadFloat32))
+			got, err := collectSeq2(ReadArray(r, r.ReadFloat32))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -948,7 +1025,7 @@ func TestRoundtripNumberArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[float64](r, r.ReadFloat64))
+			got, err := collectSeq2(ReadArray(r, r.ReadFloat64))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -1013,7 +1090,7 @@ func TestRoundtripArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[bool](r, r.ReadBool))
+			got, err := collectSeq2(ReadArray(r, r.ReadBool))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -1026,7 +1103,7 @@ func TestRoundtripArray_AllTypes(t *testing.T) {
 				}
 			}
 			r.Reset(bytes.NewReader(nilMsg))
-			got, err = collectSeq2(ReadArray[bool](r, r.ReadBool))
+			got, err = collectSeq2(ReadArray(r, r.ReadBool))
 			if len(got) != 0 {
 				t.Fatalf("%s len: got %d want 0", tc.name, len(got))
 			}
@@ -1049,7 +1126,7 @@ func TestRoundtripArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[string](r, r.ReadString))
+			got, err := collectSeq2(ReadArray(r, r.ReadString))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -1076,7 +1153,7 @@ func TestRoundtripArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[[]byte](r, func() ([]byte, error) {
+			got, err := collectSeq2(ReadArray(r, func() ([]byte, error) {
 				return r.ReadBytes(nil)
 			}))
 			if err != nil {
@@ -1105,7 +1182,7 @@ func TestRoundtripArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[time.Time](r, r.ReadTime))
+			got, err := collectSeq2(ReadArray(r, r.ReadTime))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -1132,7 +1209,7 @@ func TestRoundtripArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[time.Duration](r, r.ReadDuration))
+			got, err := collectSeq2(ReadArray(r, r.ReadDuration))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -1159,7 +1236,7 @@ func TestRoundtripArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[complex64](r, r.ReadComplex64))
+			got, err := collectSeq2(ReadArray(r, r.ReadComplex64))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -1186,7 +1263,7 @@ func TestRoundtripArray_AllTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			got, err := collectSeq2(ReadArray[complex128](r, r.ReadComplex128))
+			got, err := collectSeq2(ReadArray(r, r.ReadComplex128))
 			if err != nil {
 				t.Fatalf("%s iterate: %v", tc.name, err)
 			}
@@ -1260,7 +1337,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[uint](msg, ReadUintBytes)
+			seq, tail := ReadArrayBytes(msg, ReadUintBytes)
 			var got []uint
 			for v := range seq {
 				got = append(got, v)
@@ -1280,7 +1357,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 					t.Fatalf("%s[%d]: got %v want %v", tc.name, i, got[i], tc.vals[i])
 				}
 			}
-			seq, tail = ReadArrayBytes[uint](nilMsg, ReadUintBytes)
+			seq, tail = ReadArrayBytes(nilMsg, ReadUintBytes)
 			for range seq {
 				t.Fatalf("%s: got entries on nil", tc.name)
 			}
@@ -1297,7 +1374,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[uint8](msg, ReadUint8Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadUint8Bytes)
 			var got []uint8
 			for v := range seq {
 				got = append(got, v)
@@ -1322,7 +1399,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[uint16](msg, ReadUint16Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadUint16Bytes)
 			var got []uint16
 			for v := range seq {
 				got = append(got, v)
@@ -1347,7 +1424,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[uint32](msg, ReadUint32Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadUint32Bytes)
 			var got []uint32
 			for v := range seq {
 				got = append(got, v)
@@ -1372,7 +1449,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[uint64](msg, ReadUint64Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadUint64Bytes)
 			var got []uint64
 			for v := range seq {
 				got = append(got, v)
@@ -1397,7 +1474,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[int](msg, ReadIntBytes)
+			seq, tail := ReadArrayBytes(msg, ReadIntBytes)
 			var got []int
 			for v := range seq {
 				got = append(got, v)
@@ -1422,7 +1499,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[int8](msg, ReadInt8Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadInt8Bytes)
 			var got []int8
 			for v := range seq {
 				got = append(got, v)
@@ -1447,7 +1524,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[int16](msg, ReadInt16Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadInt16Bytes)
 			var got []int16
 			for v := range seq {
 				got = append(got, v)
@@ -1472,7 +1549,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[int32](msg, ReadInt32Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadInt32Bytes)
 			var got []int32
 			for v := range seq {
 				got = append(got, v)
@@ -1497,7 +1574,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[int64](msg, ReadInt64Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadInt64Bytes)
 			var got []int64
 			for v := range seq {
 				got = append(got, v)
@@ -1522,7 +1599,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[float32](msg, ReadFloat32Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadFloat32Bytes)
 			var got []float32
 			for v := range seq {
 				got = append(got, v)
@@ -1547,7 +1624,7 @@ func TestRoundtripNumberArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[float64](msg, ReadFloat64Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadFloat64Bytes)
 			var got []float64
 			for v := range seq {
 				got = append(got, v)
@@ -1610,7 +1687,7 @@ func TestRoundtripArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[bool](msg, ReadBoolBytes)
+			seq, tail := ReadArrayBytes(msg, ReadBoolBytes)
 			var got []bool
 			for v := range seq {
 				got = append(got, v)
@@ -1630,7 +1707,7 @@ func TestRoundtripArrayBytes_AllTypes(t *testing.T) {
 					t.Fatalf("%s[%d]: got %v want %v", tc.name, i, got[i], tc.vals[i])
 				}
 			}
-			seq, tail = ReadArrayBytes[bool](nilMsg, ReadBoolBytes)
+			seq, tail = ReadArrayBytes(nilMsg, ReadBoolBytes)
 			for range seq {
 				t.Fatalf("%s: got entries on nil", tc.name)
 			}
@@ -1646,7 +1723,7 @@ func TestRoundtripArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[string](msg, ReadStringBytes)
+			seq, tail := ReadArrayBytes(msg, ReadStringBytes)
 			var got []string
 			for v := range seq {
 				got = append(got, v)
@@ -1748,7 +1825,7 @@ func TestRoundtripArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[complex64](msg, ReadComplex64Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadComplex64Bytes)
 			var got []complex64
 			for v := range seq {
 				got = append(got, v)
@@ -1773,7 +1850,7 @@ func TestRoundtripArrayBytes_AllTypes(t *testing.T) {
 			for _, v := range tc.vals {
 				msg = tc.append(msg, v)
 			}
-			seq, tail := ReadArrayBytes[complex128](msg, ReadComplex128Bytes)
+			seq, tail := ReadArrayBytes(msg, ReadComplex128Bytes)
 			var got []complex128
 			for v := range seq {
 				got = append(got, v)
@@ -1872,7 +1949,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[uint, uint](r, r.ReadUint, r.ReadUint)
+			seq, tail := ReadMap(r, r.ReadUint, r.ReadUint)
 			got := make(map[uint]uint, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -1890,7 +1967,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			// Test nil
 			r = NewReader(bytes.NewReader(nilMsg))
-			seq, tail = ReadMap[uint, uint](r, r.ReadUint, r.ReadUint)
+			seq, tail = ReadMap(r, r.ReadUint, r.ReadUint)
 			for k, v := range seq {
 				t.Fatalf("nil %s: got key %v val %v", tc.name, k, v)
 			}
@@ -1915,7 +1992,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[uint8, uint8](r, r.ReadUint8, r.ReadUint8)
+			seq, tail := ReadMap(r, r.ReadUint8, r.ReadUint8)
 			got := make(map[uint8]uint8, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -1949,7 +2026,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[uint16, uint16](r, r.ReadUint16, r.ReadUint16)
+			seq, tail := ReadMap(r, r.ReadUint16, r.ReadUint16)
 			got := make(map[uint16]uint16, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -1983,7 +2060,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[uint32, uint32](r, r.ReadUint32, r.ReadUint32)
+			seq, tail := ReadMap(r, r.ReadUint32, r.ReadUint32)
 			got := make(map[uint32]uint32, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2017,7 +2094,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[uint64, uint64](r, r.ReadUint64, r.ReadUint64)
+			seq, tail := ReadMap(r, r.ReadUint64, r.ReadUint64)
 			got := make(map[uint64]uint64, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2051,7 +2128,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[int, int](r, r.ReadInt, r.ReadInt)
+			seq, tail := ReadMap(r, r.ReadInt, r.ReadInt)
 			got := make(map[int]int, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2085,7 +2162,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[int8, int8](r, r.ReadInt8, r.ReadInt8)
+			seq, tail := ReadMap(r, r.ReadInt8, r.ReadInt8)
 			got := make(map[int8]int8, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2119,7 +2196,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[int16, int16](r, r.ReadInt16, r.ReadInt16)
+			seq, tail := ReadMap(r, r.ReadInt16, r.ReadInt16)
 			got := make(map[int16]int16, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2153,7 +2230,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[int32, int32](r, r.ReadInt32, r.ReadInt32)
+			seq, tail := ReadMap(r, r.ReadInt32, r.ReadInt32)
 			got := make(map[int32]int32, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2187,7 +2264,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[int64, int64](r, r.ReadInt64, r.ReadInt64)
+			seq, tail := ReadMap(r, r.ReadInt64, r.ReadInt64)
 			got := make(map[int64]int64, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2221,7 +2298,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[float32, float32](r, r.ReadFloat32, r.ReadFloat32)
+			seq, tail := ReadMap(r, r.ReadFloat32, r.ReadFloat32)
 			got := make(map[float32]float32, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2255,7 +2332,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[float64, float64](r, r.ReadFloat64, r.ReadFloat64)
+			seq, tail := ReadMap(r, r.ReadFloat64, r.ReadFloat64)
 			got := make(map[float64]float64, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2335,7 +2412,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[bool, bool](r, r.ReadBool, r.ReadBool)
+			seq, tail := ReadMap(r, r.ReadBool, r.ReadBool)
 			got := make(map[bool]bool, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2352,7 +2429,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				}
 			}
 			r = NewReader(bytes.NewReader(nilMsg))
-			seq, tail = ReadMap[bool, bool](r, r.ReadBool, r.ReadBool)
+			seq, tail = ReadMap(r, r.ReadBool, r.ReadBool)
 			for k, v := range seq {
 				t.Fatalf("%s:expected ni results, got %v:%v", tc.name, k, v)
 			}
@@ -2378,7 +2455,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[string, string](r, r.ReadString, r.ReadString)
+			seq, tail := ReadMap(r, r.ReadString, r.ReadString)
 			got := make(map[string]string, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2420,7 +2497,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 			}
 
 			r := NewReader(&buf)
-			seq, tail := ReadMap[[]byte, []byte](r, func() ([]byte, error) {
+			seq, tail := ReadMap(r, func() ([]byte, error) {
 				return r.ReadBytes(nil)
 			}, func() ([]byte, error) {
 				return r.ReadBytes(nil)
@@ -2470,7 +2547,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[time.Time, time.Time](r, r.ReadTime, r.ReadTime)
+			seq, tail := ReadMap(r, r.ReadTime, r.ReadTime)
 			got := make(map[time.Time]time.Time, len(tc.keys))
 			for k, v := range seq {
 				got[k.UTC()] = v.UTC()
@@ -2504,7 +2581,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[time.Duration, time.Duration](r, r.ReadDuration, r.ReadDuration)
+			seq, tail := ReadMap(r, r.ReadDuration, r.ReadDuration)
 			got := make(map[time.Duration]time.Duration, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2539,7 +2616,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[complex64, complex64](r, r.ReadComplex64, r.ReadComplex64)
+			seq, tail := ReadMap(r, r.ReadComplex64, r.ReadComplex64)
 			got := make(map[complex64]complex64, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2573,7 +2650,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				t.Fatalf("flush: %v", err)
 			}
 			r := NewReader(&buf)
-			seq, tail := ReadMap[complex128, complex128](r, r.ReadComplex128, r.ReadComplex128)
+			seq, tail := ReadMap(r, r.ReadComplex128, r.ReadComplex128)
 			got := make(map[complex128]complex128, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2628,7 +2705,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[uint, uint](msg, ReadUintBytes, ReadUintBytes)
+			seq, tail := ReadMapBytes(msg, ReadUintBytes, ReadUintBytes)
 			got := make(map[uint]uint, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2648,7 +2725,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 					t.Fatalf("%s key %v got %v want %v", tc.name, tc.keys[i], got[tc.keys[i]], tc.vals[i])
 				}
 			}
-			seq, tail = ReadMapBytes[uint, uint](nilMsg, ReadUintBytes, ReadUintBytes)
+			seq, tail = ReadMapBytes(nilMsg, ReadUintBytes, ReadUintBytes)
 			for k, v := range seq {
 				t.Fatalf("%s: got %v:%v want nothing", tc.name, k, v)
 			}
@@ -2665,7 +2742,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[uint8, uint8](msg, ReadUint8Bytes, ReadUint8Bytes)
+			seq, tail := ReadMapBytes(msg, ReadUint8Bytes, ReadUint8Bytes)
 			got := make(map[uint8]uint8, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2691,7 +2768,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[uint16, uint16](msg, ReadUint16Bytes, ReadUint16Bytes)
+			seq, tail := ReadMapBytes(msg, ReadUint16Bytes, ReadUint16Bytes)
 			got := make(map[uint16]uint16, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2717,7 +2794,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[uint32, uint32](msg, ReadUint32Bytes, ReadUint32Bytes)
+			seq, tail := ReadMapBytes(msg, ReadUint32Bytes, ReadUint32Bytes)
 			got := make(map[uint32]uint32, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2743,7 +2820,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[uint64, uint64](msg, ReadUint64Bytes, ReadUint64Bytes)
+			seq, tail := ReadMapBytes(msg, ReadUint64Bytes, ReadUint64Bytes)
 			got := make(map[uint64]uint64, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2769,7 +2846,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[int, int](msg, ReadIntBytes, ReadIntBytes)
+			seq, tail := ReadMapBytes(msg, ReadIntBytes, ReadIntBytes)
 			got := make(map[int]int, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2795,7 +2872,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[int8, int8](msg, ReadInt8Bytes, ReadInt8Bytes)
+			seq, tail := ReadMapBytes(msg, ReadInt8Bytes, ReadInt8Bytes)
 			got := make(map[int8]int8, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2821,7 +2898,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[int16, int16](msg, ReadInt16Bytes, ReadInt16Bytes)
+			seq, tail := ReadMapBytes(msg, ReadInt16Bytes, ReadInt16Bytes)
 			got := make(map[int16]int16, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2847,7 +2924,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[int32, int32](msg, ReadInt32Bytes, ReadInt32Bytes)
+			seq, tail := ReadMapBytes(msg, ReadInt32Bytes, ReadInt32Bytes)
 			got := make(map[int32]int32, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2873,7 +2950,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[int64, int64](msg, ReadInt64Bytes, ReadInt64Bytes)
+			seq, tail := ReadMapBytes(msg, ReadInt64Bytes, ReadInt64Bytes)
 			got := make(map[int64]int64, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2899,7 +2976,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[float32, float32](msg, ReadFloat32Bytes, ReadFloat32Bytes)
+			seq, tail := ReadMapBytes(msg, ReadFloat32Bytes, ReadFloat32Bytes)
 			got := make(map[float32]float32, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2925,7 +3002,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[float64, float64](msg, ReadFloat64Bytes, ReadFloat64Bytes)
+			seq, tail := ReadMapBytes(msg, ReadFloat64Bytes, ReadFloat64Bytes)
 			got := make(map[float64]float64, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -2997,7 +3074,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[bool, bool](msg, ReadBoolBytes, ReadBoolBytes)
+			seq, tail := ReadMapBytes(msg, ReadBoolBytes, ReadBoolBytes)
 			got := make(map[bool]bool, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -3017,7 +3094,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 					t.Fatalf("%s key %v got %v want %v", tc.name, tc.keys[i], got[tc.keys[i]], tc.vals[i])
 				}
 			}
-			seq, tail = ReadMapBytes[bool, bool](nilMsg, ReadBoolBytes, ReadBoolBytes)
+			seq, tail = ReadMapBytes(nilMsg, ReadBoolBytes, ReadBoolBytes)
 			for k, v := range seq {
 				t.Fatalf("%s key %v:%v want nothing", tc.name, k, v)
 			}
@@ -3035,7 +3112,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[string, string](msg, ReadStringBytes, ReadStringBytes)
+			seq, tail := ReadMapBytes(msg, ReadStringBytes, ReadStringBytes)
 			got := make(map[string]string, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -3104,7 +3181,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[time.Time, time.Time](msg, ReadTimeBytes, ReadTimeBytes)
+			seq, tail := ReadMapBytes(msg, ReadTimeBytes, ReadTimeBytes)
 			got := make(map[time.Time]time.Time, len(tc.keys))
 			for k, v := range seq {
 				got[k.UTC()] = v.UTC()
@@ -3130,7 +3207,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[time.Duration, time.Duration](msg, ReadDurationBytes, ReadDurationBytes)
+			seq, tail := ReadMapBytes(msg, ReadDurationBytes, ReadDurationBytes)
 			got := make(map[time.Duration]time.Duration, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -3156,7 +3233,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[complex64, complex64](msg, ReadComplex64Bytes, ReadComplex64Bytes)
+			seq, tail := ReadMapBytes(msg, ReadComplex64Bytes, ReadComplex64Bytes)
 			got := make(map[complex64]complex64, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -3182,7 +3259,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.keys[i])
 				msg = tc.append(msg, tc.vals[i])
 			}
-			seq, tail := ReadMapBytes[complex128, complex128](msg, ReadComplex128Bytes, ReadComplex128Bytes)
+			seq, tail := ReadMapBytes(msg, ReadComplex128Bytes, ReadComplex128Bytes)
 			got := make(map[complex128]complex128, len(tc.keys))
 			for k, v := range seq {
 				got[k] = v
@@ -3216,7 +3293,7 @@ func TestReadMapBytes_TailErrorOnTruncated(t *testing.T) {
 	full := AppendInt(msg, 20)
 	trunc := full[:len(full)-2] // truncate some bytes from the last value
 
-	seq, tail := ReadMapBytes[int, int](trunc, ReadIntBytes, ReadIntBytes)
+	seq, tail := ReadMapBytes(trunc, ReadIntBytes, ReadIntBytes)
 	got := make(map[int]int)
 	for k, v := range seq {
 		got[k] = v
