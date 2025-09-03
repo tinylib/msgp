@@ -70,7 +70,8 @@ func WriteArray[T any](w *Writer, a []T, writeFn func(T) error) error {
 // The type parameters K and V specify the types of the keys and values in the map.
 // The returned iterator implements the iter.Seq2[K, V] interface,
 // allowing for sequential access to the map elements.
-// The returned function can be used to read any error that occurred during iteration when iteration is done.
+// The returned function can be used to read any error that
+// occurred during iteration when iteration is done.
 func ReadMap[K, V any](m *Reader, readKey func() (K, error), readVal func() (V, error)) (iter.Seq2[K, V], func() error) {
 	var err error
 	return func(yield func(K, V) bool) {
@@ -137,7 +138,7 @@ func WriteMap[K comparable, V any](w *Writer, m map[K]V, writeKey func(K) error,
 
 // WriteMapSorted writes a map to the provided Writer.
 // The keys of the map are sorted before writing.
-// This provides deterministic output.
+// This provides deterministic output, but will allocate to sort the keys.
 // The writeKey and writeVal parameters specify the functions
 // to use to write each key and value of the map.
 func WriteMapSorted[K cmp.Ordered, V any](w *Writer, m map[K]V, writeKey func(K) error, writeVal func(V) error) error {
@@ -214,7 +215,7 @@ func AppendArray[T any](b []byte, a []T, writeFn func(b []byte, v T) []byte) []b
 
 // ReadMapBytes returns an iterator over key/value
 // pairs from a MessagePack map encoded in b.
-// The iterator yields K,V pairs and this function also returns
+// The iterator yields K,V pairs, and this function also returns
 // a closure to get the remaining bytes and any error.
 func ReadMapBytes[K any, V any](b []byte,
 	readK func([]byte) (K, []byte, error),
@@ -273,7 +274,8 @@ func AppendMap[K comparable, V any](b []byte, m map[K]V,
 }
 
 // AppendMapSorted writes a map to the provided buffer.
-// Keys are sorted before writing. This provides deterministic output.
+// Keys are sorted before writing.
+// This provides deterministic output, but will allocate to sort the keys.
 // The writeK and writeV parameters specify the functions to use to write each key and value of the map.
 // The returned buffer contains the encoded map.
 // The function panics if the map is larger than math.MaxUint32 elements.
@@ -303,6 +305,7 @@ type DecodePtr[T any] interface {
 // DecoderFrom allows augmenting any type with a DecodeMsg method into a method
 // that reads from Reader and returns a T.
 // Provide an instance of T. This value isn't used.
+// See ReadArray/ReadMap "struct" examples for usage.
 func DecoderFrom[T any, PT DecodePtr[T]](r *Reader, _ T) func() (T, error) {
 	return func() (T, error) {
 		var t T
@@ -315,13 +318,14 @@ func DecoderFrom[T any, PT DecodePtr[T]](r *Reader, _ T) func() (T, error) {
 // FlexibleEncoder is a constraint for types where either T or *T implements Encodable
 type FlexibleEncoder[T any] interface {
 	Encodable
-	*T // Include *T in the interface
+	*T
 }
 
-// EncoderTo allows augmenting any type with a EncodeMsg method into a method
-// that writes to Writer on each call.
-// Provide an instance of T. This value isn't used.'
-func EncoderTo[T any, PT FlexibleEncoder[T]](w *Writer, _ T) func(T) error {
+// EncoderTo allows augmenting any type with an EncodeMsg
+// method into a method that writes to Writer on each call.
+// Provide an instance of T. This value isn't used.
+// See ReadArray or ReadMap "struct" examples for usage.
+func EncoderTo[T any, _ FlexibleEncoder[T]](w *Writer, _ T) func(T) error {
 	return func(t T) error {
 		// Check if T implements Marshaler
 		if marshaler, ok := any(t).(Encodable); ok {
@@ -345,6 +349,7 @@ type UnmarshalPtr[T any] interface {
 // DecoderFromBytes allows augmenting any type with an UnmarshalMsg
 // method into a method that reads from []byte and returns a T.
 // Provide an instance of T. This value isn't used.
+// See ReadArrayBytes or ReadMapBytes "struct" examples for usage.
 func DecoderFromBytes[T any, PT UnmarshalPtr[T]](_ T) func([]byte) (T, []byte, error) {
 	return func(b []byte) (T, []byte, error) {
 		var t T
@@ -363,7 +368,8 @@ type FlexibleMarshaler[T any] interface {
 // EncoderToBytes allows augmenting any type with a MarshalMsg method into a method
 // that reads from T and returns a []byte.
 // Provide an instance of T. This value isn't used.
-func EncoderToBytes[T any, PT FlexibleMarshaler[T]](_ T) func([]byte, T) []byte {
+// See ReadArrayBytes or ReadMapBytes "struct" examples for usage.
+func EncoderToBytes[T any, _ FlexibleMarshaler[T]](_ T) func([]byte, T) []byte {
 	return func(b []byte, t T) []byte {
 		// Check if T implements Marshaler
 		if marshaler, ok := any(t).(Marshaler); ok {
