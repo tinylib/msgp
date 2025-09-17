@@ -2,6 +2,7 @@ package parse
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/tinylib/msgp/gen"
 )
@@ -113,16 +114,16 @@ func (fs *FileSet) propInline() {
 		switch el := all[i].el.(type) {
 		case *gen.Struct:
 			for i := range el.Fields {
-				fs.nextInline(&el.Fields[i].FieldElem, name)
+				fs.nextInline(&el.Fields[i].FieldElem, name, el.TypeParams())
 			}
 		case *gen.Array:
-			fs.nextInline(&el.Els, name)
+			fs.nextInline(&el.Els, name, el.TypeParams())
 		case *gen.Slice:
-			fs.nextInline(&el.Els, name)
+			fs.nextInline(&el.Els, name, el.TypeParams())
 		case *gen.Map:
-			fs.nextInline(&el.Value, name)
+			fs.nextInline(&el.Value, name, el.TypeParams())
 		case *gen.Ptr:
-			fs.nextInline(&el.Value, name)
+			fs.nextInline(&el.Value, name, el.TypeParams())
 		}
 		popstate()
 	}
@@ -133,7 +134,7 @@ Please file a bug at github.com/tinylib/msgp/issues!
 Thanks!
 `
 
-func (fs *FileSet) nextInline(ref *gen.Elem, root string) {
+func (fs *FileSet) nextInline(ref *gen.Elem, root string, params gen.GenericTypeParams) {
 	switch el := (*ref).(type) {
 	case *gen.BaseElem:
 		// ensure that we're not inlining
@@ -150,26 +151,28 @@ func (fs *FileSet) nextInline(ref *gen.Elem, root string) {
 				}
 
 				*ref = node.Copy()
-				fs.nextInline(ref, node.TypeName())
+				fs.nextInline(ref, node.TypeName(), params)
 			} else if !ok && !el.Resolved() {
-				// this is the point at which we're sure that
-				// we've got a type that isn't a primitive,
-				// a library builtin, or a processed type
-				warnf("unresolved identifier: %s\n", typ)
+				if params.ToPointerMap[typ] == "" && (!strings.Contains(typ, "[") || !strings.Contains(typ, "]")) {
+					// this is the point at which we're sure that
+					// we've got a type that isn't a primitive,
+					// a library builtin, or a processed type
+					warnf("unresolved identifier: %s\n", typ)
+				}
 			}
 		}
 	case *gen.Struct:
 		for i := range el.Fields {
-			fs.nextInline(&el.Fields[i].FieldElem, root)
+			fs.nextInline(&el.Fields[i].FieldElem, root, el.TypeParams())
 		}
 	case *gen.Array:
-		fs.nextInline(&el.Els, root)
+		fs.nextInline(&el.Els, root, params)
 	case *gen.Slice:
-		fs.nextInline(&el.Els, root)
+		fs.nextInline(&el.Els, root, params)
 	case *gen.Map:
-		fs.nextInline(&el.Value, root)
+		fs.nextInline(&el.Value, root, params)
 	case *gen.Ptr:
-		fs.nextInline(&el.Value, root)
+		fs.nextInline(&el.Value, root, params)
 	default:
 		panic("bad elem type")
 	}

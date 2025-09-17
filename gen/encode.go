@@ -112,6 +112,7 @@ func (e *encodeGen) tuple(s *Struct) {
 		}
 		SetIsAllowNil(fieldElem, anField)
 		e.ctx.PushString(s.Fields[i].FieldName)
+		setTypeParams(s.Fields[i].FieldElem, s.typeParams)
 		next(e, s.Fields[i].FieldElem)
 		e.ctx.Pop()
 		if anField {
@@ -224,6 +225,7 @@ func (e *encodeGen) structmap(s *Struct) {
 		SetIsAllowNil(fieldElem, anField)
 
 		e.ctx.PushString(s.Fields[i].FieldName)
+		setTypeParams(s.Fields[i].FieldElem, s.typeParams)
 		next(e, s.Fields[i].FieldElem)
 		e.ctx.Pop()
 
@@ -269,6 +271,7 @@ func (e *encodeGen) gMap(m *Map) {
 	}
 	e.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)
+	setTypeParams(m.Value, m.typeParams)
 	next(e, m.Value)
 	e.ctx.Pop()
 	e.p.closeblock()
@@ -280,6 +283,11 @@ func (e *encodeGen) gPtr(s *Ptr) {
 	}
 	e.fuseHook()
 	e.p.printf("\nif %s == nil { err = en.WriteNil(); if err != nil { return; } } else {", s.Varname())
+	if s.typeParams.TypeParams != "" {
+		tp := s.typeParams
+		tp.isPtr = true
+		s.Value.SetTypeParams(tp)
+	}
 	next(e, s.Value)
 	e.p.closeblock()
 }
@@ -290,6 +298,7 @@ func (e *encodeGen) gSlice(s *Slice) {
 	}
 	e.fuseHook()
 	e.writeAndCheck(arrayHeader, lenAsUint32, s.Varname())
+	setTypeParams(s.Els, s.typeParams)
 	e.p.rangeBlock(e.ctx, s.Index, s.Varname(), e, s.Els)
 }
 
@@ -306,6 +315,7 @@ func (e *encodeGen) gArray(a *Array) {
 	}
 
 	e.writeAndCheck(arrayHeader, literalFmt, coerceArraySize(a.Size))
+	setTypeParams(a.Els, a.typeParams)
 	e.p.rangeBlock(e.ctx, a.Index, a.Varname(), e, a.Els)
 }
 
@@ -330,6 +340,13 @@ func (e *encodeGen) gBase(b *BaseElem) {
 		t := strings.TrimPrefix(b.BaseName(), "atomic.")
 		e.writeAndCheck(t, literalFmt, strings.TrimPrefix(vname, "*")+".Load()")
 	case IDENT: // unknown identity
+		dst := b.BaseType()
+		if b.typeParams.isPtr {
+			dst = "*" + dst
+		}
+		if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+			vname = fmt.Sprintf(remap, vname)
+		}
 		e.p.printf("\nerr = %s.EncodeMsg(en)", vname)
 		e.p.wrapErrCheck(e.ctx.ArgsStr())
 	default:

@@ -268,6 +268,9 @@ func next(t traversal, e Elem) {
 
 // possibly-immutable method receiver
 func imutMethodReceiver(p Elem) string {
+	typeName := p.TypeName()
+	typeParams := p.TypeParams()
+
 	switch e := p.(type) {
 	case *Struct:
 		// TODO(HACK): actually do real math here.
@@ -277,19 +280,19 @@ func imutMethodReceiver(p Elem) string {
 					goto nope
 				}
 			}
-			return p.TypeName()
+			return typeName + typeParams.TypeParams
 		}
 	nope:
-		return "*" + p.TypeName()
+		return "*" + typeName + typeParams.TypeParams
 
 	// gets dereferenced automatically
 	case *Array:
-		return "*" + p.TypeName()
+		return "*" + typeName + typeParams.TypeParams
 
 	// everything else can be
 	// by-value.
 	default:
-		return p.TypeName()
+		return typeName + typeParams.TypeParams
 	}
 }
 
@@ -297,18 +300,21 @@ func imutMethodReceiver(p Elem) string {
 // so that its method receiver
 // is of the write type.
 func methodReceiver(p Elem) string {
+	typeName := p.TypeName()
+	typeParams := p.TypeParams()
+
 	switch p.(type) {
 
 	// structs and arrays are
 	// dereferenced automatically,
 	// so no need to alter varname
 	case *Struct, *Array:
-		return "*" + p.TypeName()
+		return "*" + typeName + typeParams.TypeParams
 	// set variable name to
 	// *varname
 	default:
 		p.SetVarname("(*" + p.Varname() + ")")
-		return "*" + p.TypeName()
+		return "*" + typeName + typeParams.TypeParams
 	}
 }
 
@@ -404,7 +410,11 @@ func (p *printer) clearMap(name string) {
 
 func (p *printer) wrapErrCheck(ctx string) {
 	p.print("\nif err != nil {")
-	p.printf("\nerr = msgp.WrapError(err, %s)", ctx)
+	if ctx != "" {
+		p.printf("\nerr = msgp.WrapError(err, %s)", ctx)
+	} else {
+		p.print("\nerr = msgp.WrapError(err)")
+	}
 	p.printf("\nreturn")
 	p.print("\n}")
 }

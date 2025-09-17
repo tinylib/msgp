@@ -119,6 +119,7 @@ func (m *marshalGen) tuple(s *Struct) {
 		}
 		m.ctx.PushString(s.Fields[i].FieldName)
 		SetIsAllowNil(fieldElem, anField)
+		setTypeParams(fieldElem, s.typeParams)
 		next(m, fieldElem)
 		m.ctx.Pop()
 		if anField {
@@ -221,6 +222,7 @@ func (m *marshalGen) mapstruct(s *Struct) {
 		}
 		m.ctx.PushString(s.Fields[i].FieldName)
 		SetIsAllowNil(fieldElem, anField)
+		setTypeParams(fieldElem, s.typeParams)
 		next(m, fieldElem)
 		m.ctx.Pop()
 
@@ -276,6 +278,7 @@ func (m *marshalGen) gMap(s *Map) {
 
 	m.ctx.PushVar(s.Keyidx)
 	s.Value.SetIsAllowNil(false)
+	setTypeParams(s.Value, s.typeParams)
 	next(m, s.Value)
 	m.ctx.Pop()
 	m.p.closeblock()
@@ -287,6 +290,8 @@ func (m *marshalGen) gSlice(s *Slice) {
 	}
 	m.fuseHook()
 	vname := s.Varname()
+	setTypeParams(s.Els, s.typeParams)
+
 	m.rawAppend(arrayHeader, lenAsUint32, vname)
 	m.p.rangeBlock(m.ctx, s.Index, vname, m, s.Els)
 }
@@ -300,9 +305,18 @@ func (m *marshalGen) gArray(a *Array) {
 		m.rawAppend("Bytes", "(%s)[:]", a.Varname())
 		return
 	}
+	setTypeParams(a.Els, a.typeParams)
 
 	m.rawAppend(arrayHeader, literalFmt, coerceArraySize(a.Size))
 	m.p.rangeBlock(m.ctx, a.Index, a.Varname(), m, a.Els)
+}
+
+func setTypeParams(e Elem, tp GenericTypeParams) {
+	if e == nil {
+		return
+	}
+	tp.isPtr = false
+	e.SetTypeParams(tp)
 }
 
 func (m *marshalGen) gPtr(p *Ptr) {
@@ -311,6 +325,11 @@ func (m *marshalGen) gPtr(p *Ptr) {
 	}
 	m.fuseHook()
 	m.p.printf("\nif %s == nil {\no = msgp.AppendNil(o)\n} else {", p.Varname())
+	if p.typeParams.TypeParams != "" {
+		tp := p.typeParams
+		tp.isPtr = true
+		p.Value.SetTypeParams(tp)
+	}
 	next(m, p.Value)
 	m.p.closeblock()
 }
@@ -335,6 +354,13 @@ func (m *marshalGen) gBase(b *BaseElem) {
 	var echeck bool
 	switch b.Value {
 	case IDENT:
+		dst := b.BaseType()
+		if b.typeParams.isPtr {
+			dst = "*" + dst
+		}
+		if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+			vname = fmt.Sprintf(remap, vname)
+		}
 		echeck = true
 		m.p.printf("\no, err = %s.MarshalMsg(o)", vname)
 	case Intf, Ext, JsonNumber:

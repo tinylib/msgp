@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -97,6 +98,7 @@ func (u *unmarshalGen) tuple(s *Struct) {
 		if s.Fields[i].HasTagPart("zerocopy") {
 			setRecursiveZC(fieldElem, true)
 		}
+		setTypeParams(fieldElem, s.typeParams)
 		next(u, fieldElem)
 		if s.Fields[i].HasTagPart("zerocopy") {
 			setRecursiveZC(fieldElem, false)
@@ -173,6 +175,8 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 		if s.Fields[i].HasTagPart("zerocopy") {
 			setRecursiveZC(fieldElem, true)
 		}
+		setTypeParams(fieldElem, s.typeParams)
+
 		next(u, fieldElem)
 		if s.Fields[i].HasTagPart("zerocopy") {
 			setRecursiveZC(fieldElem, false)
@@ -239,6 +243,14 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 		if b.Convert {
 			lowered = b.ToBase() + "(" + lowered + ")"
 		}
+		dst := b.BaseType()
+		if b.typeParams.isPtr {
+			dst = "*" + dst
+		}
+		if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+			lowered = fmt.Sprintf(remap, lowered)
+		}
+
 		u.p.printf("\nbts, err = %s.UnmarshalMsg(bts)", lowered)
 	case Time:
 		if u.ctx.asUTC {
@@ -292,6 +304,7 @@ func (u *unmarshalGen) gArray(a *Array) {
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, arrayHeader)
 	u.p.arrayCheck(coerceArraySize(a.Size), sz)
+	setTypeParams(a.Els, a.typeParams)
 	u.p.rangeBlock(u.ctx, a.Index, a.Varname(), u, a.Els)
 }
 
@@ -307,6 +320,7 @@ func (u *unmarshalGen) gSlice(s *Slice) {
 	} else {
 		u.p.resizeSlice(sz, s)
 	}
+	setTypeParams(s.Els, s.typeParams)
 	u.p.rangeBlock(u.ctx, s.Index, s.Varname(), u, s.Els)
 }
 
@@ -331,6 +345,7 @@ func (u *unmarshalGen) gMap(m *Map) {
 	m.readKey(u.ctx, u.p, u, u.assignAndCheck)
 	u.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)
+	setTypeParams(m.Value, m.typeParams)
 	next(u, m.Value)
 	u.ctx.Pop()
 	u.p.mapAssign(m)
@@ -340,6 +355,11 @@ func (u *unmarshalGen) gMap(m *Map) {
 func (u *unmarshalGen) gPtr(p *Ptr) {
 	u.p.printf("\nif msgp.IsNil(bts) { bts, err = msgp.ReadNilBytes(bts); if err != nil { return }; %s = nil; } else { ", p.Varname())
 	u.p.initPtr(p)
+	if p.typeParams.TypeParams != "" {
+		tp := p.typeParams
+		tp.isPtr = true
+		p.Value.SetTypeParams(tp)
+	}
 	next(u, p.Value)
 	u.p.closeblock()
 }

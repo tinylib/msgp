@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -96,6 +97,7 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 		}
 		SetIsAllowNil(fieldElem, anField)
 		d.ctx.PushString(s.Fields[i].FieldName)
+		setTypeParams(fieldElem, s.typeParams)
 		next(d, fieldElem)
 		d.ctx.Pop()
 		if anField {
@@ -147,6 +149,7 @@ func (d *decodeGen) structAsMap(s *Struct) {
 			d.p.printf("\n%s = nil\n} else {", fieldElem.Varname())
 		}
 		SetIsAllowNil(fieldElem, anField)
+		setTypeParams(fieldElem, s.typeParams)
 		next(d, fieldElem)
 		if oeCount > 0 && (s.Fields[i].HasTagPart("omitempty") || s.Fields[i].HasTagPart("omitzero")) {
 			d.p.printf("\n%s", bm.setStmt(len(oeEmittedIdx)))
@@ -218,10 +221,20 @@ func (d *decodeGen) gBase(b *BaseElem) {
 			checkNil = vname
 		}
 	case IDENT:
+		dst := b.BaseType()
+		if b.typeParams.isPtr {
+			dst = "*" + dst
+		}
 		if b.Convert {
 			lowered := b.ToBase() + "(" + vname + ")"
+			if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+				lowered = fmt.Sprintf(remap, lowered)
+			}
 			d.p.printf("\nerr = %s.DecodeMsg(dc)", lowered)
 		} else {
+			if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+				vname = fmt.Sprintf(remap, vname)
+			}
 			d.p.printf("\nerr = %s.DecodeMsg(dc)", vname)
 		}
 	case Ext:
@@ -279,6 +292,7 @@ func (d *decodeGen) gMap(m *Map) {
 	d.p.declare(m.Validx, m.Value.TypeName())
 	d.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)
+	setTypeParams(m.Value, m.typeParams)
 	next(d, m.Value)
 	d.p.mapAssign(m)
 	d.ctx.Pop()
@@ -297,6 +311,7 @@ func (d *decodeGen) gSlice(s *Slice) {
 	} else {
 		d.p.resizeSlice(sz, s)
 	}
+	setTypeParams(s.Els, s.typeParams)
 	d.p.rangeBlock(d.ctx, s.Index, s.Varname(), d, s.Els)
 }
 
@@ -315,6 +330,7 @@ func (d *decodeGen) gArray(a *Array) {
 	d.p.declare(sz, u32)
 	d.assignAndCheck(sz, arrayHeader)
 	d.p.arrayCheck(coerceArraySize(a.Size), sz)
+	setTypeParams(a.Els, a.typeParams)
 	d.p.rangeBlock(d.ctx, a.Index, a.Varname(), d, a.Els)
 }
 
@@ -327,6 +343,11 @@ func (d *decodeGen) gPtr(p *Ptr) {
 	d.p.wrapErrCheck(d.ctx.ArgsStr())
 	d.p.printf("\n%s = nil\n} else {", p.Varname())
 	d.p.initPtr(p)
+	if p.typeParams.TypeParams != "" {
+		tp := p.typeParams
+		tp.isPtr = true
+		p.Value.SetTypeParams(tp)
+	}
 	next(d, p.Value)
 	d.p.closeblock()
 }
