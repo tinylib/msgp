@@ -582,7 +582,7 @@ func (m *Reader) ReadFloat64() (f float64, err error) {
 	var p []byte
 	p, err = m.R.Peek(9)
 	if err != nil {
-		// we'll allow a coversion from float32 to float64,
+		// we'll allow a conversion from float32 to float64,
 		// since we don't lose any precision
 		if err == io.EOF && len(p) > 0 && p[0] == mfloat32 {
 			ef, err := m.ReadFloat32()
