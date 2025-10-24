@@ -175,7 +175,7 @@ func (m *Reader) CopyNext(w io.Writer) (int64, error) {
 	// Opportunistic optimization: if we can fit the whole thing in the m.R
 	// buffer, then just get a pointer to that, and pass it to w.Write,
 	// avoiding an allocation.
-	if int(sz) <= m.R.BufferSize() {
+	if int(sz) >= 0 && int(sz) <= m.R.BufferSize() {
 		var nn int
 		var buf []byte
 		buf, err = m.R.Next(int(sz))
