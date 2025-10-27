@@ -13,22 +13,29 @@ import (
 	"github.com/tinylib/msgp/gen"
 )
 
+// TypeInfo holds both the type expression and its generic type parameters
+type TypeInfo struct {
+	Type       ast.Expr       // The actual type expression
+	TypeParams *ast.FieldList // Generic type parameters
+}
+
 // A FileSet is the in-memory representation of a
 // parsed file.
 type FileSet struct {
-	Package       string              // package name
-	Specs         map[string]ast.Expr // type specs in file
-	Identities    map[string]gen.Elem // processed from specs
-	Aliased       map[string]string   // Aliased types.
-	Directives    []string            // raw preprocessor directives
-	Imports       []*ast.ImportSpec   // imports
-	CompactFloats bool                // Use smaller floats when feasible
-	ClearOmitted  bool                // Set omitted fields to zero value
-	NewTime       bool                // Set to use -1 extension for time.Time
-	AsUTC         bool                // Set timezone to UTC instead of local
-	AllowMapShims bool                // Allow map keys to be shimmed (default true)
-	AllowBinMaps  bool                // Allow maps with binary keys to be used (default false)
-	AutoMapShims  bool                // Automatically shim map keys of builtin types(default false)
+	Package       string               // package name
+	Specs         map[string]ast.Expr  // type specs in file
+	TypeInfos     map[string]*TypeInfo // type specs with generic info
+	Identities    map[string]gen.Elem  // processed from specs
+	Aliased       map[string]string    // Aliased types.
+	Directives    []string             // raw preprocessor directives
+	Imports       []*ast.ImportSpec    // imports
+	CompactFloats bool                 // Use smaller floats when feasible
+	ClearOmitted  bool                 // Set omitted fields to zero value
+	NewTime       bool                 // Set to use -1 extension for time.Time
+	AsUTC         bool                 // Set timezone to UTC instead of local
+	AllowMapShims bool                 // Allow map keys to be shimmed (default true)
+	AllowBinMaps  bool                 // Allow maps with binary keys to be used (default false)
+	AutoMapShims  bool                 // Automatically shim map keys of builtin types(default false)
 
 	tagName    string // tag to read field names from
 	pointerRcv bool   // generate with pointer receivers.
@@ -45,6 +52,7 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 	defer popstate()
 	fs := &FileSet{
 		Specs:      make(map[string]ast.Expr),
+		TypeInfos:  make(map[string]*TypeInfo),
 		Identities: make(map[string]gen.Elem),
 		Directives: append([]string{}, directives...),
 	}
@@ -213,6 +221,57 @@ func (fs *FileSet) resolve(ls linkset) {
 	}
 }
 
+// formatTypeParams converts an AST FieldList to a string representation
+func formatTypeParams(params *ast.FieldList) string {
+	if params == nil || params.NumFields() == 0 {
+		return ""
+	}
+
+	var paramStrs []string
+	for _, field := range params.List {
+		str := stringify(field.Type)
+		// Convert underscores to _RTn where n is the number of the parameter
+		convert := strings.HasPrefix(str, "msgp.RTFor[")
+
+		// Each field can have multiple names (e.g., T, U constraint)
+		for _, name := range field.Names {
+			if convert && name.Name == "_" {
+				name.Name = fmt.Sprintf("_RT%d", len(paramStrs)+1)
+			}
+			// For method receivers, we only include the type parameter name
+			// The constraints are defined in the type declaration, not the method receiver
+			paramStrs = append(paramStrs, name.Name)
+		}
+	}
+
+	return "[" + strings.Join(paramStrs, ", ") + "]"
+}
+
+// formatTypeParams converts an AST FieldList to a string representation.
+// For 'Foo[T any, P msgp.RTFor[T]]' will return {"T": "P"}.
+func getMspTypeParams(params *ast.FieldList) map[string]string {
+	if params == nil || params.NumFields() == 0 {
+		return nil
+	}
+
+	paramStrs := make(map[string]string)
+	for _, field := range params.List {
+		str := stringify(field.Type)
+		if !strings.HasPrefix(str, "msgp.RTFor[") {
+			continue
+		}
+		for _, name := range field.Names {
+			t := strings.TrimSuffix(strings.TrimPrefix(str, "msgp.RTFor["), "]")
+			paramStrs[t] = name.Name + "(&%s)"
+			paramStrs["*"+t] = name.Name + "(%s)"
+			paramStrs[name.Name] = "%s"
+			infof("found generic type %s, with roundtrippper %s\n", t, name.Name)
+		}
+	}
+
+	return paramStrs
+}
+
 // process takes the contents of f.Specs and
 // uses them to populate f.Identities
 func (fs *FileSet) process() {
@@ -227,6 +286,19 @@ parse:
 			continue parse
 		}
 		el.AlwaysPtr(&fs.pointerRcv)
+
+		// Apply type parameters if available
+		if typeInfo, ok := fs.TypeInfos[name]; ok && typeInfo.TypeParams != nil {
+			typeParamsStr := formatTypeParams(typeInfo.TypeParams)
+			ptrMap := getMspTypeParams(typeInfo.TypeParams)
+			if typeParamsStr != "" && ptrMap != nil {
+				el.SetTypeParams(gen.GenericTypeParams{
+					TypeParams:   typeParamsStr,
+					ToPointerMap: ptrMap,
+				})
+			}
+		}
+
 		// push unresolved identities into
 		// the graph of links and resolve after
 		// we've handled every possible named type.
@@ -347,12 +419,17 @@ func (fs *FileSet) getTypeSpecs(f *ast.File) {
 					switch ts.Type.(type) {
 					// this is the list of parse-able
 					// type specs
-					case *ast.StructType,
-						*ast.ArrayType,
+					case *ast.ArrayType,
 						*ast.StarExpr,
-						*ast.MapType,
-						*ast.Ident:
+						*ast.Ident,
+						*ast.StructType,
+						*ast.MapType:
 						fs.Specs[ts.Name.Name] = ts.Type
+						// Store type info (no type params for non-struct types yet)
+						fs.TypeInfos[ts.Name.Name] = &TypeInfo{
+							Type:       ts.Type,
+							TypeParams: ts.TypeParams,
+						}
 					}
 				}
 			}
@@ -540,6 +617,16 @@ func stringify(e ast.Expr) string {
 		}
 	case *ast.BasicLit:
 		return e.Value
+	case *ast.IndexExpr:
+		// Single type argument: Generic[T]
+		return fmt.Sprintf("%s[%s]", stringify(e.X), stringify(e.Index))
+	case *ast.IndexListExpr:
+		// Multiple type arguments: Generic[A,B,...]
+		args := make([]string, 0, len(e.Indices))
+		for _, ix := range e.Indices {
+			args = append(args, stringify(ix))
+		}
+		return fmt.Sprintf("%s[%s]", stringify(e.X), strings.Join(args, ","))
 	}
 	return "<BAD>"
 }
@@ -616,6 +703,7 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 		// everything else.
 		if b.Value == gen.IDENT {
 			if _, ok := fs.Specs[e.Name]; !ok && fs.Aliased[e.Name] == "" {
+				// This can be a generic type.
 				warnf("possible non-local identifier: %s\n", e.Name)
 			}
 		}
@@ -682,6 +770,15 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 			return &gen.BaseElem{Value: gen.Intf}
 		}
 		return nil
+
+	case *ast.IndexExpr:
+		// Treat a generic instantiation like an identifier of the instantiated name.
+		// Example: GenericTest2[T] -> "GenericTest2[T]"
+		return gen.Ident(stringify(e))
+
+	case *ast.IndexListExpr:
+		// Treat a generic instantiation with multiple args similarly.
+		return gen.Ident(stringify(e))
 
 	default: // other types not supported
 		return nil

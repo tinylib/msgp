@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"fmt"
 	"io"
 	"text/template"
 )
@@ -29,6 +30,10 @@ type mtestGen struct {
 func (m *mtestGen) Execute(p Elem, _ Context) error {
 	p = m.applyall(p)
 	if p != nil && IsPrintable(p) {
+		if p.TypeParams().TypeParams != "" {
+			fmt.Fprintf(m.w, "\n// %s: Cannot generate marshal test for generic types", p.TypeName())
+			return nil
+		}
 		switch p.(type) {
 		case *Struct, *Array, *Slice, *Map:
 			return marshalTestTempl.Execute(m.w, p)
@@ -51,6 +56,10 @@ func etest(w io.Writer) *etestGen {
 func (e *etestGen) Execute(p Elem, _ Context) error {
 	p = e.applyall(p)
 	if p != nil && IsPrintable(p) {
+		if p.TypeParams().TypeParams != "" {
+			fmt.Fprintf(e.w, "\n// %s: Cannot generate encoder test for generic types", p.TypeName())
+			return nil
+		}
 		switch p.(type) {
 		case *Struct, *Array, *Slice, *Map:
 			return encodeTestTempl.Execute(e.w, p)

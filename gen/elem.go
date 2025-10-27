@@ -149,14 +149,24 @@ var builtins = map[string]struct{}{
 type common struct {
 	vname, alias string
 	ptrRcv       bool
+	typeParams   GenericTypeParams // Generic type parameters, e.g., "[T]"
 }
 
-func (c *common) SetVarname(s string) { c.vname = s }
-func (c *common) Varname() string     { return c.vname }
-func (c *common) Alias(typ string)    { c.alias = typ }
-func (c *common) hidden()             {}
-func (c *common) AllowNil() bool      { return false }
-func (c *common) SetIsAllowNil(bool)  {}
+// GenericTypeParams is a struct that contains the generic type parameters for an element.
+type GenericTypeParams struct {
+	TypeParams   string
+	ToPointerMap map[string]string
+	isPtr        bool
+}
+
+func (c *common) SetVarname(s string)                { c.vname = s }
+func (c *common) Varname() string                    { return c.vname }
+func (c *common) Alias(typ string)                   { c.alias = typ }
+func (c *common) hidden()                            {}
+func (c *common) AllowNil() bool                     { return false }
+func (c *common) SetIsAllowNil(bool)                 {}
+func (c *common) SetTypeParams(tp GenericTypeParams) { c.typeParams = tp }
+func (c *common) TypeParams() GenericTypeParams      { return c.typeParams }
 func (c *common) AlwaysPtr(set *bool) bool {
 	if c != nil && set != nil {
 		c.ptrRcv = *set
@@ -227,6 +237,12 @@ type Elem interface {
 	// Returns "" if zero/empty not supported for this Elem.
 	// Note that this is NOT used by the `omitzero` feature.
 	IfZeroExpr() string
+
+	// SetTypeParams sets the generic type parameters for this element
+	SetTypeParams(tp GenericTypeParams)
+
+	// TypeParams returns the generic type parameters for this element
+	TypeParams() GenericTypeParams
 
 	hidden()
 }
