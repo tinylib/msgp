@@ -44,7 +44,7 @@ func TestCopyJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mp := make(map[string]interface{})
+	mp := make(map[string]any)
 	err = json.Unmarshal(js.Bytes(), &mp)
 	if err != nil {
 		t.Log(js.String())
@@ -64,7 +64,7 @@ func TestCopyJSON(t *testing.T) {
 	if !ok {
 		t.Error("no key 'a map'")
 	}
-	if inm, ok := in.(map[string]interface{}); !ok {
+	if inm, ok := in.(map[string]any); !ok {
 		t.Error("inner map not type-assertable to map[string]interface{}")
 	} else {
 		inm1, ok := inm["internal_one"]
@@ -147,17 +147,17 @@ func BenchmarkCopyToJSON(b *testing.B) {
 }
 
 func BenchmarkStdlibJSON(b *testing.B) {
-	obj := map[string]interface{}{
+	obj := map[string]any{
 		"thing_1": "a string object",
-		"a_first_map": map[string]interface{}{
+		"a_first_map": map[string]any{
 			"float_a": float32(1.0),
 			"float_b": -100,
 		},
-		"an array": []interface{}{
+		"an array": []any{
 			"part_A",
 			"part_B",
 		},
-		"a_second_map": map[string]interface{}{
+		"a_second_map": map[string]any{
 			"internal_one": "blah",
 			"internal_two": "blahhh...",
 		},

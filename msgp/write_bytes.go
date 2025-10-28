@@ -371,7 +371,7 @@ func AppendMapStrStr(b []byte, m map[string]string) []byte {
 
 // AppendMapStrIntf appends a map[string]interface{} to the slice
 // as a MessagePack map with 'str'-type keys.
-func AppendMapStrIntf(b []byte, m map[string]interface{}) ([]byte, error) {
+func AppendMapStrIntf(b []byte, m map[string]any) ([]byte, error) {
 	sz := uint32(len(m))
 	b = AppendMapHeader(b, sz)
 	var err error
@@ -394,7 +394,7 @@ func AppendMapStrIntf(b []byte, m map[string]interface{}) ([]byte, error) {
 //   - A *T, where T is another supported type
 //   - A type that satisfies the msgp.Marshaler interface
 //   - A type that satisfies the msgp.Extension interface
-func AppendIntf(b []byte, i interface{}) ([]byte, error) {
+func AppendIntf(b []byte, i any) ([]byte, error) {
 	if i == nil {
 		return AppendNil(b), nil
 	}
@@ -444,13 +444,13 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 		return AppendTime(b, i), nil
 	case time.Duration:
 		return AppendDuration(b, i), nil
-	case map[string]interface{}:
+	case map[string]any:
 		return AppendMapStrIntf(b, i)
 	case map[string]string:
 		return AppendMapStrStr(b, i), nil
 	case json.Number:
 		return AppendJSONNumber(b, i)
-	case []interface{}:
+	case []any:
 		b = AppendArrayHeader(b, uint32(len(i)))
 		var err error
 		for _, k := range i {
@@ -483,7 +483,7 @@ func AppendIntf(b []byte, i interface{}) ([]byte, error) {
 	case reflect.Array, reflect.Slice:
 		l := v.Len()
 		b = AppendArrayHeader(b, uint32(l))
-		for i := 0; i < l; i++ {
+		for i := range l {
 			b, err = AppendIntf(b, v.Index(i).Interface())
 			if err != nil {
 				return b, err

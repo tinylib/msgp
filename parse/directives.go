@@ -64,8 +64,8 @@ func yieldComments(c []*ast.CommentGroup) []string {
 	var out []string
 	for _, cg := range c {
 		for _, line := range cg.List {
-			if strings.HasPrefix(line.Text, linePrefix) {
-				out = append(out, strings.TrimPrefix(line.Text, linePrefix))
+			if after, ok := strings.CutPrefix(line.Text, linePrefix); ok {
+				out = append(out, after)
 			}
 		}
 	}

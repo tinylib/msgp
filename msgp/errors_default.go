@@ -9,7 +9,7 @@ import (
 )
 
 // ctxString converts the incoming interface{} slice into a single string.
-func ctxString(ctx []interface{}) string {
+func ctxString(ctx []any) string {
 	out := ""
 	for idx, cv := range ctx {
 		if idx > 0 {

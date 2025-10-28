@@ -35,7 +35,7 @@ func TestNumber(t *testing.T) {
 		t.Errorf("%d in; %d out!", 40000, u)
 	}
 
-	nums := []interface{}{
+	nums := []any{
 		float64(3.14159),
 		int64(-29081),
 		uint64(90821983),

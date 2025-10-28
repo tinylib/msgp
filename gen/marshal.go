@@ -62,7 +62,7 @@ func (m *marshalGen) Execute(p Elem, ctx Context) error {
 	return m.p.err
 }
 
-func (m *marshalGen) rawAppend(typ string, argfmt string, arg interface{}) {
+func (m *marshalGen) rawAppend(typ string, argfmt string, arg any) {
 	if m.ctx.compFloats && typ == "Float64" {
 		typ = "Float"
 	}

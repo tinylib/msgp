@@ -25,7 +25,7 @@ func TestReadIntf(t *testing.T) {
 	// always read out as int64, and
 	// unsigned integers as uint64
 
-	testCases := []interface{}{
+	testCases := []any{
 		float64(128.032),
 		float32(9082.092),
 		int64(-40),
@@ -34,7 +34,7 @@ func TestReadIntf(t *testing.T) {
 		48*time.Hour + 3*time.Minute + 2*time.Second + 3*time.Nanosecond,
 		"hello!",
 		[]byte("hello!"),
-		map[string]interface{}{
+		map[string]any{
 			"thing-1": "thing-1-value",
 			"thing-2": int64(800),
 			"thing-3": []byte("some inner bytes..."),
@@ -43,7 +43,7 @@ func TestReadIntf(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	var v interface{}
+	var v any
 	dec := NewReader(&buf)
 	enc := NewWriter(&buf)
 
@@ -85,7 +85,7 @@ func TestReadIntfRecursion(t *testing.T) {
 	dec := NewReader(&buf)
 	enc := NewWriter(&buf)
 	// Test array recursion...
-	for i := 0; i < recursionLimit*2; i++ {
+	for range recursionLimit * 2 {
 		enc.WriteArrayHeader(1)
 	}
 	enc.Flush()
@@ -115,7 +115,7 @@ func TestReadIntfRecursion(t *testing.T) {
 
 	// Test map recursion...
 	buf.Reset()
-	for i := 0; i < recursionLimit*2; i++ {
+	for range recursionLimit * 2 {
 		enc.WriteMapHeader(1)
 		// Write a key...
 		enc.WriteString("a")
@@ -134,11 +134,11 @@ func TestReadIntfRecursion(t *testing.T) {
 
 	// Test ReadMapStrInt using same input
 	dec.Reset(bytes.NewReader(b))
-	err = dec.ReadMapStrIntf(map[string]interface{}{})
+	err = dec.ReadMapStrIntf(map[string]any{})
 	if !errors.Is(err, ErrRecursion) {
 		t.Errorf("unexpected Reader error: %v", err)
 	}
-	_, _, err = ReadMapStrIntfBytes(b, map[string]interface{}{})
+	_, _, err = ReadMapStrIntfBytes(b, map[string]any{})
 	if !errors.Is(err, ErrRecursion) {
 		t.Errorf("unexpected Bytes error: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestSkipRecursion(t *testing.T) {
 	dec := NewReader(&buf)
 	enc := NewWriter(&buf)
 	// Test array recursion...
-	for i := 0; i < recursionLimit*2; i++ {
+	for range recursionLimit * 2 {
 		enc.WriteArrayHeader(1)
 	}
 	enc.Flush()
@@ -187,7 +187,7 @@ func TestSkipRecursion(t *testing.T) {
 	buf.Reset()
 
 	// Test map recursion...
-	for i := 0; i < recursionLimit*2; i++ {
+	for range recursionLimit * 2 {
 		enc.WriteMapHeader(1)
 		// Write a key...
 		enc.WriteString("a")
@@ -336,7 +336,7 @@ func TestReadFloat64(t *testing.T) {
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		buf.Reset()
 
 		flt := (rand.Float64() - 0.5) * math.MaxFloat64
@@ -383,7 +383,7 @@ func TestReadFloat32(t *testing.T) {
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 
-	for i := 0; i < 10000; i++ {
+	for range 10000 {
 		buf.Reset()
 
 		flt := (rand.Float32() - 0.5) * math.MaxFloat32
@@ -433,7 +433,7 @@ func TestReadInt64(t *testing.T) {
 	ints := []int64{-100000, -5000, -5, 0, 8, 240, int64(tuint16), int64(tuint32), int64(tuint64)}
 	uints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), uint64(tuint64)}
 
-	all := make([]interface{}, 0, len(ints)+len(uints))
+	all := make([]any, 0, len(ints)+len(uints))
 	for _, v := range ints {
 		all = append(all, v)
 	}
@@ -500,7 +500,7 @@ func TestReadIntOverflows(t *testing.T) {
 	}
 
 	vs := []struct {
-		v        interface{}
+		v        any
 		rdBits   int
 		failBits int
 		errCheck func(err error, failBits int) bool
@@ -833,7 +833,7 @@ func TestReadComplex64(t *testing.T) {
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		buf.Reset()
 		f := complex(rand.Float32()*math.MaxFloat32, rand.Float32()*math.MaxFloat32)
 
@@ -876,7 +876,7 @@ func TestReadComplex128(t *testing.T) {
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		buf.Reset()
 		f := complex(rand.Float64()*math.MaxFloat64, rand.Float64()*math.MaxFloat64)
 

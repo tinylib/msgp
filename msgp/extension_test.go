@@ -21,7 +21,7 @@ func TestReadWriteExtension(t *testing.T) {
 	dc := NewReader(&buf)
 
 	t.Run("interface", func(t *testing.T) {
-		for i := 0; i < 25; i++ {
+		for range 25 {
 			buf.Reset()
 			e := randomExt()
 			en.WriteExtension(&e)
@@ -34,7 +34,7 @@ func TestReadWriteExtension(t *testing.T) {
 	})
 
 	t.Run("raw", func(t *testing.T) {
-		for i := 0; i < 25; i++ {
+		for range 25 {
 			buf.Reset()
 			e := randomExt()
 			en.WriteExtensionRaw(e.Type, e.Data)
@@ -119,7 +119,7 @@ func TestExtensionRawStackBuffer(t *testing.T) {
 func TestReadWriteExtensionBytes(t *testing.T) {
 	var bts []byte
 
-	for i := 0; i < 24; i++ {
+	for range 24 {
 		e := randomExt()
 		bts, _ = AppendExtension(bts[0:0], &e)
 		_, err := ReadExtensionBytes(bts, &e)
@@ -134,7 +134,7 @@ func TestAppendAndWriteCompatibility(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 
-	for i := 0; i < 24; i++ {
+	for range 24 {
 		buf.Reset()
 		e := randomExt()
 		bts, _ = AppendExtension(bts[0:0], &e)

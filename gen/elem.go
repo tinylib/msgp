@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -601,12 +602,7 @@ func (sf *StructField) HasTagPart(pname string) bool {
 	if len(sf.FieldTagParts) < 2 {
 		return false
 	}
-	for _, p := range sf.FieldTagParts[1:] {
-		if p == pname {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(sf.FieldTagParts[1:], pname)
 }
 
 type ShimMode int

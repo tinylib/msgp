@@ -462,7 +462,7 @@ func (p *printer) comment(s string) {
 	p.print("\n// " + s)
 }
 
-func (p *printer) printf(format string, args ...interface{}) {
+func (p *printer) printf(format string, args ...any) {
 	if p.err == nil {
 		_, p.err = fmt.Fprintf(p.w, format, args...)
 	}
