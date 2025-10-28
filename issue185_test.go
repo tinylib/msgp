@@ -133,7 +133,7 @@ func TestIssue185Overlap(t *testing.T) {
 	}
 }
 
-func loadVars(t *testing.T, tpl *template.Template, tplData interface{}) (vars extractedVars, err error) {
+func loadVars(t *testing.T, tpl *template.Template, tplData any) (vars extractedVars, err error) {
 	tempDir := t.TempDir()
 
 	if !debugTemp {
@@ -218,7 +218,7 @@ func extractVars(file string) (extractedVars, error) {
 	return vars, nil
 }
 
-func goGenerateTpl(cwd, tfile string, tpl *template.Template, tplData interface{}) error {
+func goGenerateTpl(cwd, tfile string, tpl *template.Template, tplData any) error {
 	outf, err := os.OpenFile(tfile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err

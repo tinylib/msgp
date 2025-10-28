@@ -785,9 +785,9 @@ func (fs *FileSet) parseExpr(e ast.Expr) gen.Elem {
 	}
 }
 
-var Logf func(s string, v ...interface{})
+var Logf func(s string, v ...any)
 
-func infof(s string, v ...interface{}) {
+func infof(s string, v ...any) {
 	if Logf != nil {
 		pushstate(s)
 		Logf("info: "+strings.Join(logctx, ": "), v...)
@@ -795,7 +795,7 @@ func infof(s string, v ...interface{}) {
 	}
 }
 
-func warnf(s string, v ...interface{}) {
+func warnf(s string, v ...any) {
 	if Logf != nil {
 		pushstate(s)
 		Logf("warn: "+strings.Join(logctx, ": "), v...)

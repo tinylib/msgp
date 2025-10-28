@@ -113,7 +113,7 @@ func TestReplace(t *testing.T) {
 		t.Fatal("field not found")
 	}
 	var err error
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	m, _, err = ReadMapStrIntfBytes(raw, m)
 	if err != nil {
 		t.Logf("%q", raw)

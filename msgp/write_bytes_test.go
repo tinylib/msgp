@@ -57,7 +57,7 @@ func BenchmarkAppendMapHeader(b *testing.B) {
 	N := b.N / 4
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < N; i++ {
+	for range N {
 		AppendMapHeader(buf[:0], 0)
 		AppendMapHeader(buf[:0], uint32(tint8))
 		AppendMapHeader(buf[:0], tuint16)
@@ -88,7 +88,7 @@ func BenchmarkAppendArrayHeader(b *testing.B) {
 	N := b.N / 4
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < N; i++ {
+	for range N {
 		AppendArrayHeader(buf[:0], 0)
 		AppendArrayHeader(buf[:0], uint32(tint8))
 		AppendArrayHeader(buf[:0], tuint16)
@@ -119,7 +119,7 @@ func BenchmarkAppendBytesHeader(b *testing.B) {
 	N := b.N / 4
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < N; i++ {
+	for range N {
 		AppendBytesHeader(buf[:0], 0)
 		AppendBytesHeader(buf[:0], uint32(tint8))
 		AppendBytesHeader(buf[:0], tuint16)
@@ -434,8 +434,8 @@ func BenchmarkAppendTimeExt(b *testing.B) {
 func TestEncodeDecode(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
-		input       interface{}
-		output      interface{}
+		input       any
+		output      any
 		encodeError string
 	}{
 		{
@@ -464,65 +464,65 @@ func TestEncodeDecode(t *testing.T) {
 		},
 		{
 			name:  "array-empty",
-			input: []interface{}{},
+			input: []any{},
 		},
 		{
 			name:  "array",
-			input: []interface{}{int64(1), int64(2), int64(3)},
+			input: []any{int64(1), int64(2), int64(3)},
 		},
 		{
 			name:  "map-empty",
-			input: map[string]interface{}{},
+			input: map[string]any{},
 		},
 		{
 			name:  "map",
-			input: map[string]interface{}{"a": int64(1), "b": int64(2)},
+			input: map[string]any{"a": int64(1), "b": int64(2)},
 		},
 		{
 			name:  "map-interface",
-			input: map[string]interface{}{"a": int64(1), "b": "2"},
+			input: map[string]any{"a": int64(1), "b": "2"},
 		},
 		{
 			name:   "map-string",
 			input:  map[string]string{"a": "1", "b": "2"},
-			output: map[string]interface{}{"a": "1", "b": "2"},
+			output: map[string]any{"a": "1", "b": "2"},
 		},
 		{
 			name:   "map-array",
 			input:  map[string][]int64{"a": {1, 2}, "b": {3}},
-			output: map[string]interface{}{"a": []interface{}{int64(1), int64(2)}, "b": []interface{}{int64(3)}},
+			output: map[string]any{"a": []any{int64(1), int64(2)}, "b": []any{int64(3)}},
 		},
 		{
 			name:   "map-map",
 			input:  map[string]map[string]int64{"a": {"a": 1, "b": 2}, "b": {"c": 3}},
-			output: map[string]interface{}{"a": map[string]interface{}{"a": int64(1), "b": int64(2)}, "b": map[string]interface{}{"c": int64(3)}},
+			output: map[string]any{"a": map[string]any{"a": int64(1), "b": int64(2)}, "b": map[string]any{"c": int64(3)}},
 		},
 		{
 			name:   "array-map",
-			input:  []interface{}{map[string]interface{}{"a": int64(1), "b": "2"}, map[string]int64{"c": 3}},
-			output: []interface{}{map[string]interface{}{"a": int64(1), "b": "2"}, map[string]interface{}{"c": int64(3)}},
+			input:  []any{map[string]any{"a": int64(1), "b": "2"}, map[string]int64{"c": 3}},
+			output: []any{map[string]any{"a": int64(1), "b": "2"}, map[string]any{"c": int64(3)}},
 		},
 		{
 			name:   "array-array",
-			input:  []interface{}{[]int64{1, 2}, []interface{}{int64(3)}},
-			output: []interface{}{[]interface{}{int64(1), int64(2)}, []interface{}{int64(3)}},
+			input:  []any{[]int64{1, 2}, []any{int64(3)}},
+			output: []any{[]any{int64(1), int64(2)}, []any{int64(3)}},
 		},
 		{
 			name:  "array-array-map",
-			input: []interface{}{[]interface{}{int64(1), int64(2)}, map[string]interface{}{"c": int64(3)}},
+			input: []any{[]any{int64(1), int64(2)}, map[string]any{"c": int64(3)}},
 		},
 		{
 			name:  "map-array-map",
-			input: map[string]interface{}{"a": []interface{}{int64(1), int64(2)}, "b": map[string]interface{}{"c": int64(3)}},
+			input: map[string]any{"a": []any{int64(1), int64(2)}, "b": map[string]any{"c": int64(3)}},
 		},
 		{
 			name:        "map-invalid-keys",
-			input:       map[interface{}]interface{}{int64(1): int64(2)},
+			input:       map[any]any{int64(1): int64(2)},
 			encodeError: "msgp: map keys must be strings",
 		},
 		{
 			name:        "map-nested-invalid-keys",
-			input:       map[string]interface{}{"a": map[int64]string{1: "2"}},
+			input:       map[string]any{"a": map[int64]string{1: "2"}},
 			encodeError: "msgp: map keys must be strings",
 		},
 		{

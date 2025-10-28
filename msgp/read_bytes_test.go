@@ -277,7 +277,7 @@ func TestReadInt64Bytes(t *testing.T) {
 
 	uints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), uint64(tuint64)}
 
-	all := make([]interface{}, 0, len(ints)+len(uints))
+	all := make([]any, 0, len(ints)+len(uints))
 	for _, v := range ints {
 		all = append(all, v)
 	}
@@ -325,7 +325,7 @@ func TestReadUint64Bytes(t *testing.T) {
 	var buf bytes.Buffer
 	wr := NewWriter(&buf)
 
-	vs := []interface{}{
+	vs := []any{
 		int64(0), int64(8), int64(240), int64(tuint16), int64(tuint32), int64(tuint64),
 		uint64(0), uint64(8), uint64(240), uint64(tuint16), uint64(tuint32), uint64(tuint64),
 		uint64(math.MaxUint64),
@@ -397,7 +397,7 @@ func TestReadIntBytesOverflows(t *testing.T) {
 	}
 
 	vs := []struct {
-		v        interface{}
+		v        any
 		rdBits   int
 		failBits int
 		errCheck func(err error, failBits int) bool
@@ -693,13 +693,13 @@ func TestReadIntfBytes(t *testing.T) {
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 
-	tests := make([]interface{}, 0, 10)
+	tests := make([]any, 0, 10)
 	tests = append(tests, float64(3.5))
 	tests = append(tests, int64(-49082))
 	tests = append(tests, uint64(34908))
 	tests = append(tests, string("hello!"))
 	tests = append(tests, []byte("blah."))
-	tests = append(tests, map[string]interface{}{
+	tests = append(tests, map[string]any{
 		"key_one": 3.5,
 		"key_two": "hi.",
 	})

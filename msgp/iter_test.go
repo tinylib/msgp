@@ -1,10 +1,9 @@
-//go:build go1.23
-
 package msgp
 
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"math"
 	"testing"
 	"time"
@@ -1950,10 +1949,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadUint, r.ReadUint)
-			got := make(map[uint]uint, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -1993,10 +1989,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadUint8, r.ReadUint8)
-			got := make(map[uint8]uint8, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2027,10 +2020,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadUint16, r.ReadUint16)
-			got := make(map[uint16]uint16, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2061,10 +2051,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadUint32, r.ReadUint32)
-			got := make(map[uint32]uint32, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2095,10 +2082,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadUint64, r.ReadUint64)
-			got := make(map[uint64]uint64, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2129,10 +2113,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadInt, r.ReadInt)
-			got := make(map[int]int, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2163,10 +2144,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadInt8, r.ReadInt8)
-			got := make(map[int8]int8, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2197,10 +2175,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadInt16, r.ReadInt16)
-			got := make(map[int16]int16, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2231,10 +2206,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadInt32, r.ReadInt32)
-			got := make(map[int32]int32, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2265,10 +2237,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadInt64, r.ReadInt64)
-			got := make(map[int64]int64, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2299,10 +2268,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadFloat32, r.ReadFloat32)
-			got := make(map[float32]float32, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2333,10 +2299,7 @@ func TestReadMap_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadFloat64, r.ReadFloat64)
-			got := make(map[float64]float64, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2413,10 +2376,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadBool, r.ReadBool)
-			got := make(map[bool]bool, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2456,10 +2416,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadString, r.ReadString)
-			got := make(map[string]string, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2582,10 +2539,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadDuration, r.ReadDuration)
-			got := make(map[time.Duration]time.Duration, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2617,10 +2571,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadComplex64, r.ReadComplex64)
-			got := make(map[complex64]complex64, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2651,10 +2602,7 @@ func TestReadMap_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 			}
 			r := NewReader(&buf)
 			seq, tail := ReadMap(r, r.ReadComplex128, r.ReadComplex128)
-			got := make(map[complex128]complex128, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			if err := tail(); err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
 			}
@@ -2706,10 +2654,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadUintBytes, ReadUintBytes)
-			got := make(map[uint]uint, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -2743,10 +2688,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadUint8Bytes, ReadUint8Bytes)
-			got := make(map[uint8]uint8, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -2769,10 +2711,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadUint16Bytes, ReadUint16Bytes)
-			got := make(map[uint16]uint16, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -2795,10 +2734,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadUint32Bytes, ReadUint32Bytes)
-			got := make(map[uint32]uint32, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -2821,10 +2757,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadUint64Bytes, ReadUint64Bytes)
-			got := make(map[uint64]uint64, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -2847,10 +2780,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadIntBytes, ReadIntBytes)
-			got := make(map[int]int, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -2873,10 +2803,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadInt8Bytes, ReadInt8Bytes)
-			got := make(map[int8]int8, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -2899,10 +2826,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadInt16Bytes, ReadInt16Bytes)
-			got := make(map[int16]int16, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -2925,10 +2849,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadInt32Bytes, ReadInt32Bytes)
-			got := make(map[int32]int32, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -2951,10 +2872,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadInt64Bytes, ReadInt64Bytes)
-			got := make(map[int64]int64, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -2977,10 +2895,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadFloat32Bytes, ReadFloat32Bytes)
-			got := make(map[float32]float32, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -3003,10 +2918,7 @@ func TestReadMapBytes_AllNumberTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadFloat64Bytes, ReadFloat64Bytes)
-			got := make(map[float64]float64, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -3075,10 +2987,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadBoolBytes, ReadBoolBytes)
-			got := make(map[bool]bool, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -3113,10 +3022,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadStringBytes, ReadStringBytes)
-			got := make(map[string]string, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -3208,10 +3114,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadDurationBytes, ReadDurationBytes)
-			got := make(map[time.Duration]time.Duration, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -3234,10 +3137,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadComplex64Bytes, ReadComplex64Bytes)
-			got := make(map[complex64]complex64, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -3260,10 +3160,7 @@ func TestReadMapBytes_AllRegularTypes_SameKeyValueTypes(t *testing.T) {
 				msg = tc.append(msg, tc.vals[i])
 			}
 			seq, tail := ReadMapBytes(msg, ReadComplex128Bytes, ReadComplex128Bytes)
-			got := make(map[complex128]complex128, len(tc.keys))
-			for k, v := range seq {
-				got[k] = v
-			}
+			got := maps.Collect(seq)
 			remain, err := tail()
 			if err != nil {
 				t.Fatalf("%s tail: %v", tc.name, err)
@@ -3294,10 +3191,7 @@ func TestReadMapBytes_TailErrorOnTruncated(t *testing.T) {
 	trunc := full[:len(full)-2] // truncate some bytes from the last value
 
 	seq, tail := ReadMapBytes(trunc, ReadIntBytes, ReadIntBytes)
-	got := make(map[int]int)
-	for k, v := range seq {
-		got[k] = v
-	}
+	got := maps.Collect(seq)
 	// We expect only the first pair to be read
 	if len(got) != 1 || got[1] != 10 {
 		t.Fatalf("expected only first pair (1:10), got %v", got)

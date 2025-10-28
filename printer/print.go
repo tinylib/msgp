@@ -12,7 +12,7 @@ import (
 	"golang.org/x/tools/imports"
 )
 
-var Logf func(s string, v ...interface{})
+var Logf func(s string, v ...any)
 
 // PrintFile prints the methods for the provided list
 // of elements to the given file name and canonical

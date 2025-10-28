@@ -27,7 +27,7 @@ func (e *encodeGen) Apply(dirs []string) error {
 	return nil
 }
 
-func (e *encodeGen) writeAndCheck(typ string, argfmt string, arg interface{}) {
+func (e *encodeGen) writeAndCheck(typ string, argfmt string, arg any) {
 	if e.ctx.compFloats && typ == "Float64" {
 		typ = "Float"
 	}

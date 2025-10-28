@@ -169,7 +169,6 @@ func TestSimpleQuoteStr(t *testing.T) {
 	}
 
 	for i, tc := range tcaseList {
-		tc := tc
 		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			out := simpleQuoteStr(tc.in)
 			if out != tc.out {

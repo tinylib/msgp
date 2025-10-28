@@ -44,7 +44,7 @@ var (
 	directives = stringArrFlags{}
 )
 
-func diagf(f string, args ...interface{}) {
+func diagf(f string, args ...any) {
 	if !*verbose {
 		return
 	}

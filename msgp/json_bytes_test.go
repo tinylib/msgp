@@ -41,7 +41,7 @@ func TestUnmarshalJSON(t *testing.T) {
 		t.Logf("%s", js.Bytes())
 		t.Fatal(err)
 	}
-	mp := make(map[string]interface{})
+	mp := make(map[string]any)
 	err = json.Unmarshal(js.Bytes(), &mp)
 	if err != nil {
 		t.Log(js.String())
@@ -65,7 +65,7 @@ func TestUnmarshalJSON(t *testing.T) {
 	if !ok {
 		t.Error(`"a_map" field doesn't exist`)
 	} else {
-		if m, ok := c.(map[string]interface{}); ok {
+		if m, ok := c.(map[string]any); ok {
 			if _, ok := m["cmplx"]; !ok {
 				t.Error(`"a_map.cmplx" doesn't exist`)
 			}

@@ -33,7 +33,7 @@ var (
 
 	btsType    = reflect.TypeOf(([]byte)(nil))
 	writerPool = sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return &Writer{buf: make([]byte, 2048)}
 		},
 	}
@@ -591,7 +591,7 @@ func (mw *Writer) WriteMapStrStr(mp map[string]string) (err error) {
 }
 
 // WriteMapStrIntf writes a map[string]interface to the writer
-func (mw *Writer) WriteMapStrIntf(mp map[string]interface{}) (err error) {
+func (mw *Writer) WriteMapStrIntf(mp map[string]any) (err error) {
 	err = mw.WriteMapHeader(uint32(len(mp)))
 	if err != nil {
 		return
@@ -703,7 +703,7 @@ func (mw *Writer) WriteJSONNumber(n json.Number) error {
 //   - A pointer to a supported type
 //   - A type that satisfies the msgp.Encodable interface
 //   - A type that satisfies the msgp.Extension interface
-func (mw *Writer) WriteIntf(v interface{}) error {
+func (mw *Writer) WriteIntf(v any) error {
 	if v == nil {
 		return mw.WriteNil()
 	}
@@ -754,7 +754,7 @@ func (mw *Writer) WriteIntf(v interface{}) error {
 		return mw.WriteBytes(v)
 	case map[string]string:
 		return mw.WriteMapStrStr(v)
-	case map[string]interface{}:
+	case map[string]any:
 		return mw.WriteMapStrIntf(v)
 	case time.Time:
 		return mw.WriteTime(v)
@@ -817,7 +817,7 @@ func (mw *Writer) writeSlice(v reflect.Value) (err error) {
 	if err != nil {
 		return
 	}
-	for i := uint32(0); i < sz; i++ {
+	for i := range sz {
 		err = mw.WriteIntf(v.Index(int(i)).Interface())
 		if err != nil {
 			return
@@ -840,7 +840,7 @@ func isSupported(k reflect.Kind) bool {
 // value of 'i'. If the underlying value is not
 // a simple builtin (or []byte), GuessSize defaults
 // to 512.
-func GuessSize(i interface{}) int {
+func GuessSize(i any) int {
 	if i == nil {
 		return NilSize
 	}
@@ -868,7 +868,7 @@ func GuessSize(i interface{}) int {
 		return Complex128Size
 	case bool:
 		return BoolSize
-	case map[string]interface{}:
+	case map[string]any:
 		s := MapHeaderSize
 		for key, val := range i {
 			s += StringPrefixSize + len(key) + GuessSize(val)
