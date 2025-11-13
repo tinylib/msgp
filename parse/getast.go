@@ -229,9 +229,8 @@ func formatTypeParams(params *ast.FieldList) string {
 
 	var paramStrs []string
 	for _, field := range params.List {
-		str := stringify(field.Type)
 		// Convert underscores to _RTn where n is the number of the parameter
-		convert := strings.HasPrefix(str, "msgp.RTFor[")
+		convert := isrtfor(field.Type)
 
 		// Each field can have multiple names (e.g., T, U constraint)
 		for _, name := range field.Names {
@@ -247,6 +246,9 @@ func formatTypeParams(params *ast.FieldList) string {
 	return "[" + strings.Join(paramStrs, ", ") + "]"
 }
 
+// isrtfor returns whether the provided expression is a msgp.RTFor[T] pattern.
+func isrtfor(t ast.Expr) bool { return strings.HasPrefix(stringify(t), "msgp.RTFor[") }
+
 // findRTForInInterface recursively searches for msgp.RTFor[T] patterns within interface types
 func findRTForInInterface(iface *ast.InterfaceType) []string {
 	var rtfors []string
@@ -257,9 +259,8 @@ func findRTForInInterface(iface *ast.InterfaceType) []string {
 	for _, method := range iface.Methods.List {
 		// Check if this is an embedded interface/type
 		if len(method.Names) == 0 {
-			typeStr := stringify(method.Type)
-			if strings.HasPrefix(typeStr, "msgp.RTFor[") {
-				rtfors = append(rtfors, typeStr)
+			if isrtfor(method.Type) {
+				rtfors = append(rtfors, stringify(method.Type))
 			}
 			// Recursively check nested interfaces
 			if nestedIface, ok := method.Type.(*ast.InterfaceType); ok {
@@ -279,12 +280,11 @@ func getMspTypeParams(params *ast.FieldList) map[string]string {
 
 	paramStrs := make(map[string]string)
 	for _, field := range params.List {
-		str := stringify(field.Type)
 
 		// Handle simple msgp.RTFor[T] constraints
-		if strings.HasPrefix(str, "msgp.RTFor[") {
+		if isrtfor(field.Type) {
+			t := strings.TrimSuffix(strings.TrimPrefix(stringify(field.Type), "msgp.RTFor["), "]")
 			for _, name := range field.Names {
-				t := strings.TrimSuffix(strings.TrimPrefix(str, "msgp.RTFor["), "]")
 				paramStrs[t] = name.Name + "(&%s)"
 				paramStrs["*"+t] = name.Name + "(%s)"
 				paramStrs[name.Name] = "%s"
@@ -297,8 +297,8 @@ func getMspTypeParams(params *ast.FieldList) map[string]string {
 		if iface, ok := field.Type.(*ast.InterfaceType); ok {
 			rtfors := findRTForInInterface(iface)
 			for _, rtfor := range rtfors {
+				t := strings.TrimSuffix(strings.TrimPrefix(rtfor, "msgp.RTFor["), "]")
 				for _, name := range field.Names {
-					t := strings.TrimSuffix(strings.TrimPrefix(rtfor, "msgp.RTFor["), "]")
 					paramStrs[t] = name.Name + "(&%s)"
 					paramStrs["*"+t] = name.Name + "(%s)"
 					paramStrs[name.Name] = "%s"
