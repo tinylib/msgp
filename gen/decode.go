@@ -225,14 +225,21 @@ func (d *decodeGen) gBase(b *BaseElem) {
 		if b.typeParams.isPtr {
 			dst = "*" + dst
 		}
+
+		// Strip type parameters from dst for lookup in ToPointerMap
+		lookupKey := dst
+		if idx := strings.Index(dst, "["); idx != -1 {
+			lookupKey = dst[:idx]
+		}
+
 		if b.Convert {
-			if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+			if remap := b.typeParams.ToPointerMap[lookupKey]; remap != "" {
 				vname = fmt.Sprintf(remap, vname)
 			}
 			lowered := b.ToBase() + "(" + vname + ")"
 			d.p.printf("\nerr = %s.DecodeMsg(dc)", lowered)
 		} else {
-			if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+			if remap := b.typeParams.ToPointerMap[lookupKey]; remap != "" {
 				vname = fmt.Sprintf(remap, vname)
 			}
 			d.p.printf("\nerr = %s.DecodeMsg(dc)", vname)
@@ -289,7 +296,7 @@ func (d *decodeGen) gMap(m *Map) {
 	d.needsField()
 	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
 	m.readKey(d.ctx, d.p, d, d.assignAndCheck)
-	d.p.declare(m.Validx, m.Value.TypeName())
+	d.p.declare(m.Validx, m.Value.BaseTypeName())
 	d.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)
 	setTypeParams(m.Value, m.typeParams)

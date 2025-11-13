@@ -162,12 +162,26 @@ type GenericTypeParams struct {
 
 func (c *common) SetVarname(s string)                { c.vname = s }
 func (c *common) Varname() string                    { return c.vname }
+
+// typeNameWithParams returns the type name with generic parameters appended if they exist
+func (c *common) typeNameWithParams(baseName string) string {
+	if c.typeParams.TypeParams != "" && !strings.Contains(baseName, "[") {
+		return baseName + c.typeParams.TypeParams
+	}
+	return baseName
+}
+
+// baseTypeName returns the type name without generic parameters (for use in method receivers)
+func (c *common) baseTypeName() string {
+	return c.alias
+}
 func (c *common) Alias(typ string)                   { c.alias = typ }
 func (c *common) hidden()                            {}
 func (c *common) AllowNil() bool                     { return false }
 func (c *common) SetIsAllowNil(bool)                 {}
 func (c *common) SetTypeParams(tp GenericTypeParams) { c.typeParams = tp }
 func (c *common) TypeParams() GenericTypeParams      { return c.typeParams }
+func (c *common) BaseTypeName() string               { return c.baseTypeName() }
 func (c *common) AlwaysPtr(set *bool) bool {
 	if c != nil && set != nil {
 		c.ptrRcv = *set
@@ -245,6 +259,9 @@ type Elem interface {
 	// TypeParams returns the generic type parameters for this element
 	TypeParams() GenericTypeParams
 
+	// BaseTypeName returns the type name without generic parameters
+	BaseTypeName() string
+
 	hidden()
 }
 
@@ -283,10 +300,10 @@ ridx:
 
 func (a *Array) TypeName() string {
 	if a.alias != "" {
-		return a.alias
+		return a.typeNameWithParams(a.alias)
 	}
 	a.Alias(fmt.Sprintf("[%s]%s", a.Size, a.Els.TypeName()))
-	return a.alias
+	return a.typeNameWithParams(a.alias)
 }
 
 func (a *Array) Copy() Elem {
@@ -335,14 +352,14 @@ ridx:
 
 func (m *Map) TypeName() string {
 	if m.alias != "" {
-		return m.alias
+		return m.typeNameWithParams(m.alias)
 	}
 	keyType := "string"
 	if m.Key != nil {
 		keyType = m.Key.TypeName()
 	}
 	m.Alias("map[" + keyType + "]" + m.Value.TypeName())
-	return m.alias
+	return m.typeNameWithParams(m.alias)
 }
 
 func (m *Map) Copy() Elem {
@@ -354,7 +371,7 @@ func (m *Map) Copy() Elem {
 // readKey will read the key into the variable named by m.Keyidx.
 func (m *Map) readKey(ctx *Context, p printer, t traversal, assignAndCheck func(name string, base string)) {
 	if m.Key != nil && m.AllowBinMaps {
-		p.declare(m.Keyidx, m.Key.TypeName())
+		p.declare(m.Keyidx, m.Key.BaseTypeName())
 		ctx.PushVar(m.Keyidx)
 		m.Key.SetVarname(m.Keyidx)
 		next(t, m.Key)
@@ -403,10 +420,10 @@ func (s *Slice) SetVarname(a string) {
 
 func (s *Slice) TypeName() string {
 	if s.alias != "" {
-		return s.alias
+		return s.typeNameWithParams(s.alias)
 	}
 	s.Alias("[]" + s.Els.TypeName())
-	return s.alias
+	return s.typeNameWithParams(s.alias)
 }
 
 func (s *Slice) Copy() Elem {
@@ -480,10 +497,10 @@ func (s *Ptr) SetVarname(a string) {
 
 func (s *Ptr) TypeName() string {
 	if s.alias != "" {
-		return s.alias
+		return s.typeNameWithParams(s.alias)
 	}
 	s.Alias("*" + s.Value.TypeName())
-	return s.alias
+	return s.typeNameWithParams(s.alias)
 }
 
 func (s *Ptr) Copy() Elem {
@@ -673,10 +690,10 @@ func (s *BaseElem) SetVarname(a string) {
 // type name for the base element.
 func (s *BaseElem) TypeName() string {
 	if s.alias != "" {
-		return s.alias
+		return s.typeNameWithParams(s.alias)
 	}
 	s.common.Alias(s.BaseType())
-	return s.alias
+	return s.typeNameWithParams(s.alias)
 }
 
 // ToBase, used if Convert==true, is used as tmp = {{ToBase}}({{Varname}})
@@ -715,7 +732,7 @@ func (s *BaseElem) BaseName() string {
 func (s *BaseElem) BaseType() string {
 	switch s.Value {
 	case IDENT:
-		return s.TypeName()
+		return s.alias
 
 	// exceptions to the naming/capitalization
 	// rule:

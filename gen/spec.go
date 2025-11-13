@@ -268,7 +268,7 @@ func next(t traversal, e Elem) {
 
 // possibly-immutable method receiver
 func imutMethodReceiver(p Elem) string {
-	typeName := p.TypeName()
+	typeName := p.BaseTypeName()
 	typeParams := p.TypeParams()
 
 	switch e := p.(type) {
@@ -300,7 +300,7 @@ func imutMethodReceiver(p Elem) string {
 // so that its method receiver
 // is of the write type.
 func methodReceiver(p Elem) string {
-	typeName := p.TypeName()
+	typeName := p.BaseTypeName()
 	typeParams := p.TypeParams()
 
 	switch p.(type) {
@@ -375,7 +375,7 @@ func (p *printer) mapAssign(m *Map) {
 		}
 		if !m.AllowBinMaps && fromBase != "" {
 			if key.Value == String && key.ShimFromBase != "" {
-				p.printf("\nvar %sTmp %s", m.Keyidx, key.TypeName())
+				p.printf("\nvar %sTmp %s", m.Keyidx, key.BaseTypeName())
 				if key.ShimErrs {
 					p.printf("\n%sTmp, err = %s(%s)", m.Keyidx, fromBase, m.Keyidx)
 					p.wrapErrCheck("\"shim: " + fromBase + "\"")
@@ -477,7 +477,7 @@ func (p *printer) print(format string) {
 func (p *printer) initPtr(pt *Ptr) {
 	if pt.Needsinit() {
 		vname := pt.Varname()
-		p.printf("\nif %s == nil { %s = new(%s); }", vname, vname, pt.Value.TypeName())
+		p.printf("\nif %s == nil { %s = new(%s); }", vname, vname, pt.Value.BaseTypeName())
 	}
 }
 

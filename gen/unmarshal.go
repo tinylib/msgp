@@ -247,7 +247,14 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 		if b.typeParams.isPtr {
 			dst = "*" + dst
 		}
-		if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+
+		// Strip type parameters from dst for lookup in ToPointerMap
+		lookupKey := dst
+		if idx := strings.Index(dst, "["); idx != -1 {
+			lookupKey = dst[:idx]
+		}
+
+		if remap := b.typeParams.ToPointerMap[lookupKey]; remap != "" {
 			lowered = fmt.Sprintf(remap, lowered)
 		}
 
@@ -341,7 +348,7 @@ func (u *unmarshalGen) gMap(m *Map) {
 
 	// loop and get key,value
 	u.p.printf("\nfor %s > 0 {", sz)
-	u.p.printf("\nvar %s %s; %s--", m.Validx, m.Value.TypeName(), sz)
+	u.p.printf("\nvar %s %s; %s--", m.Validx, m.Value.BaseTypeName(), sz)
 	m.readKey(u.ctx, u.p, u, u.assignAndCheck)
 	u.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)

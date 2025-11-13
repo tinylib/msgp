@@ -358,7 +358,14 @@ func (m *marshalGen) gBase(b *BaseElem) {
 		if b.typeParams.isPtr {
 			dst = "*" + dst
 		}
-		if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+
+		// Strip type parameters from dst for lookup in ToPointerMap
+		lookupKey := dst
+		if idx := strings.Index(dst, "["); idx != -1 {
+			lookupKey = dst[:idx]
+		}
+
+		if remap := b.typeParams.ToPointerMap[lookupKey]; remap != "" {
 			vname = fmt.Sprintf(remap, vname)
 		}
 		echeck = true
