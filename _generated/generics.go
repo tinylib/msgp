@@ -82,3 +82,11 @@ type GenericTest3[A, B any, _ msgp.RTFor[A], _ msgp.RTFor[B]] struct {
 	A A
 	B B
 }
+
+// GenericTest4 has the msgp.RTFor constraint as a sub-constraint.
+type GenericTest4[T any, P interface {
+	*T
+	msgp.RTFor[T]
+}] struct {
+	Totals [60]T
+}

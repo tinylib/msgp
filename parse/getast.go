@@ -247,6 +247,29 @@ func formatTypeParams(params *ast.FieldList) string {
 	return "[" + strings.Join(paramStrs, ", ") + "]"
 }
 
+// findRTForInInterface recursively searches for msgp.RTFor[T] patterns within interface types
+func findRTForInInterface(iface *ast.InterfaceType) []string {
+	var rtfors []string
+	if iface.Methods == nil {
+		return rtfors
+	}
+
+	for _, method := range iface.Methods.List {
+		// Check if this is an embedded interface/type
+		if len(method.Names) == 0 {
+			typeStr := stringify(method.Type)
+			if strings.HasPrefix(typeStr, "msgp.RTFor[") {
+				rtfors = append(rtfors, typeStr)
+			}
+			// Recursively check nested interfaces
+			if nestedIface, ok := method.Type.(*ast.InterfaceType); ok {
+				rtfors = append(rtfors, findRTForInInterface(nestedIface)...)
+			}
+		}
+	}
+	return rtfors
+}
+
 // formatTypeParams converts an AST FieldList to a string representation.
 // For 'Foo[T any, P msgp.RTFor[T]]' will return {"T": "P"}.
 func getMspTypeParams(params *ast.FieldList) map[string]string {
@@ -257,15 +280,31 @@ func getMspTypeParams(params *ast.FieldList) map[string]string {
 	paramStrs := make(map[string]string)
 	for _, field := range params.List {
 		str := stringify(field.Type)
-		if !strings.HasPrefix(str, "msgp.RTFor[") {
+
+		// Handle simple msgp.RTFor[T] constraints
+		if strings.HasPrefix(str, "msgp.RTFor[") {
+			for _, name := range field.Names {
+				t := strings.TrimSuffix(strings.TrimPrefix(str, "msgp.RTFor["), "]")
+				paramStrs[t] = name.Name + "(&%s)"
+				paramStrs["*"+t] = name.Name + "(%s)"
+				paramStrs[name.Name] = "%s"
+				infof("found generic type %s, with roundtrippper %s\n", t, name.Name)
+			}
 			continue
 		}
-		for _, name := range field.Names {
-			t := strings.TrimSuffix(strings.TrimPrefix(str, "msgp.RTFor["), "]")
-			paramStrs[t] = name.Name + "(&%s)"
-			paramStrs["*"+t] = name.Name + "(%s)"
-			paramStrs[name.Name] = "%s"
-			infof("found generic type %s, with roundtrippper %s\n", t, name.Name)
+
+		// Handle complex interface constraints that embed msgp.RTFor[T]
+		if iface, ok := field.Type.(*ast.InterfaceType); ok {
+			rtfors := findRTForInInterface(iface)
+			for _, rtfor := range rtfors {
+				for _, name := range field.Names {
+					t := strings.TrimSuffix(strings.TrimPrefix(rtfor, "msgp.RTFor["), "]")
+					paramStrs[t] = name.Name + "(&%s)"
+					paramStrs["*"+t] = name.Name + "(%s)"
+					paramStrs[name.Name] = "%s"
+					infof("found generic type %s, with roundtrippper %s (in complex interface)\n", t, name.Name)
+				}
+			}
 		}
 	}
 
