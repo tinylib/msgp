@@ -78,6 +78,11 @@ type GenericTestTwo[A, B any, AP msgp.RTFor[A], BP msgp.RTFor[B]] struct {
 	GP2 map[string]*GenericTest2[B, BP, string] `msg:",allownil"`
 }
 
+type GenericTest3List[A, B any, AP msgp.RTFor[A], BP msgp.RTFor[B]] []GenericTest3[A, B, AP, BP]
+type GenericTest3Map[A, B any, AP msgp.RTFor[A], BP msgp.RTFor[B]] map[string]GenericTest3[A, B, AP, BP]
+
+type GenericTest3Array[A, B any, AP msgp.RTFor[A], BP msgp.RTFor[B]] [5]GenericTest3[A, B, AP, BP]
+
 type GenericTest3[A, B any, _ msgp.RTFor[A], _ msgp.RTFor[B]] struct {
 	A A
 	B B
