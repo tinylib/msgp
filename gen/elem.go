@@ -164,6 +164,15 @@ func (c *common) SetVarname(s string) { c.vname = s }
 func (c *common) Varname() string     { return c.vname }
 
 // typeNameWithParams returns the type name with generic parameters appended if they exist
+// stripTypeParams removes type parameters from a type name for lookup purposes
+// e.g. "MyType[T, U]" becomes "MyType", "*SomeType[A]" becomes "*SomeType"
+func stripTypeParams(typeName string) string {
+	if idx := strings.Index(typeName, "["); idx != -1 {
+		return typeName[:idx]
+	}
+	return typeName
+}
+
 func (c *common) typeNameWithParams(baseName string) string {
 	if c.typeParams.TypeParams != "" && !strings.Contains(baseName, "[") {
 		// Check if baseName is a single identifier without dots (likely a type parameter)

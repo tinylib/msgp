@@ -226,20 +226,14 @@ func (d *decodeGen) gBase(b *BaseElem) {
 			dst = "*" + dst
 		}
 
-		// Strip type parameters from dst for lookup in ToPointerMap
-		lookupKey := dst
-		if idx := strings.Index(dst, "["); idx != -1 {
-			lookupKey = dst[:idx]
-		}
-
 		if b.Convert {
-			if remap := b.typeParams.ToPointerMap[lookupKey]; remap != "" {
+			if remap := b.typeParams.ToPointerMap[stripTypeParams(dst)]; remap != "" {
 				vname = fmt.Sprintf(remap, vname)
 			}
 			lowered := b.ToBase() + "(" + vname + ")"
 			d.p.printf("\nerr = %s.DecodeMsg(dc)", lowered)
 		} else {
-			if remap := b.typeParams.ToPointerMap[lookupKey]; remap != "" {
+			if remap := b.typeParams.ToPointerMap[stripTypeParams(dst)]; remap != "" {
 				vname = fmt.Sprintf(remap, vname)
 			}
 			d.p.printf("\nerr = %s.DecodeMsg(dc)", vname)
