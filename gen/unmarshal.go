@@ -348,7 +348,7 @@ func (u *unmarshalGen) gMap(m *Map) {
 
 	// loop and get key,value
 	u.p.printf("\nfor %s > 0 {", sz)
-	u.p.printf("\nvar %s %s; %s--", m.Validx, m.Value.BaseTypeName(), sz)
+	u.p.printf("\nvar %s %s; %s--", m.Validx, m.Value.TypeName(), sz)
 	m.readKey(u.ctx, u.p, u, u.assignAndCheck)
 	u.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)

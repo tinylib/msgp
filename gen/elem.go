@@ -160,12 +160,17 @@ type GenericTypeParams struct {
 	isPtr        bool
 }
 
-func (c *common) SetVarname(s string)                { c.vname = s }
-func (c *common) Varname() string                    { return c.vname }
+func (c *common) SetVarname(s string) { c.vname = s }
+func (c *common) Varname() string     { return c.vname }
 
 // typeNameWithParams returns the type name with generic parameters appended if they exist
 func (c *common) typeNameWithParams(baseName string) string {
 	if c.typeParams.TypeParams != "" && !strings.Contains(baseName, "[") {
+		// Check if baseName is a single identifier without dots (likely a type parameter)
+		if !strings.Contains(baseName, ".") && len(baseName) <= 2 && len(baseName) > 0 {
+			// This looks like a simple type parameter, don't add type parameters
+			return baseName
+		}
 		return baseName + c.typeParams.TypeParams
 	}
 	return baseName
@@ -371,7 +376,7 @@ func (m *Map) Copy() Elem {
 // readKey will read the key into the variable named by m.Keyidx.
 func (m *Map) readKey(ctx *Context, p printer, t traversal, assignAndCheck func(name string, base string)) {
 	if m.Key != nil && m.AllowBinMaps {
-		p.declare(m.Keyidx, m.Key.BaseTypeName())
+		p.declare(m.Keyidx, m.Key.TypeName())
 		ctx.PushVar(m.Keyidx)
 		m.Key.SetVarname(m.Keyidx)
 		next(t, m.Key)

@@ -375,7 +375,7 @@ func (p *printer) mapAssign(m *Map) {
 		}
 		if !m.AllowBinMaps && fromBase != "" {
 			if key.Value == String && key.ShimFromBase != "" {
-				p.printf("\nvar %sTmp %s", m.Keyidx, key.BaseTypeName())
+				p.printf("\nvar %sTmp %s", m.Keyidx, key.TypeName())
 				if key.ShimErrs {
 					p.printf("\n%sTmp, err = %s(%s)", m.Keyidx, fromBase, m.Keyidx)
 					p.wrapErrCheck("\"shim: " + fromBase + "\"")
@@ -477,7 +477,7 @@ func (p *printer) print(format string) {
 func (p *printer) initPtr(pt *Ptr) {
 	if pt.Needsinit() {
 		vname := pt.Varname()
-		p.printf("\nif %s == nil { %s = new(%s); }", vname, vname, pt.Value.BaseTypeName())
+		p.printf("\nif %s == nil { %s = new(%s); }", vname, vname, pt.Value.TypeName())
 	}
 }
 

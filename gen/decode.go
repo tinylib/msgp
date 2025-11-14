@@ -296,7 +296,7 @@ func (d *decodeGen) gMap(m *Map) {
 	d.needsField()
 	d.p.printf("\nfor %s > 0 {\n%s--", sz, sz)
 	m.readKey(d.ctx, d.p, d, d.assignAndCheck)
-	d.p.declare(m.Validx, m.Value.BaseTypeName())
+	d.p.declare(m.Validx, m.Value.TypeName())
 	d.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)
 	setTypeParams(m.Value, m.typeParams)
