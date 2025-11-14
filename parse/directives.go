@@ -32,6 +32,7 @@ var directives = map[string]directive{
 	"clearomitted":  clearomitted,
 	"newtime":       newtime,
 	"timezone":      newtimezone,
+	"limit":         limit,
 }
 
 // map of all recognized directives which will be applied
@@ -313,5 +314,39 @@ func newtimezone(text []string, f *FileSet) error {
 		return fmt.Errorf("timezone directive should be either 'local' or 'utc'; found %q", text[1])
 	}
 	infof("using timezone %q\n", text[1])
+	return nil
+}
+
+//msgp:limit arrays:n maps:n marshal:true/false
+func limit(text []string, f *FileSet) (err error) {
+	for _, arg := range text[1:] {
+		arg = strings.ToLower(strings.TrimSpace(arg))
+		switch {
+		case strings.HasPrefix(arg, "arrays:"):
+			limitStr := strings.TrimPrefix(arg, "arrays:")
+			limit, err := strconv.ParseUint(limitStr, 10, 32)
+			if err != nil {
+				return fmt.Errorf("invalid arrays limit; found %s, expected positive integer", limitStr)
+			}
+			f.ArrayLimit = uint32(limit)
+		case strings.HasPrefix(arg, "maps:"):
+			limitStr := strings.TrimPrefix(arg, "maps:")
+			limit, err := strconv.ParseUint(limitStr, 10, 32)
+			if err != nil {
+				return fmt.Errorf("invalid maps limit; found %s, expected positive integer", limitStr)
+			}
+			f.MapLimit = uint32(limit)
+		case strings.HasPrefix(arg, "marshal:"):
+			marshalStr := strings.TrimPrefix(arg, "marshal:")
+			marshal, err := strconv.ParseBool(marshalStr)
+			if err != nil {
+				return fmt.Errorf("invalid marshal option; found %s, expected 'true' or 'false'", marshalStr)
+			}
+			f.MarshalLimits = marshal
+		default:
+			return fmt.Errorf("invalid limit directive; found %s, expected 'arrays:n', 'maps:n', or 'marshal:true/false'", arg)
+		}
+	}
+	infof("limits - arrays:%d maps:%d marshal:%t\n", f.ArrayLimit, f.MapLimit, f.MarshalLimits)
 	return nil
 }

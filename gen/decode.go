@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -74,10 +75,38 @@ func (d *decodeGen) assignAndCheck(name string, typ string) {
 	d.p.wrapErrCheck(d.ctx.ArgsStr())
 }
 
+func (d *decodeGen) assignAndCheckWithArrayLimit(name string, typ string) {
+	if !d.p.ok() {
+		return
+	}
+	d.p.printf("\n%s, err = dc.Read%s()", name, typ)
+	d.p.wrapErrCheck(d.ctx.ArgsStr())
+	if d.ctx.arrayLimit != math.MaxUint32 {
+		d.p.printf("\nif %s > %slimitArrays {", name, d.ctx.limitPrefix)
+		d.p.printf("\nerr = msgp.ErrLimitExceeded")
+		d.p.printf("\nreturn")
+		d.p.printf("\n}")
+	}
+}
+
+func (d *decodeGen) assignAndCheckWithMapLimit(name string, typ string) {
+	if !d.p.ok() {
+		return
+	}
+	d.p.printf("\n%s, err = dc.Read%s()", name, typ)
+	d.p.wrapErrCheck(d.ctx.ArgsStr())
+	if d.ctx.mapLimit != math.MaxUint32 {
+		d.p.printf("\nif %s > %slimitMaps {", name, d.ctx.limitPrefix)
+		d.p.printf("\nerr = msgp.ErrLimitExceeded")
+		d.p.printf("\nreturn")
+		d.p.printf("\n}")
+	}
+}
+
 func (d *decodeGen) structAsTuple(s *Struct) {
 	sz := randIdent()
 	d.p.declare(sz, u32)
-	d.assignAndCheck(sz, arrayHeader)
+	d.assignAndCheckWithArrayLimit(sz, arrayHeader)
 	if s.AsVarTuple {
 		d.p.printf("\nif %[1]s == 0 { return }", sz)
 	} else {
@@ -116,7 +145,7 @@ func (d *decodeGen) structAsMap(s *Struct) {
 	d.needsField()
 	sz := randIdent()
 	d.p.declare(sz, u32)
-	d.assignAndCheck(sz, mapHeader)
+	d.assignAndCheckWithMapLimit(sz, mapHeader)
 
 	oeCount := s.CountFieldTagPart("omitempty") + s.CountFieldTagPart("omitzero")
 	if !d.ctx.clearOmitted {
@@ -281,7 +310,7 @@ func (d *decodeGen) gMap(m *Map) {
 
 	// resize or allocate map
 	d.p.declare(sz, u32)
-	d.assignAndCheck(sz, mapHeader)
+	d.assignAndCheckWithMapLimit(sz, mapHeader)
 	d.p.resizeMap(sz, m)
 
 	// for element in map, read string/value
@@ -305,7 +334,7 @@ func (d *decodeGen) gSlice(s *Slice) {
 	}
 	sz := randIdent()
 	d.p.declare(sz, u32)
-	d.assignAndCheck(sz, arrayHeader)
+	d.assignAndCheckWithArrayLimit(sz, arrayHeader)
 	if s.isAllowNil {
 		d.p.resizeSliceNoNil(sz, s)
 	} else {
