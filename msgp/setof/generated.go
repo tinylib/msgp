@@ -3,6 +3,7 @@
 package setof
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/tinylib/msgp/msgp"
@@ -38,6 +39,7 @@ func (s String) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendString(bytes, string(k))
@@ -73,7 +75,7 @@ func (s *String) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k string
 		k, err = reader.ReadString()
 		if err != nil {
@@ -102,7 +104,7 @@ func (s *String) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k string
 		k, bytes, err = msgp.ReadStringBytes(bytes)
 		if err != nil {
@@ -118,9 +120,6 @@ func (s *String) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s String) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	for key := range s {
@@ -177,6 +176,7 @@ func (s StringSorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]string, 0, len(s))
 	for k := range s {
@@ -194,12 +194,12 @@ func (s StringSorted) AsSlice() []string {
 	if s == nil {
 		return nil
 	}
-	dst := make([]string, 0, len(s))
+	keys := make([]string, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	sort.Strings(keys)
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -218,7 +218,7 @@ func (s *StringSorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k string
 		k, err = reader.ReadString()
 		if err != nil {
@@ -247,7 +247,7 @@ func (s *StringSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k string
 		k, bytes, err = msgp.ReadStringBytes(bytes)
 		if err != nil {
@@ -263,9 +263,6 @@ func (s *StringSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s StringSorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	for key := range s {
@@ -316,6 +313,7 @@ func (s Int) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendInt(bytes, int(k))
@@ -351,7 +349,7 @@ func (s *Int) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int
 		k, err = reader.ReadInt()
 		if err != nil {
@@ -380,7 +378,7 @@ func (s *Int) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int
 		k, bytes, err = msgp.ReadIntBytes(bytes)
 		if err != nil {
@@ -396,9 +394,6 @@ func (s *Int) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Int) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.IntSize
@@ -434,7 +429,12 @@ func (s IntSorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b int) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteInt(k)
@@ -453,12 +453,18 @@ func (s IntSorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]int, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b int) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendInt(bytes, k)
 	}
@@ -470,12 +476,17 @@ func (s IntSorted) AsSlice() []int {
 	if s == nil {
 		return nil
 	}
-	dst := make([]int, 0, len(s))
+	keys := make([]int, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b int) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -494,7 +505,7 @@ func (s *IntSorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int
 		k, err = reader.ReadInt()
 		if err != nil {
@@ -523,7 +534,7 @@ func (s *IntSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int
 		k, bytes, err = msgp.ReadIntBytes(bytes)
 		if err != nil {
@@ -539,9 +550,6 @@ func (s *IntSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s IntSorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.IntSize
@@ -590,6 +598,7 @@ func (s Uint) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendUint(bytes, uint(k))
@@ -625,7 +634,7 @@ func (s *Uint) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint
 		k, err = reader.ReadUint()
 		if err != nil {
@@ -654,7 +663,7 @@ func (s *Uint) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint
 		k, bytes, err = msgp.ReadUintBytes(bytes)
 		if err != nil {
@@ -670,9 +679,6 @@ func (s *Uint) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Uint) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.UintSize
@@ -708,7 +714,12 @@ func (s UintSorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b uint) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteUint(k)
@@ -727,12 +738,18 @@ func (s UintSorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]uint, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b uint) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendUint(bytes, k)
 	}
@@ -744,12 +761,17 @@ func (s UintSorted) AsSlice() []uint {
 	if s == nil {
 		return nil
 	}
-	dst := make([]uint, 0, len(s))
+	keys := make([]uint, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b uint) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -768,7 +790,7 @@ func (s *UintSorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint
 		k, err = reader.ReadUint()
 		if err != nil {
@@ -797,7 +819,7 @@ func (s *UintSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint
 		k, bytes, err = msgp.ReadUintBytes(bytes)
 		if err != nil {
@@ -813,9 +835,6 @@ func (s *UintSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s UintSorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.UintSize
@@ -864,6 +883,7 @@ func (s Byte) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendByte(bytes, byte(k))
@@ -899,7 +919,7 @@ func (s *Byte) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k byte
 		k, err = reader.ReadByte()
 		if err != nil {
@@ -928,7 +948,7 @@ func (s *Byte) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k byte
 		k, bytes, err = msgp.ReadByteBytes(bytes)
 		if err != nil {
@@ -944,9 +964,6 @@ func (s *Byte) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Byte) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.ByteSize
@@ -982,7 +999,12 @@ func (s ByteSorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b byte) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteByte(k)
@@ -1001,12 +1023,18 @@ func (s ByteSorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]byte, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b byte) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendByte(bytes, k)
 	}
@@ -1018,12 +1046,17 @@ func (s ByteSorted) AsSlice() []byte {
 	if s == nil {
 		return nil
 	}
-	dst := make([]byte, 0, len(s))
+	keys := make([]byte, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b byte) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -1042,7 +1075,7 @@ func (s *ByteSorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k byte
 		k, err = reader.ReadByte()
 		if err != nil {
@@ -1071,7 +1104,7 @@ func (s *ByteSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k byte
 		k, bytes, err = msgp.ReadByteBytes(bytes)
 		if err != nil {
@@ -1087,9 +1120,6 @@ func (s *ByteSorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s ByteSorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.ByteSize
@@ -1138,6 +1168,7 @@ func (s Int8) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendInt8(bytes, int8(k))
@@ -1173,7 +1204,7 @@ func (s *Int8) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int8
 		k, err = reader.ReadInt8()
 		if err != nil {
@@ -1202,7 +1233,7 @@ func (s *Int8) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int8
 		k, bytes, err = msgp.ReadInt8Bytes(bytes)
 		if err != nil {
@@ -1218,9 +1249,6 @@ func (s *Int8) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Int8) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Int8Size
@@ -1256,7 +1284,12 @@ func (s Int8Sorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b int8) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteInt8(k)
@@ -1275,12 +1308,18 @@ func (s Int8Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]int8, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b int8) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendInt8(bytes, k)
 	}
@@ -1292,12 +1331,17 @@ func (s Int8Sorted) AsSlice() []int8 {
 	if s == nil {
 		return nil
 	}
-	dst := make([]int8, 0, len(s))
+	keys := make([]int8, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b int8) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -1316,7 +1360,7 @@ func (s *Int8Sorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int8
 		k, err = reader.ReadInt8()
 		if err != nil {
@@ -1345,7 +1389,7 @@ func (s *Int8Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int8
 		k, bytes, err = msgp.ReadInt8Bytes(bytes)
 		if err != nil {
@@ -1361,9 +1405,6 @@ func (s *Int8Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Int8Sorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Int8Size
@@ -1412,6 +1453,7 @@ func (s Uint8) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendUint8(bytes, uint8(k))
@@ -1447,7 +1489,7 @@ func (s *Uint8) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint8
 		k, err = reader.ReadUint8()
 		if err != nil {
@@ -1476,7 +1518,7 @@ func (s *Uint8) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint8
 		k, bytes, err = msgp.ReadUint8Bytes(bytes)
 		if err != nil {
@@ -1492,9 +1534,6 @@ func (s *Uint8) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Uint8) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Uint8Size
@@ -1530,7 +1569,12 @@ func (s Uint8Sorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b uint8) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteUint8(k)
@@ -1549,12 +1593,18 @@ func (s Uint8Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]uint8, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b uint8) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendUint8(bytes, k)
 	}
@@ -1566,12 +1616,17 @@ func (s Uint8Sorted) AsSlice() []uint8 {
 	if s == nil {
 		return nil
 	}
-	dst := make([]uint8, 0, len(s))
+	keys := make([]uint8, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b uint8) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -1590,7 +1645,7 @@ func (s *Uint8Sorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint8
 		k, err = reader.ReadUint8()
 		if err != nil {
@@ -1619,7 +1674,7 @@ func (s *Uint8Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint8
 		k, bytes, err = msgp.ReadUint8Bytes(bytes)
 		if err != nil {
@@ -1635,9 +1690,6 @@ func (s *Uint8Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Uint8Sorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Uint8Size
@@ -1686,6 +1738,7 @@ func (s Int16) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendInt16(bytes, int16(k))
@@ -1721,7 +1774,7 @@ func (s *Int16) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int16
 		k, err = reader.ReadInt16()
 		if err != nil {
@@ -1750,7 +1803,7 @@ func (s *Int16) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int16
 		k, bytes, err = msgp.ReadInt16Bytes(bytes)
 		if err != nil {
@@ -1766,9 +1819,6 @@ func (s *Int16) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Int16) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Int16Size
@@ -1804,7 +1854,12 @@ func (s Int16Sorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b int16) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteInt16(k)
@@ -1823,12 +1878,18 @@ func (s Int16Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]int16, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b int16) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendInt16(bytes, k)
 	}
@@ -1840,12 +1901,17 @@ func (s Int16Sorted) AsSlice() []int16 {
 	if s == nil {
 		return nil
 	}
-	dst := make([]int16, 0, len(s))
+	keys := make([]int16, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b int16) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -1864,7 +1930,7 @@ func (s *Int16Sorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int16
 		k, err = reader.ReadInt16()
 		if err != nil {
@@ -1893,7 +1959,7 @@ func (s *Int16Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int16
 		k, bytes, err = msgp.ReadInt16Bytes(bytes)
 		if err != nil {
@@ -1909,9 +1975,6 @@ func (s *Int16Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Int16Sorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Int16Size
@@ -1960,6 +2023,7 @@ func (s Uint16) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendUint16(bytes, uint16(k))
@@ -1995,7 +2059,7 @@ func (s *Uint16) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint16
 		k, err = reader.ReadUint16()
 		if err != nil {
@@ -2024,7 +2088,7 @@ func (s *Uint16) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint16
 		k, bytes, err = msgp.ReadUint16Bytes(bytes)
 		if err != nil {
@@ -2040,9 +2104,6 @@ func (s *Uint16) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Uint16) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Uint16Size
@@ -2078,7 +2139,12 @@ func (s Uint16Sorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b uint16) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteUint16(k)
@@ -2097,12 +2163,18 @@ func (s Uint16Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]uint16, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b uint16) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendUint16(bytes, k)
 	}
@@ -2114,12 +2186,17 @@ func (s Uint16Sorted) AsSlice() []uint16 {
 	if s == nil {
 		return nil
 	}
-	dst := make([]uint16, 0, len(s))
+	keys := make([]uint16, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b uint16) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -2138,7 +2215,7 @@ func (s *Uint16Sorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint16
 		k, err = reader.ReadUint16()
 		if err != nil {
@@ -2167,7 +2244,7 @@ func (s *Uint16Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint16
 		k, bytes, err = msgp.ReadUint16Bytes(bytes)
 		if err != nil {
@@ -2183,9 +2260,6 @@ func (s *Uint16Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Uint16Sorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Uint16Size
@@ -2234,6 +2308,7 @@ func (s Int32) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendInt32(bytes, int32(k))
@@ -2269,7 +2344,7 @@ func (s *Int32) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int32
 		k, err = reader.ReadInt32()
 		if err != nil {
@@ -2298,7 +2373,7 @@ func (s *Int32) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int32
 		k, bytes, err = msgp.ReadInt32Bytes(bytes)
 		if err != nil {
@@ -2314,9 +2389,6 @@ func (s *Int32) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Int32) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Int32Size
@@ -2352,7 +2424,12 @@ func (s Int32Sorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b int32) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteInt32(k)
@@ -2371,12 +2448,18 @@ func (s Int32Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]int32, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b int32) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendInt32(bytes, k)
 	}
@@ -2388,12 +2471,17 @@ func (s Int32Sorted) AsSlice() []int32 {
 	if s == nil {
 		return nil
 	}
-	dst := make([]int32, 0, len(s))
+	keys := make([]int32, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b int32) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -2412,7 +2500,7 @@ func (s *Int32Sorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int32
 		k, err = reader.ReadInt32()
 		if err != nil {
@@ -2441,7 +2529,7 @@ func (s *Int32Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int32
 		k, bytes, err = msgp.ReadInt32Bytes(bytes)
 		if err != nil {
@@ -2457,9 +2545,6 @@ func (s *Int32Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Int32Sorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Int32Size
@@ -2508,6 +2593,7 @@ func (s Uint32) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendUint32(bytes, uint32(k))
@@ -2543,7 +2629,7 @@ func (s *Uint32) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint32
 		k, err = reader.ReadUint32()
 		if err != nil {
@@ -2572,7 +2658,7 @@ func (s *Uint32) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint32
 		k, bytes, err = msgp.ReadUint32Bytes(bytes)
 		if err != nil {
@@ -2588,9 +2674,6 @@ func (s *Uint32) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Uint32) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Uint32Size
@@ -2626,7 +2709,12 @@ func (s Uint32Sorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b uint32) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteUint32(k)
@@ -2645,12 +2733,18 @@ func (s Uint32Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]uint32, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b uint32) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendUint32(bytes, k)
 	}
@@ -2662,12 +2756,17 @@ func (s Uint32Sorted) AsSlice() []uint32 {
 	if s == nil {
 		return nil
 	}
-	dst := make([]uint32, 0, len(s))
+	keys := make([]uint32, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b uint32) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -2686,7 +2785,7 @@ func (s *Uint32Sorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint32
 		k, err = reader.ReadUint32()
 		if err != nil {
@@ -2715,7 +2814,7 @@ func (s *Uint32Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint32
 		k, bytes, err = msgp.ReadUint32Bytes(bytes)
 		if err != nil {
@@ -2731,9 +2830,6 @@ func (s *Uint32Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Uint32Sorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Uint32Size
@@ -2782,6 +2878,7 @@ func (s Int64) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendInt64(bytes, int64(k))
@@ -2817,7 +2914,7 @@ func (s *Int64) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int64
 		k, err = reader.ReadInt64()
 		if err != nil {
@@ -2846,7 +2943,7 @@ func (s *Int64) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int64
 		k, bytes, err = msgp.ReadInt64Bytes(bytes)
 		if err != nil {
@@ -2862,9 +2959,6 @@ func (s *Int64) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Int64) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Int64Size
@@ -2900,7 +2994,12 @@ func (s Int64Sorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b int64) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteInt64(k)
@@ -2919,12 +3018,18 @@ func (s Int64Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]int64, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b int64) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendInt64(bytes, k)
 	}
@@ -2936,12 +3041,17 @@ func (s Int64Sorted) AsSlice() []int64 {
 	if s == nil {
 		return nil
 	}
-	dst := make([]int64, 0, len(s))
+	keys := make([]int64, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b int64) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -2960,7 +3070,7 @@ func (s *Int64Sorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int64
 		k, err = reader.ReadInt64()
 		if err != nil {
@@ -2989,7 +3099,7 @@ func (s *Int64Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k int64
 		k, bytes, err = msgp.ReadInt64Bytes(bytes)
 		if err != nil {
@@ -3005,9 +3115,6 @@ func (s *Int64Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Int64Sorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Int64Size
@@ -3056,6 +3163,7 @@ func (s Uint64) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendUint64(bytes, uint64(k))
@@ -3091,7 +3199,7 @@ func (s *Uint64) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint64
 		k, err = reader.ReadUint64()
 		if err != nil {
@@ -3120,7 +3228,7 @@ func (s *Uint64) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint64
 		k, bytes, err = msgp.ReadUint64Bytes(bytes)
 		if err != nil {
@@ -3136,9 +3244,6 @@ func (s *Uint64) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Uint64) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Uint64Size
@@ -3174,7 +3279,12 @@ func (s Uint64Sorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b uint64) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteUint64(k)
@@ -3193,12 +3303,18 @@ func (s Uint64Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]uint64, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b uint64) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendUint64(bytes, k)
 	}
@@ -3210,12 +3326,17 @@ func (s Uint64Sorted) AsSlice() []uint64 {
 	if s == nil {
 		return nil
 	}
-	dst := make([]uint64, 0, len(s))
+	keys := make([]uint64, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b uint64) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -3234,7 +3355,7 @@ func (s *Uint64Sorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint64
 		k, err = reader.ReadUint64()
 		if err != nil {
@@ -3263,7 +3384,7 @@ func (s *Uint64Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k uint64
 		k, bytes, err = msgp.ReadUint64Bytes(bytes)
 		if err != nil {
@@ -3279,9 +3400,6 @@ func (s *Uint64Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Uint64Sorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Uint64Size
@@ -3330,6 +3448,7 @@ func (s Float64) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendFloat(bytes, float64(k))
@@ -3365,7 +3484,7 @@ func (s *Float64) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k float64
 		k, err = reader.ReadFloat64()
 		if err != nil {
@@ -3394,7 +3513,7 @@ func (s *Float64) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k float64
 		k, bytes, err = msgp.ReadFloat64Bytes(bytes)
 		if err != nil {
@@ -3410,9 +3529,6 @@ func (s *Float64) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Float64) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Float64Size
@@ -3448,7 +3564,12 @@ func (s Float64Sorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b float64) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteFloat(k)
@@ -3467,12 +3588,18 @@ func (s Float64Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]float64, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b float64) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendFloat(bytes, k)
 	}
@@ -3484,12 +3611,17 @@ func (s Float64Sorted) AsSlice() []float64 {
 	if s == nil {
 		return nil
 	}
-	dst := make([]float64, 0, len(s))
+	keys := make([]float64, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b float64) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -3508,7 +3640,7 @@ func (s *Float64Sorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k float64
 		k, err = reader.ReadFloat64()
 		if err != nil {
@@ -3537,7 +3669,7 @@ func (s *Float64Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k float64
 		k, bytes, err = msgp.ReadFloat64Bytes(bytes)
 		if err != nil {
@@ -3553,9 +3685,6 @@ func (s *Float64Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Float64Sorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Float64Size
@@ -3604,6 +3733,7 @@ func (s Float32) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	for k := range s {
 		bytes = msgp.AppendFloat32(bytes, float32(k))
@@ -3639,7 +3769,7 @@ func (s *Float32) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k float32
 		k, err = reader.ReadFloat32()
 		if err != nil {
@@ -3668,7 +3798,7 @@ func (s *Float32) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k float32
 		k, bytes, err = msgp.ReadFloat32Bytes(bytes)
 		if err != nil {
@@ -3684,9 +3814,6 @@ func (s *Float32) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Float32) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Float32Size
@@ -3722,7 +3849,12 @@ func (s Float32Sorted) EncodeMsg(writer *msgp.Writer) error {
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b float32) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 
 	for _, k := range keys {
 		err = writer.WriteFloat32(k)
@@ -3741,12 +3873,18 @@ func (s Float32Sorted) MarshalMsg(bytes []byte) ([]byte, error) {
 	if len(s) == 0 {
 		return msgp.AppendArrayHeader(bytes, 0), nil
 	}
+	bytes = ensure(bytes, s.Msgsize())
 	bytes = msgp.AppendArrayHeader(bytes, uint32(len(s)))
 	keys := make([]float32, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	slices.SortFunc(keys, func(a, b float32) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
 	for _, k := range keys {
 		bytes = msgp.AppendFloat32(bytes, k)
 	}
@@ -3758,12 +3896,17 @@ func (s Float32Sorted) AsSlice() []float32 {
 	if s == nil {
 		return nil
 	}
-	dst := make([]float32, 0, len(s))
+	keys := make([]float32, 0, len(s))
 	for k := range s {
-		dst = append(dst, k)
+		keys = append(keys, k)
 	}
-	sort.Slice(dst, func(i, j int) bool { return dst[i] < dst[j] })
-	return dst
+	slices.SortFunc(keys, func(a, b float32) int {
+		if a < b {
+			return -1
+		}
+		return 1
+	})
+	return keys
 }
 
 // DecodeMsg decodes the message from the reader.
@@ -3782,7 +3925,7 @@ func (s *Float32Sorted) DecodeMsg(reader *msgp.Reader) error {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k float32
 		k, err = reader.ReadFloat32()
 		if err != nil {
@@ -3811,7 +3954,7 @@ func (s *Float32Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 	} else {
 		clear(dst)
 	}
-	for i := uint32(0); i < sz; i++ {
+	for range sz {
 		var k float32
 		k, bytes, err = msgp.ReadFloat32Bytes(bytes)
 		if err != nil {
@@ -3827,9 +3970,6 @@ func (s *Float32Sorted) UnmarshalMsg(bytes []byte) ([]byte, error) {
 func (s Float32Sorted) Msgsize() int {
 	if s == nil {
 		return msgp.NilSize
-	}
-	if len(s) == 0 {
-		return msgp.ArrayHeaderSize
 	}
 	size := msgp.ArrayHeaderSize
 	size += len(s) * msgp.Float32Size
