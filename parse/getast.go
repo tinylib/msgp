@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"math"
 	"os"
 	"reflect"
 	"sort"
@@ -59,8 +60,8 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 		TypeInfos:  make(map[string]*TypeInfo),
 		Identities: make(map[string]gen.Elem),
 		Directives: append([]string{}, directives...),
-		ArrayLimit: 4294967295, // math.MaxUint32
-		MapLimit:   4294967295, // math.MaxUint32
+		ArrayLimit: math.MaxUint32,
+		MapLimit:   math.MaxUint32,
 	}
 
 	fset := token.NewFileSet()
