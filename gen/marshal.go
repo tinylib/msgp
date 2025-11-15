@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"io"
+	"math"
 	"strings"
 
 	"github.com/tinylib/msgp/msgp"
@@ -71,6 +72,24 @@ func (m *marshalGen) rawAppend(typ string, argfmt string, arg any) {
 	}
 
 	m.p.printf("\no = msgp.Append%s(o, %s)", typ, fmt.Sprintf(argfmt, arg))
+}
+
+func (m *marshalGen) rawAppendWithArrayLimit(typ string, argfmt string, arg any) {
+	m.rawAppend(typ, argfmt, arg)
+	if m.ctx.marshalLimits && m.ctx.arrayLimit != math.MaxUint32 {
+		m.p.printf("\nif %s > %slimitArrays {", fmt.Sprintf(argfmt, arg), m.ctx.limitPrefix)
+		m.p.printf("\nreturn nil, msgp.ErrLimitExceeded")
+		m.p.printf("\n}")
+	}
+}
+
+func (m *marshalGen) rawAppendWithMapLimit(typ string, argfmt string, arg any) {
+	m.rawAppend(typ, argfmt, arg)
+	if m.ctx.marshalLimits && m.ctx.mapLimit != math.MaxUint32 {
+		m.p.printf("\nif %s > %slimitMaps {", fmt.Sprintf(argfmt, arg), m.ctx.limitPrefix)
+		m.p.printf("\nreturn nil, msgp.ErrLimitExceeded")
+		m.p.printf("\n}")
+	}
 }
 
 func (m *marshalGen) fuseHook() {
@@ -250,7 +269,7 @@ func (m *marshalGen) gMap(s *Map) {
 	}
 	m.fuseHook()
 	vname := s.Varname()
-	m.rawAppend(mapHeader, lenAsUint32, vname)
+	m.rawAppendWithMapLimit(mapHeader, lenAsUint32, vname)
 	m.p.printf("\nfor %s, %s := range %s {", s.Keyidx, s.Validx, vname)
 	// Shim key to base type if necessary.
 	if s.Key != nil {
@@ -292,7 +311,7 @@ func (m *marshalGen) gSlice(s *Slice) {
 	vname := s.Varname()
 	setTypeParams(s.Els, s.typeParams)
 
-	m.rawAppend(arrayHeader, lenAsUint32, vname)
+	m.rawAppendWithArrayLimit(arrayHeader, lenAsUint32, vname)
 	m.p.rangeBlock(m.ctx, s.Index, vname, m, s.Els)
 }
 

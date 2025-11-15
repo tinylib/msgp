@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -61,6 +62,34 @@ func (u *unmarshalGen) assignAndCheck(name string, base string) {
 	}
 	u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", name, base)
 	u.p.wrapErrCheck(u.ctx.ArgsStr())
+}
+
+func (u *unmarshalGen) assignAndCheckWithArrayLimit(name string, base string) {
+	if !u.p.ok() {
+		return
+	}
+	u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", name, base)
+	u.p.wrapErrCheck(u.ctx.ArgsStr())
+	if u.ctx.arrayLimit != math.MaxUint32 {
+		u.p.printf("\nif %s > %slimitArrays {", name, u.ctx.limitPrefix)
+		u.p.printf("\nerr = msgp.ErrLimitExceeded")
+		u.p.printf("\nreturn")
+		u.p.printf("\n}")
+	}
+}
+
+func (u *unmarshalGen) assignAndCheckWithMapLimit(name string, base string) {
+	if !u.p.ok() {
+		return
+	}
+	u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", name, base)
+	u.p.wrapErrCheck(u.ctx.ArgsStr())
+	if u.ctx.mapLimit != math.MaxUint32 {
+		u.p.printf("\nif %s > %slimitMaps {", name, u.ctx.limitPrefix)
+		u.p.printf("\nerr = msgp.ErrLimitExceeded")
+		u.p.printf("\nreturn")
+		u.p.printf("\n}")
+	}
 }
 
 func (u *unmarshalGen) gStruct(s *Struct) {
@@ -137,7 +166,7 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 	u.needsField()
 	sz := randIdent()
 	u.p.declare(sz, u32)
-	u.assignAndCheck(sz, mapHeader)
+	u.assignAndCheckWithMapLimit(sz, mapHeader)
 
 	oeCount := s.CountFieldTagPart("omitempty") + s.CountFieldTagPart("omitzero")
 	if !u.ctx.clearOmitted {
@@ -314,7 +343,7 @@ func (u *unmarshalGen) gSlice(s *Slice) {
 	}
 	sz := randIdent()
 	u.p.declare(sz, u32)
-	u.assignAndCheck(sz, arrayHeader)
+	u.assignAndCheckWithArrayLimit(sz, arrayHeader)
 	if s.isAllowNil {
 		u.p.resizeSliceNoNil(sz, s)
 	} else {
@@ -330,7 +359,7 @@ func (u *unmarshalGen) gMap(m *Map) {
 	}
 	sz := randIdent()
 	u.p.declare(sz, u32)
-	u.assignAndCheck(sz, mapHeader)
+	u.assignAndCheckWithMapLimit(sz, mapHeader)
 
 	// allocate or clear map
 	u.p.resizeMap(sz, m)

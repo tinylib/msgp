@@ -81,6 +81,10 @@ type Printer struct {
 	ClearOmitted  bool
 	NewTime       bool
 	AsUTC         bool
+	ArrayLimit    uint32
+	MapLimit      uint32
+	MarshalLimits bool
+	LimitPrefix   string
 }
 
 func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
@@ -151,10 +155,14 @@ func (p *Printer) Print(e Elem) error {
 		// hence the separate prefixes.
 		resetIdent("zb")
 		err := g.Execute(e, Context{
-			compFloats:   p.CompactFloats,
-			clearOmitted: p.ClearOmitted,
-			newTime:      p.NewTime,
-			asUTC:        p.AsUTC,
+			compFloats:    p.CompactFloats,
+			clearOmitted:  p.ClearOmitted,
+			newTime:       p.NewTime,
+			asUTC:         p.AsUTC,
+			arrayLimit:    p.ArrayLimit,
+			mapLimit:      p.MapLimit,
+			marshalLimits: p.MarshalLimits,
+			limitPrefix:   p.LimitPrefix,
 		})
 		resetIdent("za")
 
@@ -182,11 +190,15 @@ func (c contextVar) Arg() string {
 }
 
 type Context struct {
-	path         []contextItem
-	compFloats   bool
-	clearOmitted bool
-	newTime      bool
-	asUTC        bool
+	path          []contextItem
+	compFloats    bool
+	clearOmitted  bool
+	newTime       bool
+	asUTC         bool
+	arrayLimit    uint32
+	mapLimit      uint32
+	marshalLimits bool
+	limitPrefix   string
 }
 
 func (c *Context) PushString(s string) {
