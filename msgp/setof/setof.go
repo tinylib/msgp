@@ -11,7 +11,7 @@ func ensure(b []byte, sz int) []byte {
 	l := len(b)
 	c := cap(b)
 	if c-l < sz {
-		o := make([]byte, len(b), (2*c)+sz) // exponential growth
+		o := make([]byte, l, l+sz)
 		copy(o, b)
 		return o
 	}
