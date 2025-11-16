@@ -394,3 +394,330 @@ func TestMarshalLimitEnforcement(t *testing.T) {
 		}
 	})
 }
+
+func TestFieldLevelLimits(t *testing.T) {
+	// Test field-level limit enforcement with FieldLimitTestData
+
+	t.Run("SmallSlice_WithinLimit", func(t *testing.T) {
+		data := FieldLimitTestData{
+			SmallSlice: []int{1, 2, 3}, // Within limit of 5
+		}
+
+		// Marshal
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		// Unmarshal
+		var result FieldLimitTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err != nil {
+			t.Fatalf("Unexpected unmarshal error: %v", err)
+		}
+
+		if len(result.SmallSlice) != len(data.SmallSlice) {
+			t.Errorf("SmallSlice length mismatch: got %d, want %d", len(result.SmallSlice), len(data.SmallSlice))
+		}
+	})
+
+	t.Run("SmallSlice_ExceedsLimit", func(t *testing.T) {
+		data := FieldLimitTestData{
+			SmallSlice: []int{1, 2, 3, 4, 5, 6, 7}, // Exceeds limit of 5
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		// Unmarshal should fail
+		var result FieldLimitTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err == nil {
+			t.Error("Expected error for SmallSlice exceeding limit, got nil")
+		}
+	})
+
+	t.Run("SmallMap_WithinLimit", func(t *testing.T) {
+		data := FieldLimitTestData{
+			SmallMap: map[string]int{"a": 1, "b": 2}, // Within limit of 3
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		var result FieldLimitTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err != nil {
+			t.Fatalf("Unexpected unmarshal error: %v", err)
+		}
+
+		if len(result.SmallMap) != len(data.SmallMap) {
+			t.Errorf("SmallMap length mismatch: got %d, want %d", len(result.SmallMap), len(data.SmallMap))
+		}
+	})
+
+	t.Run("SmallMap_ExceedsLimit", func(t *testing.T) {
+		data := FieldLimitTestData{
+			SmallMap: map[string]int{"a": 1, "b": 2, "c": 3, "d": 4}, // Exceeds limit of 3
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		// Unmarshal should fail
+		var result FieldLimitTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err == nil {
+			t.Error("Expected error for SmallMap exceeding limit, got nil")
+		}
+	})
+
+	t.Run("FixedArrays_NotLimited_Field", func(t *testing.T) {
+		// Fixed arrays should not be subject to field-level limits
+		data := FieldLimitTestData{
+			FixedArray: [10]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, // Fixed size, should not be limited
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error for fixed array: %v", err)
+		}
+
+		var result FieldLimitTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err != nil {
+			t.Errorf("Fixed arrays should not be limited with field tags, got error: %v", err)
+		}
+	})
+
+	t.Run("DecodeMsg_FieldLimits", func(t *testing.T) {
+		data := FieldLimitTestData{
+			SmallSlice: []int{1, 2, 3, 4, 5, 6}, // Exceeds limit of 5
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		// Test DecodeMsg path
+		var result FieldLimitTestData
+		reader := msgp.NewReader(bytes.NewReader(marshaled))
+		err = result.DecodeMsg(reader)
+		if err == nil {
+			t.Error("Expected error for DecodeMsg with field exceeding limit, got nil")
+		}
+	})
+}
+
+func TestFieldVsFileLimitPrecedence(t *testing.T) {
+	// Test precedence: field limits should override file limits
+	// limits.go has: arrays:100 maps:50
+
+	t.Run("TightSlice_FieldOverride", func(t *testing.T) {
+		// File limit: arrays:100, field limit: 10 -> field limit should apply
+		data := FieldOverrideTestData{
+			TightSlice: make([]int, 15), // Exceeds field limit (10) but within file limit (100)
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		var result FieldOverrideTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err == nil {
+			t.Error("Expected error for TightSlice exceeding field limit (10), got nil")
+		}
+	})
+
+	t.Run("LooseSlice_FieldOverride", func(t *testing.T) {
+		// File limit: arrays:100, field limit: 200 -> field limit should apply
+		data := FieldOverrideTestData{
+			LooseSlice: make([]string, 150), // Within field limit (200) but exceeds file limit (100)
+		}
+		for i := range data.LooseSlice {
+			data.LooseSlice[i] = "test"
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		var result FieldOverrideTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err != nil {
+			t.Errorf("Expected success for LooseSlice within field limit (200), got error: %v", err)
+		}
+	})
+
+	t.Run("DefaultFields_UseFileLimit", func(t *testing.T) {
+		// Fields without field limits should use file limits
+		data := FieldOverrideTestData{
+			DefaultSlice: make([]byte, 120), // Exceeds file limit (100)
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		var result FieldOverrideTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err == nil {
+			t.Error("Expected error for DefaultSlice exceeding file limit (100), got nil")
+		}
+	})
+}
+
+func TestMarshalFieldVsFileLimitPrecedence(t *testing.T) {
+	// Test precedence with marshal:true
+	// marshal_limits.go has: arrays:30 maps:20 marshal:true
+
+	t.Run("Marshal_TightSlice_FieldOverride", func(t *testing.T) {
+		// File limit: arrays:30, field limit: 10 -> field limit should apply
+		// Note: Since I only implemented field limits for unmarshal.go, marshal limits won't work yet
+		data := MarshalFieldOverrideTestData{
+			TightSlice: make([]int, 15), // Exceeds field limit (10) but within file limit (30)
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		var result MarshalFieldOverrideTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err == nil {
+			t.Error("Expected error for TightSlice exceeding field limit (10), got nil")
+		}
+	})
+
+	t.Run("Marshal_DefaultFields_UseFileLimit", func(t *testing.T) {
+		// Fields without field limits should use file limits
+		data := MarshalFieldOverrideTestData{
+			DefaultSlice: make([]byte, 35), // Exceeds file limit (30)
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		var result MarshalFieldOverrideTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err == nil {
+			t.Error("Expected error for DefaultSlice exceeding file limit (30), got nil")
+		}
+	})
+}
+
+func TestAliasedTypesWithFieldLimits(t *testing.T) {
+	// Test field-level limits with aliased types
+
+	t.Run("SmallAliasedSlice_WithinLimit", func(t *testing.T) {
+		data := AliasedFieldLimitTestData{
+			SmallAliasedSlice: AliasedSlice{"a", "b"}, // Within limit of 3
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		var result AliasedFieldLimitTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err != nil {
+			t.Fatalf("Unexpected unmarshal error: %v", err)
+		}
+
+		if len(result.SmallAliasedSlice) != len(data.SmallAliasedSlice) {
+			t.Errorf("SmallAliasedSlice length mismatch: got %d, want %d", len(result.SmallAliasedSlice), len(data.SmallAliasedSlice))
+		}
+	})
+
+	t.Run("SmallAliasedSlice_ExceedsLimit", func(t *testing.T) {
+		data := AliasedFieldLimitTestData{
+			SmallAliasedSlice: AliasedSlice{"a", "b", "c", "d", "e"}, // Exceeds limit of 3
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		var result AliasedFieldLimitTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err == nil {
+			t.Error("Expected error for SmallAliasedSlice exceeding limit (3), got nil")
+		}
+	})
+
+	t.Run("SmallAliasedMap_ExceedsLimit", func(t *testing.T) {
+		data := AliasedFieldLimitTestData{
+			SmallAliasedMap: AliasedMap{
+				"key1": true,
+				"key2": false,
+				"key3": true, // Exceeds limit of 2
+			},
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		var result AliasedFieldLimitTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err == nil {
+			t.Error("Expected error for SmallAliasedMap exceeding limit (2), got nil")
+		}
+	})
+
+	t.Run("IntSliceAlias_ExceedsLimit", func(t *testing.T) {
+		data := AliasedFieldLimitTestData{
+			IntSliceAlias: make(AliasedIntSlice, 15), // Exceeds limit of 10
+		}
+		for i := range data.IntSliceAlias {
+			data.IntSliceAlias[i] = i
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		var result AliasedFieldLimitTestData
+		_, err = result.UnmarshalMsg(marshaled)
+		if err == nil {
+			t.Error("Expected error for IntSliceAlias exceeding limit (10), got nil")
+		}
+	})
+
+	t.Run("DecodeMsg_AliasedTypes", func(t *testing.T) {
+		data := AliasedFieldLimitTestData{
+			SmallAliasedSlice: AliasedSlice{"a", "b", "c", "d"}, // Exceeds limit of 3
+		}
+
+		marshaled, err := data.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Unexpected marshal error: %v", err)
+		}
+
+		// Test DecodeMsg path
+		var result AliasedFieldLimitTestData
+		reader := msgp.NewReader(bytes.NewReader(marshaled))
+		err = result.DecodeMsg(reader)
+		if err == nil {
+			t.Error("Expected error for DecodeMsg with aliased slice exceeding limit, got nil")
+		}
+	})
+}

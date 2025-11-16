@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
@@ -534,11 +535,23 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 		}
 		tags := strings.Split(body, ",")
 		if len(tags) >= 2 {
-			switch tags[1] {
-			case "extension":
-				extension = true
-			case "flatten":
-				flatten = true
+			for _, tag := range tags[1:] {
+				switch tag {
+				case "extension":
+					extension = true
+				case "flatten":
+					flatten = true
+				default:
+					// Check for limit=N format
+					if strings.HasPrefix(tag, "limit=") {
+						limitStr := strings.TrimPrefix(tag, "limit=")
+						if limit, err := strconv.ParseUint(limitStr, 10, 32); err == nil {
+							sf[0].FieldLimit = uint32(limit)
+						} else {
+							warnf("invalid limit value in field tag: %s", limitStr)
+						}
+					}
+				}
 			}
 		}
 		// ignore "-" fields

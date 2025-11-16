@@ -22,3 +22,14 @@ type LimitTestData struct {
 	LargeSlice []byte         `msg:"large_slice"`
 	SmallMap   map[string]int `msg:"small_map"`
 }
+
+// Test field limits vs file limits precedence
+// File limits: arrays:100 maps:50
+type FieldOverrideTestData struct {
+	TightSlice  []int          `msg:"tight_slice,limit=10"`   // Field limit (10) < file limit (100)
+	LooseSlice  []string       `msg:"loose_slice,limit=200"`  // Field limit (200) > file limit (100)
+	TightMap    map[string]int `msg:"tight_map,limit=5"`      // Field limit (5) < file limit (50)
+	LooseMap    map[int]string `msg:"loose_map,limit=80"`     // Field limit (80) > file limit (50)
+	DefaultSlice []byte        `msg:"default_slice"`          // No field limit, uses file limit (100)
+	DefaultMap   map[string]string `msg:"default_map"`        // No field limit, uses file limit (50)
+}
