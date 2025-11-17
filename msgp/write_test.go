@@ -326,7 +326,7 @@ func BenchmarkWriteInt64(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		wr.WriteInt64(int64(tint64))
+		wr.WriteInt64(tint64)
 	}
 }
 
@@ -359,7 +359,7 @@ func BenchmarkWriteUint64(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		wr.WriteUint64(uint64(tuint64))
+		wr.WriteUint64(tuint64)
 	}
 }
 

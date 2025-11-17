@@ -275,7 +275,7 @@ func TestReadInt64Bytes(t *testing.T) {
 		-5, -30, 0, 1, 127, 300, 40921, 34908219,
 	}
 
-	uints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), uint64(tuint64)}
+	uints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), tuint64}
 
 	all := make([]any, 0, len(ints)+len(uints))
 	for _, v := range ints {
@@ -327,7 +327,7 @@ func TestReadUint64Bytes(t *testing.T) {
 
 	vs := []any{
 		int64(0), int64(8), int64(240), int64(tuint16), int64(tuint32), int64(tuint64),
-		uint64(0), uint64(8), uint64(240), uint64(tuint16), uint64(tuint32), uint64(tuint64),
+		uint64(0), uint64(8), uint64(240), uint64(tuint16), uint64(tuint32), tuint64,
 		uint64(math.MaxUint64),
 	}
 

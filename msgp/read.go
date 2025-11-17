@@ -870,7 +870,7 @@ func (m *Reader) ReadUint64() (u uint64, err error) {
 		if err != nil {
 			return
 		}
-		v := int64(getMint64(p))
+		v := getMint64(p)
 		if v < 0 {
 			err = UintBelowZero{Value: v}
 			return
@@ -1038,7 +1038,7 @@ func (m *Reader) ReadBytesHeader() (sz uint32, err error) {
 		if err != nil {
 			return
 		}
-		sz = uint32(big.Uint32(p[1:]))
+		sz = big.Uint32(p[1:])
 		return
 	default:
 		err = badPrefix(BinType, lead)
@@ -1110,7 +1110,7 @@ func (m *Reader) ReadStringAsBytes(scratch []byte) (b []byte, err error) {
 		if err != nil {
 			return
 		}
-		read = int64(uint8(p[1]))
+		read = int64(p[1])
 	case mstr16:
 		p, err = m.R.Next(3)
 		if err != nil {
@@ -1205,7 +1205,7 @@ func (m *Reader) ReadString() (s string, err error) {
 		if err != nil {
 			return
 		}
-		read = int64(uint8(p[1]))
+		read = int64(p[1])
 	case mstr16:
 		p, err = m.R.Next(3)
 		if err != nil {
