@@ -249,7 +249,7 @@ func (s *sizeGen) gBase(b *BaseElem) {
 		}
 
 		// Strip type parameters from dst for lookup in ToPointerMap
-		lookupKey := dst
+		lookupKey := stripTypeParams(dst)
 		if idx := strings.Index(dst, "["); idx != -1 {
 			lookupKey = dst[:idx]
 		}
