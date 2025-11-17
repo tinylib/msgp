@@ -1,5 +1,7 @@
 version: "2"
 linters:
+  enable:
+    - unconvert
   disable:
     - errcheck
   settings:

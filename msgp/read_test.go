@@ -431,7 +431,7 @@ func TestReadInt64(t *testing.T) {
 	rd := NewReader(&buf)
 
 	ints := []int64{-100000, -5000, -5, 0, 8, 240, int64(tuint16), int64(tuint32), int64(tuint64)}
-	uints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), uint64(tuint64)}
+	uints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), tuint64}
 
 	all := make([]any, 0, len(ints)+len(uints))
 	for _, v := range ints {
@@ -621,7 +621,7 @@ func TestReadUint64(t *testing.T) {
 	wr := NewWriter(&buf)
 	rd := NewReader(&buf)
 
-	ints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), uint64(tuint64)}
+	ints := []uint64{0, 8, 240, uint64(tuint16), uint64(tuint32), tuint64}
 
 	for i, num := range ints {
 		buf.Reset()

@@ -1283,7 +1283,7 @@ func readIntfBytesDepth(b []byte, depth int) (i any, o []byte, err error) {
 		}
 		// last resort is a raw extension
 		e := RawExtension{}
-		e.Type = int8(t)
+		e.Type = t
 		o, err = ReadExtensionBytes(b, &e)
 		i = &e
 		return

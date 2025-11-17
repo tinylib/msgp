@@ -142,7 +142,7 @@ func TestConv64(t *testing.T) {
 			mantissaMask := uint64((1 << (52 - exp)) - 1)
 			isExact = (mant & mantissaMask) == 0
 		}
-		n := Number{bits: uint64(x), typ: Float64Type}
+		n := Number{bits: x, typ: Float64Type}
 		got := n.isExactInt()
 		if got != isExact {
 			t.Errorf("n.IsExactInt(): got %t, want %t", got, isExact)
@@ -150,7 +150,7 @@ func TestConv64(t *testing.T) {
 		if !got {
 			t.Fatal(i)
 		}
-		n = Number{bits: uint64(math.Float64bits(float64(i) + 0.1)), typ: Float64Type}
+		n = Number{bits: math.Float64bits(float64(i) + 0.1), typ: Float64Type}
 		got = n.isExactInt()
 		if got != false {
 			val, ok := n.Float()

@@ -254,7 +254,7 @@ func BenchmarkAppendFloat32(b *testing.B) {
 }
 
 func TestAppendInt64(t *testing.T) {
-	is := []int64{0, 1, -5, -50, int64(tint16), int64(tint32), int64(tint64)}
+	is := []int64{0, 1, -5, -50, int64(tint16), int64(tint32), tint64}
 	var buf bytes.Buffer
 	en := NewWriter(&buf)
 
@@ -271,7 +271,7 @@ func TestAppendInt64(t *testing.T) {
 }
 
 func BenchmarkAppendInt64(b *testing.B) {
-	is := []int64{0, 1, -5, -50, int64(tint16), int64(tint32), int64(tint64)}
+	is := []int64{0, 1, -5, -50, int64(tint16), int64(tint32), tint64}
 	l := len(is)
 	buf := make([]byte, 0, 9)
 	b.ReportAllocs()
