@@ -384,10 +384,9 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 		if b.typeParams.isPtr {
 			dst = "*" + dst
 		}
-		if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+		if remap := b.typeParams.ToPointerMap[stripTypeParams(dst)]; remap != "" {
 			lowered = fmt.Sprintf(remap, lowered)
 		}
-
 		u.p.printf("\nbts, err = %s.UnmarshalMsg(bts)", lowered)
 	case Time:
 		if u.ctx.asUTC {

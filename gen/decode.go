@@ -386,14 +386,15 @@ func (d *decodeGen) gBase(b *BaseElem) {
 		if b.typeParams.isPtr {
 			dst = "*" + dst
 		}
+
 		if b.Convert {
-			if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+			if remap := b.typeParams.ToPointerMap[stripTypeParams(dst)]; remap != "" {
 				vname = fmt.Sprintf(remap, vname)
 			}
 			lowered := b.ToBase() + "(" + vname + ")"
 			d.p.printf("\nerr = %s.DecodeMsg(dc)", lowered)
 		} else {
-			if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+			if remap := b.typeParams.ToPointerMap[stripTypeParams(dst)]; remap != "" {
 				vname = fmt.Sprintf(remap, vname)
 			}
 			d.p.printf("\nerr = %s.DecodeMsg(dc)", vname)

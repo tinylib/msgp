@@ -377,7 +377,7 @@ func (m *marshalGen) gBase(b *BaseElem) {
 		if b.typeParams.isPtr {
 			dst = "*" + dst
 		}
-		if remap := b.typeParams.ToPointerMap[dst]; remap != "" {
+		if remap := b.typeParams.ToPointerMap[stripTypeParams(dst)]; remap != "" {
 			vname = fmt.Sprintf(remap, vname)
 		}
 		echeck = true

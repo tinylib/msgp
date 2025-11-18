@@ -297,7 +297,7 @@ func next(t traversal, e Elem) {
 
 // possibly-immutable method receiver
 func imutMethodReceiver(p Elem) string {
-	typeName := p.TypeName()
+	typeName := p.BaseTypeName()
 	typeParams := p.TypeParams()
 
 	switch e := p.(type) {
@@ -329,7 +329,7 @@ func imutMethodReceiver(p Elem) string {
 // so that its method receiver
 // is of the write type.
 func methodReceiver(p Elem) string {
-	typeName := p.TypeName()
+	typeName := p.BaseTypeName()
 	typeParams := p.TypeParams()
 
 	switch p.(type) {
