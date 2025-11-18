@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"strings"
 )
 
@@ -81,6 +82,10 @@ type Printer struct {
 	ClearOmitted  bool
 	NewTime       bool
 	AsUTC         bool
+	ArrayLimit    uint32
+	MapLimit      uint32
+	MarshalLimits bool
+	LimitPrefix   string
 }
 
 func NewPrinter(m Method, out io.Writer, tests io.Writer) *Printer {
@@ -151,10 +156,16 @@ func (p *Printer) Print(e Elem) error {
 		// hence the separate prefixes.
 		resetIdent("zb")
 		err := g.Execute(e, Context{
-			compFloats:   p.CompactFloats,
-			clearOmitted: p.ClearOmitted,
-			newTime:      p.NewTime,
-			asUTC:        p.AsUTC,
+			compFloats:             p.CompactFloats,
+			clearOmitted:           p.ClearOmitted,
+			newTime:                p.NewTime,
+			asUTC:                  p.AsUTC,
+			arrayLimit:             p.ArrayLimit,
+			mapLimit:               p.MapLimit,
+			marshalLimits:          p.MarshalLimits,
+			limitPrefix:            p.LimitPrefix,
+			currentFieldArrayLimit: math.MaxUint32, // Initialize to "no field limit"
+			currentFieldMapLimit:   math.MaxUint32, // Initialize to "no field limit"
 		})
 		resetIdent("za")
 
@@ -182,11 +193,17 @@ func (c contextVar) Arg() string {
 }
 
 type Context struct {
-	path         []contextItem
-	compFloats   bool
-	clearOmitted bool
-	newTime      bool
-	asUTC        bool
+	path          []contextItem
+	compFloats    bool
+	clearOmitted  bool
+	newTime       bool
+	asUTC         bool
+	arrayLimit    uint32
+	mapLimit      uint32
+	marshalLimits bool
+	limitPrefix   string
+	currentFieldArrayLimit uint32  // Current field's array limit (0 = no field-level limit)
+	currentFieldMapLimit   uint32  // Current field's map limit (0 = no field-level limit)
 }
 
 func (c *Context) PushString(s string) {
@@ -199,6 +216,18 @@ func (c *Context) PushVar(s string) {
 
 func (c *Context) Pop() {
 	c.path = c.path[:len(c.path)-1]
+}
+
+// SetFieldLimits sets the current field-specific limits for the context
+func (c *Context) SetFieldLimits(arrayLimit, mapLimit uint32) {
+	c.currentFieldArrayLimit = arrayLimit
+	c.currentFieldMapLimit = mapLimit
+}
+
+// ClearFieldLimits clears the current field-specific limits (use file limits)
+func (c *Context) ClearFieldLimits() {
+	c.currentFieldArrayLimit = math.MaxUint32
+	c.currentFieldMapLimit = math.MaxUint32
 }
 
 func (c *Context) ArgsStr() string {

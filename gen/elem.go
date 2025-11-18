@@ -595,6 +595,7 @@ type StructField struct {
 	RawTag        string   // the full struct tag
 	FieldName     string   // the name of the struct field
 	FieldElem     Elem     // the field type
+	FieldLimit    uint32   // field-specific size limit for slices/maps (0 = no limit)
 }
 
 // HasTagPart returns true if the specified tag part (option) is present.
@@ -603,6 +604,21 @@ func (sf *StructField) HasTagPart(pname string) bool {
 		return false
 	}
 	return slices.Contains(sf.FieldTagParts[1:], pname)
+}
+
+// GetTagValue returns the value for a tag part with the format "key=value".
+// Returns the value string and true if found, empty string and false if not found.
+func (sf *StructField) GetTagValue(key string) (string, bool) {
+	if len(sf.FieldTagParts) < 2 {
+		return "", false
+	}
+	prefix := key + "="
+	for _, part := range sf.FieldTagParts[1:] {
+		if strings.HasPrefix(part, prefix) {
+			return strings.TrimPrefix(part, prefix), true
+		}
+	}
+	return "", false
 }
 
 type ShimMode int

@@ -3,8 +3,11 @@ package printer
 import (
 	"bytes"
 	"fmt"
+	"hash/crc32"
 	"io"
+	"math"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/tinylib/msgp/gen"
@@ -18,7 +21,7 @@ var Logf func(s string, v ...any)
 // of elements to the given file name and canonical
 // package path.
 func PrintFile(file string, f *parse.FileSet, mode gen.Method) error {
-	out, tests, err := generate(f, mode)
+	out, tests, err := generate(file, f, mode)
 	if err != nil {
 		return err
 	}
@@ -83,7 +86,7 @@ func dedupImports(imp []string) []string {
 	return r
 }
 
-func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, error) {
+func generate(file string, f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, error) {
 	outbuf := bytes.NewBuffer(make([]byte, 0, 4096))
 	writePkgHeader(outbuf, f.Package)
 
@@ -98,6 +101,8 @@ func generate(f *parse.FileSet, mode gen.Method) (*bytes.Buffer, *bytes.Buffer, 
 	}
 	dedup := dedupImports(myImports)
 	writeImportHeader(outbuf, dedup...)
+
+	writeLimitConstants(outbuf, file, f)
 
 	var testbuf *bytes.Buffer
 	var testwr io.Writer
@@ -135,4 +140,29 @@ func writeImportHeader(b *bytes.Buffer, imports ...string) {
 		}
 	}
 	b.WriteString(")\n\n")
+}
+
+// generateFilePrefix creates a deterministic, unique prefix for constants based on the file name
+func generateFilePrefix(filename string) string {
+	base := filepath.Base(filename)
+	hash := crc32.ChecksumIEEE([]byte(base))
+	return fmt.Sprintf("z%08x", hash)
+}
+
+func writeLimitConstants(b *bytes.Buffer, file string, f *parse.FileSet) {
+	if f.ArrayLimit != math.MaxUint32 || f.MapLimit != math.MaxUint32 {
+		prefix := generateFilePrefix(file)
+		b.WriteString("// Size limits for msgp deserialization\n")
+		b.WriteString("const (\n")
+		if f.ArrayLimit != math.MaxUint32 {
+			fmt.Fprintf(b, "\t%slimitArrays = %d\n", prefix, f.ArrayLimit)
+		}
+		if f.MapLimit != math.MaxUint32 {
+			fmt.Fprintf(b, "\t%slimitMaps = %d\n", prefix, f.MapLimit)
+		}
+		b.WriteString(")\n\n")
+
+		// Store the prefix in FileSet so generators can use it
+		f.LimitPrefix = prefix
+	}
 }

@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -74,10 +75,141 @@ func (d *decodeGen) assignAndCheck(name string, typ string) {
 	d.p.wrapErrCheck(d.ctx.ArgsStr())
 }
 
+
+func (d *decodeGen) assignArray(name string, typ string, fieldLimit uint32) {
+	if !d.p.ok() {
+		return
+	}
+	d.p.printf("\n%s, err = dc.Read%s()", name, typ)
+	d.p.wrapErrCheck(d.ctx.ArgsStr())
+
+	// Determine effective limit: field limit > context field limit > file limit
+	var limit uint32
+	var limitName string
+
+	if fieldLimit > 0 {
+		// Explicit field limit passed as parameter
+		limit = fieldLimit
+		limitName = fmt.Sprintf("%d", fieldLimit)
+	} else if d.ctx.currentFieldArrayLimit != math.MaxUint32 {
+		// Field limit from context (set during field processing)
+		limit = d.ctx.currentFieldArrayLimit
+		limitName = fmt.Sprintf("%d", d.ctx.currentFieldArrayLimit)
+	} else if d.ctx.arrayLimit != math.MaxUint32 {
+		// File-level limit
+		limit = d.ctx.arrayLimit
+		limitName = fmt.Sprintf("%slimitArrays", d.ctx.limitPrefix)
+	}
+
+	if limit > 0 && limit != math.MaxUint32 {
+		d.p.printf("\nif %s > %s {", name, limitName)
+		d.p.printf("\nerr = msgp.ErrLimitExceeded")
+		d.p.printf("\nreturn")
+		d.p.printf("\n}")
+	}
+}
+
+func (d *decodeGen) assignMap(name string, typ string, fieldLimit uint32) {
+	if !d.p.ok() {
+		return
+	}
+	d.p.printf("\n%s, err = dc.Read%s()", name, typ)
+	d.p.wrapErrCheck(d.ctx.ArgsStr())
+
+	// Determine effective limit: field limit > context field limit > file limit
+	var limit uint32
+	var limitName string
+
+	if fieldLimit > 0 {
+		// Explicit field limit passed as parameter
+		limit = fieldLimit
+		limitName = fmt.Sprintf("%d", fieldLimit)
+	} else if d.ctx.currentFieldMapLimit != math.MaxUint32 {
+		// Field limit from context (set during field processing)
+		limit = d.ctx.currentFieldMapLimit
+		limitName = fmt.Sprintf("%d", d.ctx.currentFieldMapLimit)
+	} else if d.ctx.mapLimit != math.MaxUint32 {
+		// File-level limit
+		limit = d.ctx.mapLimit
+		limitName = fmt.Sprintf("%slimitMaps", d.ctx.limitPrefix)
+	}
+
+	if limit > 0 && limit != math.MaxUint32 {
+		d.p.printf("\nif %s > %s {", name, limitName)
+		d.p.printf("\nerr = msgp.ErrLimitExceeded")
+		d.p.printf("\nreturn")
+		d.p.printf("\n}")
+	}
+}
+
+func (d *decodeGen) readBytesWithLimit(vname, checkNil string, fieldLimit uint32) {
+	if !d.p.ok() {
+		return
+	}
+	d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
+	d.p.wrapErrCheck(d.ctx.ArgsStr())
+
+	// Determine effective limit: field limit > context field limit > file limit
+	var limit uint32
+	var limitName string
+
+	if fieldLimit > 0 {
+		// Explicit field limit passed as parameter
+		limit = fieldLimit
+		limitName = fmt.Sprintf("%d", fieldLimit)
+	} else if d.ctx.currentFieldArrayLimit != math.MaxUint32 {
+		// Field limit from context (set during field processing)
+		limit = d.ctx.currentFieldArrayLimit
+		limitName = fmt.Sprintf("%d", d.ctx.currentFieldArrayLimit)
+	} else if d.ctx.arrayLimit != math.MaxUint32 {
+		// File-level limit
+		limit = d.ctx.arrayLimit
+		limitName = fmt.Sprintf("%slimitArrays", d.ctx.limitPrefix)
+	}
+
+	if limit > 0 && limit != math.MaxUint32 {
+		d.p.printf("\nif uint32(len(%s)) > %s {", checkNil, limitName)
+		d.p.printf("\nerr = msgp.ErrLimitExceeded")
+		d.p.printf("\nreturn")
+		d.p.printf("\n}")
+	}
+}
+
+func (d *decodeGen) checkByteLimits(vname string, fieldLimit uint32) {
+	if !d.p.ok() {
+		return
+	}
+
+	// Determine effective limit: field limit > context field limit > file limit
+	var limit uint32
+	var limitName string
+
+	if fieldLimit > 0 {
+		// Explicit field limit passed as parameter
+		limit = fieldLimit
+		limitName = fmt.Sprintf("%d", fieldLimit)
+	} else if d.ctx.currentFieldArrayLimit != math.MaxUint32 {
+		// Field limit from context (set during field processing)
+		limit = d.ctx.currentFieldArrayLimit
+		limitName = fmt.Sprintf("%d", d.ctx.currentFieldArrayLimit)
+	} else if d.ctx.arrayLimit != math.MaxUint32 {
+		// File-level limit
+		limit = d.ctx.arrayLimit
+		limitName = fmt.Sprintf("%slimitArrays", d.ctx.limitPrefix)
+	}
+
+	if limit > 0 && limit != math.MaxUint32 {
+		d.p.printf("\nif uint32(len(%s)) > %s {", vname, limitName)
+		d.p.printf("\nerr = msgp.ErrLimitExceeded")
+		d.p.printf("\nreturn")
+		d.p.printf("\n}")
+	}
+}
+
 func (d *decodeGen) structAsTuple(s *Struct) {
 	sz := randIdent()
 	d.p.declare(sz, u32)
-	d.assignAndCheck(sz, arrayHeader)
+	d.assignArray(sz, arrayHeader, 0)
 	if s.AsVarTuple {
 		d.p.printf("\nif %[1]s == 0 { return }", sz)
 	} else {
@@ -89,6 +221,15 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 		}
 		fieldElem := s.Fields[i].FieldElem
 		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
+
+		// Set field-specific limits in context based on struct field's FieldLimit
+		if s.Fields[i].FieldLimit > 0 {
+			// Apply same limit to both arrays and maps for this field
+			d.ctx.SetFieldLimits(s.Fields[i].FieldLimit, s.Fields[i].FieldLimit)
+		} else {
+			d.ctx.ClearFieldLimits()
+		}
+
 		if anField {
 			d.p.print("\nif dc.IsNil() {")
 			d.p.print("\nerr = dc.ReadNil()")
@@ -99,6 +240,10 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 		d.ctx.PushString(s.Fields[i].FieldName)
 		setTypeParams(fieldElem, s.typeParams)
 		next(d, fieldElem)
+
+		// Clear field limits after processing
+		d.ctx.ClearFieldLimits()
+
 		d.ctx.Pop()
 		if anField {
 			d.p.printf("\n}") // close if statement
@@ -116,7 +261,7 @@ func (d *decodeGen) structAsMap(s *Struct) {
 	d.needsField()
 	sz := randIdent()
 	d.p.declare(sz, u32)
-	d.assignAndCheck(sz, mapHeader)
+	d.assignMap(sz, mapHeader, 0)
 
 	oeCount := s.CountFieldTagPart("omitempty") + s.CountFieldTagPart("omitzero")
 	if !d.ctx.clearOmitted {
@@ -142,6 +287,15 @@ func (d *decodeGen) structAsMap(s *Struct) {
 		d.p.printf("\ncase %q:", s.Fields[i].FieldTag)
 		fieldElem := s.Fields[i].FieldElem
 		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
+
+		// Set field-specific limits in context based on struct field's FieldLimit
+		if s.Fields[i].FieldLimit > 0 {
+			// Apply same limit to both arrays and maps for this field
+			d.ctx.SetFieldLimits(s.Fields[i].FieldLimit, s.Fields[i].FieldLimit)
+		} else {
+			d.ctx.ClearFieldLimits()
+		}
+
 		if anField {
 			d.p.print("\nif dc.IsNil() {")
 			d.p.print("\nerr = dc.ReadNil()")
@@ -151,6 +305,10 @@ func (d *decodeGen) structAsMap(s *Struct) {
 		SetIsAllowNil(fieldElem, anField)
 		setTypeParams(fieldElem, s.typeParams)
 		next(d, fieldElem)
+
+		// Clear field limits after processing
+		d.ctx.ClearFieldLimits()
+
 		if oeCount > 0 && (s.Fields[i].HasTagPart("omitempty") || s.Fields[i].HasTagPart("omitzero")) {
 			d.p.printf("\n%s", bm.setStmt(len(oeEmittedIdx)))
 			oeEmittedIdx = append(oeEmittedIdx, i)
@@ -215,9 +373,12 @@ func (d *decodeGen) gBase(b *BaseElem) {
 		if b.Convert {
 			lowered := b.ToBase() + "(" + vname + ")"
 			d.p.printf("\n%s, err = dc.ReadBytes(%s)", tmp, lowered)
+			d.p.wrapErrCheck(d.ctx.ArgsStr())
 			checkNil = tmp
+			// Check byte slice limits after reading
+			d.checkByteLimits(tmp, 0)
 		} else {
-			d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
+			d.readBytesWithLimit(vname, vname, 0)
 			checkNil = vname
 		}
 	case IDENT:
@@ -281,7 +442,7 @@ func (d *decodeGen) gMap(m *Map) {
 
 	// resize or allocate map
 	d.p.declare(sz, u32)
-	d.assignAndCheck(sz, mapHeader)
+	d.assignMap(sz, mapHeader, 0)
 	d.p.resizeMap(sz, m)
 
 	// for element in map, read string/value
@@ -305,7 +466,7 @@ func (d *decodeGen) gSlice(s *Slice) {
 	}
 	sz := randIdent()
 	d.p.declare(sz, u32)
-	d.assignAndCheck(sz, arrayHeader)
+	d.assignArray(sz, arrayHeader, 0)
 	if s.isAllowNil {
 		d.p.resizeSliceNoNil(sz, s)
 	} else {

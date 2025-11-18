@@ -3,6 +3,7 @@ package gen
 import (
 	"fmt"
 	"io"
+	"math"
 	"strings"
 
 	"github.com/tinylib/msgp/msgp"
@@ -37,6 +38,26 @@ func (e *encodeGen) writeAndCheck(typ string, argfmt string, arg any) {
 
 	e.p.printf("\nerr = en.Write%s(%s)", typ, fmt.Sprintf(argfmt, arg))
 	e.p.wrapErrCheck(e.ctx.ArgsStr())
+}
+
+func (e *encodeGen) writeAndCheckWithArrayLimit(typ string, argfmt string, arg any) {
+	e.writeAndCheck(typ, argfmt, arg)
+	if e.ctx.marshalLimits && e.ctx.arrayLimit != math.MaxUint32 {
+		e.p.printf("\nif %s > %slimitArrays {", fmt.Sprintf(argfmt, arg), e.ctx.limitPrefix)
+		e.p.printf("\nerr = msgp.ErrLimitExceeded")
+		e.p.printf("\nreturn")
+		e.p.printf("\n}")
+	}
+}
+
+func (e *encodeGen) writeAndCheckWithMapLimit(typ string, argfmt string, arg any) {
+	e.writeAndCheck(typ, argfmt, arg)
+	if e.ctx.marshalLimits && e.ctx.mapLimit != math.MaxUint32 {
+		e.p.printf("\nif %s > %slimitMaps {", fmt.Sprintf(argfmt, arg), e.ctx.limitPrefix)
+		e.p.printf("\nerr = msgp.ErrLimitExceeded")
+		e.p.printf("\nreturn")
+		e.p.printf("\n}")
+	}
 }
 
 func (e *encodeGen) fuseHook() {
@@ -244,7 +265,7 @@ func (e *encodeGen) gMap(m *Map) {
 	}
 	e.fuseHook()
 	vname := m.Varname()
-	e.writeAndCheck(mapHeader, lenAsUint32, vname)
+	e.writeAndCheckWithMapLimit(mapHeader, lenAsUint32, vname)
 
 	e.p.printf("\nfor %s, %s := range %s {", m.Keyidx, m.Validx, vname)
 	if m.Key != nil {
@@ -297,7 +318,7 @@ func (e *encodeGen) gSlice(s *Slice) {
 		return
 	}
 	e.fuseHook()
-	e.writeAndCheck(arrayHeader, lenAsUint32, s.Varname())
+	e.writeAndCheckWithArrayLimit(arrayHeader, lenAsUint32, s.Varname())
 	setTypeParams(s.Els, s.typeParams)
 	e.p.rangeBlock(e.ctx, s.Index, s.Varname(), e, s.Els)
 }
