@@ -63,7 +63,7 @@ type X struct {
 type TestType struct {
 	F   *float64          `msg:"float"`
 	Els map[string]string `msg:"elements"`
-	Obj struct {          // test anonymous struct
+	Obj struct { // test anonymous struct
 		ValueA string `msg:"value_a"`
 		ValueB []byte `msg:"value_b"`
 	} `msg:"object"`
@@ -356,3 +356,21 @@ type Numberwang int8
 type ExternalString string
 type ExternalArr [4]byte
 type ExternalInt int
+
+//msgp:ignore regex:IGNORE
+
+type RegexIGNORETest struct{}
+
+// Will fail to compile if also generated
+func (z *RegexIGNORETest) Msgsize() int {
+	return 0
+}
+
+//msgp:size ignore regex:IGNSIZE
+
+type RegexIGNSIZETest struct{}
+
+// Will fail to compile if also generated
+func (z *RegexIGNSIZETest) Msgsize() int {
+	return 0
+}

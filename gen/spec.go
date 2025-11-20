@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"regexp"
 	"strings"
 )
 
@@ -128,6 +129,19 @@ type TransformPass func(Elem) Elem
 // IgnoreTypename is a pass that just ignores
 // types of a given name.
 func IgnoreTypename(name string) TransformPass {
+	if strings.HasPrefix(name, "regex:") {
+		name = strings.TrimPrefix(name, "regex:")
+		rx, err := regexp.Compile(name)
+		if err != nil {
+			panic(fmt.Sprintf("Error compiling ignore regex %q: %v", name, err))
+		}
+		return func(e Elem) Elem {
+			if rx.MatchString(e.TypeName()) {
+				return nil
+			}
+			return e
+		}
+	}
 	return func(e Elem) Elem {
 		if e.TypeName() == name {
 			return nil
@@ -193,17 +207,17 @@ func (c contextVar) Arg() string {
 }
 
 type Context struct {
-	path          []contextItem
-	compFloats    bool
-	clearOmitted  bool
-	newTime       bool
-	asUTC         bool
-	arrayLimit    uint32
-	mapLimit      uint32
-	marshalLimits bool
-	limitPrefix   string
-	currentFieldArrayLimit uint32  // Current field's array limit (0 = no field-level limit)
-	currentFieldMapLimit   uint32  // Current field's map limit (0 = no field-level limit)
+	path                   []contextItem
+	compFloats             bool
+	clearOmitted           bool
+	newTime                bool
+	asUTC                  bool
+	arrayLimit             uint32
+	mapLimit               uint32
+	marshalLimits          bool
+	limitPrefix            string
+	currentFieldArrayLimit uint32 // Current field's array limit (0 = no field-level limit)
+	currentFieldMapLimit   uint32 // Current field's map limit (0 = no field-level limit)
 }
 
 func (c *Context) PushString(s string) {
