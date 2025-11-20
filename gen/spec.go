@@ -129,7 +129,7 @@ type TransformPass func(Elem) Elem
 // IgnoreTypename is a pass that just ignores
 // types of a given name.
 func IgnoreTypename(name string) TransformPass {
-	if strings.HasPrefix(name, "regex:") {
+	if name, ok := strings.CutPrefix(name, "regex:"); ok {
 		name = strings.TrimPrefix(name, "regex:")
 		rx, err := regexp.Compile(name)
 		if err != nil {
