@@ -31,6 +31,8 @@ type Fixed struct {
 	B bool
 }
 
+type StandaloneBytes []byte
+
 type AliasedType = Fixed
 type AliasedType2 = *Fixed
 type AliasedType3 = uint64
@@ -63,7 +65,7 @@ type X struct {
 type TestType struct {
 	F   *float64          `msg:"float"`
 	Els map[string]string `msg:"elements"`
-	Obj struct {          // test anonymous struct
+	Obj struct { // test anonymous struct
 		ValueA string `msg:"value_a"`
 		ValueB []byte `msg:"value_b"`
 	} `msg:"object"`

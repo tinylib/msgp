@@ -64,7 +64,6 @@ func (u *unmarshalGen) assignAndCheck(name string, base string) {
 	u.p.wrapErrCheck(u.ctx.ArgsStr())
 }
 
-
 func (u *unmarshalGen) assignArray(name string, base string, fieldLimit uint32) {
 	if !u.p.ok() {
 		return
@@ -131,23 +130,7 @@ func (u *unmarshalGen) assignMap(name string, base string, fieldLimit uint32) {
 	}
 }
 
-func (u *unmarshalGen) readBytesWithLimit(refname, lowered string, zerocopy bool, fieldLimit uint32) {
-	if !u.p.ok() {
-		return
-	}
-
-	if zerocopy {
-		u.p.printf("\n%s, bts, err = msgp.ReadBytesZC(bts)", refname)
-	} else {
-		u.p.printf("\n%s, bts, err = msgp.ReadBytesBytes(bts, %s)", refname, lowered)
-	}
-	u.p.wrapErrCheck(u.ctx.ArgsStr())
-
-	// Check byte slice limits after reading
-	u.checkByteLimits(refname, fieldLimit)
-}
-
-func (u *unmarshalGen) checkByteLimits(vname string, fieldLimit uint32) {
+func (u *unmarshalGen) readBytesWithLimit(refname, lowered string, zerocopy bool, fieldLimit uint32, allowNil bool) {
 	if !u.p.ok() {
 		return
 	}
@@ -170,11 +153,62 @@ func (u *unmarshalGen) checkByteLimits(vname string, fieldLimit uint32) {
 		limitName = fmt.Sprintf("%slimitArrays", u.ctx.limitPrefix)
 	}
 
+	// Choose reading strategy based on whether limits exist
 	if limit > 0 && limit != math.MaxUint32 {
-		u.p.printf("\nif uint32(len(%s)) > %s {", vname, limitName)
+		// Limits exist - use header-first security approach
+		sz := randIdent()
+		u.p.printf("\nvar %s uint32", sz)
+		u.p.printf("\n%s, bts, err = msgp.ReadBytesHeader(bts)", sz)
+		u.p.wrapErrCheck(u.ctx.ArgsStr())
+
+		// Check size against limit before allocating
+		u.p.printf("\nif %s > %s {", sz, limitName)
 		u.p.printf("\nerr = msgp.ErrLimitExceeded")
 		u.p.printf("\nreturn")
 		u.p.printf("\n}")
+
+		// Now safely read the data
+		if zerocopy {
+			u.p.printf("\nif uint32(len(bts)) < %s {", sz)
+			u.p.printf("\nerr = msgp.ErrShortBytes")
+			u.p.printf("\nreturn")
+			u.p.printf("\n}")
+			u.p.printf("\n%s = bts[:%s]", refname, sz)
+			u.p.printf("\nbts = bts[%s:]", sz)
+		} else {
+			if refname != lowered {
+				u.p.printf("\n%s = %s", refname, lowered)
+			}
+			if allowNil {
+				// allownil field - can reuse existing slice if sufficient capacity
+				u.p.printf("\nif uint32(cap(%s)) < %s {", refname, sz)
+				u.p.printf("\n%s = make([]byte, %s)", refname, sz)
+				u.p.printf("\n} else {")
+				u.p.printf("\n%s = %s[:%s]", refname, refname, sz)
+				u.p.printf("\n}")
+			} else {
+				// regular field - ensure always allocated, even for size 0
+				u.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", refname, refname, sz)
+				u.p.printf("\n%s = make([]byte, %s)", refname, sz)
+				u.p.printf("\n} else {")
+				u.p.printf("\n%s = %s[:%s]", refname, refname, sz)
+				u.p.printf("\n}")
+			}
+			u.p.printf("\nif uint32(len(bts)) < %s {", sz)
+			u.p.printf("\nerr = msgp.ErrShortBytes")
+			u.p.printf("\nreturn")
+			u.p.printf("\n}")
+			u.p.printf("\ncopy(%s, bts[:%s])", refname, sz)
+			u.p.printf("\nbts = bts[%s:]", sz)
+		}
+	} else {
+		// No limits - use original direct reading approach for efficiency
+		if zerocopy {
+			u.p.printf("\n%s, bts, err = msgp.ReadBytesZC(bts)", refname)
+		} else {
+			u.p.printf("\n%s, bts, err = msgp.ReadBytesBytes(bts, %s)", refname, lowered)
+		}
+		u.p.wrapErrCheck(u.ctx.ArgsStr())
 	}
 }
 
@@ -373,7 +407,7 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 
 	switch b.Value {
 	case Bytes:
-		u.readBytesWithLimit(refname, lowered, b.zerocopy, 0)
+		u.readBytesWithLimit(refname, lowered, b.zerocopy, 0, b.AllowNil())
 	case Ext:
 		u.p.printf("\nbts, err = msgp.ReadExtensionBytes(bts, %s)", lowered)
 	case IDENT:
@@ -404,7 +438,9 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 	default:
 		u.p.printf("\n%s, bts, err = msgp.Read%sBytes(bts)", refname, b.BaseName())
 	}
-	u.p.wrapErrCheck(u.ctx.ArgsStr())
+	if b.Value != Bytes {
+		u.p.wrapErrCheck(u.ctx.ArgsStr())
+	}
 
 	if b.Value == Bytes && b.AllowNil() {
 		// Ensure that 0 sized slices are allocated.
