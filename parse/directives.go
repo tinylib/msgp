@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -167,6 +168,22 @@ func ignore(text []string, f *FileSet) error {
 	}
 	for _, item := range text[1:] {
 		name := strings.TrimSpace(item)
+		if name, ok := strings.CutPrefix(name, "regex:"); ok {
+			name = strings.TrimPrefix(name, "regex:")
+			rx, err := regexp.Compile(name)
+			if err != nil {
+				panic(fmt.Sprintf("Error compiling ignore regex %q: %v", name, err))
+			}
+			for name := range f.Identities {
+				if !rx.MatchString(name) {
+					continue
+				}
+				delete(f.Identities, name)
+				infof("ignoring %s\n", name)
+			}
+			continue
+		}
+
 		if _, ok := f.Identities[name]; ok {
 			delete(f.Identities, name)
 			infof("ignoring %s\n", name)
