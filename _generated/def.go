@@ -31,6 +31,8 @@ type Fixed struct {
 	B bool
 }
 
+type StandaloneBytes []byte
+
 type AliasedType = Fixed
 type AliasedType2 = *Fixed
 type AliasedType3 = uint64
