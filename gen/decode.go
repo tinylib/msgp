@@ -375,19 +375,11 @@ func (d *decodeGen) readBytesConvertWithLimit(tmp string, allowNil bool, receive
 		if tmp != receiverVar {
 			d.p.printf("\n%s = %s", tmp, receiverVar)
 		}
-		if allowNil {
-			d.p.printf("\nif uint32(cap(%s)) < %s {", tmp, sz)
-			d.p.printf("\n%s = make([]byte, %s)", tmp, sz)
-			d.p.printf("\n} else {")
-			d.p.printf("\n%s = %s[:%s]", tmp, tmp, sz)
-			d.p.printf("\n}")
-		} else {
-			d.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", tmp, tmp, sz)
-			d.p.printf("\n%s = make([]byte, %s)", tmp, sz)
-			d.p.printf("\n} else {")
-			d.p.printf("\n%s = %s[:%s]", tmp, tmp, sz)
-			d.p.printf("\n}")
-		}
+		d.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", tmp, tmp, sz)
+		d.p.printf("\n%s = make([]byte, %s)", tmp, sz)
+		d.p.printf("\n} else {")
+		d.p.printf("\n%s = %s[:%s]", tmp, tmp, sz)
+		d.p.printf("\n}")
 		d.p.printf("\n_, err = dc.ReadFull(%s)", tmp)
 	} else {
 		// No limits - use original efficient approach with receiver cast as destination

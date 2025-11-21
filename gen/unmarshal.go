@@ -179,21 +179,12 @@ func (u *unmarshalGen) readBytesWithLimit(refname, lowered string, zerocopy bool
 			if refname != lowered {
 				u.p.printf("\n%s = %s", refname, lowered)
 			}
-			if allowNil {
-				// allownil field - can reuse existing slice if sufficient capacity
-				u.p.printf("\nif uint32(cap(%s)) < %s {", refname, sz)
-				u.p.printf("\n%s = make([]byte, %s)", refname, sz)
-				u.p.printf("\n} else {")
-				u.p.printf("\n%s = %s[:%s]", refname, refname, sz)
-				u.p.printf("\n}")
-			} else {
-				// regular field - ensure always allocated, even for size 0
-				u.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", refname, refname, sz)
-				u.p.printf("\n%s = make([]byte, %s)", refname, sz)
-				u.p.printf("\n} else {")
-				u.p.printf("\n%s = %s[:%s]", refname, refname, sz)
-				u.p.printf("\n}")
-			}
+			u.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", refname, refname, sz)
+			u.p.printf("\n%s = make([]byte, %s)", refname, sz)
+			u.p.printf("\n} else {")
+			u.p.printf("\n%s = %s[:%s]", refname, refname, sz)
+			u.p.printf("\n}")
+
 			u.p.printf("\nif uint32(len(bts)) < %s {", sz)
 			u.p.printf("\nerr = msgp.ErrShortBytes")
 			u.p.printf("\nreturn")
