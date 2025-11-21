@@ -130,9 +130,10 @@ func (u *unmarshalGen) assignMap(name string, base string, fieldLimit uint32) {
 	}
 }
 
-func (u *unmarshalGen) readBytesWithLimit(refname, lowered string, zerocopy bool, fieldLimit uint32, allowNil bool) {
+// Returns whether a nil check should be done
+func (u *unmarshalGen) readBytesWithLimit(refname, lowered string, zerocopy bool, fieldLimit uint32) bool {
 	if !u.p.ok() {
-		return
+		return false
 	}
 
 	// Determine effective limit: field limit > context field limit > file limit
@@ -192,6 +193,7 @@ func (u *unmarshalGen) readBytesWithLimit(refname, lowered string, zerocopy bool
 			u.p.printf("\ncopy(%s, bts[:%s])", refname, sz)
 			u.p.printf("\nbts = bts[%s:]", sz)
 		}
+		return false
 	} else {
 		// No limits - use original direct reading approach for efficiency
 		if zerocopy {
@@ -200,6 +202,7 @@ func (u *unmarshalGen) readBytesWithLimit(refname, lowered string, zerocopy bool
 			u.p.printf("\n%s, bts, err = msgp.ReadBytesBytes(bts, %s)", refname, lowered)
 		}
 		u.p.wrapErrCheck(u.ctx.ArgsStr())
+		return !zerocopy
 	}
 }
 
@@ -395,10 +398,10 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 		lowered = b.ToBase() + "(" + lowered + ")"
 		u.p.printf("\n{\nvar %s %s", refname, b.BaseType())
 	}
-
+	nilCheck := false
 	switch b.Value {
 	case Bytes:
-		u.readBytesWithLimit(refname, lowered, b.zerocopy, 0, b.AllowNil())
+		nilCheck = u.readBytesWithLimit(refname, lowered, b.zerocopy, 0)
 	case Ext:
 		u.p.printf("\nbts, err = msgp.ReadExtensionBytes(bts, %s)", lowered)
 	case IDENT:
@@ -433,8 +436,9 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 		u.p.wrapErrCheck(u.ctx.ArgsStr())
 	}
 
-	if b.Value == Bytes && b.AllowNil() {
+	if nilCheck && b.AllowNil() {
 		// Ensure that 0 sized slices are allocated.
+		// We are inside the path where the value wasn't nil.
 		u.p.printf("\nif %s == nil {\n%s = make([]byte, 0)\n}", refname, refname)
 	}
 

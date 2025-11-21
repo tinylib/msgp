@@ -141,9 +141,11 @@ func (d *decodeGen) assignMap(name string, typ string, fieldLimit uint32) {
 	}
 }
 
-func (d *decodeGen) readBytesWithLimit(vname, checkNil string, fieldLimit uint32, allowNil bool) {
+// readBytesWithLimit will read bytes into vname.
+// Returns field to check for nil.
+func (d *decodeGen) readBytesWithLimit(vname string, fieldLimit uint32) string {
 	if !d.p.ok() {
-		return
+		return ""
 	}
 
 	// Determine effective limit: field limit > context field limit > file limit
@@ -179,25 +181,18 @@ func (d *decodeGen) readBytesWithLimit(vname, checkNil string, fieldLimit uint32
 		d.p.printf("\n}")
 
 		// Allocate and read the data
-		if allowNil {
-			// allownil field - can reuse existing slice if sufficient capacity
-			d.p.printf("\nif uint32(cap(%s)) < %s {", vname, sz)
-			d.p.printf("\n%s = make([]byte, %s)", vname, sz)
-			d.p.printf("\n} else {")
-			d.p.printf("\n%s = %s[:%s]", vname, vname, sz)
-			d.p.printf("\n}")
-		} else {
-			// regular field - ensure always allocated, even for size 0
-			d.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", vname, vname, sz)
-			d.p.printf("\n%s = make([]byte, %s)", vname, sz)
-			d.p.printf("\n} else {")
-			d.p.printf("\n%s = %s[:%s]", vname, vname, sz)
-			d.p.printf("\n}")
-		}
+		// regular field - ensure always allocated, even for size 0
+		d.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", vname, vname, sz)
+		d.p.printf("\n%s = make([]byte, %s)", vname, sz)
+		d.p.printf("\n} else {")
+		d.p.printf("\n%s = %s[:%s]", vname, vname, sz)
+		d.p.printf("\n}")
 		d.p.printf("\n_, err = dc.ReadFull(%s)", vname)
+		return ""
 	} else {
 		// No limits - use original direct reading approach for efficiency
 		d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
+		return vname
 	}
 }
 
@@ -413,8 +408,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 			d.readBytesConvertWithLimit(tmp, b.AllowNil(), lowered)
 			checkNil = tmp
 		} else {
-			d.readBytesWithLimit(vname, vname, 0, b.AllowNil())
-			checkNil = vname
+			checkNil = d.readBytesWithLimit(vname, 0)
 		}
 	case IDENT:
 		dst := b.BaseType()
