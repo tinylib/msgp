@@ -358,3 +358,21 @@ type Numberwang int8
 type ExternalString string
 type ExternalArr [4]byte
 type ExternalInt int
+
+//msgp:ignore regex:IGNORE
+
+type RegexIGNORETest struct{}
+
+// Will fail to compile if also generated
+func (z *RegexIGNORETest) Msgsize() int {
+	return 0
+}
+
+//msgp:size ignore regex:IGNSIZE
+
+type RegexIGNSIZETest struct{}
+
+// Will fail to compile if also generated
+func (z *RegexIGNSIZETest) Msgsize() int {
+	return 0
+}
