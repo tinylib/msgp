@@ -381,6 +381,25 @@ func (d *decodeGen) gBase(b *BaseElem) {
 			d.readBytesWithLimit(vname, vname, 0)
 			checkNil = vname
 		}
+	case BinaryMarshaler, BinaryAppender:
+		tmpBytes := randIdent()
+		d.p.printf("\nvar %s []byte", tmpBytes)
+		d.readBytesWithLimit(tmpBytes, tmpBytes, 0)
+		d.p.printf("\nerr = %s.UnmarshalBinary(%s)", vname, tmpBytes)
+		d.p.wrapErrCheck(d.ctx.ArgsStr())
+	case TextMarshalerBin, TextAppenderBin:
+		tmpBytes := randIdent()
+		d.p.printf("\nvar %s []byte", tmpBytes)
+		d.readBytesWithLimit(tmpBytes, tmpBytes, 0)
+		d.p.printf("\nerr = %s.UnmarshalText(%s)", vname, tmpBytes)
+		d.p.wrapErrCheck(d.ctx.ArgsStr())
+	case TextMarshalerString, TextAppenderString:
+		tmpStr := randIdent()
+		d.p.printf("\nvar %s string", tmpStr)
+		d.p.printf("\n%s, err = dc.ReadString()", tmpStr)
+		d.p.wrapErrCheck(d.ctx.ArgsStr())
+		d.p.printf("\nerr = %s.UnmarshalText([]byte(%s))", vname, tmpStr)
+		d.p.wrapErrCheck(d.ctx.ArgsStr())
 	case IDENT:
 		dst := b.BaseType()
 		if b.typeParams.isPtr {

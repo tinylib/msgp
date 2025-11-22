@@ -34,6 +34,10 @@ var directives = map[string]directive{
 	"newtime":       newtime,
 	"timezone":      newtimezone,
 	"limit":         limit,
+	"binmarshal":    binmarshal,
+	"binappend":     binappend,
+	"textmarshal":   textmarshal,
+	"textappend":    textappend,
 }
 
 // map of all recognized directives which will be applied
@@ -365,5 +369,151 @@ func limit(text []string, f *FileSet) (err error) {
 		}
 	}
 	infof("limits - arrays:%d maps:%d marshal:%t\n", f.ArrayLimit, f.MapLimit, f.MarshalLimits)
+	return nil
+}
+
+//msgp:binmarshal pkg.Type pkg.Type2
+func binmarshal(text []string, f *FileSet) error {
+	if len(text) < 2 {
+		return fmt.Errorf("binmarshal directive should have at least 1 argument; found %d", len(text)-1)
+	}
+
+	for _, item := range text[1:] {
+		name := strings.TrimSpace(item)
+		be := gen.Ident(name)
+		be.Value = gen.BinaryMarshaler
+		be.Alias(name)
+		be.Convert = false // Don't use conversion for marshaler types
+
+		infof("%s -> BinaryMarshaler\n", name)
+		f.findShim(name, be, true)
+	}
+
+	return nil
+}
+
+//msgp:binappend pkg.Type pkg.Type2
+func binappend(text []string, f *FileSet) error {
+	if len(text) < 2 {
+		return fmt.Errorf("binappend directive should have at least 1 argument; found %d", len(text)-1)
+	}
+
+	for _, item := range text[1:] {
+		name := strings.TrimSpace(item)
+		be := gen.Ident(name)
+		be.Value = gen.BinaryAppender
+		be.Alias(name)
+		be.Convert = false // Don't use conversion for marshaler types
+
+		infof("%s -> BinaryAppender\n", name)
+		f.findShim(name, be, true)
+	}
+
+	return nil
+}
+
+//msgp:textmarshal [as:string] pkg.Type pkg.Type2
+func textmarshal(text []string, f *FileSet) error {
+	if len(text) < 2 {
+		return fmt.Errorf("textmarshal directive should have at least 1 argument; found %d", len(text)-1)
+	}
+
+	// Check for as:string option anywhere in the arguments
+	var asString bool
+	var typeArgs []string
+
+	for _, item := range text[1:] {
+		trimmed := strings.TrimSpace(item)
+		if strings.HasPrefix(trimmed, "as:") {
+			option := strings.TrimPrefix(trimmed, "as:")
+			switch option {
+			case "string":
+				asString = true
+			case "bin":
+				asString = false
+			default:
+				return fmt.Errorf("invalid as: option %q, expected 'string' or 'bin'", option)
+			}
+		} else {
+			typeArgs = append(typeArgs, trimmed)
+		}
+	}
+
+	if len(typeArgs) == 0 {
+		return fmt.Errorf("textmarshal directive should have at least 1 type argument")
+	}
+
+	for _, item := range typeArgs {
+		name := strings.TrimSpace(item)
+		be := gen.Ident(name)
+		if asString {
+			be.Value = gen.TextMarshalerString
+		} else {
+			be.Value = gen.TextMarshalerBin
+		}
+		be.Alias(name)
+		be.Convert = false // Don't use conversion for marshaler types
+
+		if asString {
+			infof("%s -> TextMarshaler (as string)\n", name)
+		} else {
+			infof("%s -> TextMarshaler (as bin)\n", name)
+		}
+		f.findShim(name, be, true)
+	}
+
+	return nil
+}
+
+//msgp:textappend [as:string] pkg.Type pkg.Type2
+func textappend(text []string, f *FileSet) error {
+	if len(text) < 2 {
+		return fmt.Errorf("textappend directive should have at least 1 argument; found %d", len(text)-1)
+	}
+
+	// Check for as:string option anywhere in the arguments
+	var asString bool
+	var typeArgs []string
+
+	for _, item := range text[1:] {
+		trimmed := strings.TrimSpace(item)
+		if strings.HasPrefix(trimmed, "as:") {
+			option := strings.TrimPrefix(trimmed, "as:")
+			switch option {
+			case "string":
+				asString = true
+			case "bin":
+				asString = false
+			default:
+				return fmt.Errorf("invalid as: option %q, expected 'string' or 'bin'", option)
+			}
+		} else {
+			typeArgs = append(typeArgs, trimmed)
+		}
+	}
+
+	if len(typeArgs) == 0 {
+		return fmt.Errorf("textappend directive should have at least 1 type argument")
+	}
+
+	for _, item := range typeArgs {
+		name := strings.TrimSpace(item)
+		be := gen.Ident(name)
+		if asString {
+			be.Value = gen.TextAppenderString
+		} else {
+			be.Value = gen.TextAppenderBin
+		}
+		be.Alias(name)
+		be.Convert = false // Don't use conversion for marshaler types
+
+		if asString {
+			infof("%s -> TextAppender (as string)\n", name)
+		} else {
+			infof("%s -> TextAppender (as bin)\n", name)
+		}
+		f.findShim(name, be, true)
+	}
+
 	return nil
 }

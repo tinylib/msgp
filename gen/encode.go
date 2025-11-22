@@ -360,6 +360,42 @@ func (e *encodeGen) gBase(b *BaseElem) {
 	case AInt64, AInt32, AUint64, AUint32, ABool:
 		t := strings.TrimPrefix(b.BaseName(), "atomic.")
 		e.writeAndCheck(t, literalFmt, strings.TrimPrefix(vname, "*")+".Load()")
+	case BinaryMarshaler:
+		bts := randIdent()
+		e.p.printf("\nvar %s []byte", bts)
+		e.p.printf("\n%s, err = %s.MarshalBinary()", bts, vname)
+		e.p.wrapErrCheck(e.ctx.ArgsStr())
+		e.writeAndCheck("Bytes", literalFmt, bts)
+	case BinaryAppender:
+		bts := randIdent()
+		e.p.printf("\nvar %s []byte", bts)
+		e.p.printf("\n%s, err = %s.AppendBinary(nil)", bts, vname)
+		e.p.wrapErrCheck(e.ctx.ArgsStr())
+		e.writeAndCheck("Bytes", literalFmt, bts)
+	case TextMarshalerBin:
+		bts := randIdent()
+		e.p.printf("\nvar %s []byte", bts)
+		e.p.printf("\n%s, err = %s.MarshalText()", bts, vname)
+		e.p.wrapErrCheck(e.ctx.ArgsStr())
+		e.writeAndCheck("Bytes", literalFmt, bts)
+	case TextAppenderBin:
+		bts := randIdent()
+		e.p.printf("\nvar %s []byte", bts)
+		e.p.printf("\n%s, err = %s.AppendText(nil)", bts, vname)
+		e.p.wrapErrCheck(e.ctx.ArgsStr())
+		e.writeAndCheck("Bytes", literalFmt, bts)
+	case TextMarshalerString:
+		bts := randIdent()
+		e.p.printf("\nvar %s []byte", bts)
+		e.p.printf("\n%s, err = %s.MarshalText()", bts, vname)
+		e.p.wrapErrCheck(e.ctx.ArgsStr())
+		e.writeAndCheck("String", literalFmt, "string("+bts+")")
+	case TextAppenderString:
+		bts := randIdent()
+		e.p.printf("\nvar %s []byte", bts)
+		e.p.printf("\n%s, err = %s.AppendText(nil)", bts, vname)
+		e.p.wrapErrCheck(e.ctx.ArgsStr())
+		e.writeAndCheck("String", literalFmt, "string("+bts+")")
 	case IDENT: // unknown identity
 		dst := b.BaseType()
 		if b.typeParams.isPtr {

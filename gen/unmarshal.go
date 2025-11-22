@@ -64,7 +64,6 @@ func (u *unmarshalGen) assignAndCheck(name string, base string) {
 	u.p.wrapErrCheck(u.ctx.ArgsStr())
 }
 
-
 func (u *unmarshalGen) assignArray(name string, base string, fieldLimit uint32) {
 	if !u.p.ok() {
 		return
@@ -376,6 +375,25 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 		u.readBytesWithLimit(refname, lowered, b.zerocopy, 0)
 	case Ext:
 		u.p.printf("\nbts, err = msgp.ReadExtensionBytes(bts, %s)", lowered)
+	case BinaryMarshaler, BinaryAppender:
+		tmpBytes := randIdent()
+		u.p.printf("\nvar %s []byte", tmpBytes)
+		u.readBytesWithLimit(tmpBytes, tmpBytes, true, 0)
+		u.p.printf("\nerr = %s.UnmarshalBinary(%s)", refname, tmpBytes)
+		u.p.wrapErrCheck(u.ctx.ArgsStr())
+	case TextMarshalerBin, TextAppenderBin:
+		tmpBytes := randIdent()
+		u.p.printf("\nvar %s []byte", tmpBytes)
+		u.readBytesWithLimit(tmpBytes, tmpBytes, true, 0)
+		u.p.printf("\nerr = %s.UnmarshalText(%s)", refname, tmpBytes)
+		u.p.wrapErrCheck(u.ctx.ArgsStr())
+	case TextMarshalerString, TextAppenderString:
+		tmpStr := randIdent()
+		u.p.printf("\nvar %s string", tmpStr)
+		u.p.printf("\n%s, bts, err = msgp.ReadStringBytes(bts)", tmpStr)
+		u.p.wrapErrCheck(u.ctx.ArgsStr())
+		u.p.printf("\nerr = %s.UnmarshalText([]byte(%s))", refname, tmpStr)
+		u.p.wrapErrCheck(u.ctx.ArgsStr())
 	case IDENT:
 		if b.Convert {
 			lowered = b.ToBase() + "(" + lowered + ")"
