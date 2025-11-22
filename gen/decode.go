@@ -75,7 +75,6 @@ func (d *decodeGen) assignAndCheck(name string, typ string) {
 	d.p.wrapErrCheck(d.ctx.ArgsStr())
 }
 
-
 func (d *decodeGen) assignArray(name string, typ string, fieldLimit uint32) {
 	if !d.p.ok() {
 		return
@@ -350,6 +349,23 @@ func (d *decodeGen) structAsMap(s *Struct) {
 	}
 }
 
+// binaryDecodeCall generates code for decoding marshaler/appender interfaces
+func (d *decodeGen) binaryDecodeCall(vname, unmarshalMethod, readType string) {
+	if readType == "String" {
+		tmpStr := randIdent()
+		d.p.printf("\nvar %s string", tmpStr)
+		d.p.printf("\n%s, err = dc.ReadString()", tmpStr)
+		d.p.wrapErrCheck(d.ctx.ArgsStr())
+		d.p.printf("\nerr = %s.%s([]byte(%s))", vname, unmarshalMethod, tmpStr)
+	} else {
+		tmpBytes := randIdent()
+		d.p.printf("\nvar %s []byte", tmpBytes)
+		d.readBytesWithLimit(tmpBytes, tmpBytes, 0)
+		d.p.printf("\nerr = %s.%s(%s)", vname, unmarshalMethod, tmpBytes)
+	}
+	d.p.wrapErrCheck(d.ctx.ArgsStr())
+}
+
 func (d *decodeGen) gBase(b *BaseElem) {
 	if !d.p.ok() {
 		return
@@ -381,6 +397,12 @@ func (d *decodeGen) gBase(b *BaseElem) {
 			d.readBytesWithLimit(vname, vname, 0)
 			checkNil = vname
 		}
+	case BinaryMarshaler, BinaryAppender:
+		d.binaryDecodeCall(vname, "UnmarshalBinary", "Bytes")
+	case TextMarshalerBin, TextAppenderBin:
+		d.binaryDecodeCall(vname, "UnmarshalText", "Bytes")
+	case TextMarshalerString, TextAppenderString:
+		d.binaryDecodeCall(vname, "UnmarshalText", "String")
 	case IDENT:
 		dst := b.BaseType()
 		if b.typeParams.isPtr {

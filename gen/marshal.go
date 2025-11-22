@@ -372,6 +372,24 @@ func (m *marshalGen) gBase(b *BaseElem) {
 
 	var echeck bool
 	switch b.Value {
+	case BinaryMarshaler:
+		echeck = true
+		m.binaryMarshalCall(vname, "MarshalBinary", "", "msgp.AppendBytes")
+	case BinaryAppender:
+		echeck = true
+		m.binaryAppendCall(vname, "AppendBinary", "msgp.BytesPrefixSize", "msgp.AppendBytes")
+	case TextMarshalerBin:
+		echeck = true
+		m.binaryMarshalCall(vname, "MarshalText", "", "msgp.AppendBytes")
+	case TextAppenderBin:
+		echeck = true
+		m.binaryAppendCall(vname, "AppendText", "msgp.BytesPrefixSize", "msgp.AppendBytes")
+	case TextMarshalerString:
+		echeck = true
+		m.binaryMarshalCall(vname, "MarshalText", "string", "msgp.AppendString")
+	case TextAppenderString:
+		echeck = true
+		m.binaryAppendCall(vname, "AppendText", "msgp.StringPrefixSize", "msgp.AppendString")
 	case IDENT:
 		dst := b.BaseType()
 		if b.typeParams.isPtr {
@@ -395,5 +413,38 @@ func (m *marshalGen) gBase(b *BaseElem) {
 
 	if echeck {
 		m.p.wrapErrCheck(m.ctx.ArgsStr())
+	}
+}
+
+// binaryMarshalCall generates code for marshaler interfaces that return []byte
+func (m *marshalGen) binaryMarshalCall(vname, method, convert, appendFunc string) {
+	bts := randIdent()
+	m.p.printf("\nvar %s []byte", bts)
+	m.p.printf("\n%s, err = %s.%s()", bts, vname, method)
+	m.p.wrapErrCheck(m.ctx.ArgsStr())
+	if convert != "" {
+		m.p.printf("\no = %s(o, %s(%s))", appendFunc, convert, bts)
+	} else {
+		m.p.printf("\no = %s(o, %s)", appendFunc, bts)
+	}
+}
+
+// binaryAppendCall generates code for appender interfaces that use pre-allocated buffer.
+// This should ensure that we at most only have to make 1 allocation to extend the slice.
+func (m *marshalGen) binaryAppendCall(vname, method, prefixSize, appendFunc string) {
+	bts := randIdent()
+	sz := randIdent()
+	m.p.printf("\nvar %s []byte", bts)
+	// append to always have space for the header.
+	m.p.printf("\n%s = append(o, make([]byte, %s)...)", bts, prefixSize)
+	m.p.printf("\n%s, err = %s.%s(%s)", bts, vname, method, bts)
+	m.p.wrapErrCheck(m.ctx.ArgsStr())
+	m.p.printf("\n%s := len(%s) - len(o) - %s", sz, bts, prefixSize)
+	if appendFunc == "msgp.AppendString" {
+		m.p.printf("\no = msgp.AppendString(o, string(%s[len(%s) - %s:]))", bts, bts, sz)
+	} else {
+		m.p.printf("\no = msgp.AppendBytesHeader(o, uint32(%s))", sz)
+		m.p.wrapErrCheck(m.ctx.ArgsStr())
+		m.p.printf("\no = append(o, %s[len(%s) - %s:]...)", bts, bts, sz)
 	}
 }
