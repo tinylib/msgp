@@ -429,19 +429,22 @@ func (m *marshalGen) marshalCall(vname, method, convert, appendFunc string) {
 	}
 }
 
-// appendCall generates code for appender interfaces that use pre-allocated buffer
+// appendCall generates code for appender interfaces that use pre-allocated buffer.
+// This should ensure that we at most only have to make 1 allocation to extend the slice.
 func (m *marshalGen) appendCall(vname, method, prefixSize, appendFunc string) {
 	bts := randIdent()
+	sz := randIdent()
 	m.p.printf("\nvar %s []byte", bts)
-	// We will attempt to append to the pre-allocated buffer, if possible.
-	m.p.printf("\nif tmp := o[len(o):]; cap(tmp) > %s {", prefixSize)
-	m.p.printf("\n%s = tmp[%s:%s]", bts, prefixSize, prefixSize)
-	m.p.printf("\n}")
+	// append to always have space for the header.
+	m.p.printf("\n%s = append(o, make([]byte, %s)...)", bts, prefixSize)
 	m.p.printf("\n%s, err = %s.%s(%s)", bts, vname, method, bts)
 	m.p.wrapErrCheck(m.ctx.ArgsStr())
+	m.p.printf("\n%s := len(%s) - len(o) - %s", sz, bts, prefixSize)
 	if appendFunc == "msgp.AppendString" {
-		m.p.printf("\no = %s(o, string(%s))", appendFunc, bts)
+		m.p.printf("\no = msgp.AppendString(o, string(%s[len(%s) - %s:]))", bts, bts, sz)
 	} else {
-		m.p.printf("\no = %s(o, %s)", appendFunc, bts)
+		m.p.printf("\no = msgp.AppendBytesHeader(o, uint32(%s))", sz)
+		m.p.wrapErrCheck(m.ctx.ArgsStr())
+		m.p.printf("\no = append(o, %s[len(%s) - %s:]...)", bts, bts, sz)
 	}
 }
