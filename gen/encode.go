@@ -75,6 +75,23 @@ func (e *encodeGen) Fuse(b []byte) {
 	}
 }
 
+// binaryEncodeCall generates code for marshaler/appender interfaces
+func (e *encodeGen) binaryEncodeCall(vname, method, writeType, arg string) {
+	bts := randIdent()
+	e.p.printf("\nvar %s []byte", bts)
+	if arg == "" {
+		e.p.printf("\n%s, err = %s.%s()", bts, vname, method)
+	} else {
+		e.p.printf("\n%s, err = %s.%s(%s)", bts, vname, method, arg)
+	}
+	e.p.wrapErrCheck(e.ctx.ArgsStr())
+	if writeType == "String" {
+		e.writeAndCheck(writeType, literalFmt, "string("+bts+")")
+	} else {
+		e.writeAndCheck(writeType, literalFmt, bts)
+	}
+}
+
 func (e *encodeGen) Execute(p Elem, ctx Context) error {
 	e.ctx = &ctx
 	if !e.p.ok() {
@@ -361,41 +378,17 @@ func (e *encodeGen) gBase(b *BaseElem) {
 		t := strings.TrimPrefix(b.BaseName(), "atomic.")
 		e.writeAndCheck(t, literalFmt, strings.TrimPrefix(vname, "*")+".Load()")
 	case BinaryMarshaler:
-		bts := randIdent()
-		e.p.printf("\nvar %s []byte", bts)
-		e.p.printf("\n%s, err = %s.MarshalBinary()", bts, vname)
-		e.p.wrapErrCheck(e.ctx.ArgsStr())
-		e.writeAndCheck("Bytes", literalFmt, bts)
+		e.binaryEncodeCall(vname, "MarshalBinary", "Bytes", "")
 	case BinaryAppender:
-		bts := randIdent()
-		e.p.printf("\nvar %s []byte", bts)
-		e.p.printf("\n%s, err = %s.AppendBinary(nil)", bts, vname)
-		e.p.wrapErrCheck(e.ctx.ArgsStr())
-		e.writeAndCheck("Bytes", literalFmt, bts)
+		e.binaryEncodeCall(vname, "AppendBinary", "Bytes", "nil")
 	case TextMarshalerBin:
-		bts := randIdent()
-		e.p.printf("\nvar %s []byte", bts)
-		e.p.printf("\n%s, err = %s.MarshalText()", bts, vname)
-		e.p.wrapErrCheck(e.ctx.ArgsStr())
-		e.writeAndCheck("Bytes", literalFmt, bts)
+		e.binaryEncodeCall(vname, "MarshalText", "Bytes", "")
 	case TextAppenderBin:
-		bts := randIdent()
-		e.p.printf("\nvar %s []byte", bts)
-		e.p.printf("\n%s, err = %s.AppendText(nil)", bts, vname)
-		e.p.wrapErrCheck(e.ctx.ArgsStr())
-		e.writeAndCheck("Bytes", literalFmt, bts)
+		e.binaryEncodeCall(vname, "AppendText", "Bytes", "nil")
 	case TextMarshalerString:
-		bts := randIdent()
-		e.p.printf("\nvar %s []byte", bts)
-		e.p.printf("\n%s, err = %s.MarshalText()", bts, vname)
-		e.p.wrapErrCheck(e.ctx.ArgsStr())
-		e.writeAndCheck("String", literalFmt, "string("+bts+")")
+		e.binaryEncodeCall(vname, "MarshalText", "String", "")
 	case TextAppenderString:
-		bts := randIdent()
-		e.p.printf("\nvar %s []byte", bts)
-		e.p.printf("\n%s, err = %s.AppendText(nil)", bts, vname)
-		e.p.wrapErrCheck(e.ctx.ArgsStr())
-		e.writeAndCheck("String", literalFmt, "string("+bts+")")
+		e.binaryEncodeCall(vname, "AppendText", "String", "nil")
 	case IDENT: // unknown identity
 		dst := b.BaseType()
 		if b.typeParams.isPtr {
