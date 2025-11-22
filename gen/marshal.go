@@ -374,49 +374,22 @@ func (m *marshalGen) gBase(b *BaseElem) {
 	switch b.Value {
 	case BinaryMarshaler:
 		echeck = true
-		bts := randIdent()
-		m.p.printf("\nvar %s []byte", bts)
-		m.p.printf("\n%s, err = %s.MarshalBinary()", bts, vname)
-		m.p.wrapErrCheck(m.ctx.ArgsStr())
-		m.p.printf("\no = msgp.AppendBytes(o, %s)", bts)
+		m.marshalCall(vname, "MarshalBinary", "", "msgp.AppendBytes")
 	case BinaryAppender:
 		echeck = true
-		bts := randIdent()
-		m.p.printf("\nvar %s []byte", bts)
-		m.p.printf("\n%s = o[len(o):]", bts)
-		m.p.printf("\n%s, err = %s.AppendBinary(%s[msgp.BytesPrefixSize:msgp.BytesPrefixSize])", bts, vname, bts)
-		m.p.wrapErrCheck(m.ctx.ArgsStr())
-		m.p.printf("\no = msgp.AppendBytes(o, %s)", bts)
+		m.appendCall(vname, "AppendBinary", "msgp.BytesPrefixSize", "msgp.AppendBytes")
 	case TextMarshalerBin:
 		echeck = true
-		bts := randIdent()
-		m.p.printf("\nvar %s []byte", bts)
-		m.p.printf("\n%s, err = %s.MarshalText()", bts, vname)
-		m.p.wrapErrCheck(m.ctx.ArgsStr())
-		m.p.printf("\no = msgp.AppendBytes(o, %s)", bts)
+		m.marshalCall(vname, "MarshalText", "", "msgp.AppendBytes")
 	case TextAppenderBin:
 		echeck = true
-		bts := randIdent()
-		m.p.printf("\nvar %s []byte", bts)
-		m.p.printf("\n%s = o[len(o):]", bts)
-		m.p.printf("\n%s, err = %s.AppendText(%s[msgp.BytesPrefixSize:msgp.BytesPrefixSize])", bts, vname, bts)
-		m.p.wrapErrCheck(m.ctx.ArgsStr())
-		m.p.printf("\no = msgp.AppendBytes(o, %s)", bts)
+		m.appendCall(vname, "AppendText", "msgp.BytesPrefixSize", "msgp.AppendBytes")
 	case TextMarshalerString:
 		echeck = true
-		bts := randIdent()
-		m.p.printf("\nvar %s []byte", bts)
-		m.p.printf("\n%s, err = %s.MarshalText()", bts, vname)
-		m.p.wrapErrCheck(m.ctx.ArgsStr())
-		m.p.printf("\no = msgp.AppendString(o, string(%s))", bts)
+		m.marshalCall(vname, "MarshalText", "string", "msgp.AppendString")
 	case TextAppenderString:
 		echeck = true
-		bts := randIdent()
-		m.p.printf("\nvar %s []byte", bts)
-		m.p.printf("\n%s = o[len(o):]", bts)
-		m.p.printf("\n%s, err = %s.AppendText(%s[msgp.StringPrefixSize:msgp.StringPrefixSize])", bts, vname, bts)
-		m.p.wrapErrCheck(m.ctx.ArgsStr())
-		m.p.printf("\no = msgp.AppendString(o, string(%s))", bts)
+		m.appendCall(vname, "AppendText", "msgp.StringPrefixSize", "msgp.AppendString")
 	case IDENT:
 		dst := b.BaseType()
 		if b.typeParams.isPtr {
@@ -440,5 +413,35 @@ func (m *marshalGen) gBase(b *BaseElem) {
 
 	if echeck {
 		m.p.wrapErrCheck(m.ctx.ArgsStr())
+	}
+}
+
+// marshalCall generates code for marshaler interfaces that return []byte
+func (m *marshalGen) marshalCall(vname, method, convert, appendFunc string) {
+	bts := randIdent()
+	m.p.printf("\nvar %s []byte", bts)
+	m.p.printf("\n%s, err = %s.%s()", bts, vname, method)
+	m.p.wrapErrCheck(m.ctx.ArgsStr())
+	if convert != "" {
+		m.p.printf("\no = %s(o, %s(%s))", appendFunc, convert, bts)
+	} else {
+		m.p.printf("\no = %s(o, %s)", appendFunc, bts)
+	}
+}
+
+// appendCall generates code for appender interfaces that use pre-allocated buffer
+func (m *marshalGen) appendCall(vname, method, prefixSize, appendFunc string) {
+	bts := randIdent()
+	m.p.printf("\nvar %s []byte", bts)
+	// We will attempt to append to the pre-allocated buffer, if possible.
+	m.p.printf("\nif tmp := o[len(o):]; cap(tmp) > %s {", prefixSize)
+	m.p.printf("\n%s = tmp[%s:%s]", bts, prefixSize, prefixSize)
+	m.p.printf("\n}")
+	m.p.printf("\n%s, err = %s.%s(%s)", bts, vname, method, bts)
+	m.p.wrapErrCheck(m.ctx.ArgsStr())
+	if appendFunc == "msgp.AppendString" {
+		m.p.printf("\no = %s(o, string(%s))", appendFunc, bts)
+	} else {
+		m.p.printf("\no = %s(o, %s)", appendFunc, bts)
 	}
 }
