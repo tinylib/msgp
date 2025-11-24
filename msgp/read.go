@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"encoding"
 	"encoding/binary"
 	"encoding/json"
 	"io"
@@ -1566,4 +1567,37 @@ func (m *Reader) ReadIntf() (i any, err error) {
 	default:
 		return nil, fatal // unreachable
 	}
+}
+
+// ReadBinaryUnmarshal reads a binary-encoded object from the reader and unmarshals it into dst.
+func (m *Reader) ReadBinaryUnmarshal(dst encoding.BinaryUnmarshaler) (err error) {
+	tmp := bytesPool.Get().([]byte)
+	defer bytesPool.Put(tmp)
+	tmp, err = m.ReadBytes(tmp[:0])
+	if err != nil {
+		return
+	}
+	return dst.UnmarshalBinary(tmp)
+}
+
+// ReadTextUnmarshal reads a text-encoded bin array from the reader and unmarshals it into dst.
+func (m *Reader) ReadTextUnmarshal(dst encoding.TextUnmarshaler) (err error) {
+	tmp := bytesPool.Get().([]byte)
+	defer bytesPool.Put(tmp)
+	tmp, err = m.ReadBytes(tmp[:0])
+	if err != nil {
+		return
+	}
+	return dst.UnmarshalText(tmp)
+}
+
+// ReadTextUnmarshalString reads a text-encoded string from the reader and unmarshals it into dst.
+func (m *Reader) ReadTextUnmarshalString(dst encoding.TextUnmarshaler) (err error) {
+	tmp := bytesPool.Get().([]byte)
+	defer bytesPool.Put(tmp)
+	tmp, err = m.ReadStringAsBytes(tmp[:0])
+	if err != nil {
+		return
+	}
+	return dst.UnmarshalText(tmp)
 }

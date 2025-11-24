@@ -578,3 +578,75 @@ func TestAppenderTypesSizeEstimation(t *testing.T) {
 		t.Errorf("Text appender size underestimated: estimated %d, actual %d", size, len(data))
 	}
 }
+
+func TestBinaryAppenderValueRoundTrip(t *testing.T) {
+	tests := []string{"", "hello", "world with spaces", "unicode: 测试"}
+
+	for _, testVal := range tests {
+		original := BinaryAppenderValue{Value: testVal}
+
+		buf, err := original.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("MarshalMsg failed for %q: %v", testVal, err)
+		}
+
+		var result BinaryAppenderValue
+		_, err = result.UnmarshalMsg(buf)
+		if err != nil {
+			t.Fatalf("UnmarshalMsg failed for %q: %v", testVal, err)
+		}
+
+		expected := "binappend:" + testVal
+		if result.Value != expected {
+			t.Errorf("Round trip failed: expected %q, got %q", expected, result.Value)
+		}
+	}
+}
+
+func TestTestAppendTextStringRoundTrip(t *testing.T) {
+	tests := []string{"", "hello", "world with spaces", "unicode: 测试"}
+
+	for _, testVal := range tests {
+		original := TestAppendTextString{Value: testVal}
+
+		buf, err := original.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("MarshalMsg failed for %q: %v", testVal, err)
+		}
+
+		var result TestAppendTextString
+		_, err = result.UnmarshalMsg(buf)
+		if err != nil {
+			t.Fatalf("UnmarshalMsg failed for %q: %v", testVal, err)
+		}
+
+		expected := "append:" + testVal
+		if result.Value != expected {
+			t.Errorf("Round trip failed: expected %q, got %q", expected, result.Value)
+		}
+	}
+}
+
+func TestTextAppenderBinValueRoundTrip(t *testing.T) {
+	tests := []string{"", "hello", "world with spaces", "unicode: 测试"}
+
+	for _, testVal := range tests {
+		original := TextAppenderBinValue{Value: testVal}
+
+		buf, err := original.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("MarshalMsg failed for %q: %v", testVal, err)
+		}
+
+		var result TextAppenderBinValue
+		_, err = result.UnmarshalMsg(buf)
+		if err != nil {
+			t.Fatalf("UnmarshalMsg failed for %q: %v", testVal, err)
+		}
+
+		expected := "textbin:" + testVal
+		if result.Value != expected {
+			t.Errorf("Round trip failed: expected %q, got %q", expected, result.Value)
+		}
+	}
+}

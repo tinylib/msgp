@@ -377,6 +377,7 @@ func binmarshal(text []string, f *FileSet) error {
 	if len(text) < 2 {
 		return fmt.Errorf("binmarshal directive should have at least 1 argument; found %d", len(text)-1)
 	}
+	alwaysPtr := true
 
 	for _, item := range text[1:] {
 		name := strings.TrimSpace(item)
@@ -384,6 +385,7 @@ func binmarshal(text []string, f *FileSet) error {
 		be.Value = gen.BinaryMarshaler
 		be.Alias(name)
 		be.Convert = false // Don't use conversion for marshaler types
+		be.AlwaysPtr(&alwaysPtr)
 
 		infof("%s -> BinaryMarshaler\n", name)
 		f.findShim(name, be, true)
@@ -397,13 +399,14 @@ func binappend(text []string, f *FileSet) error {
 	if len(text) < 2 {
 		return fmt.Errorf("binappend directive should have at least 1 argument; found %d", len(text)-1)
 	}
-
+	alwaysPtr := true
 	for _, item := range text[1:] {
 		name := strings.TrimSpace(item)
 		be := gen.Ident(name)
 		be.Value = gen.BinaryAppender
 		be.Alias(name)
 		be.Convert = false // Don't use conversion for marshaler types
+		be.AlwaysPtr(&alwaysPtr)
 
 		infof("%s -> BinaryAppender\n", name)
 		f.findShim(name, be, true)
@@ -421,6 +424,7 @@ func textmarshal(text []string, f *FileSet) error {
 	// Check for as:string option anywhere in the arguments
 	var asString bool
 	var typeArgs []string
+	alwaysPtr := true
 
 	for _, item := range text[1:] {
 		trimmed := strings.TrimSpace(item)
@@ -446,6 +450,7 @@ func textmarshal(text []string, f *FileSet) error {
 	for _, item := range typeArgs {
 		name := strings.TrimSpace(item)
 		be := gen.Ident(name)
+		be.AlwaysPtr(&alwaysPtr)
 		if asString {
 			be.Value = gen.TextMarshalerString
 		} else {
@@ -474,6 +479,7 @@ func textappend(text []string, f *FileSet) error {
 	// Check for as:string option anywhere in the arguments
 	var asString bool
 	var typeArgs []string
+	alwaysPtr := true
 
 	for _, item := range text[1:] {
 		trimmed := strings.TrimSpace(item)
@@ -506,6 +512,7 @@ func textappend(text []string, f *FileSet) error {
 		}
 		be.Alias(name)
 		be.Convert = false // Don't use conversion for marshaler types
+		be.AlwaysPtr(&alwaysPtr)
 
 		if asString {
 			infof("%s -> TextAppender (as string)\n", name)

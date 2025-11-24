@@ -240,3 +240,50 @@ func (e *ErrorTextAppenderType) UnmarshalText(text []byte) error {
 //msgp:textappend TextAppenderBinType ErrorTextAppenderType
 //msgp:textmarshal TestTextMarshalerStringMiddle as:string TestTextMarshalerStringEnd
 //msgp:textappend TestTextAppenderStringPos as:string
+
+//msgp:binappend BinaryAppenderValue
+
+// BinaryAppenderValue implements encoding.BinaryAppender (Go 1.22+)
+type BinaryAppenderValue struct {
+	Value string `msg:"-"`
+}
+
+func (t BinaryAppenderValue) AppendBinary(dst []byte) ([]byte, error) {
+	return append(dst, []byte("binappend:"+t.Value)...), nil
+}
+
+func (t *BinaryAppenderValue) UnmarshalBinary(data []byte) error {
+	t.Value = string(data)
+	return nil
+}
+
+//msgp:textappend TestAppendTextString as:string
+
+type TestAppendTextString struct {
+	Value string `msg:"-"`
+}
+
+func (t TestAppendTextString) AppendText(dst []byte) ([]byte, error) {
+	return append(dst, []byte("append:"+t.Value)...), nil
+}
+
+func (t *TestAppendTextString) UnmarshalText(text []byte) error {
+	t.Value = string(text)
+	return nil
+}
+
+//msgp:textappend TextAppenderBinValue
+
+// TextAppenderBinValue implements encoding.TextAppender (stored as binary)
+type TextAppenderBinValue struct {
+	Value string `msg:"-"`
+}
+
+func (t TextAppenderBinValue) AppendText(dst []byte) ([]byte, error) {
+	return append(dst, []byte("textbin:"+t.Value)...), nil
+}
+
+func (t *TextAppenderBinValue) UnmarshalText(text []byte) error {
+	t.Value = string(text)
+	return nil
+}

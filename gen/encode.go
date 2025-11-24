@@ -75,7 +75,7 @@ func (e *encodeGen) Fuse(b []byte) {
 	}
 }
 
-// binaryEncodeCall generates code for marshaler/appender interfaces
+// binaryEncodeCall generates code for marshaler interfaces
 func (e *encodeGen) binaryEncodeCall(vname, method, writeType, arg string) {
 	bts := randIdent()
 	e.p.printf("\nvar %s []byte", bts)
@@ -379,16 +379,20 @@ func (e *encodeGen) gBase(b *BaseElem) {
 		e.writeAndCheck(t, literalFmt, strings.TrimPrefix(vname, "*")+".Load()")
 	case BinaryMarshaler:
 		e.binaryEncodeCall(vname, "MarshalBinary", "Bytes", "")
-	case BinaryAppender:
-		e.binaryEncodeCall(vname, "AppendBinary", "Bytes", "nil")
 	case TextMarshalerBin:
 		e.binaryEncodeCall(vname, "MarshalText", "Bytes", "")
-	case TextAppenderBin:
-		e.binaryEncodeCall(vname, "AppendText", "Bytes", "nil")
 	case TextMarshalerString:
 		e.binaryEncodeCall(vname, "MarshalText", "String", "")
+	case BinaryAppender:
+		// We do not know if the interface is implemented on pointer or value.
+		vname = strings.Trim(vname, "*()")
+		e.writeAndCheck("BinaryAppender", literalFmt, vname)
+	case TextAppenderBin:
+		vname = strings.Trim(vname, "*()")
+		e.writeAndCheck("TextAppender", literalFmt, vname)
 	case TextAppenderString:
-		e.binaryEncodeCall(vname, "AppendText", "String", "nil")
+		vname = strings.Trim(vname, "*()")
+		e.writeAndCheck("TextAppenderString", literalFmt, vname)
 	case IDENT: // unknown identity
 		dst := b.BaseType()
 		if b.typeParams.isPtr {
