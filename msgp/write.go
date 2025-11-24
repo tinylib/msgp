@@ -893,7 +893,7 @@ var bytesPool = sync.Pool{New: func() any { return make([]byte, 0, 1024) }}
 // encoding.BinaryAppender as a bin array.
 func (mw *Writer) WriteBinaryAppender(b encoding.BinaryAppender) error {
 	dst := bytesPool.Get().([]byte)
-	defer bytesPool.Put(dst)
+	defer bytesPool.Put(dst) //nolint:staticcheck
 	dst, err := b.AppendBinary(dst[:0])
 	if err != nil {
 		return err
@@ -905,7 +905,7 @@ func (mw *Writer) WriteBinaryAppender(b encoding.BinaryAppender) error {
 // encoding.TextAppender as a bin array.
 func (mw *Writer) WriteTextAppender(b encoding.TextAppender) error {
 	dst := bytesPool.Get().([]byte)
-	defer bytesPool.Put(dst)
+	defer bytesPool.Put(dst) //nolint:staticcheck
 	dst, err := b.AppendText(dst[:0])
 	if err != nil {
 		return err
@@ -917,7 +917,7 @@ func (mw *Writer) WriteTextAppender(b encoding.TextAppender) error {
 // encoding.TextAppender as a string.
 func (mw *Writer) WriteTextAppenderString(b encoding.TextAppender) error {
 	dst := bytesPool.Get().([]byte)
-	defer bytesPool.Put(dst)
+	defer bytesPool.Put(dst) //nolint:staticcheck
 	dst, err := b.AppendText(dst[:0])
 	if err != nil {
 		return err
