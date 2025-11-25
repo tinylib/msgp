@@ -376,20 +376,20 @@ func (m *marshalGen) gBase(b *BaseElem) {
 		echeck = true
 		m.binaryMarshalCall(vname, "MarshalBinary", "", "msgp.AppendBytes")
 	case BinaryAppender:
-		echeck = true
-		m.binaryAppendCall(vname, "AppendBinary", "msgp.BytesPrefixSize", "msgp.AppendBytes")
+		echeck = false
+		m.binaryAppendCall(vname, "AppendBinary", "msgp.AppendBytes")
 	case TextMarshalerBin:
 		echeck = true
 		m.binaryMarshalCall(vname, "MarshalText", "", "msgp.AppendBytes")
 	case TextAppenderBin:
-		echeck = true
-		m.binaryAppendCall(vname, "AppendText", "msgp.BytesPrefixSize", "msgp.AppendBytes")
+		echeck = false
+		m.binaryAppendCall(vname, "AppendText", "msgp.AppendBytes")
 	case TextMarshalerString:
 		echeck = true
 		m.binaryMarshalCall(vname, "MarshalText", "string", "msgp.AppendString")
 	case TextAppenderString:
-		echeck = true
-		m.binaryAppendCall(vname, "AppendText", "msgp.StringPrefixSize", "msgp.AppendString")
+		echeck = false
+		m.binaryAppendCall(vname, "AppendText", "msgp.AppendString")
 	case IDENT:
 		dst := b.BaseType()
 		if b.typeParams.isPtr {
@@ -419,6 +419,7 @@ func (m *marshalGen) gBase(b *BaseElem) {
 // binaryMarshalCall generates code for marshaler interfaces that return []byte
 func (m *marshalGen) binaryMarshalCall(vname, method, convert, appendFunc string) {
 	bts := randIdent()
+	vname = strings.Trim(vname, "(*)")
 	m.p.printf("\nvar %s []byte", bts)
 	m.p.printf("\n%s, err = %s.%s()", bts, vname, method)
 	m.p.wrapErrCheck(m.ctx.ArgsStr())
@@ -430,21 +431,18 @@ func (m *marshalGen) binaryMarshalCall(vname, method, convert, appendFunc string
 }
 
 // binaryAppendCall generates code for appender interfaces that use pre-allocated buffer.
-// This should ensure that we at most only have to make 1 allocation to extend the slice.
-func (m *marshalGen) binaryAppendCall(vname, method, prefixSize, appendFunc string) {
-	bts := randIdent()
+// We optimize for cases where the size is 0-256 bytes.
+func (m *marshalGen) binaryAppendCall(vname, method, appendFunc string) {
 	sz := randIdent()
-	m.p.printf("\nvar %s []byte", bts)
-	// append to always have space for the header.
-	m.p.printf("\n%s = append(o, make([]byte, %s)...)", bts, prefixSize)
-	m.p.printf("\n%s, err = %s.%s(%s)", bts, vname, method, bts)
+	vname = strings.Trim(vname, "(*)")
+	// Reserve 2 bytes for the header bin8 or str8.
+	m.p.printf("\no = append(o, 0, 0); %s := len(o)", sz)
+	m.p.printf("\no, err = %s.%s(o)", vname, method)
 	m.p.wrapErrCheck(m.ctx.ArgsStr())
-	m.p.printf("\n%s := len(%s) - len(o) - %s", sz, bts, prefixSize)
+	m.p.printf("\n%s = len(o) - %s", sz, sz)
 	if appendFunc == "msgp.AppendString" {
-		m.p.printf("\no = msgp.AppendString(o, string(%s[len(%s) - %s:]))", bts, bts, sz)
+		m.p.printf("\no = msgp.AppendBytesStringTwoPrefixed(o, %s)", sz)
 	} else {
-		m.p.printf("\no = msgp.AppendBytesHeader(o, uint32(%s))", sz)
-		m.p.wrapErrCheck(m.ctx.ArgsStr())
-		m.p.printf("\no = append(o, %s[len(%s) - %s:]...)", bts, bts, sz)
+		m.p.printf("\no = msgp.AppendBytesTwoPrefixed(o, %s)", sz)
 	}
 }

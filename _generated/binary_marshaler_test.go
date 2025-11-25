@@ -2,6 +2,7 @@ package _generated
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/tinylib/msgp/msgp"
@@ -417,43 +418,46 @@ func TestTextAppenderAsStringPositioning(t *testing.T) {
 }
 
 func TestBinaryAppenderDirective(t *testing.T) {
-	// Test BinaryAppender interface
-	appender := &BinaryAppenderType{Value: "test_binary"}
+	for _, size := range []int{10, 100, 1000, 100000} {
 
-	// Test round trip
-	data, err := appender.MarshalMsg(nil)
-	if err != nil {
-		t.Fatalf("Failed to marshal: %v", err)
-	}
+		// Test BinaryAppender interface
+		appender := &BinaryAppenderType{Value: strings.Repeat("a", size)}
 
-	var decoded BinaryAppenderType
-	_, err = decoded.UnmarshalMsg(data)
-	if err != nil {
-		t.Fatalf("Failed to unmarshal: %v", err)
-	}
+		// Test round trip
+		data, err := appender.MarshalMsg(nil)
+		if err != nil {
+			t.Fatalf("Failed to marshal: %v", err)
+		}
 
-	if decoded.Value != "binappend:test_binary" {
-		t.Errorf("Expected 'binappend:test_binary', got '%s'", decoded.Value)
-	}
+		var decoded BinaryAppenderType
+		_, err = decoded.UnmarshalMsg(data)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal: %v", err)
+		}
 
-	// Test encode/decode
-	var buf bytes.Buffer
-	writer := msgp.NewWriter(&buf)
-	err = appender.EncodeMsg(writer)
-	if err != nil {
-		t.Fatalf("Failed to encode: %v", err)
-	}
-	writer.Flush()
+		if want := "binappend:" + appender.Value; decoded.Value != want {
+			t.Errorf("Expected '%s', got '%s'", want, decoded.Value)
+		}
 
-	reader := msgp.NewReader(&buf)
-	var decoded2 BinaryAppenderType
-	err = decoded2.DecodeMsg(reader)
-	if err != nil {
-		t.Fatalf("Failed to decode: %v", err)
-	}
+		// Test encode/decode
+		var buf bytes.Buffer
+		writer := msgp.NewWriter(&buf)
+		err = appender.EncodeMsg(writer)
+		if err != nil {
+			t.Fatalf("Failed to encode: %v", err)
+		}
+		writer.Flush()
 
-	if decoded2.Value != "binappend:test_binary" {
-		t.Errorf("Expected 'binappend:test_binary', got '%s'", decoded2.Value)
+		reader := msgp.NewReader(&buf)
+		var decoded2 BinaryAppenderType
+		err = decoded2.DecodeMsg(reader)
+		if err != nil {
+			t.Fatalf("Failed to decode: %v", err)
+		}
+
+		if want := "binappend:" + appender.Value; decoded2.Value != want {
+			t.Errorf("Expected '%s', got '%s'", want, decoded2.Value)
+		}
 	}
 }
 

@@ -359,6 +359,8 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 // binaryUnmarshalCall generates code for unmarshaling marshaler/appender interfaces
 func (u *unmarshalGen) binaryUnmarshalCall(refname, unmarshalMethod, readType string) {
 	tmpBytes := randIdent()
+	refname = strings.Trim(refname, "(*)")
+
 	u.p.printf("\nvar %s []byte", tmpBytes)
 	if readType == "String" {
 		u.p.printf("\n%s, bts, err = msgp.ReadStringZC(bts)", tmpBytes)
@@ -367,7 +369,6 @@ func (u *unmarshalGen) binaryUnmarshalCall(refname, unmarshalMethod, readType st
 	}
 	u.p.wrapErrCheck(u.ctx.ArgsStr())
 	u.p.printf("\nerr = %s.%s(%s)", refname, unmarshalMethod, tmpBytes)
-	u.p.wrapErrCheck(u.ctx.ArgsStr())
 }
 
 func (u *unmarshalGen) gBase(b *BaseElem) {
