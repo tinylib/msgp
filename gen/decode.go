@@ -141,42 +141,11 @@ func (d *decodeGen) assignMap(name string, typ string, fieldLimit uint32) {
 	}
 }
 
-func (d *decodeGen) readBytesWithLimit(vname, checkNil string, fieldLimit uint32) {
+// readBytesWithLimit will read bytes into vname.
+// Returns field to check for nil.
+func (d *decodeGen) readBytesWithLimit(vname string, fieldLimit uint32) string {
 	if !d.p.ok() {
-		return
-	}
-	d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
-	d.p.wrapErrCheck(d.ctx.ArgsStr())
-
-	// Determine effective limit: field limit > context field limit > file limit
-	var limit uint32
-	var limitName string
-
-	if fieldLimit > 0 {
-		// Explicit field limit passed as parameter
-		limit = fieldLimit
-		limitName = fmt.Sprintf("%d", fieldLimit)
-	} else if d.ctx.currentFieldArrayLimit != math.MaxUint32 {
-		// Field limit from context (set during field processing)
-		limit = d.ctx.currentFieldArrayLimit
-		limitName = fmt.Sprintf("%d", d.ctx.currentFieldArrayLimit)
-	} else if d.ctx.arrayLimit != math.MaxUint32 {
-		// File-level limit
-		limit = d.ctx.arrayLimit
-		limitName = fmt.Sprintf("%slimitArrays", d.ctx.limitPrefix)
-	}
-
-	if limit > 0 && limit != math.MaxUint32 {
-		d.p.printf("\nif uint32(len(%s)) > %s {", checkNil, limitName)
-		d.p.printf("\nerr = msgp.ErrLimitExceeded")
-		d.p.printf("\nreturn")
-		d.p.printf("\n}")
-	}
-}
-
-func (d *decodeGen) checkByteLimits(vname string, fieldLimit uint32) {
-	if !d.p.ok() {
-		return
+		return ""
 	}
 
 	// Determine effective limit: field limit > context field limit > file limit
@@ -197,11 +166,33 @@ func (d *decodeGen) checkByteLimits(vname string, fieldLimit uint32) {
 		limitName = fmt.Sprintf("%slimitArrays", d.ctx.limitPrefix)
 	}
 
+	// Choose reading strategy based on whether limits exist
 	if limit > 0 && limit != math.MaxUint32 {
-		d.p.printf("\nif uint32(len(%s)) > %s {", vname, limitName)
+		// Limits exist - use header-first security approach
+		sz := randIdent()
+		d.p.printf("\nvar %s uint32", sz)
+		d.p.printf("\n%s, err = dc.ReadBytesHeader()", sz)
+		d.p.wrapErrCheck(d.ctx.ArgsStr())
+
+		// Check size against limit before allocating
+		d.p.printf("\nif %s > %s {", sz, limitName)
 		d.p.printf("\nerr = msgp.ErrLimitExceeded")
 		d.p.printf("\nreturn")
 		d.p.printf("\n}")
+
+		// Allocate and read the data
+		// regular field - ensure always allocated, even for size 0
+		d.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", vname, vname, sz)
+		d.p.printf("\n%s = make([]byte, %s)", vname, sz)
+		d.p.printf("\n} else {")
+		d.p.printf("\n%s = %s[:%s]", vname, vname, sz)
+		d.p.printf("\n}")
+		d.p.printf("\n_, err = dc.ReadFull(%s)", vname)
+		return ""
+	} else {
+		// No limits - use original direct reading approach for efficiency
+		d.p.printf("\n%s, err = dc.ReadBytes(%s)", vname, vname)
+		return vname
 	}
 }
 
@@ -349,6 +340,48 @@ func (d *decodeGen) structAsMap(s *Struct) {
 	}
 }
 
+func (d *decodeGen) readBytesConvertWithLimit(tmp string, allowNil bool, receiverVar string) {
+	if !d.p.ok() {
+		return
+	}
+
+	// Check if limits exist to decide on reading strategy
+	if d.ctx.currentFieldArrayLimit != math.MaxUint32 || d.ctx.arrayLimit != math.MaxUint32 {
+		// Limits exist - use header-first approach for security
+		sz := randIdent()
+		d.p.printf("\nvar %s uint32", sz)
+		d.p.printf("\n%s, err = dc.ReadBytesHeader()", sz)
+		d.p.wrapErrCheck(d.ctx.ArgsStr())
+
+		// Check array limits for bytes (use currentFieldArrayLimit or arrayLimit)
+		if d.ctx.currentFieldArrayLimit != math.MaxUint32 {
+			d.p.printf("\nif %s > %d {", sz, d.ctx.currentFieldArrayLimit)
+			d.p.printf("\nerr = msgp.ErrLimitExceeded")
+			d.p.printf("\nreturn")
+			d.p.printf("\n}")
+		} else if d.ctx.arrayLimit != math.MaxUint32 {
+			d.p.printf("\nif %s > %slimitArrays {", sz, d.ctx.limitPrefix)
+			d.p.printf("\nerr = msgp.ErrLimitExceeded")
+			d.p.printf("\nreturn")
+			d.p.printf("\n}")
+		}
+
+		// Allocate and read with type conversion
+		if tmp != receiverVar {
+			d.p.printf("\n%s = %s", tmp, receiverVar)
+		}
+		d.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", tmp, tmp, sz)
+		d.p.printf("\n%s = make([]byte, %s)", tmp, sz)
+		d.p.printf("\n} else {")
+		d.p.printf("\n%s = %s[:%s]", tmp, tmp, sz)
+		d.p.printf("\n}")
+		d.p.printf("\n_, err = dc.ReadFull(%s)", tmp)
+	} else {
+		// No limits - use original efficient approach with receiver cast as destination
+		d.p.printf("\n%s, err = dc.ReadBytes(%s)", tmp, receiverVar)
+	}
+}
+
 func (d *decodeGen) gBase(b *BaseElem) {
 	if !d.p.ok() {
 		return
@@ -356,8 +389,10 @@ func (d *decodeGen) gBase(b *BaseElem) {
 
 	// open block for 'tmp'
 	var tmp string
+	lowered := b.Varname()             // passed as argument
 	if b.Convert && b.Value != IDENT { // we don't need block for 'tmp' in case of IDENT
 		tmp = randIdent()
+		lowered = b.ToBase() + "(" + lowered + ")"
 		d.p.printf("\n{ var %s %s", tmp, b.BaseType())
 	}
 
@@ -378,15 +413,10 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	switch b.Value {
 	case Bytes:
 		if b.Convert {
-			lowered := b.ToBase() + "(" + vname + ")"
-			d.p.printf("\n%s, err = dc.ReadBytes(%s)", tmp, lowered)
-			d.p.wrapErrCheck(d.ctx.ArgsStr())
+			d.readBytesConvertWithLimit(tmp, b.AllowNil(), lowered)
 			checkNil = tmp
-			// Check byte slice limits after reading
-			d.checkByteLimits(tmp, 0)
 		} else {
-			d.readBytesWithLimit(vname, vname, 0)
-			checkNil = vname
+			checkNil = d.readBytesWithLimit(vname, 0)
 		}
 	case BinaryMarshaler, BinaryAppender:
 		d.p.printf("\nerr = dc.ReadBinaryUnmarshal(%s)", alwaysRef)
