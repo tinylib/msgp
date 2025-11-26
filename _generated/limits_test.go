@@ -721,3 +721,666 @@ func TestAliasedTypesWithFieldLimits(t *testing.T) {
 		}
 	})
 }
+
+func TestAllowNilFunctionality(t *testing.T) {
+	// Test allownil functionality with DecodeMsg and UnmarshalMsg
+
+	t.Run("AllowNil_NilValues_DecodeMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Create message with nil values for allownil fields
+		buf := msgp.AppendMapHeader(nil, 8)
+
+		// NilSlice - send nil
+		buf = msgp.AppendString(buf, "nil_slice")
+		buf = msgp.AppendNil(buf)
+
+		// NilTightSlice - send nil
+		buf = msgp.AppendString(buf, "nil_tight_slice")
+		buf = msgp.AppendNil(buf)
+
+		// NilLooseSlice - send nil
+		buf = msgp.AppendString(buf, "nil_loose_slice")
+		buf = msgp.AppendNil(buf)
+
+		// NilMap - send nil
+		buf = msgp.AppendString(buf, "nil_map")
+		buf = msgp.AppendNil(buf)
+
+		// NilTightMap - send nil
+		buf = msgp.AppendString(buf, "nil_tight_map")
+		buf = msgp.AppendNil(buf)
+
+		// NilLooseMap - send nil
+		buf = msgp.AppendString(buf, "nil_loose_map")
+		buf = msgp.AppendNil(buf)
+
+		// RegularSlice - send empty slice
+		buf = msgp.AppendString(buf, "regular_slice")
+		buf = msgp.AppendBytes(buf, []byte{})
+
+		// RegularMap - send empty map
+		buf = msgp.AppendString(buf, "regular_map")
+		buf = msgp.AppendMapHeader(buf, 0)
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != nil {
+			t.Fatalf("DecodeMsg failed with allownil fields: %v", err)
+		}
+
+		// Verify nil fields are properly handled
+		if data.NilSlice != nil {
+			t.Errorf("Expected NilSlice to be nil, got %v", data.NilSlice)
+		}
+		if data.NilTightSlice != nil {
+			t.Errorf("Expected NilTightSlice to be nil, got %v", data.NilTightSlice)
+		}
+		if data.NilLooseSlice != nil {
+			t.Errorf("Expected NilLooseSlice to be nil, got %v", data.NilLooseSlice)
+		}
+		if data.NilMap != nil {
+			t.Errorf("Expected NilMap to be nil, got %v", data.NilMap)
+		}
+		if data.NilTightMap != nil {
+			t.Errorf("Expected NilTightMap to be nil, got %v", data.NilTightMap)
+		}
+		if data.NilLooseMap != nil {
+			t.Errorf("Expected NilLooseMap to be nil, got %v", data.NilLooseMap)
+		}
+
+		// Regular fields should be empty but allocated
+		if data.RegularSlice == nil {
+			t.Error("Expected RegularSlice to be allocated (empty), got nil")
+		}
+		if len(data.RegularSlice) != 0 {
+			t.Errorf("Expected RegularSlice to be empty, got length %d", len(data.RegularSlice))
+		}
+		if data.RegularMap == nil {
+			t.Error("Expected RegularMap to be allocated (empty), got nil")
+		}
+		if len(data.RegularMap) != 0 {
+			t.Errorf("Expected RegularMap to be empty, got length %d", len(data.RegularMap))
+		}
+	})
+
+	t.Run("AllowNil_NilValues_UnmarshalMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Create same message for unmarshal test
+		buf := msgp.AppendMapHeader(nil, 8)
+		buf = msgp.AppendString(buf, "nil_slice")
+		buf = msgp.AppendNil(buf)
+		buf = msgp.AppendString(buf, "nil_tight_slice")
+		buf = msgp.AppendNil(buf)
+		buf = msgp.AppendString(buf, "nil_loose_slice")
+		buf = msgp.AppendNil(buf)
+		buf = msgp.AppendString(buf, "nil_map")
+		buf = msgp.AppendNil(buf)
+		buf = msgp.AppendString(buf, "nil_tight_map")
+		buf = msgp.AppendNil(buf)
+		buf = msgp.AppendString(buf, "nil_loose_map")
+		buf = msgp.AppendNil(buf)
+		buf = msgp.AppendString(buf, "regular_slice")
+		buf = msgp.AppendBytes(buf, []byte{})
+		buf = msgp.AppendString(buf, "regular_map")
+		buf = msgp.AppendMapHeader(buf, 0)
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != nil {
+			t.Fatalf("UnmarshalMsg failed with allownil fields: %v", err)
+		}
+
+		// Same verification as DecodeMsg test
+		if data.NilSlice != nil {
+			t.Errorf("Expected NilSlice to be nil, got %v", data.NilSlice)
+		}
+		if data.RegularSlice == nil {
+			t.Error("Expected RegularSlice to be allocated (empty), got nil")
+		}
+	})
+
+	t.Run("AllowNil_WithData_RespectLimits", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Test that allownil fields still respect limits when they have data
+		buf := msgp.AppendMapHeader(nil, 3)
+
+		// NilTightSlice with data exceeding limit (5)
+		buf = msgp.AppendString(buf, "nil_tight_slice")
+		buf = msgp.AppendArrayHeader(buf, 10) // Exceeds field limit of 5
+		for i := 0; i < 10; i++ {
+			buf = msgp.AppendInt(buf, i)
+		}
+
+		// NilLooseSlice with data within limit (200)
+		buf = msgp.AppendString(buf, "nil_loose_slice")
+		buf = msgp.AppendArrayHeader(buf, 150) // Within field limit of 200
+		for i := 0; i < 150; i++ {
+			buf = msgp.AppendString(buf, "test")
+		}
+
+		// NilTightMap with data exceeding limit (3)
+		buf = msgp.AppendString(buf, "nil_tight_map")
+		buf = msgp.AppendMapHeader(buf, 5) // Exceeds field limit of 3
+		for i := 0; i < 5; i++ {
+			buf = msgp.AppendString(buf, fmt.Sprintf("key%d", i))
+			buf = msgp.AppendInt(buf, i)
+		}
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded for allownil field exceeding limit, got %v", err)
+		}
+	})
+
+	t.Run("AllowNil_WithData_WithinLimits", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Test that allownil fields work normally when within limits
+		buf := msgp.AppendMapHeader(nil, 3)
+
+		// NilTightSlice with data within limit (5)
+		buf = msgp.AppendString(buf, "nil_tight_slice")
+		buf = msgp.AppendArrayHeader(buf, 3) // Within field limit of 5
+		for i := 0; i < 3; i++ {
+			buf = msgp.AppendInt(buf, i)
+		}
+
+		// NilSlice with data within file limit (100)
+		buf = msgp.AppendString(buf, "nil_slice")
+		buf = msgp.AppendBytes(buf, make([]byte, 50)) // Within file limit of 100
+
+		// NilTightMap with data within limit (3)
+		buf = msgp.AppendString(buf, "nil_tight_map")
+		buf = msgp.AppendMapHeader(buf, 2) // Within field limit of 3
+		buf = msgp.AppendString(buf, "key1")
+		buf = msgp.AppendInt(buf, 1)
+		buf = msgp.AppendString(buf, "key2")
+		buf = msgp.AppendInt(buf, 2)
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != nil {
+			t.Fatalf("Unexpected error for allownil fields within limits: %v", err)
+		}
+
+		// Verify data was properly loaded
+		if len(data.NilTightSlice) != 3 {
+			t.Errorf("Expected NilTightSlice length 3, got %d", len(data.NilTightSlice))
+		}
+		if len(data.NilSlice) != 50 {
+			t.Errorf("Expected NilSlice length 50, got %d", len(data.NilSlice))
+		}
+		if len(data.NilTightMap) != 2 {
+			t.Errorf("Expected NilTightMap length 2, got %d", len(data.NilTightMap))
+		}
+	})
+}
+
+func TestAllowNilZeroSizedSlices(t *testing.T) {
+	// Test the zero-sized slice allocation behavior
+
+	t.Run("ZeroSized_NilBytes_DecodeMsg", func(t *testing.T) {
+		data := AllowNilZeroTestData{}
+
+		// Send zero-sized byte slice
+		buf := msgp.AppendMapHeader(nil, 2)
+		buf = msgp.AppendString(buf, "nil_bytes")
+		buf = msgp.AppendBytes(buf, []byte{}) // Zero-sized bytes
+		buf = msgp.AppendString(buf, "regular_bytes")
+		buf = msgp.AppendBytes(buf, []byte{})
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != nil {
+			t.Fatalf("DecodeMsg failed: %v", err)
+		}
+
+		// Both should be allocated but empty (not nil)
+		if data.NilBytes == nil {
+			t.Error("Expected NilBytes to be allocated (empty), got nil - allownil should allocate zero-sized slice")
+		}
+		if len(data.NilBytes) != 0 {
+			t.Errorf("Expected NilBytes to be empty, got length %d", len(data.NilBytes))
+		}
+		if data.RegularBytes == nil {
+			t.Error("Expected RegularBytes to be allocated (empty), got nil")
+		}
+		if len(data.RegularBytes) != 0 {
+			t.Errorf("Expected RegularBytes to be empty, got length %d", len(data.RegularBytes))
+		}
+	})
+
+	t.Run("ZeroSized_NilBytes_UnmarshalMsg", func(t *testing.T) {
+		data := AllowNilZeroTestData{}
+
+		// Same test for unmarshal
+		buf := msgp.AppendMapHeader(nil, 2)
+		buf = msgp.AppendString(buf, "nil_bytes")
+		buf = msgp.AppendBytes(buf, []byte{})
+		buf = msgp.AppendString(buf, "regular_bytes")
+		buf = msgp.AppendBytes(buf, []byte{})
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != nil {
+			t.Fatalf("UnmarshalMsg failed: %v", err)
+		}
+
+		// Verify zero-sized allocation
+		if data.NilBytes == nil {
+			t.Error("Expected NilBytes to be allocated (empty), got nil - allownil should allocate zero-sized slice")
+		}
+		if len(data.NilBytes) != 0 {
+			t.Errorf("Expected NilBytes to be empty, got length %d", len(data.NilBytes))
+		}
+	})
+
+	t.Run("ActualNil_vs_ZeroSized", func(t *testing.T) {
+		data1 := AllowNilZeroTestData{}
+		data2 := AllowNilZeroTestData{}
+
+		// Test 1: Send actual nil
+		buf1 := msgp.AppendMapHeader(nil, 1)
+		buf1 = msgp.AppendString(buf1, "nil_bytes")
+		buf1 = msgp.AppendNil(buf1)
+
+		// Test 2: Send zero-sized slice
+		buf2 := msgp.AppendMapHeader(nil, 1)
+		buf2 = msgp.AppendString(buf2, "nil_bytes")
+		buf2 = msgp.AppendBytes(buf2, []byte{})
+
+		_, err1 := data1.UnmarshalMsg(buf1)
+		if err1 != nil {
+			t.Fatalf("UnmarshalMsg with nil failed: %v", err1)
+		}
+
+		_, err2 := data2.UnmarshalMsg(buf2)
+		if err2 != nil {
+			t.Fatalf("UnmarshalMsg with zero-sized failed: %v", err2)
+		}
+
+		// data1 received actual nil - should remain nil for allownil field
+		if data1.NilBytes != nil {
+			t.Errorf("Expected data1.NilBytes (from nil) to remain nil, got %v", data1.NilBytes)
+		}
+		// data2 received zero-sized slice - should be allocated empty slice
+		if data2.NilBytes == nil {
+			t.Error("Expected data2.NilBytes (from zero-sized) to be allocated, got nil")
+		}
+
+		// Both should be empty
+		if len(data1.NilBytes) != 0 {
+			t.Errorf("Expected data1.NilBytes length 0, got %d", len(data1.NilBytes))
+		}
+		if len(data2.NilBytes) != 0 {
+			t.Errorf("Expected data2.NilBytes length 0, got %d", len(data2.NilBytes))
+		}
+	})
+}
+
+func TestAllowNilSecurityLimits(t *testing.T) {
+	// Test that allownil fields still enforce security limits properly
+
+	t.Run("AllowNil_BytesExceedLimit_UnmarshalMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Try to send bytes that exceed file limit (100)
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_slice") // Uses file limit (100)
+		buf = msgp.AppendBytes(buf, make([]byte, 150)) // Exceeds limit
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded for allownil bytes exceeding limit, got %v", err)
+		}
+	})
+
+	t.Run("AllowNil_BytesExceedLimit_DecodeMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Try to send bytes that exceed file limit (100)
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_slice") // Uses file limit (100)
+		buf = msgp.AppendBytes(buf, make([]byte, 150)) // Exceeds limit
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded for allownil bytes exceeding limit, got %v", err)
+		}
+	})
+
+	t.Run("AllowNil_SliceExceedFieldLimit_UnmarshalMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Try to send slice that exceeds field limit
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_tight_slice") // Field limit = 5
+		buf = msgp.AppendArrayHeader(buf, 8) // Exceeds field limit
+		for i := 0; i < 8; i++ {
+			buf = msgp.AppendInt(buf, i)
+		}
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded for allownil slice exceeding field limit, got %v", err)
+		}
+	})
+
+	t.Run("AllowNil_SliceExceedFieldLimit_DecodeMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Try to send slice that exceeds field limit
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_tight_slice") // Field limit = 5
+		buf = msgp.AppendArrayHeader(buf, 8) // Exceeds field limit
+		for i := 0; i < 8; i++ {
+			buf = msgp.AppendInt(buf, i)
+		}
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded for allownil slice exceeding field limit, got %v", err)
+		}
+	})
+
+	t.Run("AllowNil_MapExceedFieldLimit_UnmarshalMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Try to send map that exceeds field limit
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_tight_map") // Field limit = 3
+		buf = msgp.AppendMapHeader(buf, 5) // Exceeds field limit
+		for i := 0; i < 5; i++ {
+			buf = msgp.AppendString(buf, fmt.Sprintf("key%d", i))
+			buf = msgp.AppendInt(buf, i)
+		}
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded for allownil map exceeding field limit, got %v", err)
+		}
+	})
+
+	t.Run("AllowNil_MapExceedFieldLimit_DecodeMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Try to send map that exceeds field limit
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_tight_map") // Field limit = 3
+		buf = msgp.AppendMapHeader(buf, 5) // Exceeds field limit
+		for i := 0; i < 5; i++ {
+			buf = msgp.AppendString(buf, fmt.Sprintf("key%d", i))
+			buf = msgp.AppendInt(buf, i)
+		}
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded for allownil map exceeding field limit, got %v", err)
+		}
+	})
+
+	t.Run("AllowNil_HeaderFirstSecurity_UnmarshalMsg", func(t *testing.T) {
+		// Verify that allownil still uses header-first security approach
+		data := AllowNilTestData{}
+
+		// Create a message that would cause memory exhaustion if read data-first
+		// This test ensures that even allownil fields check limits before allocation
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_slice")
+
+		// Manually craft a message with a huge size header but don't include the data
+		// This should fail at the limit check, not during data reading
+		buf = append(buf, 0xc6) // bin32 format
+		buf = append(buf, 0x00, 0x00, 0x27, 0x10) // size = 10000 (exceeds limit of 100)
+		// Don't append actual data - should fail before trying to read it
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded (header-first check), got %v", err)
+		}
+	})
+
+	t.Run("AllowNil_HeaderFirstSecurity_DecodeMsg", func(t *testing.T) {
+		// Verify that allownil still uses header-first security approach with DecodeMsg
+		data := AllowNilTestData{}
+
+		// Create a message that would cause memory exhaustion if read data-first
+		// This test ensures that even allownil fields check limits before allocation
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_slice")
+
+		// Manually craft a message with a huge size header but don't include the data
+		// This should fail at the limit check, not during data reading
+		buf = append(buf, 0xc6) // bin32 format
+		buf = append(buf, 0x00, 0x00, 0x27, 0x10) // size = 10000 (exceeds limit of 100)
+		// Don't append actual data - should fail before trying to read it
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded (header-first check), got %v", err)
+		}
+	})
+}
+
+func TestAllowNilZeroCopy(t *testing.T) {
+	// Test that zerocopy+allownil combination works correctly with security fixes
+
+	t.Run("ZeroCopy_AllowNil_NilValues_UnmarshalMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Create message with nil for zerocopy+allownil field
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_zc_slice")
+		buf = msgp.AppendNil(buf)
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != nil {
+			t.Fatalf("UnmarshalMsg failed with zerocopy allownil nil value: %v", err)
+		}
+
+		// Field should remain nil
+		if data.NilZCSlice != nil {
+			t.Errorf("Expected NilZCSlice to remain nil, got %v", data.NilZCSlice)
+		}
+	})
+
+	t.Run("ZeroCopy_AllowNil_EmptyData_UnmarshalMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Create message with empty data for zerocopy+allownil field
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_zc_slice")
+		buf = msgp.AppendBytes(buf, []byte{})
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != nil {
+			t.Fatalf("UnmarshalMsg failed with zerocopy allownil empty data: %v", err)
+		}
+
+		// Field should be allocated but empty
+		if data.NilZCSlice == nil {
+			t.Error("Expected NilZCSlice to be allocated (empty), got nil")
+		}
+		if len(data.NilZCSlice) != 0 {
+			t.Errorf("Expected NilZCSlice to be empty, got length %d", len(data.NilZCSlice))
+		}
+	})
+
+	t.Run("ZeroCopy_AllowNil_WithData_UnmarshalMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+		testData := []byte{1, 2, 3, 4, 5}
+
+		// Create message with actual data for zerocopy+allownil field
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_zc_slice")
+		buf = msgp.AppendBytes(buf, testData)
+
+		originalBuf := make([]byte, len(buf))
+		copy(originalBuf, buf)
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != nil {
+			t.Fatalf("UnmarshalMsg failed with zerocopy allownil data: %v", err)
+		}
+
+		// Field should contain the data
+		if data.NilZCSlice == nil {
+			t.Error("Expected NilZCSlice to be allocated, got nil")
+		}
+		if len(data.NilZCSlice) != len(testData) {
+			t.Errorf("Expected NilZCSlice length %d, got %d", len(testData), len(data.NilZCSlice))
+		}
+		for i, b := range testData {
+			if data.NilZCSlice[i] != b {
+				t.Errorf("Expected NilZCSlice[%d] = %d, got %d", i, b, data.NilZCSlice[i])
+			}
+		}
+	})
+
+	t.Run("ZeroCopy_AllowNil_SecurityLimits_UnmarshalMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Test that zerocopy+allownil still enforces limits
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_zc_tight_slice") // Field limit = 5
+
+		// Create oversized data that should exceed field limit
+		oversizedData := make([]byte, 10) // Exceeds field limit of 5
+		buf = msgp.AppendBytes(buf, oversizedData)
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded for zerocopy allownil field exceeding limit, got %v", err)
+		}
+	})
+
+	t.Run("ZeroCopy_AllowNil_HeaderFirstSecurity_UnmarshalMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Test header-first security for zerocopy+allownil
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_zc_slice")
+
+		// Manually craft message with huge header but no data
+		buf = append(buf, 0xc6) // bin32 format
+		buf = append(buf, 0x00, 0x00, 0x27, 0x10) // size = 10000 (exceeds limit)
+
+		_, err := data.UnmarshalMsg(buf)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded (header-first check) for zerocopy allownil, got %v", err)
+		}
+	})
+
+	// Add DecodeMsg versions for complete coverage
+	t.Run("ZeroCopy_AllowNil_NilValues_DecodeMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Create message with nil for zerocopy+allownil field
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_zc_slice")
+		buf = msgp.AppendNil(buf)
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != nil {
+			t.Fatalf("DecodeMsg failed with zerocopy allownil nil value: %v", err)
+		}
+
+		// Field should remain nil
+		if data.NilZCSlice != nil {
+			t.Errorf("Expected NilZCSlice to remain nil, got %v", data.NilZCSlice)
+		}
+	})
+
+	t.Run("ZeroCopy_AllowNil_EmptyData_DecodeMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Create message with empty data for zerocopy+allownil field
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_zc_slice")
+		buf = msgp.AppendBytes(buf, []byte{})
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != nil {
+			t.Fatalf("DecodeMsg failed with zerocopy allownil empty data: %v", err)
+		}
+
+		// Field should be allocated but empty
+		if data.NilZCSlice == nil {
+			t.Error("Expected NilZCSlice to be allocated (empty), got nil")
+		}
+		if len(data.NilZCSlice) != 0 {
+			t.Errorf("Expected NilZCSlice to be empty, got length %d", len(data.NilZCSlice))
+		}
+	})
+
+	t.Run("ZeroCopy_AllowNil_WithData_DecodeMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+		testData := []byte{1, 2, 3, 4, 5}
+
+		// Create message with actual data for zerocopy+allownil field
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_zc_slice")
+		buf = msgp.AppendBytes(buf, testData)
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != nil {
+			t.Fatalf("DecodeMsg failed with zerocopy allownil data: %v", err)
+		}
+
+		// Field should contain the data
+		if data.NilZCSlice == nil {
+			t.Error("Expected NilZCSlice to be allocated, got nil")
+		}
+		if len(data.NilZCSlice) != len(testData) {
+			t.Errorf("Expected NilZCSlice length %d, got %d", len(testData), len(data.NilZCSlice))
+		}
+		for i, b := range testData {
+			if data.NilZCSlice[i] != b {
+				t.Errorf("Expected NilZCSlice[%d] = %d, got %d", i, b, data.NilZCSlice[i])
+			}
+		}
+	})
+
+	t.Run("ZeroCopy_AllowNil_SecurityLimits_DecodeMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Test that zerocopy+allownil still enforces limits
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_zc_tight_slice") // Field limit = 5
+
+		// Create oversized data that should exceed field limit
+		oversizedData := make([]byte, 10) // Exceeds field limit of 5
+		buf = msgp.AppendBytes(buf, oversizedData)
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded for zerocopy allownil field exceeding limit, got %v", err)
+		}
+	})
+
+	t.Run("ZeroCopy_AllowNil_HeaderFirstSecurity_DecodeMsg", func(t *testing.T) {
+		data := AllowNilTestData{}
+
+		// Test header-first security for zerocopy+allownil
+		buf := msgp.AppendMapHeader(nil, 1)
+		buf = msgp.AppendString(buf, "nil_zc_slice")
+
+		// Manually craft message with huge header but no data
+		buf = append(buf, 0xc6) // bin32 format
+		buf = append(buf, 0x00, 0x00, 0x27, 0x10) // size = 10000 (exceeds limit)
+
+		reader := msgp.NewReader(bytes.NewReader(buf))
+		err := data.DecodeMsg(reader)
+		if err != msgp.ErrLimitExceeded {
+			t.Errorf("Expected ErrLimitExceeded (header-first check) for zerocopy allownil, got %v", err)
+		}
+	})
+}
