@@ -100,6 +100,18 @@ const (
 	AUint32
 	ABool
 
+	// Binary marshaler types
+	BinaryMarshaler // encoding.BinaryMarshaler/BinaryUnmarshaler
+	BinaryAppender  // encoding.BinaryAppender/BinaryUnmarshaler
+
+	// Text marshaler types (stored as binary by default)
+	TextMarshalerBin // encoding.TextMarshaler/TextUnmarshaler -> bin
+	TextAppenderBin  // encoding.TextAppender/TextUnmarshaler -> bin
+
+	// Text marshaler types (stored as string)
+	TextMarshalerString // encoding.TextMarshaler/TextUnmarshaler -> string
+	TextAppenderString  // encoding.TextAppender/TextUnmarshaler -> string
+
 	IDENT // IDENT means an unrecognized identifier
 )
 
@@ -491,7 +503,10 @@ func (s *Ptr) SetVarname(a string) {
 
 	case *BaseElem:
 		// identities have pointer receivers
-		if x.Value == IDENT {
+		// marshaler types also have pointer receivers
+		if x.Value == IDENT || x.Value == BinaryMarshaler || x.Value == BinaryAppender ||
+			x.Value == TextMarshalerBin || x.Value == TextAppenderBin ||
+			x.Value == TextMarshalerString || x.Value == TextAppenderString {
 			// replace directive sets Convert=true and Needsref=true
 			// since BaseElem is behind a pointer we set Needsref=false
 			if x.Convert {
@@ -673,6 +688,7 @@ type BaseElem struct {
 	zerocopy     bool      // Allow zerocopy for byte slices in unmarshal.
 	mustinline   bool      // must inline; not printable
 	needsref     bool      // needs reference for shim
+	parentIsPtr  bool      // parent is a pointer
 	allowNil     *bool     // Override from parent.
 }
 
@@ -938,6 +954,18 @@ func (k Primitive) String() string {
 		return "atomic.Uint32"
 	case ABool:
 		return "atomic.Bool"
+	case BinaryMarshaler:
+		return "BinaryMarshaler"
+	case BinaryAppender:
+		return "BinaryAppender"
+	case TextMarshalerBin:
+		return "TextMarshalerBin"
+	case TextAppenderBin:
+		return "TextAppenderBin"
+	case TextMarshalerString:
+		return "TextMarshalerString"
+	case TextAppenderString:
+		return "TextAppenderString"
 	case IDENT:
 		return "Ident"
 	default:

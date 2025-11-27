@@ -518,3 +518,49 @@ func AppendJSONNumber(b []byte, n json.Number) ([]byte, error) {
 	}
 	return b, err
 }
+
+// AppendBytesTwoPrefixed will add the length to a bin section written with
+// 2 bytes of space saved for a bin8 header.
+// If the sz cannot fit inside a bin8, the data will be moved to make space for the header.
+func AppendBytesTwoPrefixed(b []byte, sz int) []byte {
+	off := len(b) - sz - 2
+	switch {
+	case sz <= math.MaxUint8:
+		// Just write header...
+		prefixu8(b[off:], mbin8, uint8(sz))
+	case sz <= math.MaxUint16:
+		// Scoot one
+		b = append(b, 0)
+		copy(b[off+1:], b[off:])
+		prefixu16(b[off:], mbin16, uint16(sz))
+	default:
+		// Scoot three
+		b = append(b, 0, 0, 0)
+		copy(b[off+3:], b[off:])
+		prefixu32(b[off:], mbin32, uint32(sz))
+	}
+	return b
+}
+
+// AppendBytesStringTwoPrefixed will add the length to a string section written with
+// 2 bytes of space saved for a str8 header.
+// If the sz cannot fit inside a str8, the data will be moved to make space for the header.
+func AppendBytesStringTwoPrefixed(b []byte, sz int) []byte {
+	off := len(b) - sz - 2
+	switch {
+	case sz <= math.MaxUint8:
+		// Just write header...
+		prefixu8(b[off:], mstr8, uint8(sz))
+	case sz <= math.MaxUint16:
+		// Scoot one
+		b = append(b, 0)
+		copy(b[off+1:], b[off:])
+		prefixu16(b[off:], mstr16, uint16(sz))
+	default:
+		// Scoot three
+		b = append(b, 0, 0, 0)
+		copy(b[off+3:], b[off:])
+		prefixu32(b[off:], mstr32, uint32(sz))
+	}
+	return b
+}

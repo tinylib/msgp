@@ -399,6 +399,14 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	vname := b.Varname()  // e.g. "z.FieldOne"
 	bname := b.BaseName() // e.g. "Float64"
 	checkNil := vname     // Name of var to check for nil
+	alwaysRef := vname
+
+	// make sure we always reference the pointer
+	if strings.Contains(alwaysRef, "*") {
+		alwaysRef = strings.Trim(alwaysRef, "*()")
+	} else if !b.parentIsPtr {
+		alwaysRef = "&" + vname
+	}
 
 	// handle special cases
 	// for object type.
@@ -410,6 +418,12 @@ func (d *decodeGen) gBase(b *BaseElem) {
 		} else {
 			checkNil = d.readBytesWithLimit(vname, 0)
 		}
+	case BinaryMarshaler, BinaryAppender:
+		d.p.printf("\nerr = dc.ReadBinaryUnmarshal(%s)", alwaysRef)
+	case TextMarshalerBin, TextAppenderBin:
+		d.p.printf("\nerr = dc.ReadTextUnmarshal(%s)", alwaysRef)
+	case TextMarshalerString, TextAppenderString:
+		d.p.printf("\nerr = dc.ReadTextUnmarshalString(%s)", alwaysRef)
 	case IDENT:
 		dst := b.BaseType()
 		if b.typeParams.isPtr {
@@ -538,6 +552,10 @@ func (d *decodeGen) gPtr(p *Ptr) {
 		tp := p.typeParams
 		tp.isPtr = true
 		p.Value.SetTypeParams(tp)
+	}
+	if be, ok := p.Value.(*BaseElem); ok {
+		be.parentIsPtr = true
+		defer func() { be.parentIsPtr = false }()
 	}
 	next(d, p.Value)
 	d.p.closeblock()

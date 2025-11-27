@@ -372,6 +372,24 @@ func (m *marshalGen) gBase(b *BaseElem) {
 
 	var echeck bool
 	switch b.Value {
+	case BinaryMarshaler:
+		echeck = true
+		m.binaryMarshalCall(vname, "MarshalBinary", "", "msgp.AppendBytes")
+	case BinaryAppender:
+		echeck = false
+		m.binaryAppendCall(vname, "AppendBinary", "msgp.AppendBytes")
+	case TextMarshalerBin:
+		echeck = true
+		m.binaryMarshalCall(vname, "MarshalText", "", "msgp.AppendBytes")
+	case TextAppenderBin:
+		echeck = false
+		m.binaryAppendCall(vname, "AppendText", "msgp.AppendBytes")
+	case TextMarshalerString:
+		echeck = true
+		m.binaryMarshalCall(vname, "MarshalText", "string", "msgp.AppendString")
+	case TextAppenderString:
+		echeck = false
+		m.binaryAppendCall(vname, "AppendText", "msgp.AppendString")
 	case IDENT:
 		dst := b.BaseType()
 		if b.typeParams.isPtr {
@@ -395,5 +413,36 @@ func (m *marshalGen) gBase(b *BaseElem) {
 
 	if echeck {
 		m.p.wrapErrCheck(m.ctx.ArgsStr())
+	}
+}
+
+// binaryMarshalCall generates code for marshaler interfaces that return []byte
+func (m *marshalGen) binaryMarshalCall(vname, method, convert, appendFunc string) {
+	bts := randIdent()
+	vname = strings.Trim(vname, "(*)")
+	m.p.printf("\nvar %s []byte", bts)
+	m.p.printf("\n%s, err = %s.%s()", bts, vname, method)
+	m.p.wrapErrCheck(m.ctx.ArgsStr())
+	if convert != "" {
+		m.p.printf("\no = %s(o, %s(%s))", appendFunc, convert, bts)
+	} else {
+		m.p.printf("\no = %s(o, %s)", appendFunc, bts)
+	}
+}
+
+// binaryAppendCall generates code for appender interfaces that use pre-allocated buffer.
+// We optimize for cases where the size is 0-256 bytes.
+func (m *marshalGen) binaryAppendCall(vname, method, appendFunc string) {
+	sz := randIdent()
+	vname = strings.Trim(vname, "(*)")
+	// Reserve 2 bytes for the header bin8 or str8.
+	m.p.printf("\no = append(o, 0, 0); %s := len(o)", sz)
+	m.p.printf("\no, err = %s.%s(o)", vname, method)
+	m.p.wrapErrCheck(m.ctx.ArgsStr())
+	m.p.printf("\n%s = len(o) - %s", sz, sz)
+	if appendFunc == "msgp.AppendString" {
+		m.p.printf("\no = msgp.AppendBytesStringTwoPrefixed(o, %s)", sz)
+	} else {
+		m.p.printf("\no = msgp.AppendBytesTwoPrefixed(o, %s)", sz)
 	}
 }

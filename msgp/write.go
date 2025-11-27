@@ -1,6 +1,7 @@
 package msgp
 
 import (
+	"encoding"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -883,4 +884,43 @@ func GuessSize(i any) int {
 	default:
 		return 512
 	}
+}
+
+// Temporary buffer for reading/writing binary data.
+var bytesPool = sync.Pool{New: func() any { return make([]byte, 0, 1024) }}
+
+// WriteBinaryAppender will write the bytes from the given
+// encoding.BinaryAppender as a bin array.
+func (mw *Writer) WriteBinaryAppender(b encoding.BinaryAppender) error {
+	dst := bytesPool.Get().([]byte)
+	defer bytesPool.Put(dst) //nolint:staticcheck
+	dst, err := b.AppendBinary(dst[:0])
+	if err != nil {
+		return err
+	}
+	return mw.WriteBytes(dst)
+}
+
+// WriteTextAppender will write the bytes from the given
+// encoding.TextAppender as a bin array.
+func (mw *Writer) WriteTextAppender(b encoding.TextAppender) error {
+	dst := bytesPool.Get().([]byte)
+	defer bytesPool.Put(dst) //nolint:staticcheck
+	dst, err := b.AppendText(dst[:0])
+	if err != nil {
+		return err
+	}
+	return mw.WriteBytes(dst)
+}
+
+// WriteTextAppenderString will write the bytes from the given
+// encoding.TextAppender as a string.
+func (mw *Writer) WriteTextAppenderString(b encoding.TextAppender) error {
+	dst := bytesPool.Get().([]byte)
+	defer bytesPool.Put(dst) //nolint:staticcheck
+	dst, err := b.AppendText(dst[:0])
+	if err != nil {
+		return err
+	}
+	return mw.WriteStringFromBytes(dst)
 }
