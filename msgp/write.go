@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"reflect"
@@ -447,6 +448,9 @@ func (mw *Writer) WriteUint(u uint) error { return mw.WriteUint64(uint64(u)) }
 
 // WriteBytes writes binary as 'bin' to the writer
 func (mw *Writer) WriteBytes(b []byte) error {
+	if uint64(len(b)) > math.MaxInt32 {
+		return ErrLimitExceeded
+	}
 	sz := uint32(len(b))
 	var err error
 	switch {
@@ -489,6 +493,10 @@ func (mw *Writer) WriteBool(b bool) error {
 // WriteString writes a messagepack string to the writer.
 // (This is NOT an implementation of io.StringWriter)
 func (mw *Writer) WriteString(s string) error {
+	if uint64(len(s)) > math.MaxInt32 {
+		return ErrLimitExceeded
+	}
+
 	sz := uint32(len(s))
 	var err error
 	switch {
@@ -527,6 +535,9 @@ func (mw *Writer) WriteStringHeader(sz uint32) error {
 // WriteStringFromBytes writes a 'str' object
 // from a []byte.
 func (mw *Writer) WriteStringFromBytes(str []byte) error {
+	if uint64(len(str)) > math.MaxInt32 {
+		return ErrLimitExceeded
+	}
 	sz := uint32(len(str))
 	var err error
 	switch {
@@ -891,10 +902,15 @@ var bytesPool = sync.Pool{New: func() any { return make([]byte, 0, 1024) }}
 
 // WriteBinaryAppender will write the bytes from the given
 // encoding.BinaryAppender as a bin array.
-func (mw *Writer) WriteBinaryAppender(b encoding.BinaryAppender) error {
+func (mw *Writer) WriteBinaryAppender(b encoding.BinaryAppender) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("msgp: panic during AppendBinary: %v", r)
+		}
+	}()
 	dst := bytesPool.Get().([]byte)
 	defer bytesPool.Put(dst) //nolint:staticcheck
-	dst, err := b.AppendBinary(dst[:0])
+	dst, err = b.AppendBinary(dst[:0])
 	if err != nil {
 		return err
 	}
@@ -903,10 +919,15 @@ func (mw *Writer) WriteBinaryAppender(b encoding.BinaryAppender) error {
 
 // WriteTextAppender will write the bytes from the given
 // encoding.TextAppender as a bin array.
-func (mw *Writer) WriteTextAppender(b encoding.TextAppender) error {
+func (mw *Writer) WriteTextAppender(b encoding.TextAppender) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("msgp: panic during AppendText: %v", r)
+		}
+	}()
 	dst := bytesPool.Get().([]byte)
 	defer bytesPool.Put(dst) //nolint:staticcheck
-	dst, err := b.AppendText(dst[:0])
+	dst, err = b.AppendText(dst[:0])
 	if err != nil {
 		return err
 	}
@@ -915,10 +936,15 @@ func (mw *Writer) WriteTextAppender(b encoding.TextAppender) error {
 
 // WriteTextAppenderString will write the bytes from the given
 // encoding.TextAppender as a string.
-func (mw *Writer) WriteTextAppenderString(b encoding.TextAppender) error {
+func (mw *Writer) WriteTextAppenderString(b encoding.TextAppender) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("msgp: panic during AppendText: %v", r)
+		}
+	}()
 	dst := bytesPool.Get().([]byte)
 	defer bytesPool.Put(dst) //nolint:staticcheck
-	dst, err := b.AppendText(dst[:0])
+	dst, err = b.AppendText(dst[:0])
 	if err != nil {
 		return err
 	}
