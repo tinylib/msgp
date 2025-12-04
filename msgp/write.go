@@ -448,7 +448,7 @@ func (mw *Writer) WriteUint(u uint) error { return mw.WriteUint64(uint64(u)) }
 
 // WriteBytes writes binary as 'bin' to the writer
 func (mw *Writer) WriteBytes(b []byte) error {
-	if uint64(len(b)) > math.MaxInt32 {
+	if uint64(len(b)) > math.MaxUint32 {
 		return ErrLimitExceeded
 	}
 	sz := uint32(len(b))
@@ -493,7 +493,7 @@ func (mw *Writer) WriteBool(b bool) error {
 // WriteString writes a messagepack string to the writer.
 // (This is NOT an implementation of io.StringWriter)
 func (mw *Writer) WriteString(s string) error {
-	if uint64(len(s)) > math.MaxInt32 {
+	if uint64(len(s)) > math.MaxUint32 {
 		return ErrLimitExceeded
 	}
 
@@ -535,7 +535,7 @@ func (mw *Writer) WriteStringHeader(sz uint32) error {
 // WriteStringFromBytes writes a 'str' object
 // from a []byte.
 func (mw *Writer) WriteStringFromBytes(str []byte) error {
-	if uint64(len(str)) > math.MaxInt32 {
+	if uint64(len(str)) > math.MaxUint32 {
 		return ErrLimitExceeded
 	}
 	sz := uint32(len(str))
