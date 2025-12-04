@@ -4,6 +4,7 @@ import (
 	"encoding"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"math"
 	"strconv"
@@ -1571,6 +1572,11 @@ func (m *Reader) ReadIntf() (i any, err error) {
 
 // ReadBinaryUnmarshal reads a binary-encoded object from the reader and unmarshals it into dst.
 func (m *Reader) ReadBinaryUnmarshal(dst encoding.BinaryUnmarshaler) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("msgp: panic during UnmarshalBinary: %v", r)
+		}
+	}()
 	tmp := bytesPool.Get().([]byte)
 	defer bytesPool.Put(tmp) //nolint:staticcheck
 	tmp, err = m.ReadBytes(tmp[:0])
@@ -1582,6 +1588,11 @@ func (m *Reader) ReadBinaryUnmarshal(dst encoding.BinaryUnmarshaler) (err error)
 
 // ReadTextUnmarshal reads a text-encoded bin array from the reader and unmarshals it into dst.
 func (m *Reader) ReadTextUnmarshal(dst encoding.TextUnmarshaler) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("msgp: panic during UnmarshalText: %v", r)
+		}
+	}()
 	tmp := bytesPool.Get().([]byte)
 	defer bytesPool.Put(tmp) //nolint:staticcheck
 	tmp, err = m.ReadBytes(tmp[:0])
@@ -1593,6 +1604,11 @@ func (m *Reader) ReadTextUnmarshal(dst encoding.TextUnmarshaler) (err error) {
 
 // ReadTextUnmarshalString reads a text-encoded string from the reader and unmarshals it into dst.
 func (m *Reader) ReadTextUnmarshalString(dst encoding.TextUnmarshaler) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("msgp: panic during UnmarshalText: %v", r)
+		}
+	}()
 	tmp := bytesPool.Get().([]byte)
 	defer bytesPool.Put(tmp) //nolint:staticcheck
 	tmp, err = m.ReadStringAsBytes(tmp[:0])

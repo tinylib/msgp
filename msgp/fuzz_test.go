@@ -117,6 +117,21 @@ func FuzzReader(f *testing.F) {
 		reset()
 		r.ReadUint8()
 		reset()
+		r.ReadBinaryUnmarshal(encodingReader{})
+		reset()
+		r.ReadTextUnmarshal(encodingReader{})
+		reset()
+		r.ReadTextUnmarshalString(encodingReader{})
+		reset()
+		for range ReadArray(r, r.ReadInt) {
+		}
+		reset()
+		iter, errfn := ReadMap(r, r.ReadString, r.ReadUint64)
+		for range iter {
+		}
+		errfn()
+		reset()
+
 		r.Skip()
 		reset()
 
@@ -170,6 +185,14 @@ func FuzzReadBytes(f *testing.F) {
 		ReadUint64Bytes(data)
 		ReadUintBytes(data)
 		UnmarshalAsJSON(io.Discard, data)
+		iter, errfn := ReadArrayBytes(data, ReadIntBytes)
+		for range iter {
+		}
+		errfn()
+		iter2, errfn2 := ReadMapBytes(data, ReadStringBytes, ReadUint64Bytes)
+		for range iter2 {
+		}
+		errfn2()
 		Skip(data)
 	})
 }
@@ -305,4 +328,14 @@ func parseCorpusValue(line []byte) ([]byte, error) {
 		return []byte(s), nil
 	}
 	return nil, fmt.Errorf("expected []byte")
+}
+
+type encodingReader struct{}
+
+func (e encodingReader) UnmarshalBinary(data []byte) error {
+	return nil
+}
+
+func (e encodingReader) UnmarshalText(data []byte) error {
+	return nil
 }

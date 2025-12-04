@@ -14,6 +14,7 @@ import (
 // The type parameter V specifies the type of the elements in the array.
 // The returned iterator implements the iter.Seq[V] interface,
 // allowing for sequential access to the array elements.
+// The iterator will always stop after one error has been encountered.
 func ReadArray[T any](m *Reader, readFn func() (T, error)) iter.Seq2[T, error] {
 	return func(yield func(T, error) bool) {
 		// Check if nil
@@ -31,7 +32,7 @@ func ReadArray[T any](m *Reader, readFn func() (T, error)) iter.Seq2[T, error] {
 		for range length {
 			var v T
 			v, err = readFn()
-			if !yield(v, err) {
+			if !yield(v, err) || err != nil {
 				return
 			}
 		}
