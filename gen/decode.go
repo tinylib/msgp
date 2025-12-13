@@ -201,7 +201,7 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 	d.p.declare(sz, u32)
 	d.assignArray(sz, arrayHeader, 0)
 	if s.AsVarTuple {
-		d.p.printf("\nif %[1]s == 0 { return }", sz)
+		d.p.printf("\nfor %[1]s > 0 {", sz) // start the block
 	} else {
 		d.p.arrayCheck(strconv.Itoa(len(s.Fields)), sz)
 	}
@@ -239,11 +239,12 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 			d.p.printf("\n}") // close if statement
 		}
 		if s.AsVarTuple {
-			d.p.printf("\nif %[1]s--; %[1]s == 0 { return }", sz)
+			d.p.printf("\nif %[1]s--; %[1]s == 0 { break }", sz) // exit from the block
 		}
 	}
 	if s.AsVarTuple {
 		d.p.printf("\nfor ; %[1]s > 0; %[1]s-- {\nif err = dc.Skip(); err != nil {\nerr = msgp.WrapError(err)\nreturn\n}\n}", sz)
+		d.p.printf("\n}") // end the block
 	}
 }
 
