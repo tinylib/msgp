@@ -223,8 +223,7 @@ func (u *unmarshalGen) tuple(s *Struct) {
 	u.p.declare(sz, u32)
 	u.assignAndCheck(sz, arrayHeader)
 	if s.AsVarTuple {
-		u.p.printf("\nfor range 1 {")                          // start the block
-		u.p.printf("\nif %[1]s == 0 {\no = bts\nbreak\n}", sz) // exit from the block
+		u.p.printf("\nfor %[1]s > 0 {", sz) // start the block
 	} else {
 		u.p.arrayCheck(strconv.Itoa(len(s.Fields)), sz)
 	}
@@ -266,7 +265,7 @@ func (u *unmarshalGen) tuple(s *Struct) {
 			u.p.printf("\n}")
 		}
 		if s.AsVarTuple {
-			u.p.printf("\nif %[1]s--; %[1]s == 0 {\no = bts\nbreak\n}", sz) // exit from the block
+			u.p.printf("\nif %[1]s--; %[1]s == 0 { break }", sz) // exit from the block
 		}
 	}
 	if s.AsVarTuple {

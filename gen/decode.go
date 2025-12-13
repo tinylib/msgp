@@ -201,8 +201,7 @@ func (d *decodeGen) structAsTuple(s *Struct) {
 	d.p.declare(sz, u32)
 	d.assignArray(sz, arrayHeader, 0)
 	if s.AsVarTuple {
-		d.p.printf("\nfor range 1 {")               // start the block
-		d.p.printf("\nif %[1]s == 0 { break }", sz) // exit from the block
+		d.p.printf("\nfor %[1]s > 0 {", sz) // start the block
 	} else {
 		d.p.arrayCheck(strconv.Itoa(len(s.Fields)), sz)
 	}
