@@ -168,26 +168,11 @@ func (d *decodeGen) readBytesWithLimit(vname string, fieldLimit uint32) string {
 
 	// Choose reading strategy based on whether limits exist
 	if limit > 0 && limit != math.MaxUint32 {
-		// Limits exist - use header-first security approach
-		sz := randIdent()
-		d.p.printf("\nvar %s uint32", sz)
-		d.p.printf("\n%s, err = dc.ReadBytesHeader()", sz)
-		d.p.wrapErrCheck(d.ctx.ArgsStr())
-
-		// Check size against limit before allocating
-		d.p.printf("\nif %s > %s {", sz, limitName)
-		d.p.printf("\nerr = msgp.ErrLimitExceeded")
-		d.p.printf("\nreturn")
+		d.p.printf("\n%s, err = dc.ReadBytesLimit(%s, %s)", vname, vname, limitName)
+		// field cannot be nil
+		d.p.printf("\nif err == nil && %s == nil {", vname)
+		d.p.printf("\n%s = []byte{}", vname)
 		d.p.printf("\n}")
-
-		// Allocate and read the data
-		// regular field - ensure always allocated, even for size 0
-		d.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", vname, vname, sz)
-		d.p.printf("\n%s = make([]byte, %s)", vname, sz)
-		d.p.printf("\n} else {")
-		d.p.printf("\n%s = %s[:%s]", vname, vname, sz)
-		d.p.printf("\n}")
-		d.p.printf("\n_, err = dc.ReadFull(%s)", vname)
 		return ""
 	} else {
 		// No limits - use original direct reading approach for efficiency
@@ -348,35 +333,8 @@ func (d *decodeGen) readBytesConvertWithLimit(tmp string, allowNil bool, receive
 
 	// Check if limits exist to decide on reading strategy
 	if d.ctx.currentFieldArrayLimit != math.MaxUint32 || d.ctx.arrayLimit != math.MaxUint32 {
-		// Limits exist - use header-first approach for security
-		sz := randIdent()
-		d.p.printf("\nvar %s uint32", sz)
-		d.p.printf("\n%s, err = dc.ReadBytesHeader()", sz)
-		d.p.wrapErrCheck(d.ctx.ArgsStr())
-
-		// Check array limits for bytes (use currentFieldArrayLimit or arrayLimit)
-		if d.ctx.currentFieldArrayLimit != math.MaxUint32 {
-			d.p.printf("\nif %s > %d {", sz, d.ctx.currentFieldArrayLimit)
-			d.p.printf("\nerr = msgp.ErrLimitExceeded")
-			d.p.printf("\nreturn")
-			d.p.printf("\n}")
-		} else if d.ctx.arrayLimit != math.MaxUint32 {
-			d.p.printf("\nif %s > %slimitArrays {", sz, d.ctx.limitPrefix)
-			d.p.printf("\nerr = msgp.ErrLimitExceeded")
-			d.p.printf("\nreturn")
-			d.p.printf("\n}")
-		}
-
-		// Allocate and read with type conversion
-		if tmp != receiverVar {
-			d.p.printf("\n%s = %s", tmp, receiverVar)
-		}
-		d.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", tmp, tmp, sz)
-		d.p.printf("\n%s = make([]byte, %s)", tmp, sz)
-		d.p.printf("\n} else {")
-		d.p.printf("\n%s = %s[:%s]", tmp, tmp, sz)
-		d.p.printf("\n}")
-		d.p.printf("\n_, err = dc.ReadFull(%s)", tmp)
+		// No limits - use original efficient approach with receiver cast as destination
+		d.p.printf("\n%s, err = dc.ReadBytesLimit(%s, %d)", tmp, receiverVar, min(d.ctx.currentFieldArrayLimit, d.ctx.arrayLimit))
 	} else {
 		// No limits - use original efficient approach with receiver cast as destination
 		d.p.printf("\n%s, err = dc.ReadBytes(%s)", tmp, receiverVar)

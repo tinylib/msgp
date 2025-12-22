@@ -2,6 +2,7 @@ package _generated
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -1045,7 +1046,7 @@ func TestAllowNilSecurityLimits(t *testing.T) {
 
 		reader := msgp.NewReader(bytes.NewReader(buf))
 		err := data.DecodeMsg(reader)
-		if err != msgp.ErrLimitExceeded {
+		if !errors.Is(err, msgp.ErrLimitExceeded) {
 			t.Errorf("Expected ErrLimitExceeded for allownil bytes exceeding limit, got %v", err)
 		}
 	})
@@ -1160,7 +1161,7 @@ func TestAllowNilSecurityLimits(t *testing.T) {
 
 		reader := msgp.NewReader(bytes.NewReader(buf))
 		err := data.DecodeMsg(reader)
-		if err != msgp.ErrLimitExceeded {
+		if !errors.Is(err, msgp.ErrLimitExceeded) {
 			t.Errorf("Expected ErrLimitExceeded (header-first check), got %v", err)
 		}
 	})
@@ -1361,7 +1362,7 @@ func TestAllowNilZeroCopy(t *testing.T) {
 
 		reader := msgp.NewReader(bytes.NewReader(buf))
 		err := data.DecodeMsg(reader)
-		if err != msgp.ErrLimitExceeded {
+		if !errors.Is(err, msgp.ErrLimitExceeded) {
 			t.Errorf("Expected ErrLimitExceeded for zerocopy allownil field exceeding limit, got %v", err)
 		}
 	})
@@ -1379,7 +1380,7 @@ func TestAllowNilZeroCopy(t *testing.T) {
 
 		reader := msgp.NewReader(bytes.NewReader(buf))
 		err := data.DecodeMsg(reader)
-		if err != msgp.ErrLimitExceeded {
+		if !errors.Is(err, msgp.ErrLimitExceeded) {
 			t.Errorf("Expected ErrLimitExceeded (header-first check) for zerocopy allownil, got %v", err)
 		}
 	})
