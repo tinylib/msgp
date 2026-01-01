@@ -1048,7 +1048,6 @@ func (m *Reader) ReadBytesLimit(scratch []byte, n int64) (b []byte, err error) {
 	if n < 0 {
 		n = int64(cap(scratch))
 	}
-	fmt.Println(n, read)
 	if read > n {
 		err = ErrLimitExceeded
 		return
