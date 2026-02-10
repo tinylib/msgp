@@ -33,8 +33,8 @@ type ClearOmitted0 struct {
 	Adur                time.Duration                      `msg:"adur,omitempty"`
 	AJSON               json.Number                        `msg:"ajson,omitempty"`
 	AnAny               any                                `msg:"anany,omitempty"`
-
-	ClearOmittedTuple ClearOmittedTuple `msg:"ozt"` // the inside of a tuple should ignore both omitempty and omitzero
+	ExtType             Numberwang                         `msg:"extType,omitempty"` // External type that is primitive.
+	ClearOmittedTuple   ClearOmittedTuple                  `msg:"ozt"`               // the inside of a tuple should ignore both omitempty and omitzero
 }
 
 type ClearOmittedA struct {

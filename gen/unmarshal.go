@@ -376,7 +376,7 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 			if fze != "" {
 				u.p.printf("%s = %s\n", fieldElem.Varname(), fze)
 			} else {
-				u.p.printf("%s = %s{}\n", fieldElem.Varname(), fieldElem.TypeName())
+				u.p.printf("var tmp %s\n%s = tmp\n", fieldElem.TypeName(), fieldElem.Varname())
 			}
 			u.p.printf("}\n")
 		}

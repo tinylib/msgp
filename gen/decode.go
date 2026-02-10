@@ -316,7 +316,7 @@ func (d *decodeGen) structAsMap(s *Struct) {
 			if fze != "" {
 				d.p.printf("%s = %s\n", fieldElem.Varname(), fze)
 			} else {
-				d.p.printf("%s = %s{}\n", fieldElem.Varname(), fieldElem.TypeName())
+				d.p.printf("var tmp %s\n%s = tmp\n", fieldElem.TypeName(), fieldElem.Varname())
 			}
 			d.p.printf("}\n")
 		}
