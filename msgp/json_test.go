@@ -77,6 +77,29 @@ func TestCopyJSON(t *testing.T) {
 	}
 }
 
+func TestCopyJSONNumericMapKeys(t *testing.T) {
+	var buf bytes.Buffer
+	enc := NewWriter(&buf)
+	enc.WriteMapHeader(2)
+	enc.WriteInt64(-5)
+	enc.WriteString("neg")
+	enc.WriteUint64(42)
+	enc.WriteString("pos")
+	enc.Flush()
+
+	var js bytes.Buffer
+	if _, err := CopyToJSON(&js, &buf); err != nil {
+		t.Fatal(err)
+	}
+	mp := make(map[string]any)
+	if err := json.Unmarshal(js.Bytes(), &mp); err != nil {
+		t.Fatalf("unmarshal: %s — json: %s", err, js.String())
+	}
+	if mp["-5"] != "neg" || mp["42"] != "pos" {
+		t.Errorf("unexpected map: %v", mp)
+	}
+}
+
 // Encoder should generate valid utf-8 even if passed bad input
 func TestCopyJSONNegativeUTF8(t *testing.T) {
 	// Single string with non-compliant utf-8 byte
