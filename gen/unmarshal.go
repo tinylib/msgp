@@ -320,7 +320,11 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 		if !u.p.ok() {
 			return
 		}
-		u.p.printf("\ncase %q:", s.Fields[i].FieldTag)
+		u.p.printf("\ncase %q", s.Fields[i].FieldTag)
+		for _, alias := range s.Fields[i].FieldAliases {
+			u.p.printf(", %q", alias)
+		}
+		u.p.print(":")
 		u.ctx.PushString(s.Fields[i].FieldName)
 
 		fieldElem := s.Fields[i].FieldElem

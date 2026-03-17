@@ -642,6 +642,7 @@ type StructField struct {
 	FieldName     string   // the name of the struct field
 	FieldElem     Elem     // the field type
 	FieldLimit    uint32   // field-specific size limit for slices/maps (0 = no limit)
+	FieldAliases  []string // old key names that should also be accepted during deserialization
 }
 
 // HasTagPart returns true if the specified tag part (option) is present.

@@ -542,7 +542,6 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 				case "flatten":
 					flatten = true
 				default:
-					// Check for limit=N format
 					if strings.HasPrefix(tag, "limit=") {
 						limitStr := strings.TrimPrefix(tag, "limit=")
 						if limit, err := strconv.ParseUint(limitStr, 10, 32); err == nil {
@@ -550,6 +549,9 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 						} else {
 							warnf("invalid limit value in field tag: %s", limitStr)
 						}
+					} else if strings.HasPrefix(tag, "alias=") {
+						aliasStr := strings.TrimPrefix(tag, "alias=")
+						sf[0].FieldAliases = append(sf[0].FieldAliases, strings.Split(aliasStr, ";")...)
 					}
 				}
 			}
