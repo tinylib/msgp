@@ -1027,7 +1027,7 @@ func TestAllowNilSecurityLimits(t *testing.T) {
 
 		// Try to send bytes that exceed file limit (100)
 		buf := msgp.AppendMapHeader(nil, 1)
-		buf = msgp.AppendString(buf, "nil_slice") // Uses file limit (100)
+		buf = msgp.AppendString(buf, "nil_slice")      // Uses file limit (100)
 		buf = msgp.AppendBytes(buf, make([]byte, 150)) // Exceeds limit
 
 		_, err := data.UnmarshalMsg(buf)
@@ -1041,7 +1041,7 @@ func TestAllowNilSecurityLimits(t *testing.T) {
 
 		// Try to send bytes that exceed file limit (100)
 		buf := msgp.AppendMapHeader(nil, 1)
-		buf = msgp.AppendString(buf, "nil_slice") // Uses file limit (100)
+		buf = msgp.AppendString(buf, "nil_slice")      // Uses file limit (100)
 		buf = msgp.AppendBytes(buf, make([]byte, 150)) // Exceeds limit
 
 		reader := msgp.NewReader(bytes.NewReader(buf))
@@ -1057,7 +1057,7 @@ func TestAllowNilSecurityLimits(t *testing.T) {
 		// Try to send slice that exceeds field limit
 		buf := msgp.AppendMapHeader(nil, 1)
 		buf = msgp.AppendString(buf, "nil_tight_slice") // Field limit = 5
-		buf = msgp.AppendArrayHeader(buf, 8) // Exceeds field limit
+		buf = msgp.AppendArrayHeader(buf, 8)            // Exceeds field limit
 		for i := 0; i < 8; i++ {
 			buf = msgp.AppendInt(buf, i)
 		}
@@ -1074,7 +1074,7 @@ func TestAllowNilSecurityLimits(t *testing.T) {
 		// Try to send slice that exceeds field limit
 		buf := msgp.AppendMapHeader(nil, 1)
 		buf = msgp.AppendString(buf, "nil_tight_slice") // Field limit = 5
-		buf = msgp.AppendArrayHeader(buf, 8) // Exceeds field limit
+		buf = msgp.AppendArrayHeader(buf, 8)            // Exceeds field limit
 		for i := 0; i < 8; i++ {
 			buf = msgp.AppendInt(buf, i)
 		}
@@ -1092,7 +1092,7 @@ func TestAllowNilSecurityLimits(t *testing.T) {
 		// Try to send map that exceeds field limit
 		buf := msgp.AppendMapHeader(nil, 1)
 		buf = msgp.AppendString(buf, "nil_tight_map") // Field limit = 3
-		buf = msgp.AppendMapHeader(buf, 5) // Exceeds field limit
+		buf = msgp.AppendMapHeader(buf, 5)            // Exceeds field limit
 		for i := 0; i < 5; i++ {
 			buf = msgp.AppendString(buf, fmt.Sprintf("key%d", i))
 			buf = msgp.AppendInt(buf, i)
@@ -1110,7 +1110,7 @@ func TestAllowNilSecurityLimits(t *testing.T) {
 		// Try to send map that exceeds field limit
 		buf := msgp.AppendMapHeader(nil, 1)
 		buf = msgp.AppendString(buf, "nil_tight_map") // Field limit = 3
-		buf = msgp.AppendMapHeader(buf, 5) // Exceeds field limit
+		buf = msgp.AppendMapHeader(buf, 5)            // Exceeds field limit
 		for i := 0; i < 5; i++ {
 			buf = msgp.AppendString(buf, fmt.Sprintf("key%d", i))
 			buf = msgp.AppendInt(buf, i)
@@ -1134,7 +1134,7 @@ func TestAllowNilSecurityLimits(t *testing.T) {
 
 		// Manually craft a message with a huge size header but don't include the data
 		// This should fail at the limit check, not during data reading
-		buf = append(buf, 0xc6) // bin32 format
+		buf = append(buf, 0xc6)                   // bin32 format
 		buf = append(buf, 0x00, 0x00, 0x27, 0x10) // size = 10000 (exceeds limit of 100)
 		// Don't append actual data - should fail before trying to read it
 
@@ -1155,7 +1155,7 @@ func TestAllowNilSecurityLimits(t *testing.T) {
 
 		// Manually craft a message with a huge size header but don't include the data
 		// This should fail at the limit check, not during data reading
-		buf = append(buf, 0xc6) // bin32 format
+		buf = append(buf, 0xc6)                   // bin32 format
 		buf = append(buf, 0x00, 0x00, 0x27, 0x10) // size = 10000 (exceeds limit of 100)
 		// Don't append actual data - should fail before trying to read it
 
@@ -1267,7 +1267,7 @@ func TestAllowNilZeroCopy(t *testing.T) {
 		buf = msgp.AppendString(buf, "nil_zc_slice")
 
 		// Manually craft message with huge header but no data
-		buf = append(buf, 0xc6) // bin32 format
+		buf = append(buf, 0xc6)                   // bin32 format
 		buf = append(buf, 0x00, 0x00, 0x27, 0x10) // size = 10000 (exceeds limit)
 
 		_, err := data.UnmarshalMsg(buf)
@@ -1375,7 +1375,7 @@ func TestAllowNilZeroCopy(t *testing.T) {
 		buf = msgp.AppendString(buf, "nil_zc_slice")
 
 		// Manually craft message with huge header but no data
-		buf = append(buf, 0xc6) // bin32 format
+		buf = append(buf, 0xc6)                   // bin32 format
 		buf = append(buf, 0x00, 0x00, 0x27, 0x10) // size = 10000 (exceeds limit)
 
 		reader := msgp.NewReader(bytes.NewReader(buf))

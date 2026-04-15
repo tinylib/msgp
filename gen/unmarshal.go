@@ -336,7 +336,7 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 			byteIdx := i / 8
 			bitIdx := uint(i % 8)
 			u.p.printf("\nif %s[%d] & (1<<%d) != 0 {", dupVar, byteIdx, bitIdx)
-			u.p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %q)", s.Fields[i].FieldTag)
+			u.p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %s)", u.ctx.ArgsStr())
 			u.p.printf("\nreturn")
 			u.p.printf("\n}")
 			u.p.printf("\n%s[%d] |= 1<<%d", dupVar, byteIdx, bitIdx)

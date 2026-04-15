@@ -600,6 +600,14 @@ func TestNoDupRichTypes_DupInsideNestedStruct(t *testing.T) {
 	var out NoDupRichTypes
 	_, err := out.UnmarshalMsg(buf)
 	expectDup(t, err)
+	// Error should contain the full context path "Inner/X"
+	errStr := err.Error()
+	if !bytes.Contains([]byte(errStr), []byte("Inner")) {
+		t.Fatalf("error should reference 'Inner', got: %s", errStr)
+	}
+	if !bytes.Contains([]byte(errStr), []byte("X")) {
+		t.Fatalf("error should reference 'X', got: %s", errStr)
+	}
 }
 
 func TestNoDupRichTypes_DupPtrStructField(t *testing.T) {

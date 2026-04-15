@@ -274,7 +274,7 @@ func (d *decodeGen) structAsMap(s *Struct) {
 			byteIdx := i / 8
 			bitIdx := uint(i % 8)
 			d.p.printf("\nif %s[%d] & (1<<%d) != 0 {", dupVar, byteIdx, bitIdx)
-			d.p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %q)", s.Fields[i].FieldTag)
+			d.p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %s)", d.ctx.ArgsStr())
 			d.p.printf("\nreturn")
 			d.p.printf("\n}")
 			d.p.printf("\n%s[%d] |= 1<<%d", dupVar, byteIdx, bitIdx)

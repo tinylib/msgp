@@ -65,7 +65,7 @@ type X struct {
 type TestType struct {
 	F   *float64          `msg:"float"`
 	Els map[string]string `msg:"elements"`
-	Obj struct { // test anonymous struct
+	Obj struct {          // test anonymous struct
 		ValueA string `msg:"value_a"`
 		ValueB []byte `msg:"value_b"`
 	} `msg:"object"`

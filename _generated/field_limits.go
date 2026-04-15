@@ -13,7 +13,7 @@ type FieldLimitTestData struct {
 	LargeSlice []string       `msg:"large_slice,limit=100"`
 	SmallMap   map[string]int `msg:"small_map,limit=3"`
 	LargeMap   map[int]string `msg:"large_map,limit=20"`
-	NoLimit    []byte         `msg:"no_limit"`  // Uses file-level limits if any
+	NoLimit    []byte         `msg:"no_limit"`            // Uses file-level limits if any
 	FixedArray [10]int        `msg:"fixed_array,limit=2"` // Should be ignored
 }
 

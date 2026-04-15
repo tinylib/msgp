@@ -40,13 +40,13 @@ type NoDupMapInt map[string]int
 
 // NoDupRichTypes covers pointer, slice, bytes, float, and nested struct fields.
 type NoDupRichTypes struct {
-	Str     string          `msg:"str"`
-	Num     float64         `msg:"num"`
-	Data    []byte          `msg:"data"`
-	PtrStr  *string         `msg:"ptr_str"`
-	Strings []string        `msg:"strings"`
-	Inner   NoDupInner      `msg:"inner"`
-	PtrInner *NoDupInner    `msg:"ptr_inner"`
+	Str      string           `msg:"str"`
+	Num      float64          `msg:"num"`
+	Data     []byte           `msg:"data"`
+	PtrStr   *string          `msg:"ptr_str"`
+	Strings  []string         `msg:"strings"`
+	Inner    NoDupInner       `msg:"inner"`
+	PtrInner *NoDupInner      `msg:"ptr_inner"`
 	MapSlice map[string][]int `msg:"map_slice"`
 }
 

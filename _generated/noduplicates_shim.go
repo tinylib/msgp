@@ -13,7 +13,7 @@ import "strings"
 type NoDupShimKey string
 
 func noDupShimEnc(k NoDupShimKey) string { return strings.ToLower(string(k)) }
-func noDupShimDec(s string) NoDupShimKey  { return NoDupShimKey(strings.ToLower(s)) }
+func noDupShimDec(s string) NoDupShimKey { return NoDupShimKey(strings.ToLower(s)) }
 
 // NoDupShimMap is a map with shimmed keys that normalize to lowercase.
 // Two different wire strings (e.g. "Foo" and "foo") shim to the same key.
