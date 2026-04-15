@@ -38,6 +38,7 @@ var directives = map[string]directive{
 	"binappend":     binappend,
 	"textmarshal":   textmarshal,
 	"textappend":    textappend,
+	"noduplicates":  noduplicates,
 }
 
 // map of all recognized directives which will be applied
@@ -522,5 +523,23 @@ func textappend(text []string, f *FileSet) error {
 		f.findShim(name, be, true)
 	}
 
+	return nil
+}
+
+//msgp:noduplicates [TypeA TypeB ...]
+func noduplicates(text []string, f *FileSet) error {
+	if len(text) < 2 {
+		f.NoDuplicates = true
+		infof("rejecting duplicate keys for all types\n")
+		return nil
+	}
+	if f.NoDupTypes == nil {
+		f.NoDupTypes = make(map[string]struct{})
+	}
+	for _, item := range text[1:] {
+		name := strings.TrimSpace(item)
+		f.NoDupTypes[name] = struct{}{}
+		infof("rejecting duplicate keys for %s\n", name)
+	}
 	return nil
 }

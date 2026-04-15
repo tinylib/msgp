@@ -38,10 +38,12 @@ type FileSet struct {
 	AllowMapShims bool                 // Allow map keys to be shimmed (default true)
 	AllowBinMaps  bool                 // Allow maps with binary keys to be used (default false)
 	AutoMapShims  bool                 // Automatically shim map keys of builtin types(default false)
-	ArrayLimit    uint32               // Maximum array/slice size allowed during deserialization
-	MapLimit      uint32               // Maximum map size allowed during deserialization
-	MarshalLimits bool                 // Whether to enforce limits during marshaling
-	LimitPrefix   string               // Unique prefix for limit constants to avoid collisions
+	ArrayLimit      uint32               // Maximum array/slice size allowed during deserialization
+	MapLimit        uint32               // Maximum map size allowed during deserialization
+	MarshalLimits   bool                 // Whether to enforce limits during marshaling
+	LimitPrefix     string               // Unique prefix for limit constants to avoid collisions
+	NoDuplicates    bool                 // Reject duplicate keys for all types
+	NoDupTypes      map[string]struct{}   // Reject duplicate keys for specific types only
 
 	tagName    string // tag to read field names from
 	pointerRcv bool   // generate with pointer receivers.
@@ -422,6 +424,8 @@ loop:
 	p.MapLimit = fs.MapLimit
 	p.MarshalLimits = fs.MarshalLimits
 	p.LimitPrefix = fs.LimitPrefix
+	p.NoDuplicates = fs.NoDuplicates
+	p.NoDupTypes = fs.NoDupTypes
 }
 
 func (fs *FileSet) PrintTo(p *gen.Printer) error {

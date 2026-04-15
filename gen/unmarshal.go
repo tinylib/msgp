@@ -312,6 +312,12 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 	// Index to field idx of each emitted
 	oeEmittedIdx := []int{}
 
+	dupVar := sz + "Dup"
+	if u.ctx.noDuplicates && len(s.Fields) > 0 {
+		nBytes := (len(s.Fields) + 7) / 8
+		u.p.printf("\nvar %s [%d]byte", dupVar, nBytes)
+	}
+
 	u.p.printf("\nfor %s > 0 {", sz)
 	u.p.printf("\n%s--; field, bts, err = msgp.ReadMapKeyZC(bts)", sz)
 	u.p.wrapErrCheck(u.ctx.ArgsStr())
@@ -325,6 +331,16 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 
 		fieldElem := s.Fields[i].FieldElem
 		anField := s.Fields[i].HasTagPart("allownil") && fieldElem.AllowNil()
+
+		if u.ctx.noDuplicates {
+			byteIdx := i / 8
+			bitIdx := uint(i % 8)
+			u.p.printf("\nif %s[%d] & (1<<%d) != 0 {", dupVar, byteIdx, bitIdx)
+			u.p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %q)", s.Fields[i].FieldTag)
+			u.p.printf("\nreturn")
+			u.p.printf("\n}")
+			u.p.printf("\n%s[%d] |= 1<<%d", dupVar, byteIdx, bitIdx)
+		}
 
 		// Set field-specific limits in context based on struct field's FieldLimit
 		if s.Fields[i].FieldLimit > 0 {
@@ -532,12 +548,36 @@ func (u *unmarshalGen) gMap(m *Map) {
 	u.p.printf("\nfor %s > 0 {", sz)
 	u.p.printf("\nvar %s %s; %s--", m.Validx, m.Value.TypeName(), sz)
 	m.readKey(u.ctx, u.p, u, u.assignAndCheck)
+
+	// Duplicate check for non-shimmed maps (early, before reading the value).
+	// Shimmed maps are checked later inside mapAssign after the key is resolved.
+	if u.ctx.noDuplicates && (m.Key == nil || m.AllowBinMaps) {
+		okVar := randIdent()
+		u.p.printf("\nif _, %s := %s[%s]; %s {", okVar, m.Varname(), m.Keyidx, okVar)
+		if args := u.ctx.ArgsStr(); args != "" {
+			u.p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %s, %s)", args, m.Keyidx)
+		} else {
+			u.p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %s)", m.Keyidx)
+		}
+		u.p.printf("\nreturn")
+		u.p.printf("\n}")
+	}
+
+	var dupCtx string
+	if u.ctx.noDuplicates {
+		if args := u.ctx.ArgsStr(); args != "" {
+			dupCtx = args + ", " + m.Keyidx
+		} else {
+			dupCtx = m.Keyidx
+		}
+	}
+
 	u.ctx.PushVar(m.Keyidx)
 	m.Value.SetIsAllowNil(false)
 	setTypeParams(m.Value, m.typeParams)
 	next(u, m.Value)
 	u.ctx.Pop()
-	u.p.mapAssign(m)
+	u.p.mapAssign(m, u.ctx.noDuplicates, dupCtx)
 	u.p.closeblock()
 }
 
