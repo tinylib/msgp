@@ -183,7 +183,7 @@ func (mw *Writer) flush() error {
 func (mw *Writer) Flush() error { return mw.flush() }
 
 // Buffered returns the number bytes in the write buffer
-func (mw *Writer) Buffered() int { return len(mw.buf) - mw.wloc }
+func (mw *Writer) Buffered() int { return mw.wloc }
 
 func (mw *Writer) avail() int { return len(mw.buf) - mw.wloc }
 
