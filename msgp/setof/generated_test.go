@@ -4,6 +4,7 @@ package setof
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -203,6 +204,92 @@ func TestString_EmptySet(t *testing.T) {
 	}
 }
 
+func TestString_JSONRoundTrip(t *testing.T) {
+	set := make(String)
+	set["val0"] = struct{}{}
+	set["val1"] = struct{}{}
+	set["val2"] = struct{}{}
+	set["val3"] = struct{}{}
+	set["val4"] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded String
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestString_JSONNil(t *testing.T) {
+	var nilSet String
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded String
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestString_JSONEmpty(t *testing.T) {
+	set := make(String)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded String
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestStringSorted_RoundTrip(t *testing.T) {
 	set := make(StringSorted)
 	set["val0"] = struct{}{}
@@ -396,6 +483,92 @@ func TestStringSorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestStringSorted_JSONRoundTrip(t *testing.T) {
+	set := make(StringSorted)
+	set["val0"] = struct{}{}
+	set["val1"] = struct{}{}
+	set["val2"] = struct{}{}
+	set["val3"] = struct{}{}
+	set["val4"] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded StringSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestStringSorted_JSONNil(t *testing.T) {
+	var nilSet StringSorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded StringSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestStringSorted_JSONEmpty(t *testing.T) {
+	set := make(StringSorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded StringSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkString_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -533,6 +706,53 @@ func BenchmarkString_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkString_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(String)
+			for i := 0; i < size; i++ {
+				set[fmt.Sprintf("val%d", i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkString_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(String)
+			for i := 0; i < size; i++ {
+				set[fmt.Sprintf("val%d", i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded String
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkStringSorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -665,6 +885,53 @@ func BenchmarkStringSorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = StringSortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkStringSorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(StringSorted)
+			for i := 0; i < size; i++ {
+				set[fmt.Sprintf("val%d", i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkStringSorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(StringSorted)
+			for i := 0; i < size; i++ {
+				set[fmt.Sprintf("val%d", i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded StringSorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -863,6 +1130,92 @@ func TestInt_EmptySet(t *testing.T) {
 	}
 }
 
+func TestInt_JSONRoundTrip(t *testing.T) {
+	set := make(Int)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Int
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestInt_JSONNil(t *testing.T) {
+	var nilSet Int
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Int
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestInt_JSONEmpty(t *testing.T) {
+	set := make(Int)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Int
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestIntSorted_RoundTrip(t *testing.T) {
 	set := make(IntSorted)
 	set[0] = struct{}{}
@@ -1056,6 +1409,92 @@ func TestIntSorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestIntSorted_JSONRoundTrip(t *testing.T) {
+	set := make(IntSorted)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded IntSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestIntSorted_JSONNil(t *testing.T) {
+	var nilSet IntSorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded IntSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestIntSorted_JSONEmpty(t *testing.T) {
+	set := make(IntSorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded IntSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkInt_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -1193,6 +1632,53 @@ func BenchmarkInt_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkInt_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int)
+			for i := 0; i < size; i++ {
+				set[int(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkInt_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int)
+			for i := 0; i < size; i++ {
+				set[int(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Int
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkIntSorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -1325,6 +1811,53 @@ func BenchmarkIntSorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = IntSortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkIntSorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(IntSorted)
+			for i := 0; i < size; i++ {
+				set[int(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkIntSorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(IntSorted)
+			for i := 0; i < size; i++ {
+				set[int(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded IntSorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -1523,6 +2056,92 @@ func TestUint_EmptySet(t *testing.T) {
 	}
 }
 
+func TestUint_JSONRoundTrip(t *testing.T) {
+	set := make(Uint)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Uint
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestUint_JSONNil(t *testing.T) {
+	var nilSet Uint
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Uint
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestUint_JSONEmpty(t *testing.T) {
+	set := make(Uint)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Uint
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestUintSorted_RoundTrip(t *testing.T) {
 	set := make(UintSorted)
 	set[0] = struct{}{}
@@ -1716,6 +2335,92 @@ func TestUintSorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestUintSorted_JSONRoundTrip(t *testing.T) {
+	set := make(UintSorted)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded UintSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestUintSorted_JSONNil(t *testing.T) {
+	var nilSet UintSorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded UintSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestUintSorted_JSONEmpty(t *testing.T) {
+	set := make(UintSorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded UintSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkUint_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -1853,6 +2558,53 @@ func BenchmarkUint_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkUint_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint)
+			for i := 0; i < size; i++ {
+				set[uint(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkUint_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint)
+			for i := 0; i < size; i++ {
+				set[uint(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Uint
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkUintSorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -1985,6 +2737,53 @@ func BenchmarkUintSorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = UintSortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkUintSorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(UintSorted)
+			for i := 0; i < size; i++ {
+				set[uint(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkUintSorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(UintSorted)
+			for i := 0; i < size; i++ {
+				set[uint(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded UintSorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -2183,6 +2982,92 @@ func TestByte_EmptySet(t *testing.T) {
 	}
 }
 
+func TestByte_JSONRoundTrip(t *testing.T) {
+	set := make(Byte)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Byte
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestByte_JSONNil(t *testing.T) {
+	var nilSet Byte
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Byte
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestByte_JSONEmpty(t *testing.T) {
+	set := make(Byte)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Byte
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestByteSorted_RoundTrip(t *testing.T) {
 	set := make(ByteSorted)
 	set[0] = struct{}{}
@@ -2376,6 +3261,92 @@ func TestByteSorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestByteSorted_JSONRoundTrip(t *testing.T) {
+	set := make(ByteSorted)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded ByteSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestByteSorted_JSONNil(t *testing.T) {
+	var nilSet ByteSorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded ByteSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestByteSorted_JSONEmpty(t *testing.T) {
+	set := make(ByteSorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded ByteSorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkByte_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -2513,6 +3484,53 @@ func BenchmarkByte_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkByte_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Byte)
+			for i := 0; i < size; i++ {
+				set[byte(i%256)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkByte_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Byte)
+			for i := 0; i < size; i++ {
+				set[byte(i%256)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Byte
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkByteSorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -2645,6 +3663,53 @@ func BenchmarkByteSorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = ByteSortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkByteSorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(ByteSorted)
+			for i := 0; i < size; i++ {
+				set[byte(i%256)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkByteSorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(ByteSorted)
+			for i := 0; i < size; i++ {
+				set[byte(i%256)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded ByteSorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -2843,6 +3908,92 @@ func TestInt8_EmptySet(t *testing.T) {
 	}
 }
 
+func TestInt8_JSONRoundTrip(t *testing.T) {
+	set := make(Int8)
+	set[-128] = struct{}{}
+	set[-127] = struct{}{}
+	set[-126] = struct{}{}
+	set[-125] = struct{}{}
+	set[-124] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Int8
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestInt8_JSONNil(t *testing.T) {
+	var nilSet Int8
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Int8
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestInt8_JSONEmpty(t *testing.T) {
+	set := make(Int8)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Int8
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestInt8Sorted_RoundTrip(t *testing.T) {
 	set := make(Int8Sorted)
 	set[-128] = struct{}{}
@@ -3036,6 +4187,92 @@ func TestInt8Sorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestInt8Sorted_JSONRoundTrip(t *testing.T) {
+	set := make(Int8Sorted)
+	set[-128] = struct{}{}
+	set[-127] = struct{}{}
+	set[-126] = struct{}{}
+	set[-125] = struct{}{}
+	set[-124] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Int8Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestInt8Sorted_JSONNil(t *testing.T) {
+	var nilSet Int8Sorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Int8Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestInt8Sorted_JSONEmpty(t *testing.T) {
+	set := make(Int8Sorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Int8Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkInt8_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -3173,6 +4410,53 @@ func BenchmarkInt8_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkInt8_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int8)
+			for i := 0; i < size; i++ {
+				set[int8((i%256)-128)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkInt8_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int8)
+			for i := 0; i < size; i++ {
+				set[int8((i%256)-128)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Int8
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkInt8Sorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -3305,6 +4589,53 @@ func BenchmarkInt8Sorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = Int8SortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkInt8Sorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int8Sorted)
+			for i := 0; i < size; i++ {
+				set[int8((i%256)-128)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkInt8Sorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int8Sorted)
+			for i := 0; i < size; i++ {
+				set[int8((i%256)-128)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Int8Sorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -3503,6 +4834,92 @@ func TestUint8_EmptySet(t *testing.T) {
 	}
 }
 
+func TestUint8_JSONRoundTrip(t *testing.T) {
+	set := make(Uint8)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Uint8
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestUint8_JSONNil(t *testing.T) {
+	var nilSet Uint8
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Uint8
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestUint8_JSONEmpty(t *testing.T) {
+	set := make(Uint8)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Uint8
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestUint8Sorted_RoundTrip(t *testing.T) {
 	set := make(Uint8Sorted)
 	set[0] = struct{}{}
@@ -3696,6 +5113,92 @@ func TestUint8Sorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestUint8Sorted_JSONRoundTrip(t *testing.T) {
+	set := make(Uint8Sorted)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Uint8Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestUint8Sorted_JSONNil(t *testing.T) {
+	var nilSet Uint8Sorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Uint8Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestUint8Sorted_JSONEmpty(t *testing.T) {
+	set := make(Uint8Sorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Uint8Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkUint8_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -3833,6 +5336,53 @@ func BenchmarkUint8_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkUint8_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint8)
+			for i := 0; i < size; i++ {
+				set[uint8(i%256)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkUint8_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint8)
+			for i := 0; i < size; i++ {
+				set[uint8(i%256)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Uint8
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkUint8Sorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -3965,6 +5515,53 @@ func BenchmarkUint8Sorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = Uint8SortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkUint8Sorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint8Sorted)
+			for i := 0; i < size; i++ {
+				set[uint8(i%256)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkUint8Sorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint8Sorted)
+			for i := 0; i < size; i++ {
+				set[uint8(i%256)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Uint8Sorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -4163,6 +5760,92 @@ func TestInt16_EmptySet(t *testing.T) {
 	}
 }
 
+func TestInt16_JSONRoundTrip(t *testing.T) {
+	set := make(Int16)
+	set[-32768] = struct{}{}
+	set[-32767] = struct{}{}
+	set[-32766] = struct{}{}
+	set[-32765] = struct{}{}
+	set[-32764] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Int16
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestInt16_JSONNil(t *testing.T) {
+	var nilSet Int16
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Int16
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestInt16_JSONEmpty(t *testing.T) {
+	set := make(Int16)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Int16
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestInt16Sorted_RoundTrip(t *testing.T) {
 	set := make(Int16Sorted)
 	set[-32768] = struct{}{}
@@ -4356,6 +6039,92 @@ func TestInt16Sorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestInt16Sorted_JSONRoundTrip(t *testing.T) {
+	set := make(Int16Sorted)
+	set[-32768] = struct{}{}
+	set[-32767] = struct{}{}
+	set[-32766] = struct{}{}
+	set[-32765] = struct{}{}
+	set[-32764] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Int16Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestInt16Sorted_JSONNil(t *testing.T) {
+	var nilSet Int16Sorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Int16Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestInt16Sorted_JSONEmpty(t *testing.T) {
+	set := make(Int16Sorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Int16Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkInt16_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -4493,6 +6262,53 @@ func BenchmarkInt16_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkInt16_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int16)
+			for i := 0; i < size; i++ {
+				set[int16((i%65536)-32768)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkInt16_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int16)
+			for i := 0; i < size; i++ {
+				set[int16((i%65536)-32768)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Int16
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkInt16Sorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -4625,6 +6441,53 @@ func BenchmarkInt16Sorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = Int16SortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkInt16Sorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int16Sorted)
+			for i := 0; i < size; i++ {
+				set[int16((i%65536)-32768)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkInt16Sorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int16Sorted)
+			for i := 0; i < size; i++ {
+				set[int16((i%65536)-32768)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Int16Sorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -4823,6 +6686,92 @@ func TestUint16_EmptySet(t *testing.T) {
 	}
 }
 
+func TestUint16_JSONRoundTrip(t *testing.T) {
+	set := make(Uint16)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Uint16
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestUint16_JSONNil(t *testing.T) {
+	var nilSet Uint16
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Uint16
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestUint16_JSONEmpty(t *testing.T) {
+	set := make(Uint16)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Uint16
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestUint16Sorted_RoundTrip(t *testing.T) {
 	set := make(Uint16Sorted)
 	set[0] = struct{}{}
@@ -5016,6 +6965,92 @@ func TestUint16Sorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestUint16Sorted_JSONRoundTrip(t *testing.T) {
+	set := make(Uint16Sorted)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Uint16Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestUint16Sorted_JSONNil(t *testing.T) {
+	var nilSet Uint16Sorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Uint16Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestUint16Sorted_JSONEmpty(t *testing.T) {
+	set := make(Uint16Sorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Uint16Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkUint16_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -5153,6 +7188,53 @@ func BenchmarkUint16_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkUint16_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint16)
+			for i := 0; i < size; i++ {
+				set[uint16(i%65536)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkUint16_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint16)
+			for i := 0; i < size; i++ {
+				set[uint16(i%65536)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Uint16
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkUint16Sorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -5285,6 +7367,53 @@ func BenchmarkUint16Sorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = Uint16SortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkUint16Sorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint16Sorted)
+			for i := 0; i < size; i++ {
+				set[uint16(i%65536)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkUint16Sorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint16Sorted)
+			for i := 0; i < size; i++ {
+				set[uint16(i%65536)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Uint16Sorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -5483,6 +7612,92 @@ func TestInt32_EmptySet(t *testing.T) {
 	}
 }
 
+func TestInt32_JSONRoundTrip(t *testing.T) {
+	set := make(Int32)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Int32
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestInt32_JSONNil(t *testing.T) {
+	var nilSet Int32
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Int32
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestInt32_JSONEmpty(t *testing.T) {
+	set := make(Int32)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Int32
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestInt32Sorted_RoundTrip(t *testing.T) {
 	set := make(Int32Sorted)
 	set[0] = struct{}{}
@@ -5676,6 +7891,92 @@ func TestInt32Sorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestInt32Sorted_JSONRoundTrip(t *testing.T) {
+	set := make(Int32Sorted)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Int32Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestInt32Sorted_JSONNil(t *testing.T) {
+	var nilSet Int32Sorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Int32Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestInt32Sorted_JSONEmpty(t *testing.T) {
+	set := make(Int32Sorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Int32Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkInt32_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -5813,6 +8114,53 @@ func BenchmarkInt32_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkInt32_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int32)
+			for i := 0; i < size; i++ {
+				set[int32(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkInt32_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int32)
+			for i := 0; i < size; i++ {
+				set[int32(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Int32
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkInt32Sorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -5945,6 +8293,53 @@ func BenchmarkInt32Sorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = Int32SortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkInt32Sorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int32Sorted)
+			for i := 0; i < size; i++ {
+				set[int32(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkInt32Sorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int32Sorted)
+			for i := 0; i < size; i++ {
+				set[int32(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Int32Sorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -6143,6 +8538,92 @@ func TestUint32_EmptySet(t *testing.T) {
 	}
 }
 
+func TestUint32_JSONRoundTrip(t *testing.T) {
+	set := make(Uint32)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Uint32
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestUint32_JSONNil(t *testing.T) {
+	var nilSet Uint32
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Uint32
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestUint32_JSONEmpty(t *testing.T) {
+	set := make(Uint32)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Uint32
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestUint32Sorted_RoundTrip(t *testing.T) {
 	set := make(Uint32Sorted)
 	set[0] = struct{}{}
@@ -6336,6 +8817,92 @@ func TestUint32Sorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestUint32Sorted_JSONRoundTrip(t *testing.T) {
+	set := make(Uint32Sorted)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Uint32Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestUint32Sorted_JSONNil(t *testing.T) {
+	var nilSet Uint32Sorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Uint32Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestUint32Sorted_JSONEmpty(t *testing.T) {
+	set := make(Uint32Sorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Uint32Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkUint32_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -6473,6 +9040,53 @@ func BenchmarkUint32_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkUint32_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint32)
+			for i := 0; i < size; i++ {
+				set[uint32(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkUint32_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint32)
+			for i := 0; i < size; i++ {
+				set[uint32(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Uint32
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkUint32Sorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -6605,6 +9219,53 @@ func BenchmarkUint32Sorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = Uint32SortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkUint32Sorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint32Sorted)
+			for i := 0; i < size; i++ {
+				set[uint32(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkUint32Sorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint32Sorted)
+			for i := 0; i < size; i++ {
+				set[uint32(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Uint32Sorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -6803,6 +9464,92 @@ func TestInt64_EmptySet(t *testing.T) {
 	}
 }
 
+func TestInt64_JSONRoundTrip(t *testing.T) {
+	set := make(Int64)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Int64
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestInt64_JSONNil(t *testing.T) {
+	var nilSet Int64
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Int64
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestInt64_JSONEmpty(t *testing.T) {
+	set := make(Int64)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Int64
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestInt64Sorted_RoundTrip(t *testing.T) {
 	set := make(Int64Sorted)
 	set[0] = struct{}{}
@@ -6996,6 +9743,92 @@ func TestInt64Sorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestInt64Sorted_JSONRoundTrip(t *testing.T) {
+	set := make(Int64Sorted)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Int64Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestInt64Sorted_JSONNil(t *testing.T) {
+	var nilSet Int64Sorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Int64Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestInt64Sorted_JSONEmpty(t *testing.T) {
+	set := make(Int64Sorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Int64Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkInt64_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -7133,6 +9966,53 @@ func BenchmarkInt64_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkInt64_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int64)
+			for i := 0; i < size; i++ {
+				set[int64(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkInt64_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int64)
+			for i := 0; i < size; i++ {
+				set[int64(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Int64
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkInt64Sorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -7265,6 +10145,53 @@ func BenchmarkInt64Sorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = Int64SortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkInt64Sorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int64Sorted)
+			for i := 0; i < size; i++ {
+				set[int64(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkInt64Sorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Int64Sorted)
+			for i := 0; i < size; i++ {
+				set[int64(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Int64Sorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -7463,6 +10390,92 @@ func TestUint64_EmptySet(t *testing.T) {
 	}
 }
 
+func TestUint64_JSONRoundTrip(t *testing.T) {
+	set := make(Uint64)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Uint64
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestUint64_JSONNil(t *testing.T) {
+	var nilSet Uint64
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Uint64
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestUint64_JSONEmpty(t *testing.T) {
+	set := make(Uint64)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Uint64
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestUint64Sorted_RoundTrip(t *testing.T) {
 	set := make(Uint64Sorted)
 	set[0] = struct{}{}
@@ -7656,6 +10669,92 @@ func TestUint64Sorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestUint64Sorted_JSONRoundTrip(t *testing.T) {
+	set := make(Uint64Sorted)
+	set[0] = struct{}{}
+	set[1] = struct{}{}
+	set[2] = struct{}{}
+	set[3] = struct{}{}
+	set[4] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Uint64Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestUint64Sorted_JSONNil(t *testing.T) {
+	var nilSet Uint64Sorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Uint64Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestUint64Sorted_JSONEmpty(t *testing.T) {
+	set := make(Uint64Sorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Uint64Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkUint64_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -7793,6 +10892,53 @@ func BenchmarkUint64_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkUint64_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint64)
+			for i := 0; i < size; i++ {
+				set[uint64(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkUint64_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint64)
+			for i := 0; i < size; i++ {
+				set[uint64(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Uint64
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkUint64Sorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -7925,6 +11071,53 @@ func BenchmarkUint64Sorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = Uint64SortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkUint64Sorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint64Sorted)
+			for i := 0; i < size; i++ {
+				set[uint64(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkUint64Sorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Uint64Sorted)
+			for i := 0; i < size; i++ {
+				set[uint64(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Uint64Sorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -8123,6 +11316,92 @@ func TestFloat64_EmptySet(t *testing.T) {
 	}
 }
 
+func TestFloat64_JSONRoundTrip(t *testing.T) {
+	set := make(Float64)
+	set[0.0] = struct{}{}
+	set[1.0] = struct{}{}
+	set[2.0] = struct{}{}
+	set[3.0] = struct{}{}
+	set[4.0] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Float64
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestFloat64_JSONNil(t *testing.T) {
+	var nilSet Float64
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Float64
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestFloat64_JSONEmpty(t *testing.T) {
+	set := make(Float64)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Float64
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestFloat64Sorted_RoundTrip(t *testing.T) {
 	set := make(Float64Sorted)
 	set[0.0] = struct{}{}
@@ -8316,6 +11595,92 @@ func TestFloat64Sorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestFloat64Sorted_JSONRoundTrip(t *testing.T) {
+	set := make(Float64Sorted)
+	set[0.0] = struct{}{}
+	set[1.0] = struct{}{}
+	set[2.0] = struct{}{}
+	set[3.0] = struct{}{}
+	set[4.0] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Float64Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestFloat64Sorted_JSONNil(t *testing.T) {
+	var nilSet Float64Sorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Float64Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestFloat64Sorted_JSONEmpty(t *testing.T) {
+	set := make(Float64Sorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Float64Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkFloat64_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -8453,6 +11818,53 @@ func BenchmarkFloat64_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkFloat64_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Float64)
+			for i := 0; i < size; i++ {
+				set[float64(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkFloat64_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Float64)
+			for i := 0; i < size; i++ {
+				set[float64(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Float64
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkFloat64Sorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -8585,6 +11997,53 @@ func BenchmarkFloat64Sorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = Float64SortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkFloat64Sorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Float64Sorted)
+			for i := 0; i < size; i++ {
+				set[float64(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkFloat64Sorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Float64Sorted)
+			for i := 0; i < size; i++ {
+				set[float64(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Float64Sorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
@@ -8783,6 +12242,92 @@ func TestFloat32_EmptySet(t *testing.T) {
 	}
 }
 
+func TestFloat32_JSONRoundTrip(t *testing.T) {
+	set := make(Float32)
+	set[0.0] = struct{}{}
+	set[1.0] = struct{}{}
+	set[2.0] = struct{}{}
+	set[3.0] = struct{}{}
+	set[4.0] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Float32
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestFloat32_JSONNil(t *testing.T) {
+	var nilSet Float32
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Float32
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestFloat32_JSONEmpty(t *testing.T) {
+	set := make(Float32)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Float32
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func TestFloat32Sorted_RoundTrip(t *testing.T) {
 	set := make(Float32Sorted)
 	set[0.0] = struct{}{}
@@ -8976,6 +12521,92 @@ func TestFloat32Sorted_EmptySet(t *testing.T) {
 	}
 }
 
+func TestFloat32Sorted_JSONRoundTrip(t *testing.T) {
+	set := make(Float32Sorted)
+	set[0.0] = struct{}{}
+	set[1.0] = struct{}{}
+	set[2.0] = struct{}{}
+	set[3.0] = struct{}{}
+	set[4.0] = struct{}{}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded Float32Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func TestFloat32Sorted_JSONNil(t *testing.T) {
+	var nilSet Float32Sorted
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded Float32Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func TestFloat32Sorted_JSONEmpty(t *testing.T) {
+	set := make(Float32Sorted)
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded Float32Sorted
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
+
 func BenchmarkFloat32_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -9113,6 +12744,53 @@ func BenchmarkFloat32_FromSlice(b *testing.B) {
 	}
 }
 
+func BenchmarkFloat32_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Float32)
+			for i := 0; i < size; i++ {
+				set[float32(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkFloat32_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Float32)
+			for i := 0; i < size; i++ {
+				set[float32(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Float32
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func BenchmarkFloat32Sorted_EncodeMsg(b *testing.B) {
 	sizes := []int{10, 100, 1000}
 
@@ -9245,6 +12923,53 @@ func BenchmarkFloat32Sorted_FromSlice(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				_ = Float32SortedFromSlice(slice)
+			}
+		})
+	}
+}
+
+func BenchmarkFloat32Sorted_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Float32Sorted)
+			for i := 0; i < size; i++ {
+				set[float32(i)] = struct{}{}
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkFloat32Sorted_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make(Float32Sorted)
+			for i := 0; i < size; i++ {
+				set[float32(i)] = struct{}{}
+			}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded Float32Sorted
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}

@@ -75,6 +75,33 @@ func (s Foo) Msgsize() int {
 	return size
 }
 
+// UnmarshalJSON implements json.Unmarshaler.
+func (s *Foo) UnmarshalJSON(data []byte) error {
+	if isJSONNull(data) {
+		*s = nil
+		return nil
+	}
+	dst := *s
+	if dst != nil {
+		clear(dst)
+	} else {
+		dst = make(Foo)
+	}
+	err := jsonArrayIter(data, func(raw []byte) error {
+		k, parseErr := jsonParseQuoted(raw)
+		if parseErr != nil {
+			return parseErr
+		}
+		dst[k] = struct{}{}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	*s = dst
+	return nil
+}
+
 // FooFromSlice creates a Foo from a slice.
 func FooFromSlice(s []string) Foo {
 	if s == nil {
@@ -137,6 +164,25 @@ func (s Foo) AsSlice() []string {
 		dst = append(dst, k)
 	}
 	return dst
+}
+
+// MarshalJSON implements json.Marshaler.
+func (s Foo) MarshalJSON() ([]byte, error) {
+	if s == nil {
+		return []byte("null"), nil
+	}
+	dst := make([]byte, 0, 2+len(s)*10)
+	dst = append(dst, '[')
+	first := true
+	for k := range s {
+		if !first {
+			dst = append(dst, ',')
+		}
+		first = false
+		dst = jsonAppendQuote(dst, k)
+	}
+	dst = append(dst, ']')
+	return dst, nil
 }
 `
 
@@ -216,6 +262,24 @@ func (s Foo) AsSlice() []string {
 		return 1
 	})
 	return keys
+}
+
+// MarshalJSON implements json.Marshaler.
+func (s Foo) MarshalJSON() ([]byte, error) {
+	if s == nil {
+		return []byte("null"), nil
+	}
+	keys := s.AsSlice()
+	dst := make([]byte, 0, 2+len(keys)*10)
+	dst = append(dst, '[')
+	for i, k := range keys {
+		if i > 0 {
+			dst = append(dst, ',')
+		}
+		dst = jsonAppendQuote(dst, k)
+	}
+	dst = append(dst, ']')
+	return dst, nil
 }
 `
 
@@ -404,6 +468,88 @@ func Test{{.TypeName}}_EmptySet(t *testing.T) {
 		t.Fatalf("expected empty set, got length %d", len(unmarshaled))
 	}
 }
+
+func Test{{.TypeName}}_JSONRoundTrip(t *testing.T) {
+	set := make({{.TypeName}})
+	{{.PopulateSet}}
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON failed: %v", err)
+	}
+
+	// Verify JSON is an array
+	if len(data) == 0 || data[0] != '[' || data[len(data)-1] != ']' {
+		t.Fatalf("expected JSON array, got: %s", data)
+	}
+
+	// Verify it unmarshals as a generic JSON array
+	var arr []json.RawMessage
+	if err := json.Unmarshal(data, &arr); err != nil {
+		t.Fatalf("JSON is not a valid array: %v", err)
+	}
+	if len(arr) != len(set) {
+		t.Fatalf("JSON array length mismatch: expected %d, got %d", len(set), len(arr))
+	}
+
+	var decoded {{.TypeName}}
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON failed: %v", err)
+	}
+
+	if len(set) != len(decoded) {
+		t.Fatalf("length mismatch: expected %d, got %d", len(set), len(decoded))
+	}
+
+	for k := range set {
+		if _, ok := decoded[k]; !ok {
+			t.Fatalf("missing key: %v", k)
+		}
+	}
+}
+
+func Test{{.TypeName}}_JSONNil(t *testing.T) {
+	var nilSet {{.TypeName}}
+
+	data, err := json.Marshal(nilSet)
+	if err != nil {
+		t.Fatalf("MarshalJSON nil failed: %v", err)
+	}
+	if string(data) != "null" {
+		t.Fatalf("expected null, got %s", data)
+	}
+
+	var decoded {{.TypeName}}
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON nil failed: %v", err)
+	}
+	if decoded != nil {
+		t.Fatal("expected nil, got non-nil")
+	}
+}
+
+func Test{{.TypeName}}_JSONEmpty(t *testing.T) {
+	set := make({{.TypeName}})
+
+	data, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("MarshalJSON empty failed: %v", err)
+	}
+	if string(data) != "[]" {
+		t.Fatalf("expected [], got %s", data)
+	}
+
+	var decoded {{.TypeName}}
+	err = json.Unmarshal(data, &decoded)
+	if err != nil {
+		t.Fatalf("UnmarshalJSON empty failed: %v", err)
+	}
+	if len(decoded) != 0 {
+		t.Fatalf("expected empty set, got length %d", len(decoded))
+	}
+}
 `
 
 const benchTemplate = `
@@ -530,6 +676,49 @@ func Benchmark{{.TypeName}}_FromSlice(b *testing.B) {
 		})
 	}
 }
+
+func Benchmark{{.TypeName}}_MarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make({{.TypeName}})
+			{{.GeneratePopulateCode}}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := json.Marshal(set)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func Benchmark{{.TypeName}}_UnmarshalJSON(b *testing.B) {
+	sizes := []int{10, 100, 1000}
+
+	for _, size := range sizes {
+		b.Run(fmt.Sprintf("%d", size), func(b *testing.B) {
+			set := make({{.TypeName}})
+			{{.GeneratePopulateCode}}
+
+			data, _ := json.Marshal(set)
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var decoded {{.TypeName}}
+				err := json.Unmarshal(data, &decoded)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
 `
 
 type replacer struct {
@@ -540,6 +729,9 @@ type replacer struct {
 	AppendValue string // 'AppendString'
 	KeyLen      string // 'size += msgp.StringPrefixSize'
 	Sorter      string // 'sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })'
+
+	JSONAppendKey string // 'jsonAppendQuote(dst, k)'
+	JSONParseKey  string // 'jsonParseQuoted(raw)'
 }
 
 type testGen struct {
@@ -750,127 +942,156 @@ func generateTests(out *os.File, r replacer) {
 
 var replacers = []replacer{
 	{
-		GoType:      "string",
-		PackageName: "Foo",
-		DecodeValue: "ReadString",
-		EncodeValue: "WriteString",
-		AppendValue: "AppendString",
-		KeyLen:      "size += len(s) * msgp.StringPrefixSize",
-		Sorter:      "slices.SortFunc(keys, func(a, b string) int {\n\t\tif a < b {\n\t\t\treturn -1\n\t\t}\n\t\treturn 1\n\t})",
+		GoType:        "string",
+		PackageName:   "Foo",
+		DecodeValue:   "ReadString",
+		EncodeValue:   "WriteString",
+		AppendValue:   "AppendString",
+		KeyLen:        "size += len(s) * msgp.StringPrefixSize",
+		Sorter:        "slices.SortFunc(keys, func(a, b string) int {\n\t\tif a < b {\n\t\t\treturn -1\n\t\t}\n\t\treturn 1\n\t})",
+		JSONAppendKey: "jsonAppendQuote(dst, k)",
+		JSONParseKey:  "jsonParseQuoted(raw)",
 	},
 	{
-		GoType:      "string",
-		PackageName: "String",
-		DecodeValue: "ReadString",
-		EncodeValue: "WriteString",
-		AppendValue: "AppendString",
-		KeyLen:      "for key := range s {\n\t\t\tsize += msgp.StringPrefixSize + len(key)\n\t\t}",
-		// Using slices.SortFunc is slower than sort.Strings
-		Sorter: "sort.Strings(keys)",
+		GoType:        "string",
+		PackageName:   "String",
+		DecodeValue:   "ReadString",
+		EncodeValue:   "WriteString",
+		AppendValue:   "AppendString",
+		KeyLen:        "for key := range s {\n\t\t\tsize += msgp.StringPrefixSize + len(key)\n\t\t}",
+		Sorter:        "sort.Strings(keys)",
+		JSONAppendKey: "jsonAppendQuote(dst, k)",
+		JSONParseKey:  "jsonParseQuoted(raw)",
 	},
 	{
-		GoType:      "int",
-		PackageName: "Int",
-		DecodeValue: "ReadInt",
-		EncodeValue: "WriteInt",
-		AppendValue: "AppendInt",
-		KeyLen:      "size += len(s) * msgp.IntSize",
+		GoType:        "int",
+		PackageName:   "Int",
+		DecodeValue:   "ReadInt",
+		EncodeValue:   "WriteInt",
+		AppendValue:   "AppendInt",
+		KeyLen:        "size += len(s) * msgp.IntSize",
+		JSONAppendKey: "strconv.AppendInt(dst, int64(k), 10)",
+		JSONParseKey:  "jsonParseSigned[int](raw, 0)",
 	},
 	{
-		GoType:      "uint",
-		PackageName: "Uint",
-		DecodeValue: "ReadUint",
-		EncodeValue: "WriteUint",
-		AppendValue: "AppendUint",
-		KeyLen:      "size += len(s) * msgp.UintSize",
+		GoType:        "uint",
+		PackageName:   "Uint",
+		DecodeValue:   "ReadUint",
+		EncodeValue:   "WriteUint",
+		AppendValue:   "AppendUint",
+		KeyLen:        "size += len(s) * msgp.UintSize",
+		JSONAppendKey: "strconv.AppendUint(dst, uint64(k), 10)",
+		JSONParseKey:  "jsonParseUnsigned[uint](raw, 0)",
 	},
 	{
-		GoType:      "byte",
-		PackageName: "Byte",
-		DecodeValue: "ReadByte",
-		EncodeValue: "WriteByte",
-		AppendValue: "AppendByte",
-		KeyLen:      "size += len(s) * msgp.ByteSize",
+		GoType:        "byte",
+		PackageName:   "Byte",
+		DecodeValue:   "ReadByte",
+		EncodeValue:   "WriteByte",
+		AppendValue:   "AppendByte",
+		KeyLen:        "size += len(s) * msgp.ByteSize",
+		JSONAppendKey: "strconv.AppendUint(dst, uint64(k), 10)",
+		JSONParseKey:  "jsonParseUnsigned[byte](raw, 8)",
 	},
 	{
-		GoType:      "int8",
-		PackageName: "Int8",
-		DecodeValue: "ReadInt8",
-		EncodeValue: "WriteInt8",
-		AppendValue: "AppendInt8",
-		KeyLen:      "size += len(s) * msgp.Int8Size",
+		GoType:        "int8",
+		PackageName:   "Int8",
+		DecodeValue:   "ReadInt8",
+		EncodeValue:   "WriteInt8",
+		AppendValue:   "AppendInt8",
+		KeyLen:        "size += len(s) * msgp.Int8Size",
+		JSONAppendKey: "strconv.AppendInt(dst, int64(k), 10)",
+		JSONParseKey:  "jsonParseSigned[int8](raw, 8)",
 	},
 	{
-		GoType:      "uint8",
-		PackageName: "Uint8",
-		DecodeValue: "ReadUint8",
-		EncodeValue: "WriteUint8",
-		AppendValue: "AppendUint8",
-		KeyLen:      "size += len(s) * msgp.Uint8Size",
+		GoType:        "uint8",
+		PackageName:   "Uint8",
+		DecodeValue:   "ReadUint8",
+		EncodeValue:   "WriteUint8",
+		AppendValue:   "AppendUint8",
+		KeyLen:        "size += len(s) * msgp.Uint8Size",
+		JSONAppendKey: "strconv.AppendUint(dst, uint64(k), 10)",
+		JSONParseKey:  "jsonParseUnsigned[uint8](raw, 8)",
 	},
 	{
-		GoType:      "int16",
-		PackageName: "Int16",
-		DecodeValue: "ReadInt16",
-		EncodeValue: "WriteInt16",
-		AppendValue: "AppendInt16",
-		KeyLen:      "size += len(s) * msgp.Int16Size",
+		GoType:        "int16",
+		PackageName:   "Int16",
+		DecodeValue:   "ReadInt16",
+		EncodeValue:   "WriteInt16",
+		AppendValue:   "AppendInt16",
+		KeyLen:        "size += len(s) * msgp.Int16Size",
+		JSONAppendKey: "strconv.AppendInt(dst, int64(k), 10)",
+		JSONParseKey:  "jsonParseSigned[int16](raw, 16)",
 	},
 	{
-		GoType:      "uint16",
-		PackageName: "Uint16",
-		DecodeValue: "ReadUint16",
-		EncodeValue: "WriteUint16",
-		AppendValue: "AppendUint16",
-		KeyLen:      "size += len(s) * msgp.Uint16Size",
+		GoType:        "uint16",
+		PackageName:   "Uint16",
+		DecodeValue:   "ReadUint16",
+		EncodeValue:   "WriteUint16",
+		AppendValue:   "AppendUint16",
+		KeyLen:        "size += len(s) * msgp.Uint16Size",
+		JSONAppendKey: "strconv.AppendUint(dst, uint64(k), 10)",
+		JSONParseKey:  "jsonParseUnsigned[uint16](raw, 16)",
 	},
 	{
-		GoType:      "int32",
-		PackageName: "Int32",
-		DecodeValue: "ReadInt32",
-		EncodeValue: "WriteInt32",
-		AppendValue: "AppendInt32",
-		KeyLen:      "size += len(s) * msgp.Int32Size",
+		GoType:        "int32",
+		PackageName:   "Int32",
+		DecodeValue:   "ReadInt32",
+		EncodeValue:   "WriteInt32",
+		AppendValue:   "AppendInt32",
+		KeyLen:        "size += len(s) * msgp.Int32Size",
+		JSONAppendKey: "strconv.AppendInt(dst, int64(k), 10)",
+		JSONParseKey:  "jsonParseSigned[int32](raw, 32)",
 	},
 	{
-		GoType:      "uint32",
-		PackageName: "Uint32",
-		DecodeValue: "ReadUint32",
-		EncodeValue: "WriteUint32",
-		AppendValue: "AppendUint32",
-		KeyLen:      "size += len(s) * msgp.Uint32Size",
+		GoType:        "uint32",
+		PackageName:   "Uint32",
+		DecodeValue:   "ReadUint32",
+		EncodeValue:   "WriteUint32",
+		AppendValue:   "AppendUint32",
+		KeyLen:        "size += len(s) * msgp.Uint32Size",
+		JSONAppendKey: "strconv.AppendUint(dst, uint64(k), 10)",
+		JSONParseKey:  "jsonParseUnsigned[uint32](raw, 32)",
 	},
 	{
-		GoType:      "int64",
-		PackageName: "Int64",
-		DecodeValue: "ReadInt64",
-		EncodeValue: "WriteInt64",
-		AppendValue: "AppendInt64",
-		KeyLen:      "size += len(s) * msgp.Int64Size",
+		GoType:        "int64",
+		PackageName:   "Int64",
+		DecodeValue:   "ReadInt64",
+		EncodeValue:   "WriteInt64",
+		AppendValue:   "AppendInt64",
+		KeyLen:        "size += len(s) * msgp.Int64Size",
+		JSONAppendKey: "strconv.AppendInt(dst, int64(k), 10)",
+		JSONParseKey:  "jsonParseSigned[int64](raw, 64)",
 	},
 	{
-		GoType:      "uint64",
-		PackageName: "Uint64",
-		DecodeValue: "ReadUint64",
-		EncodeValue: "WriteUint64",
-		AppendValue: "AppendUint64",
-		KeyLen:      "size += len(s) * msgp.Uint64Size",
+		GoType:        "uint64",
+		PackageName:   "Uint64",
+		DecodeValue:   "ReadUint64",
+		EncodeValue:   "WriteUint64",
+		AppendValue:   "AppendUint64",
+		KeyLen:        "size += len(s) * msgp.Uint64Size",
+		JSONAppendKey: "strconv.AppendUint(dst, uint64(k), 10)",
+		JSONParseKey:  "jsonParseUnsigned[uint64](raw, 64)",
 	},
 	{
-		GoType:      "float64",
-		PackageName: "Float64",
-		DecodeValue: "ReadFloat64",
-		EncodeValue: "WriteFloat",
-		AppendValue: "AppendFloat",
-		KeyLen:      "size += len(s) * msgp.Float64Size",
+		GoType:        "float64",
+		PackageName:   "Float64",
+		DecodeValue:   "ReadFloat64",
+		EncodeValue:   "WriteFloat",
+		AppendValue:   "AppendFloat",
+		KeyLen:        "size += len(s) * msgp.Float64Size",
+		JSONAppendKey: "strconv.AppendFloat(dst, float64(k), 'f', -1, 64)",
+		JSONParseKey:  "jsonParseFloat[float64](raw, 64)",
 	},
 	{
-		GoType:      "float32",
-		PackageName: "Float32",
-		DecodeValue: "ReadFloat32",
-		EncodeValue: "WriteFloat32",
-		AppendValue: "AppendFloat32",
-		KeyLen:      "size += len(s) * msgp.Float32Size",
+		GoType:        "float32",
+		PackageName:   "Float32",
+		DecodeValue:   "ReadFloat32",
+		EncodeValue:   "WriteFloat32",
+		AppendValue:   "AppendFloat32",
+		KeyLen:        "size += len(s) * msgp.Float32Size",
+		JSONAppendKey: "strconv.AppendFloat(dst, float64(k), 'f', -1, 32)",
+		JSONParseKey:  "jsonParseFloat[float32](raw, 32)",
 	},
 }
 
@@ -900,6 +1121,7 @@ package setof
 import (
 	"slices"
 	"sort"
+	"strconv"
 
 	"github.com/tinylib/msgp/msgp"
 )`)
@@ -907,6 +1129,8 @@ import (
 	base := replacers[0]
 	for _, r := range replacers[1:] {
 		replaced := unsorted + template
+		replaced = strings.ReplaceAll(replaced, base.JSONAppendKey, r.JSONAppendKey)
+		replaced = strings.ReplaceAll(replaced, base.JSONParseKey, r.JSONParseKey)
 		replaced = strings.ReplaceAll(replaced, base.GoType, r.GoType)
 		replaced = strings.ReplaceAll(replaced, base.PackageName, r.PackageName)
 		replaced = strings.ReplaceAll(replaced, base.EncodeValue, r.EncodeValue)
@@ -917,6 +1141,8 @@ import (
 		fmt.Fprintln(out, replaced)
 
 		replaced = sorted + template
+		replaced = strings.ReplaceAll(replaced, base.JSONAppendKey, r.JSONAppendKey)
+		replaced = strings.ReplaceAll(replaced, base.JSONParseKey, r.JSONParseKey)
 		if r.Sorter != "" {
 			replaced = strings.ReplaceAll(replaced, base.Sorter, r.Sorter)
 		}
@@ -943,6 +1169,7 @@ package setof
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"testing"
 
