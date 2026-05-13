@@ -22,6 +22,7 @@ func skipWS(data []byte, i int) int {
 
 // jsonArrayIter calls fn for each raw element in a JSON array.
 // String elements include their surrounding quotes. Does not allocate.
+// Simple string and integer types are supported.
 func jsonArrayIter(data []byte, fn func(raw []byte) error) error {
 	i := skipWS(data, 0)
 	if i >= len(data) || data[i] != '[' {
