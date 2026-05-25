@@ -80,6 +80,7 @@ func jsonAppendQuote(dst []byte, s string) []byte {
 	dst = append(dst, '"')
 	for _, r := range s {
 		if r >= 0x20 && r != '"' && r != '\\' {
+			// Any printable rune...
 			dst = utf8.AppendRune(dst, r)
 			continue
 		}
@@ -97,6 +98,7 @@ func jsonAppendQuote(dst []byte, s string) []byte {
 		case '\t':
 			dst = append(dst, '\\', 't')
 		default:
+			// reachable only when r < 0x20 (other control chars); always fits in \u00XX
 			dst = append(dst, '\\', 'u', '0', '0', hexDigit(byte(r>>4)), hexDigit(byte(r&0xf)))
 		}
 	}
