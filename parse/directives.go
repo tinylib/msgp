@@ -249,17 +249,17 @@ func tag(text []string, f *FileSet) error {
 	}
 	var names []string
 	for _, t := range text[1:] {
-		for _, n := range strings.Split(t, ",") {
+		for n := range strings.SplitSeq(t, ",") {
 			if n = strings.TrimSpace(n); n != "" {
 				names = append(names, n)
 			}
 		}
 	}
-	if len(names) == 0 {
-		return nil
+
+	f.tagNames = append(names, "msg", "msgpack") // Add defaults
+	if len(names) > 0 {
+		infof("using field tags %q\n", strings.Join(names, ","))
 	}
-	f.tagNames = names
-	infof("using field tags %q\n", strings.Join(names, ","))
 	return nil
 }
 

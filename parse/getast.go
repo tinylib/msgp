@@ -65,6 +65,7 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 		Directives: append([]string{}, directives...),
 		ArrayLimit: math.MaxUint32,
 		MapLimit:   math.MaxUint32,
+		tagNames:   []string{"msg", "msgpack"},
 	}
 
 	fset := token.NewFileSet()
@@ -533,12 +534,6 @@ func (fs *FileSet) getField(f *ast.Field) []gen.StructField {
 			if body = st.Get(name); body != "" {
 				break
 			}
-		}
-		if body == "" {
-			body = st.Get("msg")
-		}
-		if body == "" {
-			body = st.Get("msgpack")
 		}
 		tags := strings.Split(body, ",")
 		if len(tags) >= 2 {
