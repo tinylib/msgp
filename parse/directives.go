@@ -259,7 +259,7 @@ func tag(text []string, f *FileSet) error {
 		return nil
 	}
 	f.tagNames = names
-	infof("using field tag %q\n", names)
+	infof("using field tags %q\n", strings.Join(names, ","))
 	return nil
 }
 
