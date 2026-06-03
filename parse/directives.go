@@ -48,6 +48,7 @@ var directives = map[string]directive{
 // and then add it to this list.
 var earlyDirectives = map[string]directive{
 	"tag":     tag,
+	"tags":    tag,
 	"pointer": pointer,
 	"maps":    maps,
 }
@@ -237,12 +238,28 @@ func asvartuple(text []string, f *FileSet) error {
 }
 
 //msgp:tag {tagname}
+//msgp:tags {tag1},{tag2},...
+//
+// The tag/tags directive accepts a comma-separated priority list; fields are
+// read from the first tag that has a non-empty value, falling back to msg
+// then msgpack if none of the listed tags match.
 func tag(text []string, f *FileSet) error {
-	if len(text) != 2 {
+	if len(text) < 2 {
 		return nil
 	}
-	f.tagName = strings.TrimSpace(text[1])
-	infof("using field tag %q\n", f.tagName)
+	var names []string
+	for _, t := range text[1:] {
+		for _, n := range strings.Split(t, ",") {
+			if n = strings.TrimSpace(n); n != "" {
+				names = append(names, n)
+			}
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	f.tagNames = names
+	infof("using field tag %q\n", names)
 	return nil
 }
 
