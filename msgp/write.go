@@ -120,6 +120,9 @@ type Writer struct {
 
 // NewWriter returns a new *Writer.
 func NewWriter(w io.Writer) *Writer {
+	if w == nil {
+		w = io.Discard
+	}
 	if wr, ok := w.(*Writer); ok {
 		return wr
 	}
