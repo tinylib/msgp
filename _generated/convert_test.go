@@ -58,3 +58,23 @@ func TestConvertToMarshalError(t *testing.T) {
 		t.Fatalf("expected conversion error, found %v", err.Error())
 	}
 }
+
+func TestConvertInt(t *testing.T) {
+	// #446: a fixed-size convert shim must generate a Msgsize that is an
+	// accurate constant and compiles (no unassigned temporary).
+	in := ConvertInt{Int: 42}
+	b, err := in.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.Msgsize() < len(b) {
+		t.Fatalf("Msgsize %d under-reports marshaled size %d", in.Msgsize(), len(b))
+	}
+	var out ConvertInt
+	if _, err = out.UnmarshalMsg(b); err != nil {
+		t.Fatal(err)
+	}
+	if out != in {
+		t.Fatalf("round-trip mismatch: %v != %v", out, in)
+	}
+}

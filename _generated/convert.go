@@ -81,3 +81,22 @@ type ConvertErrVal string
 type ConvertErr struct {
 	Err ConvertErrVal
 }
+
+//msgp:shim ConvertIntVal as:int64 using:fromConvertIntVal/toConvertIntVal mode:convert
+//msgp:ignore ConvertIntVal
+
+func fromConvertIntVal(v ConvertIntVal) (int64, error) {
+	return int64(v), nil
+}
+
+func toConvertIntVal(i int64) (ConvertIntVal, error) {
+	return ConvertIntVal(i), nil
+}
+
+type ConvertIntVal int64
+
+// ConvertInt exercises a fixed-size (int64) convert shim, whose generated
+// Msgsize must not declare an unused temporary (#446).
+type ConvertInt struct {
+	Int ConvertIntVal
+}
