@@ -80,6 +80,38 @@ func TestReadIntf(t *testing.T) {
 	}
 }
 
+// both the 'str' and 'bin' types are acceptable map keys, same as TestReadMapKey
+func TestReadMapStrIntfBinKey(t *testing.T) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+	en.WriteMapHeader(2)
+	en.WriteString("normal_key")
+	en.WriteString("normal_value")
+	en.WriteBytes([]byte("bin_key")) // key encoded as 'bin', not 'str'
+	en.WriteString("bin_value")
+	err := en.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dec := NewReader(&buf)
+	m := make(map[string]any)
+	err = dec.ReadMapStrIntf(m)
+	if err != nil {
+		t.Fatalf("couldn't read map with a bin-typed key: %q", err)
+	}
+
+	if len(m) != 2 {
+		t.Fatalf("expected 2 fields; found %d", len(m))
+	}
+	if v, ok := m["normal_key"]; !ok || v != "normal_value" {
+		t.Errorf("normal_key: got %v, ok=%v", v, ok)
+	}
+	if v, ok := m["bin_key"]; !ok || v != "bin_value" {
+		t.Errorf("bin_key: got %v, ok=%v", v, ok)
+	}
+}
+
 func TestReadIntfRecursion(t *testing.T) {
 	var buf bytes.Buffer
 	dec := NewReader(&buf)
