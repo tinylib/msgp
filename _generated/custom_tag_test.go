@@ -8,7 +8,7 @@ import (
 
 	"bytes"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )
 
 func TestCustomTag(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tinylib/msgp/gen"
+	"github.com/GannettDigital/msgp/gen"
 )
 
 const showGeneratedFile = false

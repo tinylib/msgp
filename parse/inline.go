@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tinylib/msgp/gen"
+	"github.com/GannettDigital/msgp/gen"
 )
 
 // This file defines when and how we
@@ -130,7 +130,7 @@ func (fs *FileSet) propInline() {
 }
 
 const fatalloop = `detected infinite recursion in inlining loop!
-Please file a bug at github.com/tinylib/msgp/issues!
+Please file a bug at github.com/GannettDigital/msgp/issues!
 Thanks!
 `
 

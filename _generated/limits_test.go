@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )
 
 func TestSliceLimitEnforcement(t *testing.T) {

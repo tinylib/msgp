@@ -901,7 +901,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )`)
 
 	base := replacers[0]
@@ -946,7 +946,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )`)
 
 	// Generate tests for each type (skip the template base type)

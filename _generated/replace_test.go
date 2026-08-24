@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )
 
 func compareStructD(t *testing.T, a, b *CompatibleStructD) {

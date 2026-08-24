@@ -1,6 +1,6 @@
 package _generated
 
-import "github.com/tinylib/msgp/msgp"
+import "github.com/GannettDigital/msgp/msgp"
 
 //go:generate msgp -v
 

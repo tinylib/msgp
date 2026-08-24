@@ -12,7 +12,7 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/tinylib/msgp/gen"
+	"github.com/GannettDigital/msgp/gen"
 )
 
 // When stuff's going wrong, you'll be glad this is here!

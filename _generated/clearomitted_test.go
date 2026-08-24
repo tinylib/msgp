@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )
 
 func TestClearOmitted(t *testing.T) {

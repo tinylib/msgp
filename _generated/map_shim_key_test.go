@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )
 
 func TestShimmedKeys(t *testing.T) {

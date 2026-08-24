@@ -6,7 +6,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )
 
 func encode(w io.Writer) *encodeGen {

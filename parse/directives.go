@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tinylib/msgp/gen"
+	"github.com/GannettDigital/msgp/gen"
 )
 
 const linePrefix = "//msgp:"

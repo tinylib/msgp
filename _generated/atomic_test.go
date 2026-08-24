@@ -6,7 +6,7 @@ import (
 
 	"sync/atomic"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )
 
 // Helper: compare two AtomicTest values deeply.

@@ -1,6 +1,6 @@
 package _generated
 
-import "github.com/tinylib/msgp/msgp/setof"
+import "github.com/GannettDigital/msgp/msgp/setof"
 
 //go:generate msgp
 type SetOf struct {

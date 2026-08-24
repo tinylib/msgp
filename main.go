@@ -18,7 +18,7 @@
 //	-marshal = satisfy the `msgp.Marshaler` and `msgp.Unmarshaler` interfaces (default is true)
 //	-tests = generate tests and benchmarks (default is true)
 //
-// For more information, please read README.md, and the wiki at github.com/tinylib/msgp
+// For more information, please read README.md, and the wiki at github.com/GannettDigital/msgp
 package main
 
 import (
@@ -28,9 +28,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tinylib/msgp/gen"
-	"github.com/tinylib/msgp/parse"
-	"github.com/tinylib/msgp/printer"
+	"github.com/GannettDigital/msgp/gen"
+	"github.com/GannettDigital/msgp/parse"
+	"github.com/GannettDigital/msgp/printer"
 )
 
 var (

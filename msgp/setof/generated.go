@@ -6,7 +6,7 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )
 
 // String is a set of strings that will be stored as an array.

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tinylib/msgp/msgp"
+	"github.com/GannettDigital/msgp/msgp"
 )
 
 func TestString_RoundTrip(t *testing.T) {

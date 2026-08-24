@@ -1,4 +1,4 @@
-// This package is the support library for the msgp code generator (http://github.com/tinylib/msgp).
+// This package is the support library for the msgp code generator (http://github.com/GannettDigital/msgp).
 //
 // This package defines the utilites used by the msgp code generator for encoding and decoding MessagePack
 // from []byte and io.Reader/io.Writer types. Much of this package is devoted to helping the msgp code
@@ -23,7 +23,7 @@
 // an explicit de-serialization step.
 //
 // For additional tips, tricks, and gotchas, please visit
-// the wiki at http://github.com/tinylib/msgp
+// the wiki at http://github.com/GannettDigital/msgp
 package msgp
 
 // RT is the runtime interface for all types that can be encoded and decoded.
