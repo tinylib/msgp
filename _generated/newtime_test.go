@@ -30,8 +30,8 @@ func TestNewTime(t *testing.T) {
 	if !value.Equal(got) {
 		t.Errorf("UnmarshalMsg got %v want %v", value, got)
 	}
-	if got.T.Location() != time.Local {
-		t.Errorf("DecodeMsg got %v want %v", got.T.Location(), time.Local)
+	if got.T.Location() != time.UTC {
+		t.Errorf("DecodeMsg got %v want %v", got.T.Location(), time.UTC)
 	}
 
 	var buf bytes.Buffer
@@ -52,8 +52,8 @@ func TestNewTime(t *testing.T) {
 	if !value.Equal(got) {
 		t.Errorf("DecodeMsg got %v want %v", value, got)
 	}
-	if got.T.Location() != time.Local {
-		t.Errorf("DecodeMsg got %v want %v", got.T.Location(), time.Local)
+	if got.T.Location() != time.UTC {
+		t.Errorf("DecodeMsg got %v want %v", got.T.Location(), time.UTC)
 	}
 }
 

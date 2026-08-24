@@ -1098,12 +1098,12 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 			return
 		}
 		sec, nsec := getUnix(b)
-		t = time.Unix(sec, int64(nsec)).Local()
+		t = time.Unix(sec, int64(nsec)).UTC()
 		return
 	case MsgTimeExtension:
 		switch len(b) {
 		case 4:
-			t = time.Unix(int64(binary.BigEndian.Uint32(b)), 0).Local()
+			t = time.Unix(int64(binary.BigEndian.Uint32(b)), 0).UTC()
 			return
 		case 8:
 			v := binary.BigEndian.Uint64(b)
@@ -1113,7 +1113,7 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 				err = InvalidTimestamp{Nanos: nanos}
 				return
 			}
-			t = time.Unix(int64(v&(1<<34-1)), nanos).Local()
+			t = time.Unix(int64(v&(1<<34-1)), nanos).UTC()
 			return
 		case 12:
 			nanos := int64(binary.BigEndian.Uint32(b))
@@ -1123,7 +1123,7 @@ func ReadTimeBytes(b []byte) (t time.Time, o []byte, err error) {
 				return
 			}
 			ux := int64(binary.BigEndian.Uint64(b[4:]))
-			t = time.Unix(ux, nanos).Local()
+			t = time.Unix(ux, nanos).UTC()
 			return
 		default:
 			err = InvalidTimestamp{FieldLength: len(b)}

@@ -1401,7 +1401,7 @@ func (m *Reader) ReadTimeUTC() (t time.Time, err error) {
 }
 
 // ReadTime reads a time.Time object from the reader.
-// The returned time's location will be set to time.Local.
+// The returned time's location will be set to time.UTC.
 func (m *Reader) ReadTime() (t time.Time, err error) {
 	offset, length, extType, err := m.peekExtensionHeader()
 	if err != nil {
@@ -1424,7 +1424,7 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 			return
 		}
 		sec, nsec := getUnix(p[3:])
-		t = time.Unix(sec, int64(nsec)).Local()
+		t = time.Unix(sec, int64(nsec)).UTC()
 		_, err = m.R.Skip(15)
 		return
 	case MsgTimeExtension:
@@ -1447,7 +1447,7 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 			b := tmp[:length]
 			switch length {
 			case 4:
-				t = time.Unix(int64(binary.BigEndian.Uint32(b)), 0).Local()
+				t = time.Unix(int64(binary.BigEndian.Uint32(b)), 0).UTC()
 			case 8:
 				v := binary.BigEndian.Uint64(b)
 				nanos := int64(v >> 34)
@@ -1456,7 +1456,7 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 					err = InvalidTimestamp{Nanos: nanos}
 					return
 				}
-				t = time.Unix(int64(v&(1<<34-1)), nanos).Local()
+				t = time.Unix(int64(v&(1<<34-1)), nanos).UTC()
 			case 12:
 				nanos := int64(binary.BigEndian.Uint32(b))
 				if nanos > 999999999 {
@@ -1465,7 +1465,7 @@ func (m *Reader) ReadTime() (t time.Time, err error) {
 					return
 				}
 				ux := int64(binary.BigEndian.Uint64(b[4:]))
-				t = time.Unix(ux, nanos).Local()
+				t = time.Unix(ux, nanos).UTC()
 			}
 		default:
 			err = InvalidTimestamp{FieldLength: length}

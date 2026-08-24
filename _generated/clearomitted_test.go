@@ -27,7 +27,7 @@ func TestClearOmitted(t *testing.T) {
 		APtrNamedStruct:     &NamedStructCO{A: "sdf"},
 		EmbeddableStructCO:  EmbeddableStructCO{"value"},
 		EmbeddableStructCO2: EmbeddableStructCO2{"value"},
-		ATime:               time.Now(),
+		ATime:               time.Now().UTC(),
 		ASlice:              []int{1, 2, 3},
 		AMap:                map[string]int{"1": 1},
 		ABin:                []byte{1, 2, 3},
