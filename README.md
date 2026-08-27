@@ -18,15 +18,15 @@ This is a code generation tool and serialization library for [MessagePack](http:
 
 ### Quickstart
 
-First install the `msgp` generator command. Using Go this is done with `go install github.com/tinylib/msgp@latest`
+First add `msgp` generator command as a go tool. Using Go this is done with `go mod edit -tool=github.com/tinylib/msgp&&go mod tidy`
 
 In a source file, include the following directive:
 
 ```go
-//go:generate msgp
+//go:generate go tool msgp
 ```
 
-The `msgp` command will generate serialization methods for all exported type declarations in the file.
+The `go tool msgp` command will generate serialization methods for all exported type declarations in the file.
 
 You can [read more about the code generation options here](http://github.com/tinylib/msgp/wiki/Using-the-Code-Generator).
 
