@@ -80,6 +80,88 @@ func TestReadIntf(t *testing.T) {
 	}
 }
 
+// both the 'str' and 'bin' types are acceptable map keys, same as TestReadMapKey
+func TestReadMapStrIntfBinKey(t *testing.T) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+	en.WriteMapHeader(2)
+	en.WriteString("normal_key")
+	en.WriteString("normal_value")
+	en.WriteBytes([]byte("bin_key")) // key encoded as 'bin', not 'str'
+	en.WriteString("bin_value")
+	err := en.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dec := NewReader(&buf)
+	m := make(map[string]any)
+	err = dec.ReadMapStrIntf(m)
+	if err != nil {
+		t.Fatalf("couldn't read map with a bin-typed key: %q", err)
+	}
+
+	if len(m) != 2 {
+		t.Fatalf("expected 2 fields; found %d", len(m))
+	}
+	if v, ok := m["normal_key"]; !ok || v != "normal_value" {
+		t.Errorf("normal_key: got %v, ok=%v", v, ok)
+	}
+	if v, ok := m["bin_key"]; !ok || v != "bin_value" {
+		t.Errorf("bin_key: got %v, ok=%v", v, ok)
+	}
+}
+
+// ReadMapStrIntf reuses one key buffer across the loop; nested maps and a
+// short key following a long one must still come out intact
+func TestReadMapStrIntfKeyReuse(t *testing.T) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+	en.WriteMapHeader(3)
+	en.WriteString("a_very_long_outer_key_aaaaaaaaaa")
+	en.WriteString("v1")
+	en.WriteString("k") // shorter than the key before it
+	en.WriteMapHeader(2)
+	en.WriteString("inner_long_key_bbbbbbbbbbbbbbbb")
+	en.WriteString("iv1")
+	en.WriteBytes([]byte("in2"))
+	en.WriteString("iv2")
+	en.WriteBytes([]byte("z"))
+	en.WriteString("v3")
+	err := en.Flush()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// small buffer so the reader has to refill mid-map
+	dec := NewReaderSize(&buf, 16)
+	m := make(map[string]any)
+	err = dec.ReadMapStrIntf(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(m) != 3 {
+		t.Fatalf("expected 3 fields; found %d", len(m))
+	}
+	if v, ok := m["a_very_long_outer_key_aaaaaaaaaa"]; !ok || v != "v1" {
+		t.Errorf("long key: got %v, ok=%v", v, ok)
+	}
+	if v, ok := m["z"]; !ok || v != "v3" {
+		t.Errorf("z: got %v, ok=%v", v, ok)
+	}
+	inner, ok := m["k"].(map[string]any)
+	if !ok {
+		t.Fatalf("k: got %T, expected a map", m["k"])
+	}
+	if len(inner) != 2 {
+		t.Fatalf("expected 2 inner fields; found %d", len(inner))
+	}
+	if inner["inner_long_key_bbbbbbbbbbbbbbbb"] != "iv1" || inner["in2"] != "iv2" {
+		t.Errorf("inner: %v", inner)
+	}
+}
+
 func TestReadIntfRecursion(t *testing.T) {
 	var buf bytes.Buffer
 	dec := NewReader(&buf)
