@@ -230,21 +230,19 @@ func (s *sizeGen) gBase(b *BaseElem) {
 	if b.Convert && b.ShimMode == Convert {
 		if fixedSize(b.Value) {
 			// A fixed-size base has a constant wire size, so there is no need
-			// for a temporary holding the converted value. Emitting an
-			// (unassigned) temporary left it unused, producing a "declared and
-			// not used" compile error in the generated Msgsize (#446).
+			// for a temporary holding the converted value.
 			s.addConstant(basesizeExpr(b.Value, "", b.BaseName()))
-		} else {
-			s.state = add
-			vname := randIdent()
-			s.p.printf("\nvar %s %s", vname, b.BaseType())
-
-			// ensure we don't get "unused variable" warnings from outer slice iterations
-			s.p.printf("\n_ = %s", b.Varname())
-
-			s.p.printf("\ns += %s", basesizeExpr(b.Value, vname, b.BaseName()))
-			s.state = expr
+			return
 		}
+		s.state = add
+		vname := randIdent()
+		s.p.printf("\nvar %s %s", vname, b.BaseType())
+
+		// ensure we don't get "unused variable" warnings from outer slice iterations
+		s.p.printf("\n_ = %s", b.Varname())
+
+		s.p.printf("\ns += %s", basesizeExpr(b.Value, vname, b.BaseName()))
+		s.state = expr
 	} else {
 		vname := b.Varname()
 		if b.Convert {

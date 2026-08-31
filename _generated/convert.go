@@ -95,8 +95,12 @@ func toConvertIntVal(i int64) (ConvertIntVal, error) {
 
 type ConvertIntVal int64
 
-// ConvertInt exercises a fixed-size (int64) convert shim, whose generated
-// Msgsize must not declare an unused temporary (#446).
+// ConvertInt exercises a fixed-size (int64) convert shim.
 type ConvertInt struct {
-	Int ConvertIntVal
+	Int  ConvertIntVal
+	Ptr  *ConvertIntVal
+	Map  map[string]ConvertIntVal
+	MapP map[string]*ConvertIntVal
+	Arr  []ConvertIntVal
+	ArrP []*ConvertIntVal
 }
