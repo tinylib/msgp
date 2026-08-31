@@ -228,6 +228,12 @@ func (s *sizeGen) gBase(b *BaseElem) {
 		return
 	}
 	if b.Convert && b.ShimMode == Convert {
+		if fixedSize(b.Value) {
+			// A fixed-size base has a constant wire size, so there is no need
+			// for a temporary holding the converted value.
+			s.addConstant(basesizeExpr(b.Value, "", b.BaseName()))
+			return
+		}
 		s.state = add
 		vname := randIdent()
 		s.p.printf("\nvar %s %s", vname, b.BaseType())
@@ -237,7 +243,6 @@ func (s *sizeGen) gBase(b *BaseElem) {
 
 		s.p.printf("\ns += %s", basesizeExpr(b.Value, vname, b.BaseName()))
 		s.state = expr
-
 	} else {
 		vname := b.Varname()
 		if b.Convert {

@@ -2,6 +2,7 @@ package _generated
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/tinylib/msgp/msgp"
@@ -56,5 +57,32 @@ func TestConvertToMarshalError(t *testing.T) {
 	_, err = (&out).UnmarshalMsg(b)
 	if msgp.Cause(err) != errConvertTo {
 		t.Fatalf("expected conversion error, found %v", err.Error())
+	}
+}
+
+func TestConvertInt(t *testing.T) {
+	// A fixed-size convert shim must report an accurate constant Msgsize.
+	v := ConvertIntVal(7)
+	in := ConvertInt{
+		Int:  42,
+		Ptr:  &v,
+		Map:  map[string]ConvertIntVal{"a": 1},
+		MapP: map[string]*ConvertIntVal{"b": &v},
+		Arr:  []ConvertIntVal{1, 2},
+		ArrP: []*ConvertIntVal{&v},
+	}
+	b, err := in.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.Msgsize() < len(b) {
+		t.Fatalf("Msgsize %d under-reports marshaled size %d", in.Msgsize(), len(b))
+	}
+	var out ConvertInt
+	if _, err = out.UnmarshalMsg(b); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(out, in) {
+		t.Fatalf("round-trip mismatch: %v != %v", out, in)
 	}
 }
