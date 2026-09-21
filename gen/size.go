@@ -324,6 +324,9 @@ func fixedsizeExpr(e Elem) (string, bool) {
 			strbody = msgp.AppendString(strbody[:0], f.FieldTag)
 			hdrlen += len(strbody)
 		}
+		if str == "" {
+			return strconv.Itoa(hdrlen), true
+		}
 		return fmt.Sprintf("%d + %s", hdrlen, str), true
 	}
 	return "", false
