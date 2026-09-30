@@ -83,6 +83,32 @@ func TestLocate(t *testing.T) {
 	}
 }
 
+func TestHasKey(t *testing.T) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+	en.WriteMapHeader(3)
+	en.WriteString("thing_one")
+	en.WriteString("value_one")
+	en.WriteString("thing_two")
+	en.WriteFloat64(2.0)
+	en.WriteString("thing_three")
+	en.WriteMapHeader(1)
+	en.WriteString("nested")
+	en.WriteInt(1)
+	en.Flush()
+
+	for _, key := range []string{"thing_one", "thing_two", "thing_three"} {
+		if !HasKey(key, buf.Bytes()) {
+			t.Errorf("HasKey(%q) = false; want true", key)
+		}
+	}
+	for _, key := range []string{"value_one", "nested", "nope"} {
+		if HasKey(key, buf.Bytes()) {
+			t.Errorf("HasKey(%q) = true; want false", key)
+		}
+	}
+}
+
 func TestReplace(t *testing.T) {
 	// there are 4 cases that need coverage:
 	//  - new value is smaller than old value
