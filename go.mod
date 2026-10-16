@@ -3,7 +3,7 @@ module github.com/tinylib/msgp
 go 1.24
 
 require (
-	github.com/philhofer/fwd v1.2.0
+	github.com/philhofer/fwd v1.2.1
 	golang.org/x/tools v0.22.0
 )
 
