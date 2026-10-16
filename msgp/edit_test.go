@@ -109,6 +109,47 @@ func TestHasKey(t *testing.T) {
 	}
 }
 
+func TestEditBinKeys(t *testing.T) {
+	var buf bytes.Buffer
+	en := NewWriter(&buf)
+	en.WriteMapHeader(2)
+	en.WriteBytes([]byte("thing_one"))
+	en.WriteString("value_one")
+	en.WriteString("thing_two")
+	en.WriteFloat64(2.0)
+	en.Flush()
+	raw := buf.Bytes()
+
+	for _, key := range []string{"thing_one", "thing_two"} {
+		if len(Locate(key, raw)) == 0 {
+			t.Errorf("Locate(%q): field not found", key)
+		}
+		if !HasKey(key, raw) {
+			t.Errorf("HasKey(%q) = false", key)
+		}
+	}
+	if HasKey("nope", raw) {
+		t.Error("HasKey(\"nope\") = true")
+	}
+
+	var fbuf bytes.Buffer
+	w := NewWriter(&fbuf)
+	w.WriteFloat64(4.0)
+	w.Flush()
+	out := CopyReplace("thing_one", raw, fbuf.Bytes())
+	if !bytes.Equal(Locate("thing_one", out), fbuf.Bytes()) {
+		t.Errorf("CopyReplace: got %q", out)
+	}
+
+	m, _, err := ReadMapStrIntfBytes(Remove("thing_one", raw), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := m["thing_one"]; ok || len(m) != 1 {
+		t.Errorf("Remove: got %v", m)
+	}
+}
+
 func TestReplace(t *testing.T) {
 	// there are 4 cases that need coverage:
 	//  - new value is smaller than old value

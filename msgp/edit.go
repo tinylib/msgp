@@ -59,7 +59,7 @@ func HasKey(key string, raw []byte) bool {
 	}
 	var field []byte
 	for range sz {
-		field, bts, err = ReadStringZC(bts)
+		field, bts, err = ReadMapKeyZC(bts)
 		if err != nil {
 			return false
 		}
@@ -130,7 +130,7 @@ func locate(raw []byte, key string) (start int, end int) {
 
 	// loop and locate field
 	for i := uint32(0); i < sz; i++ {
-		field, bts, err = ReadStringZC(bts)
+		field, bts, err = ReadMapKeyZC(bts)
 		if err != nil {
 			return 0, 0
 		}
@@ -168,7 +168,7 @@ func locateKV(raw []byte, key string) (start int, end int) {
 
 	for i := uint32(0); i < sz; i++ {
 		tmp := len(bts)
-		field, bts, err = ReadStringZC(bts)
+		field, bts, err = ReadMapKeyZC(bts)
 		if err != nil {
 			return 0, 0
 		}
