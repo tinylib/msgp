@@ -12,8 +12,6 @@ import (
 const (
 	lenAsUint32 = "uint32(len(%s))"
 	literalFmt  = "%s"
-	intFmt      = "%d"
-	quotedFmt   = `"%s"`
 	mapHeader   = "MapHeader"
 	arrayHeader = "ArrayHeader"
 	mapKey      = "MapKeyPtr"
@@ -48,19 +46,16 @@ func (m Method) String() string {
 	default:
 		// return e.g. "decode+encode+test"
 		modes := [...]Method{Decode, Encode, Marshal, Unmarshal, Size, Test}
-		any := false
-		nm := ""
+		var nm strings.Builder
 		for _, mm := range modes {
 			if m.isset(mm) {
-				if any {
-					nm += "+" + mm.String()
-				} else {
-					nm += mm.String()
-					any = true
+				if nm.Len() > 0 {
+					nm.WriteByte('+')
 				}
+				nm.WriteString(mm.String())
 			}
 		}
-		return nm
+		return nm.String()
 
 	}
 }
@@ -251,14 +246,14 @@ func (c *Context) ClearFieldLimits() {
 }
 
 func (c *Context) ArgsStr() string {
-	var out string
+	var out strings.Builder
 	for idx, p := range c.path {
 		if idx > 0 {
-			out += ", "
+			out.WriteString(", ")
 		}
-		out += p.Arg()
+		out.WriteString(p.Arg())
 	}
-	return out
+	return out.String()
 }
 
 // generator is the interface through
