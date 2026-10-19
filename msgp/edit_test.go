@@ -49,7 +49,7 @@ func TestRemove(t *testing.T) {
 	}
 	// make sure we can safely ask to remove
 	// items from an empty map
-	raw = Remove("does_not_exist", raw)
+	_ = Remove("does_not_exist", raw)
 }
 
 func TestLocate(t *testing.T) {
