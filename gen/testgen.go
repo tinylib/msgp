@@ -136,9 +136,10 @@ func BenchmarkUnmarshal{{.TypeName}}(b *testing.B) {
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
-	m := v.Msgsize()
-	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecode{{.TypeName}} Msgsize() is inaccurate")
+	if s, ok := interface{}(&v).(msgp.Sizer); ok {
+		if buf.Len() > s.Msgsize() {
+			t.Log("WARNING: TestEncodeDecode{{.TypeName}} Msgsize() is inaccurate")
+		}
 	}
 
 	vn := {{.TypeName}}{}
