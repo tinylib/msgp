@@ -36,6 +36,20 @@ func TestRemove(t *testing.T) {
 	if _, ok := m["second"]; ok {
 		t.Errorf("field %q (deleted field) still present", "second")
 	}
+
+	// remove everything
+	raw = Remove("first", raw)
+	raw = Remove("third", raw)
+	size, _, err := ReadMapHeaderBytes(raw)
+	if err != nil {
+		t.Fatalf("reading map header: %s", err)
+	}
+	if size != 0 {
+		t.Fatalf("%d elements left after removing all of them?", size)
+	}
+	// make sure we can safely ask to remove
+	// items from an empty map
+	raw = Remove("does_not_exist", raw)
 }
 
 func TestLocate(t *testing.T) {

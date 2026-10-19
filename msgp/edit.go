@@ -2,6 +2,7 @@ package msgp
 
 import (
 	"math"
+	"slices"
 )
 
 // Locate returns a []byte pointing to the field
@@ -25,7 +26,7 @@ func Replace(key string, raw []byte, val []byte) []byte {
 	if start == end {
 		return nil
 	}
-	return replace(raw, start, end, val, true)
+	return slices.Replace(raw, start, end, val...)
 }
 
 // CopyReplace works similarly to Replace except that the returned
@@ -36,7 +37,12 @@ func CopyReplace(key string, raw []byte, val []byte) []byte {
 	if start == end {
 		return nil
 	}
-	return replace(raw, start, end, val, false)
+	ll := end - start
+	out := make([]byte, len(raw)+len(val)-ll)
+	x := copy(out, raw[:start])
+	y := copy(out[x:], val)
+	copy(out[x+y:], raw[end:])
+	return out
 }
 
 // Remove removes a key-value pair from 'raw'. It returns
@@ -46,8 +52,7 @@ func Remove(key string, raw []byte) []byte {
 	if start == end {
 		return raw
 	}
-	raw = raw[:start+copy(raw[start:], raw[end:])]
-	return resizeMap(raw, -1)
+	return resizeMap(slices.Delete(raw, start, end), -1)
 }
 
 // HasKey returns whether the map in 'raw' has
@@ -72,46 +77,6 @@ func HasKey(key string, raw []byte) bool {
 		}
 	}
 	return false
-}
-
-func replace(raw []byte, start int, end int, val []byte, inplace bool) []byte {
-	ll := end - start // length of segment to replace
-	lv := len(val)
-
-	if inplace {
-		extra := lv - ll
-
-		// fastest case: we're doing
-		// a 1:1 replacement
-		if extra == 0 {
-			copy(raw[start:], val)
-			return raw
-
-		} else if extra < 0 {
-			// 'val' smaller than replaced value
-			// copy in place and shift back
-
-			x := copy(raw[start:], val)
-			y := copy(raw[start+x:], raw[end:])
-			return raw[:start+x+y]
-
-		} else if extra < cap(raw)-len(raw) {
-			// 'val' less than (cap-len) extra bytes
-			// copy in place and shift forward
-			raw = raw[0 : len(raw)+extra]
-			// shift end forward
-			copy(raw[end+extra:], raw[end:])
-			copy(raw[start:], val)
-			return raw
-		}
-	}
-
-	// we have to allocate new space
-	out := make([]byte, len(raw)+len(val)-ll)
-	x := copy(out, raw[:start])
-	y := copy(out[x:], val)
-	copy(out[x+y:], raw[end:])
-	return out
 }
 
 // locate does a naive O(n) search for the map key; returns start, end
