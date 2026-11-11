@@ -130,6 +130,11 @@ func applyShim(text []string, f *FileSet) error {
 		text = text[1:]
 	}
 
+	// Named cast shims must call the serializer returned by the conversion.
+	if be.Value == gen.IDENT && be.ShimMode == gen.Cast {
+		be.Convert = true
+	}
+
 	infof("%s -> %s\n", name, be.Value.String())
 	f.findShim(name, be, true)
 
@@ -237,12 +242,12 @@ func asvartuple(text []string, f *FileSet) error {
 	return nil
 }
 
-//msgp:tag {tagname}
-//msgp:tags {tag1},{tag2},...
-//
 // The tag/tags directive accepts a comma-separated priority list; fields are
 // read from the first tag that has a non-empty value, falling back to msg
 // then msgpack if none of the listed tags match.
+//
+//msgp:tag {tagname}
+//msgp:tags {tag1},{tag2},...
 func tag(text []string, f *FileSet) error {
 	if len(text) < 2 {
 		return nil
