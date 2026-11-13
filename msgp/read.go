@@ -91,12 +91,20 @@ func freeR(m *Reader) {
 	readerPool.Put(m)
 }
 
-// Unmarshaler is the interface fulfilled
-// by objects that know how to unmarshal
-// themselves from MessagePack.
-// UnmarshalMsg unmarshals the object
-// from binary, returing any leftover
-// bytes and any errors encountered.
+// Unmarshaler is the interface fulfilled by objects that know how to unmarshal
+// themselves from MessagePack. UnmarshalMsg decodes one object and returns any
+// leftover bytes and any errors encountered. On success, the returned suffix can
+// be passed to another call to decode the next object in a concatenated stream.
+//
+// Generated methods read encoded data from the input slice's length. They do not
+// use spare capacity in that slice as scratch space; an input slice with equal
+// length and capacity is sufficient.
+//
+// Generated methods can reuse storage in the receiver, such as existing slice
+// capacity and maps. Reusing the receiver across calls can therefore reduce
+// allocations. Extra capacity in the input slice does not provide this benefit.
+// Decoding can still allocate, for example when growing receiver slices or
+// reading strings with [ReadStringBytes].
 type Unmarshaler interface {
 	UnmarshalMsg([]byte) ([]byte, error)
 }
