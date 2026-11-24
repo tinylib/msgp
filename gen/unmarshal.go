@@ -553,7 +553,7 @@ func (u *unmarshalGen) gMap(m *Map) {
 	// Shimmed maps are checked later inside mapAssign after the key is resolved.
 	if u.ctx.noDuplicates && (m.Key == nil || m.AllowBinMaps) {
 		okVar := randIdent()
-		u.p.printf("\nif _, %s := %s[%s]; %s {", okVar, m.Varname(), m.Keyidx, okVar)
+		u.p.printf("\nif _, %s := %s[%s]; %s {", okVar, indexable(m.Varname()), m.Keyidx, okVar)
 		if args := u.ctx.ArgsStr(); args != "" {
 			u.p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %s, %s)", args, m.Keyidx)
 		} else {

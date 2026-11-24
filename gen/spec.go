@@ -408,7 +408,7 @@ var CanAutoShim = map[Primitive]bool{Uint: true, Uint8: true, Uint16: true, Uint
 // resolvedKey is the Go expression for the map key after any shimming.
 func (p *printer) mapAssignDupCheck(m *Map, resolvedKey string, dupCtx string) {
 	okVar := randIdent()
-	p.printf("\nif _, %s := %s[%s]; %s {", okVar, m.Varname(), resolvedKey, okVar)
+	p.printf("\nif _, %s := %s[%s]; %s {", okVar, indexable(m.Varname()), resolvedKey, okVar)
 	if dupCtx != "" {
 		p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %s)", dupCtx)
 	} else {
@@ -425,6 +425,7 @@ func (p *printer) mapAssign(m *Map, dupCheck bool, dupCtx string) {
 	if !p.ok() {
 		return
 	}
+	vn := indexable(m.Varname())
 
 	if key, ok := m.Key.(*BaseElem); ok {
 		fromBase := key.FromBase()
@@ -445,7 +446,7 @@ func (p *printer) mapAssign(m *Map, dupCheck bool, dupCtx string) {
 				if dupCheck {
 					p.mapAssignDupCheck(m, m.Keyidx+"Tmp", dupCtx)
 				}
-				p.printf("\n%s[%sTmp] = %s", m.Varname(), m.Keyidx, m.Validx)
+				p.printf("\n%s[%sTmp] = %s", vn, m.Keyidx, m.Validx)
 				return
 			} else if key.Value == IDENT {
 				if dupCheck {
@@ -453,9 +454,9 @@ func (p *printer) mapAssign(m *Map, dupCheck bool, dupCtx string) {
 					p.printf("\nvar %sResolved %s", m.Keyidx, key.TypeName())
 					p.printf("\n%sResolved = %s(%s)", m.Keyidx, fromBase, m.Keyidx)
 					p.mapAssignDupCheck(m, m.Keyidx+"Resolved", dupCtx)
-					p.printf("\n%s[%sResolved] = %s", m.Varname(), m.Keyidx, m.Validx)
+					p.printf("\n%s[%sResolved] = %s", vn, m.Keyidx, m.Validx)
 				} else {
-					p.printf("\n%s[%s(%s)] = %s", m.Varname(), fromBase, m.Keyidx, m.Validx)
+					p.printf("\n%s[%s(%s)] = %s", vn, fromBase, m.Keyidx, m.Validx)
 				}
 				return
 			} else {
@@ -468,18 +469,18 @@ func (p *printer) mapAssign(m *Map, dupCheck bool, dupCtx string) {
 						p.printf("\nvar %sResolved %s", m.Keyidx, key.TypeName())
 						p.printf("\n%sResolved = %s", m.Keyidx, resolvedExpr)
 						p.mapAssignDupCheck(m, m.Keyidx+"Resolved", dupCtx)
-						p.printf("\n%s[%sResolved] = %s", m.Varname(), m.Keyidx, m.Validx)
+						p.printf("\n%s[%sResolved] = %s", vn, m.Keyidx, m.Validx)
 					} else {
-						p.printf("\n%s[%s] = %s", m.Varname(), resolvedExpr, m.Validx)
+						p.printf("\n%s[%s] = %s", vn, resolvedExpr, m.Validx)
 					}
 				} else {
 					if dupCheck {
 						p.printf("\nvar %sResolved %s", m.Keyidx, key.TypeName())
 						p.printf("\n%sResolved = %s(%s)", m.Keyidx, fromBase, m.Keyidx)
 						p.mapAssignDupCheck(m, m.Keyidx+"Resolved", dupCtx)
-						p.printf("\n%s[%sResolved] = %s", m.Varname(), m.Keyidx, m.Validx)
+						p.printf("\n%s[%sResolved] = %s", vn, m.Keyidx, m.Validx)
 					} else {
-						p.printf("\n%s[%s(%s)] = %s", m.Varname(), fromBase, m.Keyidx, m.Validx)
+						p.printf("\n%s[%s(%s)] = %s", vn, fromBase, m.Keyidx, m.Validx)
 					}
 				}
 				return
@@ -487,7 +488,7 @@ func (p *printer) mapAssign(m *Map, dupCheck bool, dupCtx string) {
 		}
 	}
 	// Non-shimmed: dup check already done in gMap before reading value.
-	p.printf("\n%s[%s] = %s", m.Varname(), m.Keyidx, m.Validx)
+	p.printf("\n%s[%s] = %s", vn, m.Keyidx, m.Validx)
 }
 
 // clear map keys
