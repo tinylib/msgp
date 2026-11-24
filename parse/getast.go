@@ -123,17 +123,6 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 	return fs, nil
 }
 
-// genericTypes returns the generic types declared in the parsed files.
-func (fs *FileSet) genericTypes() map[string]bool {
-	g := make(map[string]bool)
-	for name, ti := range fs.TypeInfos {
-		if ti.TypeParams != nil {
-			g[name] = true
-		}
-	}
-	return g
-}
-
 // applyDirectives applies all of the directives that
 // are known to the parser. additional method-specific
 // directives remain in f.Directives
@@ -180,6 +169,17 @@ func (fs *FileSet) applyDirectives() {
 		}
 	}
 	fs.Directives = newdirs
+}
+
+// genericTypes returns the generic types declared in the parsed files.
+func (fs *FileSet) genericTypes() map[string]bool {
+	g := make(map[string]bool)
+	for name, ti := range fs.TypeInfos {
+		if ti.TypeParams != nil {
+			g[name] = true
+		}
+	}
+	return g
 }
 
 // applyEarlyDirectives applies all early directives needed before process() is called.

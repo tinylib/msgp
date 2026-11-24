@@ -6,10 +6,8 @@ func TestReplaceAlias(t *testing.T) {
 	in := ReplAlias{
 		Chain:  ReplChainOuter{{1}},
 		Strs:   ReplStrs{"a"},
-		Shim:   ReplAliasShim{A: "b"},
 		Target: ReplOnTarget{2},
 		List:   ReplList{"c"},
-		PS:     &ReplStruct{A: []int{3}},
 	}
 	issue459RoundTrip(t, in, in)
 

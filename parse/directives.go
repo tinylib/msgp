@@ -135,22 +135,10 @@ func applyShim(text []string, f *FileSet) error {
 		be.Convert = true
 	}
 
-	// A type alias of the name must not overrule the shim, nor get methods
-	// that would duplicate those of the aliased type.
-	if f.keepReplaced == nil {
-		f.keepReplaced = make(map[string]bool)
-	}
-	f.keepReplaced[name] = true
 	infof("%s -> %s\n", name, be.Value.String())
-	f.findShim(name, be, f.Aliased[name] == "")
+	f.findShim(name, be, true)
 
 	return nil
-}
-
-// appliedReplace is a replace directive that has been applied.
-type appliedReplace struct {
-	name string
-	e    gen.Elem
 }
 
 //msgp:replace {Type} with:{NewType}
@@ -182,9 +170,9 @@ func replace(text []string, f *FileSet) error {
 		}
 	}
 	switch e.(type) {
-	case *gen.Map, *gen.Slice, *gen.Array, *gen.Ptr, *gen.Struct:
+	case *gen.Map, *gen.Slice, *gen.Array, *gen.Ptr:
 		// Keep the declared name, so new() and make() produce the field's type.
-		e.(interface{ AliasReplaced(string) }).AliasReplaced(name)
+		e.Alias(name)
 		// A type alias of the name would now match and overrule this replacement.
 		if f.keepReplaced == nil {
 			f.keepReplaced = make(map[string]bool)
@@ -192,11 +180,20 @@ func replace(text []string, f *FileSet) error {
 		f.keepReplaced[name] = true
 	}
 
-	f.replaced = append(f.replaced, appliedReplace{name, e})
+	// Built-in names keep their own encoding inside later replacements.
+	if gen.Ident(name).Value == gen.IDENT {
+		f.replaced = append(f.replaced, appliedReplace{name, e})
+	}
 	infof("%s -> %s\n", name, replacement)
 	f.findShim(name, e, false)
 
 	return nil
+}
+
+// appliedReplace is a replace directive that has been applied.
+type appliedReplace struct {
+	name string
+	e    gen.Elem
 }
 
 //msgp:ignore {TypeA} {TypeB}...

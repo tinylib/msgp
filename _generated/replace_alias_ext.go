@@ -6,6 +6,5 @@ type (
 	ReplChainInner []int
 	ReplTarget     []int
 	ReplInList     string
-	ReplStruct     struct{ A []int }
 	ReplGenStr     string
 )

@@ -163,7 +163,6 @@ type common struct {
 	vname, alias string
 	ptrRcv       bool
 	typeParams   GenericTypeParams // Generic type parameters, e.g., "[T]"
-	replaced     bool              // alias is the declared name of a replaced type
 }
 
 // GenericTypeParams is a struct that contains the generic type parameters for an element.
@@ -212,9 +211,6 @@ func (c *common) AlwaysPtr(set *bool) bool {
 	}
 	return c.ptrRcv
 }
-
-// AliasReplaced aliases the element to the declared name of a replaced type.
-func (c *common) AliasReplaced(name string) { c.alias, c.replaced = name, true }
 
 func IsPrintable(e Elem) bool {
 	if be, ok := e.(*BaseElem); ok && !be.Printable() {
@@ -637,8 +633,7 @@ func (s *Struct) Complexity() int {
 
 // ZeroExpr returns the zero/empty expression or empty string if not supported.
 func (s *Struct) ZeroExpr() string {
-	// omitempty and clearomitted stay unsupported for replaced structs, as before.
-	if s.alias == "" || s.replaced {
+	if s.alias == "" {
 		return "" // structs with no names not supported (for now)
 	}
 	return "(" + s.TypeName() + "{})"
@@ -646,7 +641,7 @@ func (s *Struct) ZeroExpr() string {
 
 // IfZeroExpr returns the expression to compare to zero/empty.
 func (s *Struct) IfZeroExpr() string {
-	if s.alias == "" || s.replaced {
+	if s.alias == "" {
 		return "" // structs with no names not supported (for now)
 	}
 	return s.Varname() + " == " + s.ZeroExpr()
