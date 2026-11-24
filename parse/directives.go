@@ -165,6 +165,16 @@ func replace(text []string, f *FileSet) error {
 			be.Needsref(true)
 		}
 	}
+	switch e.(type) {
+	case *gen.Map, *gen.Slice, *gen.Array, *gen.Ptr:
+		// Keep the declared name, so new() and make() produce the field's type.
+		e.(interface{ AliasReplaced(string) }).AliasReplaced(name)
+		// A type alias of the name would now match and overrule this replacement.
+		if f.keepReplaced == nil {
+			f.keepReplaced = make(map[string]bool)
+		}
+		f.keepReplaced[name] = true
+	}
 
 	infof("%s -> %s\n", name, replacement)
 	f.findShim(name, e, false)

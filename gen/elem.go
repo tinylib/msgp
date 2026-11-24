@@ -163,6 +163,7 @@ type common struct {
 	vname, alias string
 	ptrRcv       bool
 	typeParams   GenericTypeParams // Generic type parameters, e.g., "[T]"
+	replaced     bool              // alias is the declared name of a replaced type
 }
 
 // GenericTypeParams is a struct that contains the generic type parameters for an element.
@@ -186,7 +187,7 @@ func stripTypeParams(typeName string) string {
 }
 
 func (c *common) typeNameWithParams(baseName string) string {
-	if c.typeParams.TypeParams != "" && !strings.Contains(baseName, "[") {
+	if c.typeParams.TypeParams != "" && !c.replaced && !strings.Contains(baseName, "[") {
 		// Check if baseName is a single identifier without dots (likely a type parameter)
 		if !strings.Contains(baseName, ".") && len(baseName) <= 2 && len(baseName) > 0 {
 			// This looks like a simple type parameter, don't add type parameters
@@ -214,6 +215,14 @@ func (c *common) AlwaysPtr(set *bool) bool {
 	}
 	return c.ptrRcv
 }
+
+// AliasReplaced aliases the element to the declared name of a replaced type.
+// Replace directives name non-generic types, so no type parameters are added.
+func (c *common) AliasReplaced(name string) { c.alias, c.replaced = name, true }
+
+// isReplaced reports whether the type name is a replaced type's (or a pointer to one),
+// which needs no type parameters.
+func (c *common) isReplaced() bool { return c.replaced }
 
 func IsPrintable(e Elem) bool {
 	if be, ok := e.(*BaseElem); ok && !be.Printable() {
@@ -561,11 +570,18 @@ func (s *Ptr) SetVarname(a string) {
 }
 
 func (s *Ptr) TypeName() string {
-	if s.alias != "" {
-		return s.typeNameWithParams(s.alias)
+	if s.alias == "" {
+		s.Alias("*" + s.Value.TypeName())
 	}
-	s.Alias("*" + s.Value.TypeName())
+	if s.isReplaced() {
+		return s.alias
+	}
 	return s.typeNameWithParams(s.alias)
+}
+
+func (s *Ptr) isReplaced() bool {
+	v, ok := s.Value.(interface{ isReplaced() bool })
+	return s.replaced || ok && v.isReplaced()
 }
 
 func (s *Ptr) Copy() Elem {

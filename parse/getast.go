@@ -29,6 +29,7 @@ type FileSet struct {
 	TypeInfos     map[string]*TypeInfo // type specs with generic info
 	Identities    map[string]gen.Elem  // processed from specs
 	Aliased       map[string]string    // Aliased types.
+	keepReplaced  map[string]bool      // Replaced names an alias must not overrule.
 	Directives    []string             // raw preprocessor directives
 	Imports       []*ast.ImportSpec    // imports
 	CompactFloats bool                 // Use smaller floats when feasible
@@ -142,7 +143,10 @@ func (fs *FileSet) applyDirectives() {
 		}
 	}
 	// Apply aliases last, so we don't overrule any manually specified replace directives.
-	for _, d := range fs.Aliased {
+	for name, d := range fs.Aliased {
+		if fs.keepReplaced[name] {
+			continue
+		}
 		chunks := strings.Split(d, " ")
 		if len(chunks) > 0 {
 			if fn, ok := directives[chunks[0]]; ok {
