@@ -183,7 +183,7 @@ func (u *unmarshalGen) readBytesWithLimit(refname, lowered string, zerocopy bool
 			u.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", refname, refname, sz)
 			u.p.printf("\n%s = make([]byte, %s)", refname, sz)
 			u.p.printf("\n} else {")
-			u.p.printf("\n%s = %s[:%s]", refname, refname, sz)
+			u.p.printf("\n%s = %s[:%s]", refname, indexable(refname), sz)
 			u.p.printf("\n}")
 
 			u.p.printf("\nif uint32(len(bts)) < %s {", sz)
@@ -553,7 +553,7 @@ func (u *unmarshalGen) gMap(m *Map) {
 	// Shimmed maps are checked later inside mapAssign after the key is resolved.
 	if u.ctx.noDuplicates && (m.Key == nil || m.AllowBinMaps) {
 		okVar := randIdent()
-		u.p.printf("\nif _, %s := %s[%s]; %s {", okVar, m.Varname(), m.Keyidx, okVar)
+		u.p.printf("\nif _, %s := %s[%s]; %s {", okVar, indexable(m.Varname()), m.Keyidx, okVar)
 		if args := u.ctx.ArgsStr(); args != "" {
 			u.p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %s, %s)", args, m.Keyidx)
 		} else {
@@ -582,7 +582,9 @@ func (u *unmarshalGen) gMap(m *Map) {
 }
 
 func (u *unmarshalGen) gPtr(p *Ptr) {
-	u.p.printf("\nif msgp.IsNil(bts) { bts, err = msgp.ReadNilBytes(bts); if err != nil { return }; %s = nil; } else { ", p.Varname())
+	if !p.isAllowNil {
+		u.p.printf("\nif msgp.IsNil(bts) { bts, err = msgp.ReadNilBytes(bts); if err != nil { return }; %s = nil; } else { ", p.Varname())
+	}
 	u.p.initPtr(p)
 	if p.typeParams.TypeParams != "" {
 		tp := p.typeParams
@@ -590,5 +592,7 @@ func (u *unmarshalGen) gPtr(p *Ptr) {
 		p.Value.SetTypeParams(tp)
 	}
 	next(u, p.Value)
-	u.p.closeblock()
+	if !p.isAllowNil {
+		u.p.closeblock()
+	}
 }

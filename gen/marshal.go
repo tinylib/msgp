@@ -343,7 +343,7 @@ func (m *marshalGen) gPtr(p *Ptr) {
 		return
 	}
 	m.fuseHook()
-	m.p.printf("\nif %s == nil {\no = msgp.AppendNil(o)\n} else {", p.Varname())
+	m.p.printf("\nif %s {\no = msgp.AppendNil(o)\n} else {", p.nilExpr())
 	if p.typeParams.TypeParams != "" {
 		tp := p.typeParams
 		tp.isPtr = true

@@ -474,7 +474,7 @@ func (d *decodeGen) gMap(m *Map) {
 	// Shimmed maps are checked later inside mapAssign after the key is resolved.
 	if d.ctx.noDuplicates && (m.Key == nil || m.AllowBinMaps) {
 		okVar := randIdent()
-		d.p.printf("\nif _, %s := %s[%s]; %s {", okVar, m.Varname(), m.Keyidx, okVar)
+		d.p.printf("\nif _, %s := %s[%s]; %s {", okVar, indexable(m.Varname()), m.Keyidx, okVar)
 		if args := d.ctx.ArgsStr(); args != "" {
 			d.p.printf("\nerr = msgp.WrapError(msgp.ErrDuplicateEntry, %s, %s)", args, m.Keyidx)
 		} else {
@@ -542,10 +542,12 @@ func (d *decodeGen) gPtr(p *Ptr) {
 	if !d.p.ok() {
 		return
 	}
-	d.p.print("\nif dc.IsNil() {")
-	d.p.print("\nerr = dc.ReadNil()")
-	d.p.wrapErrCheck(d.ctx.ArgsStr())
-	d.p.printf("\n%s = nil\n} else {", p.Varname())
+	if !p.isAllowNil {
+		d.p.print("\nif dc.IsNil() {")
+		d.p.print("\nerr = dc.ReadNil()")
+		d.p.wrapErrCheck(d.ctx.ArgsStr())
+		d.p.printf("\n%s = nil\n} else {", p.Varname())
+	}
 	d.p.initPtr(p)
 	if p.typeParams.TypeParams != "" {
 		tp := p.typeParams
@@ -557,5 +559,7 @@ func (d *decodeGen) gPtr(p *Ptr) {
 		defer func() { be.parentIsPtr = false }()
 	}
 	next(d, p.Value)
-	d.p.closeblock()
+	if !p.isAllowNil {
+		d.p.closeblock()
+	}
 }

@@ -321,7 +321,7 @@ ridx:
 		goto ridx
 	}
 
-	a.Els.SetVarname(fmt.Sprintf("%s[%s]", a.Varname(), a.Index))
+	a.Els.SetVarname(fmt.Sprintf("%s[%s]", indexable(a.Varname()), a.Index))
 }
 
 func (a *Array) TypeName() string {
@@ -436,12 +436,16 @@ type Slice struct {
 func (s *Slice) SetVarname(a string) {
 	s.common.SetVarname(a)
 	s.Index = randIdent()
-	varName := s.Varname()
-	if varName[0] == '*' {
-		// Pointer-to-slice requires parenthesis for slicing.
-		varName = "(" + varName + ")"
+	s.Els.SetVarname(fmt.Sprintf("%s[%s]", indexable(s.Varname()), s.Index))
+}
+
+// indexable parenthesizes a dereferenced varname,
+// since *x[i] parses as *(x[i]).
+func indexable(v string) string {
+	if strings.HasPrefix(v, "*") {
+		return "(" + v + ")"
 	}
-	s.Els.SetVarname(fmt.Sprintf("%s[%s]", varName, s.Index))
+	return v
 }
 
 func (s *Slice) TypeName() string {
@@ -488,6 +492,38 @@ func SetIsAllowNil(e Elem, b bool) {
 type Ptr struct {
 	common
 	Value Elem
+
+	// isAllowNil is set when an allownil field has
+	// already handled the nil pointer itself.
+	isAllowNil bool
+}
+
+// AllowNil lets allownil apply to the pointee.
+// Shimmed types may not be nilable, so they are excluded.
+func (s *Ptr) AllowNil() bool {
+	if be, ok := s.Value.(*BaseElem); ok && be.ShimToBase != "" {
+		return false
+	}
+	return s.Value.AllowNil()
+}
+
+// SetIsAllowNil passes allownil on to the pointee.
+// false is only passed on to nested pointers, which must not keep
+// a true left by another generator. Other pointees keep their
+// defaults, e.g. untagged *[]byte allocating empty slices on decode.
+func (s *Ptr) SetIsAllowNil(b bool) {
+	s.isAllowNil = b
+	if _, ok := s.Value.(*Ptr); b || ok {
+		s.Value.SetIsAllowNil(b)
+	}
+}
+
+// nilExpr is the condition for writing nil.
+func (s *Ptr) nilExpr() string {
+	if s.isAllowNil {
+		return s.Value.IfZeroExpr()
+	}
+	return s.IfZeroExpr()
 }
 
 func (s *Ptr) SetVarname(a string) {
