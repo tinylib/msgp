@@ -973,17 +973,18 @@ func (m *Reader) ReadByte() (b byte, err error) {
 // use 'scratch' for storage if it is non-nil.
 func (m *Reader) ReadBytes(scratch []byte) (b []byte, err error) {
 	var p []byte
-	var lead byte
-	p, err = m.R.Peek(2)
+	lead, err := m.R.PeekByte()
 	if err != nil {
 		return
 	}
-	lead = p[0]
 	var read int64
 	switch lead {
 	case mbin8:
+		p, err = m.R.Next(2)
+		if err != nil {
+			return
+		}
 		read = int64(p[1])
-		m.R.Skip(2)
 	case mbin16:
 		p, err = m.R.Next(3)
 		if err != nil {
@@ -1022,17 +1023,18 @@ func (m *Reader) ReadBytes(scratch []byte) (b []byte, err error) {
 // that will only be checked if the scratch is too small.
 func (m *Reader) ReadBytesLimit(scratch []byte, n int64) (b []byte, err error) {
 	var p []byte
-	var lead byte
-	p, err = m.R.Peek(2)
+	lead, err := m.R.PeekByte()
 	if err != nil {
 		return
 	}
-	lead = p[0]
 	var read int64
 	switch lead {
 	case mbin8:
+		p, err = m.R.Next(2)
+		if err != nil {
+			return
+		}
 		read = int64(p[1])
-		m.R.Skip(2)
 	case mbin16:
 		p, err = m.R.Next(3)
 		if err != nil {
@@ -1113,15 +1115,19 @@ func (m *Reader) ReadBytesHeader() (sz uint32, err error) {
 // ArrayError will be returned if the object is not
 // exactly the length of the input slice.
 func (m *Reader) ReadExactBytes(into []byte) error {
-	p, err := m.R.Peek(2)
+	lead, err := m.R.PeekByte()
 	if err != nil {
 		return err
 	}
-	lead := p[0]
+	var p []byte
 	var read int64 // bytes to read
 	var skip int   // prefix size to skip
 	switch lead {
 	case mbin8:
+		p, err = m.R.Peek(2)
+		if err != nil {
+			return err
+		}
 		read = int64(p[1])
 		skip = 2
 	case mbin16:
