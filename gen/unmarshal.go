@@ -482,7 +482,10 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 
 	// close 'tmp' block
 	if b.Convert && b.Value != IDENT {
-		if b.ShimMode == Cast && !b.ShimErrs {
+		if target, ok := strings.CutPrefix(b.Varname(), "&"); ok {
+			u.p.shimDeref(b, target, refname, u.ctx.ArgsStr())
+			u.p.print("\n")
+		} else if b.ShimMode == Cast && !b.ShimErrs {
 			u.p.printf("\n%s = %s(%s)\n", b.Varname(), b.FromBase(), refname)
 		} else {
 			u.p.printf("\n%s, err = %s(%s)\n", b.Varname(), b.FromBase(), refname)

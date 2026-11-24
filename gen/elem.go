@@ -728,7 +728,9 @@ type BaseElem struct {
 	allowNil     *bool     // Override from parent.
 }
 
-func (s *BaseElem) Printable() bool { return !s.mustinline }
+// Printable reports whether methods can be generated for the type. Not for
+// shims of *T, which would need &z as the receiver.
+func (s *BaseElem) Printable() bool { return !s.mustinline && !s.needsref }
 
 func (s *BaseElem) Alias(typ string) {
 	s.common.Alias(typ)
