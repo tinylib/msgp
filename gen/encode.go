@@ -202,7 +202,7 @@ func (e *encodeGen) structmap(s *Struct) {
 				e.p.printf("\n%s", bm.setStmt(i))
 				e.p.printf("\n}")
 			} else if sf.HasTagPart("omitzero") {
-				e.p.printf("\nif %s.IsZero() {", sf.FieldElem.Varname())
+				e.p.printf("\nif %s {", omitZeroExpr(sf.FieldElem))
 				e.p.printf("\n%s--", fieldNVar)
 				e.p.printf("\n%s", bm.setStmt(i))
 				e.p.printf("\n}")
