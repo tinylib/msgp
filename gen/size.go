@@ -340,7 +340,7 @@ func basesizeExpr(value Primitive, vname, basename string) string {
 	case Intf:
 		return "msgp.GuessSize(" + vname + ")"
 	case IDENT:
-		return vname + ".Msgsize()"
+		return indexable(vname) + ".Msgsize()"
 	case Bytes:
 		return "msgp.BytesPrefixSize + len(" + vname + ")"
 	case String:

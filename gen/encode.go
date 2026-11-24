@@ -408,7 +408,7 @@ func (e *encodeGen) gBase(b *BaseElem) {
 		if remap := b.typeParams.ToPointerMap[lookupKey]; remap != "" {
 			vname = fmt.Sprintf(remap, vname)
 		}
-		e.p.printf("\nerr = %s.EncodeMsg(en)", vname)
+		e.p.printf("\nerr = %s.EncodeMsg(en)", indexable(vname))
 		e.p.wrapErrCheck(e.ctx.ArgsStr())
 	default:
 		e.writeAndCheck(b.BaseName(), literalFmt, vname)

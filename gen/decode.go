@@ -415,7 +415,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 			if remap := b.typeParams.ToPointerMap[stripTypeParams(dst)]; remap != "" {
 				vname = fmt.Sprintf(remap, vname)
 			}
-			d.p.printf("\nerr = %s.DecodeMsg(dc)", vname)
+			d.p.printf("\nerr = %s.DecodeMsg(dc)", indexable(vname))
 		}
 	case Ext:
 		d.p.printf("\nerr = dc.ReadExtension(%s)", vname)
