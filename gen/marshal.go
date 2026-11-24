@@ -56,7 +56,7 @@ func (m *marshalGen) Execute(p Elem, ctx Context) error {
 	m.p.printf("\no = msgp.Require(b, %s.Msgsize())", c)
 	next(m, p)
 	if p.AlwaysPtr(nil) {
-		p.SetVarname(ogVar)
+		unsetReceiver(p)
 	}
 
 	m.p.nakedReturn()
