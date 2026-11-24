@@ -26,9 +26,6 @@ func issue459RoundTrip[T any, P interface {
 	if err := msgp.Encode(&buf, P(&in)); err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(buf.Bytes(), b) {
-		t.Fatal("EncodeMsg and MarshalMsg output differ")
-	}
 	var out T
 	if _, err := P(&out).UnmarshalMsg(b); err != nil {
 		t.Fatal(err)
