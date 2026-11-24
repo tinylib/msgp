@@ -892,6 +892,9 @@ func (s *BaseElem) Resolved() bool {
 func (s *BaseElem) ZeroExpr() string {
 	switch s.Value {
 	case Bytes:
+		if s.NotNilable {
+			return "*new(" + s.alias + ")" // a declared name, without type params
+		}
 		return "nil"
 	case String:
 		return "\"\""
@@ -932,6 +935,11 @@ func (s *BaseElem) IfZeroExpr() string {
 		return fmt.Sprintf("%s.Load() == 0", s.Varname())
 	case ABool:
 		return fmt.Sprintf("!%s.Load()", s.Varname())
+	case Bytes:
+		if s.NotNilable {
+			// Emptiness of the Go type is unknown, so omitempty does not apply.
+			return ""
+		}
 	}
 	z := s.ZeroExpr()
 	if z == "" {

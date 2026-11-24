@@ -121,8 +121,26 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 	fs.process()
 	fs.applyDirectives()
 	fs.propInline()
+	for name, el := range fs.Identities {
+		if st, ok := el.(*gen.Struct); ok {
+			warnIgnoredOmitEmpty(name, st)
+		}
+	}
 
 	return fs, nil
+}
+
+// warnIgnoredOmitEmpty warns about omitempty on types shimmed or replaced
+// as []byte that cannot be nil, where it is ignored.
+func warnIgnoredOmitEmpty(name string, st *gen.Struct) {
+	if st.AsTuple {
+		return
+	}
+	for _, sf := range st.Fields {
+		if be, ok := sf.FieldElem.(*gen.BaseElem); ok && be.Value == gen.Bytes && be.NotNilable && sf.HasTagPart("omitempty") {
+			warnf("%s.%s: omitempty ignored, %s cannot be nil\n", name, sf.FieldName, be.TypeName())
+		}
+	}
 }
 
 // applyDirectives applies all of the directives that

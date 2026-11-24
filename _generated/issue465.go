@@ -7,6 +7,7 @@ package _generated
 //msgp:replace issue465Unexported with:[]byte
 //msgp:shim Issue465Struct as:[]byte using:issue465StructToBytes/issue465StructFromBytes
 //msgp:shim Issue465Bytes as:[]byte using:issue465BytesToBytes/issue465BytesFromBytes
+//msgp:clearomitted
 
 // Not nilable, so allownil does not apply.
 type Issue465Str string
@@ -34,4 +35,12 @@ type Issue465 struct {
 	Bytes   Issue465Bytes      `msg:",allownil"`
 	Ext     Issue465Ext        `msg:",allownil"`
 	Unexp   issue465Unexported `msg:",allownil"`
+}
+
+// omitempty cannot apply to the non-nilable types, and clearomitted zeroes them.
+type Issue465Omit struct {
+	Str    Issue465Str        `msg:",omitempty"`
+	Struct Issue465Struct     `msg:",omitempty"`
+	Unexp  issue465Unexported `msg:",omitempty"`
+	Bytes  Issue465Bytes      `msg:",omitempty"`
 }
