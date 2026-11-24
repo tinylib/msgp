@@ -2,6 +2,7 @@ package _generated
 
 import (
 	"bytes"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -60,8 +61,22 @@ func TestIssue459RoundTrip(t *testing.T) {
 		DoublePtr:   &pu,
 		DoubleMap:   &pm,
 		PtrSliceMap: &[]map[string]uint64{{"j": 6}},
+		Limited:     &[]byte{1, 2, 3},
 	}
 	issue459RoundTrip(t, in, in)
+}
+
+func TestIssue459Limit(t *testing.T) {
+	b := msgp.AppendMapHeader(nil, 1)
+	b = msgp.AppendString(b, "Limited")
+	b = msgp.AppendBytes(b, make([]byte, 11))
+	var v Issue459
+	if _, err := v.UnmarshalMsg(b); !errors.Is(err, msgp.ErrLimitExceeded) {
+		t.Fatalf("unmarshal: want ErrLimitExceeded, got %v", err)
+	}
+	if err := v.DecodeMsg(msgp.NewReader(bytes.NewReader(b))); !errors.Is(err, msgp.ErrLimitExceeded) {
+		t.Fatalf("decode: want ErrLimitExceeded, got %v", err)
+	}
 }
 
 func TestIssue459AllowNil(t *testing.T) {
@@ -96,7 +111,7 @@ func TestIssue459AllowNil(t *testing.T) {
 			name: "pointer to empty",
 			in: Issue459AllowNil{
 				Map: &map[string]uint64{}, Buckets: &Issue459Buckets{}, Slice: &[]string{},
-				Bytes: &[]byte{}, DoubleMap: &pEmpty, Uint: &u, Array: &[3]int{},
+				Bytes: &[]byte{}, DoubleMap: &pEmpty, Uint: &u, Array: &[3]int{}, Shim: &Issue459Shim{},
 			},
 			keep: true,
 		},
@@ -104,7 +119,7 @@ func TestIssue459AllowNil(t *testing.T) {
 			name: "filled",
 			in: Issue459AllowNil{
 				Map: &map[string]uint64{"b": 2}, Buckets: &Issue459Buckets{"c": 3}, Slice: &[]string{"d"},
-				Bytes: &[]byte{4}, DoubleMap: &pFilled, Uint: &u, Array: &[3]int{5, 6, 7},
+				Bytes: &[]byte{4}, DoubleMap: &pFilled, Uint: &u, Array: &[3]int{5, 6, 7}, Shim: &Issue459Shim{A: "e"},
 			},
 			keep: true,
 		},
@@ -117,6 +132,49 @@ func TestIssue459AllowNil(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			issue459RoundTrip(t, c.in, want)
 			issue459RoundTrip(t, Issue459AllowNilTuple(c.in), Issue459AllowNilTuple(want))
+		})
+	}
+}
+
+func TestIssue459OmitAllowNil(t *testing.T) {
+	var (
+		nilBytes *[]byte
+		nilSlice *[]string
+		nilMap   *map[string]uint64
+		bs       []byte
+		ss       []string
+		m        map[string]uint64
+		pbs, pss = &bs, &ss
+		pm       = &m
+		eb, es   = &[]byte{}, &[]string{}
+		em       = &map[string]uint64{}
+		fb, fs   = &[]byte{1}, &[]string{"a"}
+		fm       = &map[string]uint64{"b": 2}
+	)
+	cases := []struct {
+		name     string
+		in, want Issue459OmitAllowNil
+	}{
+		{name: "nil"},
+		{
+			name: "pointer to nil pointer",
+			in:   Issue459OmitAllowNil{Bytes: &nilBytes, Slice: &nilSlice, Map: &nilMap},
+		},
+		{
+			// omitempty turns allownil off on encode, so nil goes out as empty.
+			name: "pointer to pointer to nil",
+			in:   Issue459OmitAllowNil{Bytes: &pbs, Slice: &pss, Map: &pm},
+			want: Issue459OmitAllowNil{Bytes: &eb, Slice: &es, Map: &em},
+		},
+		{
+			name: "filled",
+			in:   Issue459OmitAllowNil{Bytes: &fb, Slice: &fs, Map: &fm},
+			want: Issue459OmitAllowNil{Bytes: &fb, Slice: &fs, Map: &fm},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			issue459RoundTrip(t, c.in, c.want)
 		})
 	}
 }

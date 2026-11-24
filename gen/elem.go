@@ -499,14 +499,21 @@ type Ptr struct {
 }
 
 // AllowNil lets allownil apply to the pointee.
-func (s *Ptr) AllowNil() bool { return s.Value.AllowNil() }
+// Shimmed types may not be nilable, so they are excluded.
+func (s *Ptr) AllowNil() bool {
+	if be, ok := s.Value.(*BaseElem); ok && be.ShimToBase != "" {
+		return false
+	}
+	return s.Value.AllowNil()
+}
 
 // SetIsAllowNil passes allownil on to the pointee.
-// false is not passed on, since that would drop the
-// non-nil guarantee untagged *[]byte fields have on decode.
+// false is only passed on to nested pointers, which must not keep
+// a true left by another generator. Other pointees keep their
+// defaults, e.g. untagged *[]byte allocating empty slices on decode.
 func (s *Ptr) SetIsAllowNil(b bool) {
 	s.isAllowNil = b
-	if b {
+	if _, ok := s.Value.(*Ptr); b || ok {
 		s.Value.SetIsAllowNil(b)
 	}
 }

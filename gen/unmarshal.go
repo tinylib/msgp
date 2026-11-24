@@ -183,7 +183,7 @@ func (u *unmarshalGen) readBytesWithLimit(refname, lowered string, zerocopy bool
 			u.p.printf("\nif %s == nil || uint32(cap(%s)) < %s {", refname, refname, sz)
 			u.p.printf("\n%s = make([]byte, %s)", refname, sz)
 			u.p.printf("\n} else {")
-			u.p.printf("\n%s = %s[:%s]", refname, refname, sz)
+			u.p.printf("\n%s = %s[:%s]", refname, indexable(refname), sz)
 			u.p.printf("\n}")
 
 			u.p.printf("\nif uint32(len(bts)) < %s {", sz)
