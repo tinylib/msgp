@@ -8,10 +8,48 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
+// issue459RoundTrip checks that in comes back as want through
+// MarshalMsg/UnmarshalMsg and EncodeMsg/DecodeMsg.
+func issue459RoundTrip[T any, P interface {
+	*T
+	msgp.Marshaler
+	msgp.Unmarshaler
+	msgp.Encodable
+	msgp.Decodable
+}](t *testing.T, in, want T) {
+	t.Helper()
+	b, err := P(&in).MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := msgp.Encode(&buf, P(&in)); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(buf.Bytes(), b) {
+		t.Fatal("EncodeMsg and MarshalMsg output differ")
+	}
+	var out T
+	if _, err := P(&out).UnmarshalMsg(b); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(out, want) {
+		t.Fatalf("unmarshal mismatch:\n got %+v\nwant %+v", out, want)
+	}
+	out = *new(T)
+	if err := msgp.Decode(&buf, P(&out)); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(out, want) {
+		t.Fatalf("decode mismatch:\n got %+v\nwant %+v", out, want)
+	}
+}
+
 func TestIssue459RoundTrip(t *testing.T) {
 	u := uint64(7)
 	pu := &u
 	m := map[string]uint64{"x": 1}
+	pm := &m
 	in := Issue459{
 		Count:       3,
 		Buckets:     &Issue459Buckets{"a": 1, "b": 2},
@@ -23,35 +61,66 @@ func TestIssue459RoundTrip(t *testing.T) {
 		NamedSlice:  &Issue459Slice{"i"},
 		Array:       &[3]int{1, 2, 3},
 		DoublePtr:   &pu,
-		DoubleMap:   func() **map[string]uint64 { p := &m; return &p }(),
+		DoubleMap:   &pm,
 		PtrSliceMap: &[]map[string]uint64{{"j": 6}},
 	}
+	issue459RoundTrip(t, in, in)
+}
 
-	b, err := in.MarshalMsg(nil)
-	if err != nil {
-		t.Fatal(err)
+func TestIssue459AllowNil(t *testing.T) {
+	var (
+		nilMap   map[string]uint64
+		nilPtr   *map[string]uint64
+		pNilMap  = &nilMap
+		empty    = map[string]uint64{}
+		pEmpty   = &empty
+		filled   = map[string]uint64{"a": 1}
+		pFilled  = &filled
+		u        uint64
+		nb       Issue459Buckets
+		ns       []string
+		nilBytes []byte
+	)
+	cases := []struct {
+		name string
+		in   Issue459AllowNil
+		keep bool // decodes back to in, otherwise to all nil
+	}{
+		{name: "nil"},
+		{
+			name: "pointer to nil",
+			in:   Issue459AllowNil{Map: &nilMap, Buckets: &nb, Slice: &ns, Bytes: &nilBytes, DoubleMap: &nilPtr},
+		},
+		{
+			name: "pointer to pointer to nil",
+			in:   Issue459AllowNil{DoubleMap: &pNilMap},
+		},
+		{
+			name: "pointer to empty",
+			in: Issue459AllowNil{
+				Map: &map[string]uint64{}, Buckets: &Issue459Buckets{}, Slice: &[]string{},
+				Bytes: &[]byte{}, DoubleMap: &pEmpty, Uint: &u, Array: &[3]int{},
+			},
+			keep: true,
+		},
+		{
+			name: "filled",
+			in: Issue459AllowNil{
+				Map: &map[string]uint64{"b": 2}, Buckets: &Issue459Buckets{"c": 3}, Slice: &[]string{"d"},
+				Bytes: &[]byte{4}, DoubleMap: &pFilled, Uint: &u, Array: &[3]int{5, 6, 7},
+			},
+			keep: true,
+		},
 	}
-	var out Issue459
-	if _, err := out.UnmarshalMsg(b); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(out, in) {
-		t.Fatalf("unmarshal mismatch:\n got %+v\nwant %+v", out, in)
-	}
-
-	var buf bytes.Buffer
-	if err := msgp.Encode(&buf, &in); err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(buf.Bytes(), b) {
-		t.Fatal("EncodeMsg and MarshalMsg output differ")
-	}
-	out = Issue459{}
-	if err := msgp.Decode(&buf, &out); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(out, in) {
-		t.Fatalf("decode mismatch:\n got %+v\nwant %+v", out, in)
+	for _, c := range cases {
+		var want Issue459AllowNil
+		if c.keep {
+			want = c.in
+		}
+		t.Run(c.name, func(t *testing.T) {
+			issue459RoundTrip(t, c.in, want)
+			issue459RoundTrip(t, Issue459AllowNilTuple(c.in), Issue459AllowNilTuple(want))
+		})
 	}
 }
 

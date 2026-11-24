@@ -542,10 +542,12 @@ func (d *decodeGen) gPtr(p *Ptr) {
 	if !d.p.ok() {
 		return
 	}
-	d.p.print("\nif dc.IsNil() {")
-	d.p.print("\nerr = dc.ReadNil()")
-	d.p.wrapErrCheck(d.ctx.ArgsStr())
-	d.p.printf("\n%s = nil\n} else {", p.Varname())
+	if !p.isAllowNil {
+		d.p.print("\nif dc.IsNil() {")
+		d.p.print("\nerr = dc.ReadNil()")
+		d.p.wrapErrCheck(d.ctx.ArgsStr())
+		d.p.printf("\n%s = nil\n} else {", p.Varname())
+	}
 	d.p.initPtr(p)
 	if p.typeParams.TypeParams != "" {
 		tp := p.typeParams
@@ -557,5 +559,7 @@ func (d *decodeGen) gPtr(p *Ptr) {
 		defer func() { be.parentIsPtr = false }()
 	}
 	next(d, p.Value)
-	d.p.closeblock()
+	if !p.isAllowNil {
+		d.p.closeblock()
+	}
 }

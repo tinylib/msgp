@@ -27,3 +27,25 @@ type Issue459 struct {
 type Issue459Inner struct {
 	A int
 }
+
+type Issue459AllowNil struct {
+	Map       *map[string]uint64  `msg:",allownil"`
+	Buckets   *Issue459Buckets    `msg:",allownil"`
+	Slice     *[]string           `msg:",allownil"`
+	Bytes     *[]byte             `msg:",allownil"`
+	DoubleMap **map[string]uint64 `msg:",allownil"`
+	Uint      *uint64             `msg:",allownil"`
+	Array     *[3]int             `msg:",allownil"`
+}
+
+//msgp:tuple Issue459AllowNilTuple
+
+type Issue459AllowNilTuple struct {
+	Map       *map[string]uint64  `msg:",allownil"`
+	Buckets   *Issue459Buckets    `msg:",allownil"`
+	Slice     *[]string           `msg:",allownil"`
+	Bytes     *[]byte             `msg:",allownil"`
+	DoubleMap **map[string]uint64 `msg:",allownil"`
+	Uint      *uint64             `msg:",allownil"`
+	Array     *[3]int             `msg:",allownil"`
+}

@@ -582,7 +582,9 @@ func (u *unmarshalGen) gMap(m *Map) {
 }
 
 func (u *unmarshalGen) gPtr(p *Ptr) {
-	u.p.printf("\nif msgp.IsNil(bts) { bts, err = msgp.ReadNilBytes(bts); if err != nil { return }; %s = nil; } else { ", p.Varname())
+	if !p.isAllowNil {
+		u.p.printf("\nif msgp.IsNil(bts) { bts, err = msgp.ReadNilBytes(bts); if err != nil { return }; %s = nil; } else { ", p.Varname())
+	}
 	u.p.initPtr(p)
 	if p.typeParams.TypeParams != "" {
 		tp := p.typeParams
@@ -590,5 +592,7 @@ func (u *unmarshalGen) gPtr(p *Ptr) {
 		p.Value.SetTypeParams(tp)
 	}
 	next(u, p.Value)
-	u.p.closeblock()
+	if !p.isAllowNil {
+		u.p.closeblock()
+	}
 }

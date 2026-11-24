@@ -320,7 +320,7 @@ func (e *encodeGen) gPtr(s *Ptr) {
 		return
 	}
 	e.fuseHook()
-	e.p.printf("\nif %s == nil { err = en.WriteNil(); if err != nil { return; } } else {", s.Varname())
+	e.p.printf("\nif %s { err = en.WriteNil(); if err != nil { return; } } else {", s.nilExpr())
 	if s.typeParams.TypeParams != "" {
 		tp := s.typeParams
 		tp.isPtr = true

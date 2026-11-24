@@ -492,6 +492,31 @@ func SetIsAllowNil(e Elem, b bool) {
 type Ptr struct {
 	common
 	Value Elem
+
+	// isAllowNil is set when an allownil field has
+	// already handled the nil pointer itself.
+	isAllowNil bool
+}
+
+// AllowNil lets allownil apply to the pointee.
+func (s *Ptr) AllowNil() bool { return s.Value.AllowNil() }
+
+// SetIsAllowNil passes allownil on to the pointee.
+// false is not passed on, since that would drop the
+// non-nil guarantee untagged *[]byte fields have on decode.
+func (s *Ptr) SetIsAllowNil(b bool) {
+	s.isAllowNil = b
+	if b {
+		s.Value.SetIsAllowNil(b)
+	}
+}
+
+// nilExpr is the condition for writing nil.
+func (s *Ptr) nilExpr() string {
+	if s.isAllowNil {
+		return s.Value.IfZeroExpr()
+	}
+	return s.IfZeroExpr()
 }
 
 func (s *Ptr) SetVarname(a string) {
