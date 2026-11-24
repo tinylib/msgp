@@ -721,6 +721,7 @@ type BaseElem struct {
 	ShimErrs     bool      // ShimToBase has errors on function
 	Value        Primitive // Type of element
 	Convert      bool      // should we do an explicit conversion?
+	NotNilable   bool      // the Go type is known to not be nilable
 	zerocopy     bool      // Allow zerocopy for byte slices in unmarshal.
 	mustinline   bool      // must inline; not printable
 	needsref     bool      // needs reference for shim
@@ -740,7 +741,14 @@ func (s *BaseElem) Alias(typ string) {
 	}
 }
 
-func (s *BaseElem) AllowNil() bool {
+// AllowNil reports whether allownil can apply to the element.
+// It must not depend on SetIsAllowNil, which the previous generator
+// may have called with a different value.
+func (s *BaseElem) AllowNil() bool { return s.Value == Bytes && !s.NotNilable }
+
+// isAllowNil reports whether allownil is set, so decoding must keep
+// non-nil empty values. Bytes not set by a field (e.g. behind a pointer) default to true.
+func (s *BaseElem) isAllowNil() bool {
 	if s.allowNil == nil {
 		return s.Value == Bytes
 	}
