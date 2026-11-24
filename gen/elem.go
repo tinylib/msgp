@@ -448,6 +448,43 @@ func indexable(v string) string {
 	return v
 }
 
+// ptrTo returns a pointer to the value v names, for interface
+// arguments whose methods may have pointer receivers.
+// isPtr reports that v already is that pointer.
+func ptrTo(v string, isPtr bool) string {
+	if isPtr {
+		return v
+	}
+	if p, ok := unwrapDeref(v); ok {
+		return p
+	}
+	return "&" + v
+}
+
+// appenderArg returns v as an argument for encoding.*Appender parameters.
+func appenderArg(v string) string {
+	if p, ok := unwrapDeref(v); ok {
+		return p
+	}
+	return v
+}
+
+// receiver returns v in a form usable as a method receiver.
+func receiver(v string) string {
+	if p, ok := unwrapDeref(v); ok {
+		return p
+	}
+	return indexable(v)
+}
+
+// unwrapDeref returns x for the "(*x)" that methodReceiver produces.
+func unwrapDeref(v string) (string, bool) {
+	if strings.HasPrefix(v, "(*") && strings.HasSuffix(v, ")") {
+		return v[2 : len(v)-1], true
+	}
+	return "", false
+}
+
 func (s *Slice) TypeName() string {
 	if s.alias != "" {
 		return s.typeNameWithParams(s.alias)
