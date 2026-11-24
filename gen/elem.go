@@ -170,6 +170,7 @@ type common struct {
 type GenericTypeParams struct {
 	TypeParams   string
 	ToPointerMap map[string]string
+	Generic      map[string]bool // generic types declared in the file
 	isPtr        bool
 }
 
@@ -187,12 +188,8 @@ func stripTypeParams(typeName string) string {
 }
 
 func (c *common) typeNameWithParams(baseName string) string {
-	if c.typeParams.TypeParams != "" && !c.replaced && !strings.Contains(baseName, "[") {
-		// Check if baseName is a single identifier without dots (likely a type parameter)
-		if !strings.Contains(baseName, ".") && len(baseName) <= 2 && len(baseName) > 0 {
-			// This looks like a simple type parameter, don't add type parameters
-			return baseName
-		}
+	// Inlined generic types are named without their parameters.
+	if c.typeParams.Generic[strings.TrimLeft(baseName, "*")] {
 		return baseName + c.typeParams.TypeParams
 	}
 	return baseName
@@ -217,12 +214,7 @@ func (c *common) AlwaysPtr(set *bool) bool {
 }
 
 // AliasReplaced aliases the element to the declared name of a replaced type.
-// Replace directives name non-generic types, so no type parameters are added.
 func (c *common) AliasReplaced(name string) { c.alias, c.replaced = name, true }
-
-// isReplaced reports whether the type name is a replaced type's (or a pointer to one),
-// which needs no type parameters.
-func (c *common) isReplaced() bool { return c.replaced }
 
 func IsPrintable(e Elem) bool {
 	if be, ok := e.(*BaseElem); ok && !be.Printable() {
@@ -570,18 +562,11 @@ func (s *Ptr) SetVarname(a string) {
 }
 
 func (s *Ptr) TypeName() string {
-	if s.alias == "" {
-		s.Alias("*" + s.Value.TypeName())
+	if s.alias != "" {
+		return s.typeNameWithParams(s.alias)
 	}
-	if s.isReplaced() {
-		return s.alias
-	}
+	s.Alias("*" + s.Value.TypeName())
 	return s.typeNameWithParams(s.alias)
-}
-
-func (s *Ptr) isReplaced() bool {
-	v, ok := s.Value.(interface{ isReplaced() bool })
-	return s.replaced || ok && v.isReplaced()
 }
 
 func (s *Ptr) Copy() Elem {
@@ -652,7 +637,8 @@ func (s *Struct) Complexity() int {
 
 // ZeroExpr returns the zero/empty expression or empty string if not supported.
 func (s *Struct) ZeroExpr() string {
-	if s.alias == "" {
+	// omitempty and clearomitted stay unsupported for replaced structs, as before.
+	if s.alias == "" || s.replaced {
 		return "" // structs with no names not supported (for now)
 	}
 	return "(" + s.TypeName() + "{})"
@@ -660,7 +646,7 @@ func (s *Struct) ZeroExpr() string {
 
 // IfZeroExpr returns the expression to compare to zero/empty.
 func (s *Struct) IfZeroExpr() string {
-	if s.alias == "" {
+	if s.alias == "" || s.replaced {
 		return "" // structs with no names not supported (for now)
 	}
 	return s.Varname() + " == " + s.ZeroExpr()

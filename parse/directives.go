@@ -135,10 +135,22 @@ func applyShim(text []string, f *FileSet) error {
 		be.Convert = true
 	}
 
+	// A type alias of the name must not overrule the shim, nor get methods
+	// that would duplicate those of the aliased type.
+	if f.keepReplaced == nil {
+		f.keepReplaced = make(map[string]bool)
+	}
+	f.keepReplaced[name] = true
 	infof("%s -> %s\n", name, be.Value.String())
-	f.findShim(name, be, true)
+	f.findShim(name, be, f.Aliased[name] == "")
 
 	return nil
+}
+
+// appliedReplace is a replace directive that has been applied.
+type appliedReplace struct {
+	name string
+	e    gen.Elem
 }
 
 //msgp:replace {Type} with:{NewType}
@@ -155,6 +167,10 @@ func replace(text []string, f *FileSet) error {
 		return err
 	}
 	e := f.parseExpr(expr)
+	// Resolve names replaced earlier, so the order of the directives doesn't matter.
+	for _, r := range f.replaced {
+		f.nextShim(&e, r.name, r.e)
+	}
 	e.AlwaysPtr(&f.pointerRcv)
 
 	if be, ok := e.(*gen.BaseElem); ok {
@@ -166,7 +182,7 @@ func replace(text []string, f *FileSet) error {
 		}
 	}
 	switch e.(type) {
-	case *gen.Map, *gen.Slice, *gen.Array, *gen.Ptr:
+	case *gen.Map, *gen.Slice, *gen.Array, *gen.Ptr, *gen.Struct:
 		// Keep the declared name, so new() and make() produce the field's type.
 		e.(interface{ AliasReplaced(string) }).AliasReplaced(name)
 		// A type alias of the name would now match and overrule this replacement.
@@ -176,6 +192,7 @@ func replace(text []string, f *FileSet) error {
 		f.keepReplaced[name] = true
 	}
 
+	f.replaced = append(f.replaced, appliedReplace{name, e})
 	infof("%s -> %s\n", name, replacement)
 	f.findShim(name, e, false)
 
