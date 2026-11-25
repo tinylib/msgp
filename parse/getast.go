@@ -29,6 +29,8 @@ type FileSet struct {
 	TypeInfos     map[string]*TypeInfo // type specs with generic info
 	Identities    map[string]gen.Elem  // processed from specs
 	Aliased       map[string]string    // Aliased types.
+	keepReplaced  map[string]bool      // Replaced names an alias must not overrule.
+	replaced      []appliedReplace     // Replace directives applied so far.
 	Directives    []string             // raw preprocessor directives
 	Imports       []*ast.ImportSpec    // imports
 	CompactFloats bool                 // Use smaller floats when feasible
@@ -164,7 +166,16 @@ func (fs *FileSet) applyDirectives() {
 		}
 	}
 	// Apply aliases last, so we don't overrule any manually specified replace directives.
-	for _, d := range fs.Aliased {
+	names := make([]string, 0, len(fs.Aliased))
+	for name := range fs.Aliased {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if fs.keepReplaced[name] {
+			continue
+		}
+		d := fs.Aliased[name]
 		chunks := strings.Split(d, " ")
 		if len(chunks) > 0 {
 			if fn, ok := directives[chunks[0]]; ok {
@@ -180,6 +191,17 @@ func (fs *FileSet) applyDirectives() {
 		}
 	}
 	fs.Directives = newdirs
+}
+
+// genericTypes returns the generic types declared in the parsed files.
+func (fs *FileSet) genericTypes() map[string]bool {
+	g := make(map[string]bool)
+	for name, ti := range fs.TypeInfos {
+		if ti.TypeParams != nil {
+			g[name] = true
+		}
+	}
+	return g
 }
 
 // applyEarlyDirectives applies all early directives needed before process() is called.
@@ -367,6 +389,7 @@ parse:
 				el.SetTypeParams(gen.GenericTypeParams{
 					TypeParams:   typeParamsStr,
 					ToPointerMap: ptrMap,
+					Generic:      fs.genericTypes(),
 				})
 			}
 		}

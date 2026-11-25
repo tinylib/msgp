@@ -181,6 +181,10 @@ func replace(text []string, f *FileSet) error {
 		return err
 	}
 	e := f.parseExpr(expr)
+	// Resolve names replaced earlier, so the order of the directives doesn't matter.
+	for _, r := range f.replaced {
+		f.nextShim(&e, r.name, r.e)
+	}
 	e.AlwaysPtr(&f.pointerRcv)
 
 	if be, ok := e.(*gen.BaseElem); ok {
@@ -192,11 +196,31 @@ func replace(text []string, f *FileSet) error {
 			be.Needsref(true)
 		}
 	}
+	switch e.(type) {
+	case *gen.Map, *gen.Slice, *gen.Array, *gen.Ptr:
+		// Keep the declared name, so new() and make() produce the field's type.
+		e.Alias(name)
+		// A type alias of the name would now match and overrule this replacement.
+		if f.keepReplaced == nil {
+			f.keepReplaced = make(map[string]bool)
+		}
+		f.keepReplaced[name] = true
+	}
 
+	// Built-in names keep their own encoding inside later replacements.
+	if gen.Ident(name).Value == gen.IDENT {
+		f.replaced = append(f.replaced, appliedReplace{name, e})
+	}
 	infof("%s -> %s\n", name, replacement)
 	f.findShim(name, e, false)
 
 	return nil
+}
+
+// appliedReplace is a replace directive that has been applied.
+type appliedReplace struct {
+	name string
+	e    gen.Elem
 }
 
 //msgp:ignore {TypeA} {TypeB}...

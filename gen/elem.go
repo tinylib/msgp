@@ -169,6 +169,7 @@ type common struct {
 type GenericTypeParams struct {
 	TypeParams   string
 	ToPointerMap map[string]string
+	Generic      map[string]bool // generic types declared in the file
 	isPtr        bool
 }
 
@@ -186,12 +187,8 @@ func stripTypeParams(typeName string) string {
 }
 
 func (c *common) typeNameWithParams(baseName string) string {
-	if c.typeParams.TypeParams != "" && !strings.Contains(baseName, "[") {
-		// Check if baseName is a single identifier without dots (likely a type parameter)
-		if !strings.Contains(baseName, ".") && len(baseName) <= 2 && len(baseName) > 0 {
-			// This looks like a simple type parameter, don't add type parameters
-			return baseName
-		}
+	// Inlined generic types are named without their parameters.
+	if c.typeParams.Generic[strings.TrimLeft(baseName, "*")] {
 		return baseName + c.typeParams.TypeParams
 	}
 	return baseName
