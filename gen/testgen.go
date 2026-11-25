@@ -31,7 +31,7 @@ func (m *mtestGen) Execute(p Elem, _ Context) error {
 	p = m.applyall(p)
 	if p != nil && IsPrintable(p) {
 		if p.TypeParams().TypeParams != "" {
-			fmt.Fprintf(m.w, "\n// %s: Cannot generate marshal test for generic types", p.TypeName())
+			fmt.Fprintf(m.w, "// %s: Cannot generate marshal test for generic types\n", p.TypeName())
 			return nil
 		}
 		switch p.(type) {
@@ -57,7 +57,7 @@ func (e *etestGen) Execute(p Elem, _ Context) error {
 	p = e.applyall(p)
 	if p != nil && IsPrintable(p) {
 		if p.TypeParams().TypeParams != "" {
-			fmt.Fprintf(e.w, "\n// %s: Cannot generate encoder test for generic types", p.TypeName())
+			fmt.Fprintf(e.w, "// %s: Cannot generate encoder test for generic types\n", p.TypeName())
 			return nil
 		}
 		switch p.(type) {
