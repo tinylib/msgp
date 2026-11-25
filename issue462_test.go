@@ -37,6 +37,8 @@ const issue462Ext = `package main
 
 type MapAny map[string]any
 type SliceString []string
+type FourBytes [4]byte
+type IntPtr *int
 `
 
 const issue462Main = `package main
@@ -54,16 +56,24 @@ import (
 
 //msgp:replace MapAny with:map[string]any
 //msgp:replace SliceString with:[]string
+//msgp:replace FourBytes with:[4]byte
+//msgp:replace IntPtr with:*int
 
 type S struct {
 	M *MapAny
 	S *SliceString
+	B *FourBytes
+	P *IntPtr
 }
 
 func main() {
+	i := 7
+	ip := IntPtr(&i)
 	in := S{
 		M: &MapAny{"a": "x"},
 		S: &SliceString{"y", "z"},
+		B: &FourBytes{1, 2, 3, 4},
+		P: &ip,
 	}
 
 	data, err := in.MarshalMsg(nil)
