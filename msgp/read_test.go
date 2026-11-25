@@ -1147,3 +1147,24 @@ func TestCopyNext(t *testing.T) {
 		t.Fatalf("not equal! %v, %v", buf.Bytes(), w.Bytes())
 	}
 }
+
+// A non-bin type at the end of the input must be reported as a type
+// error, not as io.EOF from peeking past it.
+func TestReadBytesTypeAtEOF(t *testing.T) {
+	readers := map[string]func(*Reader) error{
+		"ReadBytes":      func(r *Reader) error { _, err := r.ReadBytes(nil); return err },
+		"ReadBytesLimit": func(r *Reader) error { _, err := r.ReadBytesLimit(nil, 10); return err },
+		"ReadExactBytes": func(r *Reader) error { return r.ReadExactBytes(make([]byte, 1)) },
+	}
+	for name, read := range readers {
+		for _, in := range [][]byte{{mnil}, {0xa1}} {
+			var te TypeError
+			if err := read(NewReader(bytes.NewReader(in))); !errors.As(err, &te) {
+				t.Errorf("%s(% x): got %v, want TypeError", name, in, err)
+			}
+		}
+		if err := read(NewReader(bytes.NewReader([]byte{mbin8}))); !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+			t.Errorf("%s(truncated bin8): got %v, want EOF", name, err)
+		}
+	}
+}
