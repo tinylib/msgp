@@ -405,7 +405,7 @@ func (u *unmarshalGen) mapstruct(s *Struct) {
 // binaryUnmarshalCall generates code for unmarshaling marshaler/appender interfaces
 func (u *unmarshalGen) binaryUnmarshalCall(refname, unmarshalMethod, readType string) {
 	tmpBytes := randIdent()
-	refname = strings.Trim(refname, "(*)")
+	refname = receiver(refname)
 
 	u.p.printf("\nvar %s []byte", tmpBytes)
 	if readType == "String" {

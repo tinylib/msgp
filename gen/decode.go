@@ -374,14 +374,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	vname := b.Varname()  // e.g. "z.FieldOne"
 	bname := b.BaseName() // e.g. "Float64"
 	checkNil := vname     // Name of var to check for nil
-	alwaysRef := vname
-
-	// make sure we always reference the pointer
-	if strings.Contains(alwaysRef, "*") {
-		alwaysRef = strings.Trim(alwaysRef, "*()")
-	} else if !b.parentIsPtr {
-		alwaysRef = "&" + vname
-	}
+	alwaysRef := ptrTo(vname, b.parentIsPtr)
 
 	// handle special cases
 	// for object type.

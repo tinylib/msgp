@@ -419,7 +419,7 @@ func (m *marshalGen) gBase(b *BaseElem) {
 // binaryMarshalCall generates code for marshaler interfaces that return []byte
 func (m *marshalGen) binaryMarshalCall(vname, method, convert, appendFunc string) {
 	bts := randIdent()
-	vname = strings.Trim(vname, "(*)")
+	vname = receiver(vname)
 	m.p.printf("\nvar %s []byte", bts)
 	m.p.printf("\n%s, err = %s.%s()", bts, vname, method)
 	m.p.wrapErrCheck(m.ctx.ArgsStr())
@@ -434,7 +434,7 @@ func (m *marshalGen) binaryMarshalCall(vname, method, convert, appendFunc string
 // We optimize for cases where the size is 0-256 bytes.
 func (m *marshalGen) binaryAppendCall(vname, method, appendFunc string) {
 	sz := randIdent()
-	vname = strings.Trim(vname, "(*)")
+	vname = receiver(vname)
 	// Reserve 2 bytes for the header bin8 or str8.
 	m.p.printf("\no = append(o, 0, 0); %s := len(o)", sz)
 	m.p.printf("\no, err = %s.%s(o)", vname, method)
