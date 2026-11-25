@@ -477,7 +477,7 @@ func (u *unmarshalGen) gBase(b *BaseElem) {
 		u.p.wrapErrCheck(u.ctx.ArgsStr())
 	}
 
-	if nilCheck && b.AllowNil() {
+	if nilCheck && b.isAllowNil() {
 		// Ensure that 0 sized slices are allocated.
 		// We are inside the path where the value wasn't nil.
 		u.p.printf("\nif %s == nil {\n%s = make([]byte, 0)\n}", refname, refname)

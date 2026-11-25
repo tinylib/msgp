@@ -45,8 +45,9 @@ type FileSet struct {
 	NoDuplicates    bool                 // Reject duplicate keys for all types
 	NoDupTypes      map[string]struct{}   // Reject duplicate keys for specific types only
 
-	tagNames   []string // tags to read field names from, in priority order
-	pointerRcv bool     // generate with pointer receivers.
+	tagNames   []string            // tags to read field names from, in priority order
+	declared   map[string]ast.Expr // all type declarations, including unexported and aliases
+	pointerRcv bool                // generate with pointer receivers.
 }
 
 // File parses a file at the relative path
@@ -60,6 +61,7 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 	defer popstate()
 	fs := &FileSet{
 		Specs:      make(map[string]ast.Expr),
+		declared:   make(map[string]ast.Expr),
 		TypeInfos:  make(map[string]*TypeInfo),
 		Identities: make(map[string]gen.Elem),
 		Directives: append([]string{}, directives...),
@@ -90,6 +92,7 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 		for _, fl := range one.Files {
 			pushstate(fl.Name.Name)
 			fs.Directives = append(fs.Directives, yieldComments(fl.Comments)...)
+			fs.addDeclared(fl)
 			if !unexported {
 				ast.FileExports(fl)
 			}
@@ -103,6 +106,7 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 		}
 		fs.Package = f.Name.Name
 		fs.Directives = append(fs.Directives, yieldComments(f.Comments)...)
+		fs.addDeclared(f)
 		if !unexported {
 			ast.FileExports(f)
 		}
@@ -117,8 +121,26 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 	fs.process()
 	fs.applyDirectives()
 	fs.propInline()
+	for name, el := range fs.Identities {
+		if st, ok := el.(*gen.Struct); ok {
+			warnIgnoredOmitEmpty(name, st)
+		}
+	}
 
 	return fs, nil
+}
+
+// warnIgnoredOmitEmpty warns about omitempty on types shimmed or replaced
+// as []byte that cannot be nil, where it is ignored.
+func warnIgnoredOmitEmpty(name string, st *gen.Struct) {
+	if st.AsTuple {
+		return
+	}
+	for _, sf := range st.Fields {
+		if be, ok := sf.FieldElem.(*gen.BaseElem); ok && be.Value == gen.Bytes && be.NotNilable && sf.HasTagPart("omitempty") {
+			warnf("%s.%s: omitempty ignored, %s cannot be nil\n", name, sf.FieldName, be.TypeName())
+		}
+	}
 }
 
 // applyDirectives applies all of the directives that
@@ -447,6 +469,20 @@ func (fs *FileSet) PrintTo(p *gen.Printer) error {
 		}
 	}
 	return nil
+}
+
+// addDeclared records the type declarations of f before
+// ast.FileExports removes the unexported ones.
+func (fs *FileSet) addDeclared(f *ast.File) {
+	for _, d := range f.Decls {
+		if g, ok := d.(*ast.GenDecl); ok {
+			for _, s := range g.Specs {
+				if ts, ok := s.(*ast.TypeSpec); ok {
+					fs.declared[ts.Name.Name] = ts.Type
+				}
+			}
+		}
+	}
 }
 
 // getTypeSpecs extracts all of the *ast.TypeSpecs in the file
