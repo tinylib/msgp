@@ -288,6 +288,9 @@ func setRecursiveZC(e Elem, enable bool) {
 	if el, ok := e.(*Map); ok {
 		setRecursiveZC(el.Value, enable)
 	}
+	if el, ok := e.(*Ptr); ok {
+		setRecursiveZC(el.Value, enable)
+	}
 }
 
 func (u *unmarshalGen) mapstruct(s *Struct) {
