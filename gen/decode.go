@@ -437,7 +437,7 @@ func (d *decodeGen) gBase(b *BaseElem) {
 	}
 	d.p.wrapErrCheck(d.ctx.ArgsStr())
 
-	if checkNil != "" && b.AllowNil() {
+	if checkNil != "" && b.isAllowNil() {
 		// Ensure that 0 sized slices are allocated.
 		d.p.printf("\nif %s == nil {\n%s = make([]byte, 0)\n}", checkNil, checkNil)
 	}

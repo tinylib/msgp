@@ -740,7 +740,12 @@ func (s *BaseElem) Alias(typ string) {
 	}
 }
 
-func (s *BaseElem) AllowNil() bool {
+// AllowNil reports whether allownil can apply to the element.
+func (s *BaseElem) AllowNil() bool { return s.Value == Bytes }
+
+// isAllowNil reports whether allownil is set for the current generator.
+// Bytes without an override keep the historical default of allocating empty slices.
+func (s *BaseElem) isAllowNil() bool {
 	if s.allowNil == nil {
 		return s.Value == Bytes
 	}
