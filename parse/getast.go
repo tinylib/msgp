@@ -38,15 +38,16 @@ type FileSet struct {
 	AllowMapShims bool                 // Allow map keys to be shimmed (default true)
 	AllowBinMaps  bool                 // Allow maps with binary keys to be used (default false)
 	AutoMapShims  bool                 // Automatically shim map keys of builtin types(default false)
-	ArrayLimit      uint32               // Maximum array/slice size allowed during deserialization
-	MapLimit        uint32               // Maximum map size allowed during deserialization
-	MarshalLimits   bool                 // Whether to enforce limits during marshaling
-	LimitPrefix     string               // Unique prefix for limit constants to avoid collisions
-	NoDuplicates    bool                 // Reject duplicate keys for all types
-	NoDupTypes      map[string]struct{}   // Reject duplicate keys for specific types only
+	ArrayLimit    uint32               // Maximum array/slice size allowed during deserialization
+	MapLimit      uint32               // Maximum map size allowed during deserialization
+	MarshalLimits bool                 // Whether to enforce limits during marshaling
+	LimitPrefix   string               // Unique prefix for limit constants to avoid collisions
+	NoDuplicates  bool                 // Reject duplicate keys for all types
+	NoDupTypes    map[string]struct{}  // Reject duplicate keys for specific types only
 
-	tagNames   []string // tags to read field names from, in priority order
-	pointerRcv bool     // generate with pointer receivers.
+	tagNames   []string            // tags to read field names from, in priority order
+	declared   map[string]ast.Expr // all type declarations, including unexported ones and aliases
+	pointerRcv bool                // generate with pointer receivers.
 }
 
 // File parses a file at the relative path
@@ -60,6 +61,7 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 	defer popstate()
 	fs := &FileSet{
 		Specs:      make(map[string]ast.Expr),
+		declared:   make(map[string]ast.Expr),
 		TypeInfos:  make(map[string]*TypeInfo),
 		Identities: make(map[string]gen.Elem),
 		Directives: append([]string{}, directives...),
@@ -90,6 +92,7 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 		for _, fl := range one.Files {
 			pushstate(fl.Name.Name)
 			fs.Directives = append(fs.Directives, yieldComments(fl.Comments)...)
+			fs.addDeclared(fl)
 			if !unexported {
 				ast.FileExports(fl)
 			}
@@ -103,6 +106,7 @@ func File(name string, unexported bool, directives []string) (*FileSet, error) {
 		}
 		fs.Package = f.Name.Name
 		fs.Directives = append(fs.Directives, yieldComments(f.Comments)...)
+		fs.addDeclared(f)
 		if !unexported {
 			ast.FileExports(f)
 		}
@@ -447,6 +451,22 @@ func (fs *FileSet) PrintTo(p *gen.Printer) error {
 		}
 	}
 	return nil
+}
+
+// addDeclared records type declarations before ast.FileExports
+// removes unexported declarations and aliases.
+func (fs *FileSet) addDeclared(f *ast.File) {
+	for _, d := range f.Decls {
+		g, ok := d.(*ast.GenDecl)
+		if !ok {
+			continue
+		}
+		for _, sp := range g.Specs {
+			if ts, ok := sp.(*ast.TypeSpec); ok {
+				fs.declared[ts.Name.Name] = ts.Type
+			}
+		}
+	}
 }
 
 // getTypeSpecs extracts all of the *ast.TypeSpecs in the file

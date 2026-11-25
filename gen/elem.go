@@ -721,6 +721,7 @@ type BaseElem struct {
 	ShimErrs     bool      // ShimToBase has errors on function
 	Value        Primitive // Type of element
 	Convert      bool      // should we do an explicit conversion?
+	NotNilable   bool      // the Go type is known to not be nilable
 	zerocopy     bool      // Allow zerocopy for byte slices in unmarshal.
 	mustinline   bool      // must inline; not printable
 	needsref     bool      // needs reference for shim
@@ -741,6 +742,9 @@ func (s *BaseElem) Alias(typ string) {
 }
 
 func (s *BaseElem) AllowNil() bool {
+	if s.NotNilable {
+		return false
+	}
 	if s.allowNil == nil {
 		return s.Value == Bytes
 	}

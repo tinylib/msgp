@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/types"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -103,6 +105,7 @@ func applyShim(text []string, f *FileSet) error {
 
 	be.ShimToBase = methods[0]
 	be.ShimFromBase = methods[1]
+	be.NotNilable = !f.nilable(ast.NewIdent(name))
 
 	text = text[4:]
 	for len(text) > 0 {
@@ -141,6 +144,29 @@ func applyShim(text []string, f *FileSet) error {
 	return nil
 }
 
+// nilable reports whether values of type e can be nil.
+// Types not declared in the parsed files are assumed to be nilable.
+// seen holds the names being resolved, to stop at invalid cycles.
+func (fs *FileSet) nilable(e ast.Expr, seen ...string) bool {
+	switch e := e.(type) {
+	case *ast.ParenExpr:
+		return fs.nilable(e.X, seen...)
+	case *ast.ArrayType:
+		return e.Len == nil
+	case *ast.StructType:
+		return false
+	case *ast.Ident:
+		if decl, ok := fs.declared[e.Name]; ok && !slices.Contains(seen, e.Name) {
+			return fs.nilable(decl, append(seen, e.Name)...)
+		}
+		if tn, ok := types.Universe.Lookup(e.Name).(*types.TypeName); ok {
+			_, basic := tn.Type().Underlying().(*types.Basic)
+			return !basic
+		}
+	}
+	return true
+}
+
 //msgp:replace {Type} with:{NewType}
 func replace(text []string, f *FileSet) error {
 	if len(text) != 3 {
@@ -160,6 +186,7 @@ func replace(text []string, f *FileSet) error {
 	if be, ok := e.(*gen.BaseElem); ok {
 		be.Convert = true
 		be.Alias(name)
+		be.NotNilable = !f.nilable(ast.NewIdent(name))
 		if be.Value == gen.IDENT {
 			be.ShimToBase = "(*" + replacement + ")"
 			be.Needsref(true)
