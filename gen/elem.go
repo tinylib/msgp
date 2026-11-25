@@ -163,6 +163,7 @@ type common struct {
 	vname, alias string
 	ptrRcv       bool
 	typeParams   GenericTypeParams // Generic type parameters, e.g., "[T]"
+	exactAlias   bool              // alias already is the complete type name
 }
 
 // GenericTypeParams is a struct that contains the generic type parameters for an element.
@@ -186,6 +187,9 @@ func stripTypeParams(typeName string) string {
 }
 
 func (c *common) typeNameWithParams(baseName string) string {
+	if c.exactAlias {
+		return baseName
+	}
 	if c.typeParams.TypeParams != "" && !strings.Contains(baseName, "[") {
 		// Check if baseName is a single identifier without dots (likely a type parameter)
 		if !strings.Contains(baseName, ".") && len(baseName) <= 2 && len(baseName) > 0 {
@@ -201,7 +205,11 @@ func (c *common) typeNameWithParams(baseName string) string {
 func (c *common) baseTypeName() string {
 	return c.alias
 }
-func (c *common) Alias(typ string)                   { c.alias = typ }
+func (c *common) Alias(typ string) { c.alias, c.exactAlias = typ, false }
+
+// AliasExact sets a type name that must not have generic type parameters appended.
+func (c *common) AliasExact(typ string) { c.alias, c.exactAlias = typ, true }
+
 func (c *common) hidden()                            {}
 func (c *common) AllowNil() bool                     { return false }
 func (c *common) SetIsAllowNil(bool)                 {}
