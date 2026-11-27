@@ -496,6 +496,22 @@ func (p *printer) clearMap(name string) {
 	p.printf("\nclear(%[1]s)", name)
 }
 
+// shimDeref assigns *FromBase(arg) to target. A shim of *T on a value
+// returns *T, and its varname is a reference to the value.
+func (p *printer) shimDeref(b *BaseElem, target, arg, errCtx string) {
+	ptr := randIdent()
+	p.printf("\nvar %s *%s", ptr, b.TypeName())
+	if b.ShimMode == Cast && !b.ShimErrs {
+		p.printf("\n%s = %s(%s)", ptr, b.FromBase(), arg)
+	} else {
+		p.printf("\n%s, err = %s(%s)", ptr, b.FromBase(), arg)
+		p.wrapErrCheck(errCtx)
+	}
+	// A nil result decodes as the zero value.
+	p.printf("\nif %s == nil {\n%s = new(%s)\n}", ptr, ptr, b.TypeName())
+	p.printf("\n%s = *%s", target, ptr)
+}
+
 func (p *printer) wrapErrCheck(ctx string) {
 	p.print("\nif err != nil {")
 	if ctx != "" {

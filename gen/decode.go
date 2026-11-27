@@ -437,7 +437,10 @@ func (d *decodeGen) gBase(b *BaseElem) {
 
 	// close block for 'tmp'
 	if b.Convert && b.Value != IDENT {
-		if b.ShimMode == Cast && !b.ShimErrs {
+		if target, ok := strings.CutPrefix(vname, "&"); ok {
+			d.p.shimDeref(b, target, tmp, d.ctx.ArgsStr())
+			d.p.print("\n}")
+		} else if b.ShimMode == Cast && !b.ShimErrs {
 			d.p.printf("\n%s = %s(%s)\n}", vname, b.FromBase(), tmp)
 		} else {
 			d.p.printf("\n%s, err = %s(%s)\n}", vname, b.FromBase(), tmp)
