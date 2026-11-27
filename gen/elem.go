@@ -1066,7 +1066,7 @@ func (k Primitive) String() string {
 // all of the fields in a struct
 func writeStructFields(s []StructField, name string) {
 	for i := range s {
-		s[i].FieldElem.SetVarname(fmt.Sprintf("%s.%s", name, s[i].FieldName))
+		s[i].FieldElem.SetVarname(fmt.Sprintf("%s.%s", indexable(name), s[i].FieldName))
 	}
 }
 
