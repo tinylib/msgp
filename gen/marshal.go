@@ -179,7 +179,7 @@ func (m *marshalGen) mapstruct(s *Struct) {
 				m.p.printf("\n%s", bm.setStmt(i))
 				m.p.printf("\n}")
 			} else if sf.HasTagPart("omitzero") {
-				m.p.printf("\nif %s.IsZero() {", sf.FieldElem.Varname())
+				m.p.printf("\nif %s {", omitZeroExpr(sf.FieldElem))
 				m.p.printf("\n%s--", fieldNVar)
 				m.p.printf("\n%s", bm.setStmt(i))
 				m.p.printf("\n}")

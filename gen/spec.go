@@ -401,6 +401,15 @@ func (p *printer) resizeMap(size string, m *Map) {
 	p.closeblock()
 }
 
+// omitZeroExpr is the omitzero condition for e. A nil pointer is zero,
+// and calling a value-receiver IsZero on it would panic.
+func omitZeroExpr(e Elem) string {
+	if _, ok := e.(*Ptr); ok {
+		return e.Varname() + " == nil || " + e.Varname() + ".IsZero()"
+	}
+	return e.Varname() + ".IsZero()"
+}
+
 // CanAutoShim contains the primitives that can be auto-shimmed.
 var CanAutoShim = map[Primitive]bool{Uint: true, Uint8: true, Uint16: true, Uint32: true, Uint64: true, Int: true, Int8: true, Int16: true, Int32: true, Int64: true, Bool: true, Float32: true, Float64: true, Byte: true}
 
