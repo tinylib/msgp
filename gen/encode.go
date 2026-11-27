@@ -115,7 +115,7 @@ func (e *encodeGen) Execute(p Elem, ctx Context) error {
 	e.p.printf("\nfunc (%s %s) EncodeMsg(en *msgp.Writer) (err error) {", ogVar, rcv)
 	next(e, p)
 	if p.AlwaysPtr(nil) {
-		p.SetVarname(ogVar)
+		unsetReceiver(p)
 	}
 	e.p.nakedReturn()
 	return e.p.err
